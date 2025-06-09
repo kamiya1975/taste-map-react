@@ -96,7 +96,7 @@ function MapPage() {
     const currentRating = userRatings[jan] || 0;
 
     return (
-      <div key={jan} style={{ borderBottom: '1px solid #ccc', padding: '10px 0' }}>
+      <div key={jan} className="top10-item">
         <strong>{`${index + 1}️⃣`} {item['商品名']} ({item.Type}) {parseInt(item['希望小売価格']).toLocaleString()} 円</strong>
         <div style={{ display: 'flex', alignItems: 'center', marginTop: '5px' }}>
           <select
@@ -134,18 +134,15 @@ function MapPage() {
 
       {/* ✅ 甘さスライダー */}
       <div style={{ marginBottom: '20px' }}>
-        <label style={{ fontWeight: 'bold' }}>
-          甘さスライダー（pc2）:
-        </label>
+        <label className="slider-label">甘さスライダー（pc2）:</label>
         <input
           type="range"
           min="0"
           max="100"
           value={slider_pc2}
           onChange={(e) => setSliderPc2(Number(e.target.value))}
-          style={{ width: '100%' }}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+        <div className="slider-range-labels">
           <span>0</span>
           <span>100</span>
         </div>
@@ -153,35 +150,34 @@ function MapPage() {
 
       {/* ✅ ボディスライダー */}
       <div style={{ marginBottom: '20px' }}>
-        <label style={{ fontWeight: 'bold' }}>
-          ボディスライダー（pc1）:
-        </label>
+        <label className="slider-label">ボディスライダー（pc1）:</label>
         <input
           type="range"
           min="0"
           max="100"
           value={slider_pc1}
           onChange={(e) => setSliderPc1(Number(e.target.value))}
-          style={{ width: '100%' }}
         />
-        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+        <div className="slider-range-labels">
           <span>0</span>
           <span>100</span>
         </div>
       </div>
 
       {/* ✅ MAP */}
-      <div style={{
-        width: '100%',
-        maxWidth: '600px',
-        margin: '0 auto',
-        padding: '0 10px 20px',
-        minHeight: '400px',  // ← スマホ崩れ防止
-        overflowX: 'hidden'  // ← 横スクロール禁止
-      }}>
+      <div
+        style={{
+          width: '100vw',
+          boxSizing: 'border-box',
+          padding: '0 10px 20px',
+          minHeight: '400px',
+          overflowX: 'hidden',
+          margin: '0 auto'
+        }}
+      >
         <Plot
-          useResizeHandler={true} // ← 追加
-          style={{ width: '100%', height: '100%' }} // ← 追加
+          useResizeHandler={true}
+          style={{ width: '100vw', height: '100%' }}
           key={JSON.stringify(userRatings)}
           data={[
             ...typeList.map(type => ({

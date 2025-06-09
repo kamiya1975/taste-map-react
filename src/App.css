@@ -4,7 +4,7 @@
 body {
   margin: 0;
   padding: 0;
-  overflow-x: hidden; /* 横スクロール禁止 */
+  overflow-x: hidden !important; /* 横スクロール禁止 */
   font-family: Arial, sans-serif;
   background-color: #fff;
   line-height: 1.6;
