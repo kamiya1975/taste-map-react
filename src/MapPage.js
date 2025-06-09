@@ -134,7 +134,10 @@ function MapPage() {
 
       {/* ✅ 甘さスライダー */}
       <div style={{ marginBottom: '20px' }}>
-        <label className="slider-label">← 甘みは不要          もっと甘みが欲しい →</label>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '5px' }}>
+         <span>← 甘みは不要</span>
+         <span>もっと甘みが欲しい →</span>
+         </div>
         <input
           type="range"
           min="0"
@@ -150,7 +153,10 @@ function MapPage() {
 
       {/* ✅ ボディスライダー */}
       <div style={{ marginBottom: '20px' }}>
-        <label className="slider-label">← 軽やかが良い          濃厚なコクを望む →</label>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '5px' }}>
+         <span>← 軽やかが良い</span>
+         <span>濃厚なコクを望む →</span>
+        </div>
         <input
           type="range"
           min="0"
