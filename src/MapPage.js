@@ -109,7 +109,7 @@ function MapPage() {
 
     return (
       <div key={jan} className="top10-item">
-        <strong>{`${index + 1}️⃣`} {item['商品名']} ({item.Type}) {price}</strong>
+        <strong>{`${index + 1}.`} {item['商品名']} ({item.Type}) {price}</strong>
         <div style={{ display: 'flex', alignItems: 'center', marginTop: '5px' }}>
           <select
             value={currentRating}
