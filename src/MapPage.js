@@ -230,7 +230,7 @@ function MapPage() {
           ]}
           layout={{
             autosize: true,
-            margin: { l: 0, r: 0, t: 0, b: 0 },
+            margin: { l: 20, r: 20, t: 30, b: 30 },
             dragmode: 'pan',
             xaxis: {
               range: x_range,
