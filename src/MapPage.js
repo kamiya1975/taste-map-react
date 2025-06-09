@@ -168,7 +168,7 @@ function MapPage() {
       <div className="plot-container">
         <Plot
           useResizeHandler={true}
-          style={{ width: '100vw', height: '100%' }}
+          style={{ width: 'calc(100vw - 20px)', height: '100%' }}
           key={JSON.stringify(userRatings)}
           data={[
             ...typeList.map(type => ({
