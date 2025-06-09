@@ -13,9 +13,7 @@ function MapPage() {
     const handleResize = () => {
       window.dispatchEvent(new Event('resize'));
     };
-
     setTimeout(handleResize, 300);
-
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
@@ -174,15 +172,16 @@ function MapPage() {
 
       {/* ✅ MAP */}
       <div style={{
-        padding: '0 10px',
-        paddingBottom: '20px', // ⭐️ 追加 → TOP10 保護
-        aspectRatio: '1',
         width: '100%',
         maxWidth: '600px',
         margin: '0 auto',
-        overflowX: 'hidden' // ⭐️ 追加 → 横スクロール禁止
+        padding: '0 10px 20px',
+        minHeight: '400px',  // ← スマホ崩れ防止
+        overflowX: 'hidden'  // ← 横スクロール禁止
       }}>
         <Plot
+          useResizeHandler={true} // ← 追加
+          style={{ width: '100%', height: '100%' }} // ← 追加
           key={JSON.stringify(userRatings)}
           data={[
             ...typeList.map(type => ({
@@ -279,7 +278,7 @@ function MapPage() {
             legend: {
               orientation: 'h',
               x: 0.5,
-              y: -0.25, // ⭐️ 少し下げて TOP10 保護
+              y: -0.25,
               xanchor: 'center',
               yanchor: 'top'
             }
