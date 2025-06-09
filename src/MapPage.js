@@ -161,8 +161,8 @@ function MapPage() {
         </div>
       </div>
 
-      {/* ✅ MAP → 外枠 div 追加！ */}
-      <div style={{ padding: '0 10px' }}>
+      {/* ✅ MAP → 外枠 div に aspectRatio */}
+      <div style={{ padding: '0 10px', aspectRatio: '1 / 1' }}>
         <Plot
           key={JSON.stringify(userRatings)}
           data={[
@@ -268,7 +268,15 @@ function MapPage() {
           }}
           config={{
             responsive: true,
-            scrollZoom: true
+            scrollZoom: true,
+            modeBarButtonsToRemove: [
+              'zoom2d', 'pan2d', 'select2d', 'lasso2d',
+              'zoomIn2d', 'zoomOut2d', 'autoScale2d',
+              'resetScale2d', 'toggleSpikelines',
+              'hoverCompareCartesian', 'hoverClosestCartesian',
+              'toImage'
+            ],
+            displaylogo: false
           }}
         />
       </div>
