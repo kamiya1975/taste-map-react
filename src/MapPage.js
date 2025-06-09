@@ -134,7 +134,7 @@ function MapPage() {
 
       {/* ✅ 甘さスライダー */}
       <div style={{ marginBottom: '20px' }}>
-        <label className="slider-label">甘さスライダー（pc2）:</label>
+        <label className="slider-label">←こんなに甘みはいらない もう少し甘みがほしいな→</label>
         <input
           type="range"
           min="0"
@@ -150,7 +150,7 @@ function MapPage() {
 
       {/* ✅ ボディスライダー */}
       <div style={{ marginBottom: '20px' }}>
-        <label className="slider-label">ボディスライダー（pc1）:</label>
+        <label className="slider-label">←もう少し軽やかな感じがいいな もう少し濃厚なコクがほしいな→</label>
         <input
           type="range"
           min="0"
