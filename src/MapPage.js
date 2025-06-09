@@ -233,3 +233,4 @@ function MapPage() {
 }
 
 export default MapPage;
+console.log("最新版テスト！");
