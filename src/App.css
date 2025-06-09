@@ -1,7 +1,7 @@
 /* ===== TasteMAP 用 App.css 完全版 ===== */
 
 /* 全体：横スクロール禁止 + 余白クリア */
-body {
+html, body {
   margin: 0;
   padding: 0;
   overflow-x: hidden !important; /* 横スクロール禁止 */
