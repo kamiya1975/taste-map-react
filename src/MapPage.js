@@ -135,7 +135,7 @@ function MapPage() {
       {/* ✅ 甘さスライダー */}
       <div style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '5px' }}>
-         <span>← 甘みは不要</span>
+         <span>← こんなに甘みは不要</span>
          <span>もっと甘みが欲しい →</span>
          </div>
         <input
@@ -154,8 +154,8 @@ function MapPage() {
       {/* ✅ ボディスライダー */}
       <div style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '5px' }}>
-         <span>← 軽やかが良い</span>
-         <span>濃厚なコクを望む →</span>
+         <span>← もっと軽やかが良い</span>
+         <span>濃厚なコクが欲しい →</span>
         </div>
         <input
           type="range"
