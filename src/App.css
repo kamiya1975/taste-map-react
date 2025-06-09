@@ -1,4 +1,6 @@
-/* ✅ スクロール固定 */
+/* ===== TasteMAP 用 App.css ===== */
+
+/* 横スクロール禁止 */
 body {
   margin: 0;
   padding: 0;
@@ -7,26 +9,26 @@ body {
   background-color: #fff;
 }
 
-/* ✅ h2 見出し */
+/* H2 見出し */
 h2 {
   font-size: 1.5rem;
   margin-top: 20px;
   margin-bottom: 20px;
 }
 
-/* ✅ スライダー */
+/* スライダー */
 input[type="range"] {
   width: 100%;
   margin-top: 5px;
 }
 
-/* ✅ セレクト（評価用） */
+/* セレクト（評価用） */
 select {
   font-size: 1rem;
   padding: 5px;
 }
 
-/* ✅ ボタン */
+/* ボタン */
 button {
   font-size: 1rem;
   padding: 5px 10px;
@@ -36,21 +38,22 @@ button {
   border-radius: 4px;
 }
 
-/* ✅ ボタン hover */
+/* ボタン hover */
 button:hover {
   background-color: #e0e0e0;
 }
 
-/* ✅ Plotly グラフに対する対策 */
+/* Plotly グラフに対する補正 */
+/* ★★ 両端10px 余白あり版 ★★ */
 .js-plotly-plot {
-  width: 100% !important;
+  width: calc(100vw - 20px) !important;
   height: auto !important;
   box-sizing: border-box;
-  padding: 0;
-  margin: 0 auto;
+  padding: 0 !important;
+  margin: 0 auto !important;
 }
 
-/* ✅ TOP10 表示 */
+/* 直下 TOP10 リスト余白 */
 h2 + div {
   margin-bottom: 20px;
 }
