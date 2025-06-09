@@ -44,13 +44,13 @@ button:hover {
 }
 
 /* Plotly グラフに対する補正 */
-/* ★★ 両端10px 余白あり版 ★★ */
+/* ★★ 完全ピッタリ 100vw ★★ */
 .js-plotly-plot {
-  width: calc(100vw - 20px) !important;
+  width: 100vw !important;
   height: auto !important;
   box-sizing: border-box;
   padding: 0 !important;
-  margin: 0 auto !important;
+  margin: 0 !important;
 }
 
 /* 直下 TOP10 リスト余白 */
