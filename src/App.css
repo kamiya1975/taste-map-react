@@ -1,12 +1,132 @@
-import React from 'react';
-import DeckMapPage from './DeckMapPage';
+/* ===== TasteMAP 用 App.css 完全版 ===== */
 
-function App() {
-  return (
-    <div>
-      <DeckMapPage />
-    </div>
-  );
+/* 全体：横スクロール禁止 + 余白クリア */
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden !important; /* 横スクロール禁止 */
+  font-family: Arial, sans-serif;
+  background-color: #fff;
+  line-height: 1.6;
 }
 
-export default App;
+/* h2 見出し */
+h2 {
+  font-size: 1.5rem;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  text-align: center; /* 中央揃え（スマホ対策） */
+}
+
+/* スライダー */
+input[type="range"] {
+  width: 100%;
+  margin-top: 5px;
+}
+
+/* スライダーつまみ（Webkit用：Safari/Chrome） */
+input[type="range"]::-webkit-slider-thumb {
+  width: 30px;
+  height: 30px;
+  background: white;
+  border: 2px solid #999;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+/* スライダーつまみ（Firefox用） */
+input[type="range"]::-moz-range-thumb {
+  width: 30px;
+  height: 30px;
+  background: white;
+  border: 2px solid #999;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+}
+
+/* セレクト（評価用） */
+select {
+  font-size: 1rem;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+}
+
+/* ボタン */
+button {
+  font-size: 1rem;
+  padding: 5px 10px;
+  cursor: pointer;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+/* ボタン hover */
+button:hover {
+  background-color: #e0e0e0;
+}
+
+/* Plot 親div 調整用（スマホでも崩れない） */
+.plot-container {
+  width: 100vw; /* ← 完全対応 */
+  box-sizing: border-box;
+  padding: 0 10px 20px;
+  min-height: 400px;
+  overflow-x: hidden;
+  margin: 0 auto;
+}
+
+/* TOP10 リスト */
+.top10-item {
+  border-bottom: 1px solid #ccc;
+  padding: 10px 0;
+}
+
+/* TOP10 強調文字 */
+.top10-item strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 1rem;
+}
+
+/* スライダーラベル */
+.slider-label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 5px;
+}
+
+/* スライダー目盛り */
+.slider-range-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+/* スマホ対応：メディアクエリ */
+@media (max-width: 480px) {
+  h2 {
+    font-size: 1.3rem;
+  }
+
+  button {
+    font-size: 0.95rem;
+    padding: 4px 8px;
+  }
+
+  select {
+    font-size: 0.95rem;
+    padding: 4px;
+  }
+
+  .top10-item strong {
+    font-size: 0.95rem;
+  }
+}
+
