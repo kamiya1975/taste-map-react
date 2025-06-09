@@ -132,7 +132,7 @@ function MapPage() {
   ] : [y_min, y_max];
 
   return (
-    <div style={{ padding: '10px 5% 30px 5%' }}>
+    <div style={{ padding: '10px 5% 30px 5%', maxWidth: '600px', margin: '0 auto' }}>
       <h2>基準のワインを飲んだ印象は？</h2>
 
       {/* ✅ 甘さスライダー */}
@@ -240,10 +240,10 @@ function MapPage() {
             .filter(item => item !== null),
         ]}
         layout={{
-          width: 600,
-          height: 600,
+          autosize: true,
+          responsive: true,
           title: 'TasteMAP',
-          dragmode: 'pan',  // ⭐️ ← Google Map風にドラッグOK
+          dragmode: 'pan',
           xaxis: {
             title: 'BodyAxis',
             range: x_range,
@@ -287,8 +287,9 @@ function MapPage() {
           }
         }}
         config={{
-          scrollZoom: true  // ⭐️ ← ホイールで拡大縮小OK！
+          scrollZoom: true
         }}
+        style={{ width: '100%', height: 'auto' }}   // ⭐️ ← ここがスマホ対応！！
       />
 
       {/* ✅ TOP10 */}
