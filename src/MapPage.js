@@ -8,6 +8,19 @@ function MapPage() {
   const [slider_pc2, setSliderPc2] = useState(50);
   const [userRatings, setUserRatings] = useState({});
 
+// ✅ Plotly 初回 resize 用
+useEffect(() => {
+  const handleResize = () => {
+    window.dispatchEvent(new Event('resize'));
+  };
+
+  // 初回ロード時に 300ms 後に resize イベントを発火
+  setTimeout(handleResize, 300);
+
+  // Cleanup（今回は不要だけど一応書いてOK）
+  return () => window.removeEventListener('resize', handleResize);
+}, []);
+
   const ratingOptions = ["未評価", "★", "★★", "★★★", "★★★★", "★★★★★"];
 
   const handleRatingChange = (jan, rating) => {
@@ -162,7 +175,14 @@ function MapPage() {
       </div>
 
       {/* ✅ MAP */}
-      <div style={{ padding: '0 10px' }}>
+      {/* ✅ MAP */}
+      <div style={{
+       padding: '0 10px',
+       aspectRatio: '1',
+       width: '100%',
+       maxWidth: '600px',
+       margin: '0 auto'
+      }}>
         <Plot
           key={JSON.stringify(userRatings)}
           data={[
