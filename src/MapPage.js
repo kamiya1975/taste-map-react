@@ -16,7 +16,6 @@ function MapPage() {
     }));
   };
 
-  // ✅ CSV読み込み
   useEffect(() => {
     fetch('/pca_result.csv')
       .then((response) => response.text())
@@ -36,7 +35,6 @@ function MapPage() {
   }, []);
 
   const blendF = data.find((d) => d.JAN === 'blendF');
-
   const xValues = data.map((d) => d.BodyAxis);
   const yValues = data.map((d) => d.SweetAxis);
 
@@ -90,7 +88,6 @@ function MapPage() {
     return (
       <div key={jan} style={{ borderBottom: '1px solid #ccc', padding: '10px 0' }}>
         <strong>{`${index + 1}️⃣`} {item['商品名']} ({item.Type}) {parseInt(item['希望小売価格']).toLocaleString()} 円</strong>
-
         <div style={{ display: 'flex', alignItems: 'center', marginTop: '5px' }}>
           <select
             value={currentRating}
@@ -101,7 +98,6 @@ function MapPage() {
               <option key={idx} value={idx}>{label}</option>
             ))}
           </select>
-
           <button
             onClick={() => console.log(`✅ ${jan} を ${ratingOptions[currentRating]} に設定しました！`)}
           >
@@ -112,44 +108,75 @@ function MapPage() {
     );
   });
 
+  const x_range_total = Math.max(range_left_x, range_right_x) * 2;
+  const y_range_total = Math.max(range_down_y, range_up_y) * 2;
+  const total_range = Math.min(x_range_total, y_range_total);
+
+  const calc_common_dtick = (range_total) => {
+    if (range_total > 20) return 5;
+    if (range_total > 10) return 2;
+    if (range_total > 5) return 1;
+    return 0.5;
+  };
+
+  const common_dtick = calc_common_dtick(total_range);
+
+  const x_range = blendF ? [
+    blendF.BodyAxis - Math.max(range_left_x, range_right_x),
+    blendF.BodyAxis + Math.max(range_left_x, range_right_x)
+  ] : [x_min, x_max];
+
+  const y_range = blendF ? [
+    blendF.SweetAxis - Math.max(range_down_y, range_up_y),
+    blendF.SweetAxis + Math.max(range_down_y, range_up_y)
+  ] : [y_min, y_max];
+
   return (
-    <div>
+    <div style={{ padding: '10px 5% 30px 5%' }}>
       <h2>基準のワインを飲んだ印象は？</h2>
 
+      {/* ✅ 甘さスライダー */}
       <div style={{ marginBottom: '20px' }}>
-        <label>
+        <label style={{ fontWeight: 'bold' }}>
           甘さスライダー（pc2）:
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={slider_pc2}
-            onChange={(e) => setSliderPc2(Number(e.target.value))}
-            style={{ width: '80%' }}
-          />
-          {slider_pc2}
         </label>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={slider_pc2}
+          onChange={(e) => setSliderPc2(Number(e.target.value))}
+          style={{ width: '100%' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+          <span>0</span>
+          <span>100</span>
+        </div>
       </div>
 
+      {/* ✅ ボディスライダー */}
       <div style={{ marginBottom: '20px' }}>
-        <label>
+        <label style={{ fontWeight: 'bold' }}>
           ボディスライダー（pc1）:
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={slider_pc1}
-            onChange={(e) => setSliderPc1(Number(e.target.value))}
-            style={{ width: '80%' }}
-          />
-          {slider_pc1}
         </label>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={slider_pc1}
+          onChange={(e) => setSliderPc1(Number(e.target.value))}
+          style={{ width: '100%' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+          <span>0</span>
+          <span>100</span>
+        </div>
       </div>
 
+      {/* ✅ MAP */}
       <Plot
         key={JSON.stringify(userRatings)}
         data={[
-          // ✅ タイプ別
           ...typeList.map(type => ({
             x: data.filter((d) => d.Type === type).map((d) => d.BodyAxis),
             y: data.filter((d) => d.Type === type).map((d) => d.SweetAxis),
@@ -162,7 +189,6 @@ function MapPage() {
             },
             name: type,
           })),
-          // ✅ Target 緑丸
           {
             x: [target.x],
             y: [target.y],
@@ -175,7 +201,6 @@ function MapPage() {
             },
             name: 'Your Impression',
           },
-          // ✅ TOP10 → 凡例消す！
           {
             x: distances.map((d) => d.BodyAxis),
             y: distances.map((d) => d.SweetAxis),
@@ -190,13 +215,10 @@ function MapPage() {
             name: 'TOP10',
             showlegend: false,
           },
-          // ✅ 評価バブル → 凡例消す！
           ...Object.entries(userRatings)
             .filter(([jan, rating]) => rating > 0)
             .map(([jan, rating]) => {
               const wine = data.find((d) => String(d.JAN).trim() === String(jan).trim());
-              console.log("⭐️ DEBUG", jan, wine);
-
               if (!wine) return null;
               return {
                 x: [wine.BodyAxis],
@@ -221,11 +243,55 @@ function MapPage() {
           width: 600,
           height: 600,
           title: 'TasteMAP',
-          xaxis: { title: 'BodyAxis' },
-          yaxis: { title: 'SweetAxis' },
+          dragmode: 'pan',  // ⭐️ ← Google Map風にドラッグOK
+          xaxis: {
+            title: 'BodyAxis',
+            range: x_range,
+            showticklabels: false,
+            zeroline: false,
+            showgrid: true,
+            gridcolor: 'lightgray',
+            gridwidth: 1,
+            tick0: blendF ? blendF.BodyAxis : 0,
+            dtick: common_dtick,
+            showline: true,
+            linewidth: 2,
+            linecolor: 'black',
+            mirror: true,
+            scaleanchor: 'y',
+            scaleratio: 1
+          },
+          yaxis: {
+            title: 'SweetAxis',
+            range: y_range,
+            showticklabels: false,
+            zeroline: false,
+            showgrid: true,
+            gridcolor: 'lightgray',
+            gridwidth: 1,
+            tick0: blendF ? blendF.SweetAxis : 0,
+            dtick: common_dtick,
+            showline: true,
+            linewidth: 2,
+            linecolor: 'black',
+            mirror: true,
+            scaleanchor: 'x',
+            scaleratio: 1
+          },
+          legend: {
+            orientation: 'h',
+            x: 0.5,
+            y: -0.2,
+            xanchor: 'center',
+            yanchor: 'top'
+          }
+        }}
+        config={{
+          scrollZoom: true  // ⭐️ ← ホイールで拡大縮小OK！
         }}
       />
 
+      {/* ✅ TOP10 */}
       <h2>近いワイン TOP10（評価つき）</h2>
       {top10List}
     </div>
@@ -233,4 +299,3 @@ function MapPage() {
 }
 
 export default MapPage;
-console.log("最新版テスト！");
