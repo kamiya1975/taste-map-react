@@ -235,7 +235,7 @@ function MapPage() {
           ]}
           layout={{
             margin: { l: 20, r: 20, t: 30, b: 30 },
-            dragmode: 'zoom',
+            dragmode: 'pan',
             xaxis: {
               range: x_range,
               showticklabels: false,
