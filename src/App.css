@@ -44,8 +44,10 @@ button:hover {
 }
 
 /* Plotly グラフ → 外枠 div (padding: 0 10px) に依存してレスポンシブ */
+/* ★ aspect-ratio 固定で正方形にして下のリストがズレない！ */
 .js-plotly-plot {
   width: 100% !important;
+  aspect-ratio: 1 / 1; /* ⭐️ 追加 → 高さ固定！ */
   height: auto !important;
   box-sizing: border-box;
   padding: 0 !important;
