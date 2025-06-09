@@ -1,3 +1,4 @@
+// src/MapPage.js
 import React, { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
 
@@ -108,19 +109,6 @@ function MapPage() {
     );
   });
 
-  const x_range_total = Math.max(range_left_x, range_right_x) * 2;
-  const y_range_total = Math.max(range_down_y, range_up_y) * 2;
-  const total_range = Math.min(x_range_total, y_range_total);
-
-  const calc_common_dtick = (range_total) => {
-    if (range_total > 20) return 5;
-    if (range_total > 10) return 2;
-    if (range_total > 5) return 1;
-    return 0.5;
-  };
-
-  const common_dtick = calc_common_dtick(total_range);
-
   const x_range = blendF ? [
     blendF.BodyAxis - Math.max(range_left_x, range_right_x),
     blendF.BodyAxis + Math.max(range_left_x, range_right_x)
@@ -132,9 +120,10 @@ function MapPage() {
   ] : [y_min, y_max];
 
   return (
-    <div style={{ padding: '10px 5% 30px 5%' }}>
+    <div style={{ padding: '10px' }}>
       <h2>基準のワインを飲んだ印象は？</h2>
 
+      {/* ✅ 甘さスライダー */}
       <div style={{ marginBottom: '20px' }}>
         <label style={{ fontWeight: 'bold' }}>
           甘さスライダー（pc2）:
@@ -153,6 +142,7 @@ function MapPage() {
         </div>
       </div>
 
+      {/* ✅ ボディスライダー */}
       <div style={{ marginBottom: '20px' }}>
         <label style={{ fontWeight: 'bold' }}>
           ボディスライダー（pc1）:
@@ -171,125 +161,119 @@ function MapPage() {
         </div>
       </div>
 
-      <Plot
-        key={JSON.stringify(userRatings)}
-        data={[
-          ...typeList.map(type => ({
-            x: data.filter((d) => d.Type === type).map((d) => d.BodyAxis),
-            y: data.filter((d) => d.Type === type).map((d) => d.SweetAxis),
-            text: data.filter((d) => d.Type === type).map((d) => d["商品名"]),
-            mode: 'markers',
-            type: 'scatter',
-            marker: {
-              size: 5,
-              color: typeColor[type],
+      {/* ✅ MAP → 外枠 div 追加！ */}
+      <div style={{ padding: '0 10px' }}>
+        <Plot
+          key={JSON.stringify(userRatings)}
+          data={[
+            ...typeList.map(type => ({
+              x: data.filter((d) => d.Type === type).map((d) => d.BodyAxis),
+              y: data.filter((d) => d.Type === type).map((d) => d.SweetAxis),
+              text: data.filter((d) => d.Type === type).map((d) => d["商品名"]),
+              mode: 'markers',
+              type: 'scatter',
+              marker: {
+                size: 5,
+                color: typeColor[type],
+              },
+              name: type,
+            })),
+            {
+              x: [target.x],
+              y: [target.y],
+              mode: 'markers',
+              type: 'scatter',
+              marker: {
+                size: 20,
+                color: 'green',
+                symbol: 'x',
+              },
+              name: 'Your Impression',
             },
-            name: type,
-          })),
-          {
-            x: [target.x],
-            y: [target.y],
-            mode: 'markers',
-            type: 'scatter',
-            marker: {
-              size: 20,
-              color: 'green',
-              symbol: 'x',
+            {
+              x: distances.map((d) => d.BodyAxis),
+              y: distances.map((d) => d.SweetAxis),
+              text: distances.map((d, index) => `${index + 1}️⃣`),
+              mode: 'markers+text',
+              type: 'scatter',
+              marker: {
+                size: 10,
+                color: 'black',
+              },
+              textposition: 'middle center',
+              name: 'TOP10',
+              showlegend: false,
             },
-            name: 'Your Impression',
-          },
-          {
-            x: distances.map((d) => d.BodyAxis),
-            y: distances.map((d) => d.SweetAxis),
-            text: distances.map((d, index) => `${index + 1}️⃣`),
-            mode: 'markers+text',
-            type: 'scatter',
-            marker: {
-              size: 10,
-              color: 'black',
+            ...Object.entries(userRatings)
+              .filter(([jan, rating]) => rating > 0)
+              .map(([jan, rating]) => {
+                const wine = data.find((d) => String(d.JAN).trim() === String(jan).trim());
+                if (!wine) return null;
+                return {
+                  x: [wine.BodyAxis],
+                  y: [wine.SweetAxis],
+                  text: [`${wine["商品名"]} ⭐️${rating}`],
+                  mode: 'markers+text',
+                  type: 'scatter',
+                  marker: {
+                    size: rating * 6 + 8,
+                    color: 'orange',
+                    opacity: 0.8,
+                    line: { color: 'green', width: 1.5 },
+                  },
+                  textposition: 'bottom center',
+                  name: '評価バブル',
+                  showlegend: false,
+                };
+              })
+              .filter(item => item !== null),
+          ]}
+          layout={{
+            autosize: true,
+            margin: { l: 0, r: 0, t: 0, b: 0 },
+            dragmode: 'pan',
+            xaxis: {
+              range: x_range,
+              showticklabels: false,
+              zeroline: false,
+              showgrid: true,
+              gridcolor: 'lightgray',
+              gridwidth: 1,
+              scaleanchor: 'y',
+              scaleratio: 1,
+              mirror: true,
+              linecolor: 'black',
+              linewidth: 2
             },
-            textposition: 'middle center',
-            name: 'TOP10',
-            showlegend: false,
-          },
-          ...Object.entries(userRatings)
-            .filter(([jan, rating]) => rating > 0)
-            .map(([jan, rating]) => {
-              const wine = data.find((d) => String(d.JAN).trim() === String(jan).trim());
-              if (!wine) return null;
-              return {
-                x: [wine.BodyAxis],
-                y: [wine.SweetAxis],
-                text: [`${wine["商品名"]} ⭐️${rating}`],
-                mode: 'markers+text',
-                type: 'scatter',
-                marker: {
-                  size: rating * 6 + 8,
-                  color: 'orange',
-                  opacity: 0.8,
-                  line: { color: 'green', width: 1.5 },
-                },
-                textposition: 'bottom center',
-                name: '評価バブル',
-                showlegend: false,
-              };
-            })
-            .filter(item => item !== null),
-        ]}
-        layout={{
-          autosize: true,
-          width: undefined,
-          height: undefined,
-          responsive: true,
-          dragmode: 'pan',
-          xaxis: {
-            title: 'BodyAxis',
-            range: x_range,
-            showticklabels: false,
-            zeroline: false,
-            showgrid: true,
-            gridcolor: 'lightgray',
-            gridwidth: 1,
-            tick0: blendF ? blendF.BodyAxis : 0,
-            dtick: common_dtick,
-            showline: true,
-            linewidth: 2,
-            linecolor: 'black',
-            mirror: true,
-            scaleanchor: 'y',
-            scaleratio: 1
-          },
-          yaxis: {
-            title: 'SweetAxis',
-            range: y_range,
-            showticklabels: false,
-            zeroline: false,
-            showgrid: true,
-            gridcolor: 'lightgray',
-            gridwidth: 1,
-            tick0: blendF ? blendF.SweetAxis : 0,
-            dtick: common_dtick,
-            showline: true,
-            linewidth: 2,
-            linecolor: 'black',
-            mirror: true,
-            scaleanchor: 'x',
-            scaleratio: 1
-          },
-          legend: {
-            orientation: 'h',
-            x: 0.5,
-            y: -0.2,
-            xanchor: 'center',
-            yanchor: 'top'
-          }
-        }}
-        config={{
-          scrollZoom: true,
-          responsive: true
-        }}
-      />
+            yaxis: {
+              range: y_range,
+              showticklabels: false,
+              zeroline: false,
+              showgrid: true,
+              gridcolor: 'lightgray',
+              gridwidth: 1,
+              scaleanchor: 'x',
+              scaleratio: 1,
+              mirror: true,
+              linecolor: 'black',
+              linewidth: 2
+            },
+            legend: {
+              orientation: 'h',
+              x: 0.5,
+              y: -0.2,
+              xanchor: 'center',
+              yanchor: 'top'
+            }
+          }}
+          config={{
+            responsive: true,
+            scrollZoom: true
+          }}
+        />
+      </div>
 
+      {/* ✅ TOP10 */}
       <h2>近いワイン TOP10（評価つき）</h2>
       {top10List}
     </div>

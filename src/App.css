@@ -4,7 +4,7 @@
 body {
   margin: 0;
   padding: 0;
-  overflow-x: hidden;
+  overflow-x: hidden; /* 横スクロール禁止 */
   font-family: Arial, sans-serif;
   background-color: #fff;
 }
@@ -43,14 +43,13 @@ button:hover {
   background-color: #e0e0e0;
 }
 
-/* Plotly グラフに対する補正 */
-/* ★★ 完全ピッタリ 100vw ★★ */
+/* Plotly グラフ → 外枠 div (padding: 0 10px) に依存してレスポンシブ */
 .js-plotly-plot {
-  width: 100vw !important;
+  width: 100% !important;
   height: auto !important;
   box-sizing: border-box;
   padding: 0 !important;
-  margin: 0 !important;
+  margin: 0 auto;
 }
 
 /* 直下 TOP10 リスト余白 */
