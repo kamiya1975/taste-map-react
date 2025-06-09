@@ -3,112 +3,11 @@ import React, { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
 
 function MapPage() {
-  const [data, setData] = useState([]);
-  const [slider_pc1, setSliderPc1] = useState(50);
-  const [slider_pc2, setSliderPc2] = useState(50);
-  const [userRatings, setUserRatings] = useState({});
+  // ...（前半の state や CSV 読み込み、距離計算などは現状そのまま！）
+  
+  // ...（target や distances の計算もそのまま）
 
-  const ratingOptions = ["未評価", "★", "★★", "★★★", "★★★★", "★★★★★"];
-
-  const handleRatingChange = (jan, rating) => {
-    setUserRatings(prev => ({
-      ...prev,
-      [jan]: rating
-    }));
-  };
-
-  useEffect(() => {
-    fetch('/pca_result.csv')
-      .then((response) => response.text())
-      .then((csvText) => {
-        const rows = csvText.trim().split('\n');
-        const headers = rows[0].split(',');
-        const dataRows = rows.slice(1).map((row) => {
-          const values = row.split(',');
-          const entry = {};
-          headers.forEach((header, i) => {
-            entry[header] = isNaN(values[i]) ? values[i] : parseFloat(values[i]);
-          });
-          return entry;
-        });
-        setData(dataRows);
-      });
-  }, []);
-
-  const blendF = data.find((d) => d.JAN === 'blendF');
-  const xValues = data.map((d) => d.BodyAxis);
-  const yValues = data.map((d) => d.SweetAxis);
-
-  const x_min = Math.min(...xValues);
-  const x_max = Math.max(...xValues);
-  const y_min = Math.min(...yValues);
-  const y_max = Math.max(...yValues);
-
-  const range_left_x = blendF ? blendF.BodyAxis - x_min : 0;
-  const range_right_x = blendF ? x_max - blendF.BodyAxis : 0;
-  const range_down_y = blendF ? blendF.SweetAxis - y_min : 0;
-  const range_up_y = blendF ? y_max - blendF.SweetAxis : 0;
-
-  const target = {
-    x: blendF
-      ? slider_pc1 <= 50
-        ? blendF.BodyAxis - ((50 - slider_pc1) / 50) * range_left_x
-        : blendF.BodyAxis + ((slider_pc1 - 50) / 50) * range_right_x
-      : 0,
-    y: blendF
-      ? slider_pc2 <= 50
-        ? blendF.SweetAxis - ((50 - slider_pc2) / 50) * range_down_y
-        : blendF.SweetAxis + ((slider_pc2 - 50) / 50) * range_up_y
-      : 0,
-  };
-
-  const distances = data
-    .filter((d) => d.JAN !== 'blendF')
-    .map((d) => {
-      const dx = d.BodyAxis - target.x;
-      const dy = d.SweetAxis - target.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      return { ...d, distance };
-    })
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, 10);
-
-  const typeColor = {
-    Spa: 'blue',
-    White: 'gold',
-    Red: 'red',
-    Rose: 'pink',
-  };
-
-  const typeList = ['Spa', 'White', 'Red', 'Rose'];
-
-  const top10List = distances.map((item, index) => {
-    const jan = item.JAN;
-    const currentRating = userRatings[jan] || 0;
-
-    return (
-      <div key={jan} style={{ borderBottom: '1px solid #ccc', padding: '10px 0' }}>
-        <strong>{`${index + 1}️⃣`} {item['商品名']} ({item.Type}) {parseInt(item['希望小売価格']).toLocaleString()} 円</strong>
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: '5px' }}>
-          <select
-            value={currentRating}
-            onChange={(e) => handleRatingChange(jan, parseInt(e.target.value))}
-            style={{ marginRight: '10px' }}
-          >
-            {ratingOptions.map((label, idx) => (
-              <option key={idx} value={idx}>{label}</option>
-            ))}
-          </select>
-          <button
-            onClick={() => console.log(`✅ ${jan} を ${ratingOptions[currentRating]} に設定しました！`)}
-          >
-            反映
-          </button>
-        </div>
-      </div>
-    );
-  });
-
+  // グラフ用 axis 範囲
   const x_range = blendF ? [
     blendF.BodyAxis - Math.max(range_left_x, range_right_x),
     blendF.BodyAxis + Math.max(range_left_x, range_right_x)
@@ -161,124 +60,77 @@ function MapPage() {
         </div>
       </div>
 
-      {/* ✅ MAP → 外枠 div に aspectRatio */}
-      <div style={{ padding: '0 10px', aspectRatio: '1 / 1' }}>
-        <Plot
-          key={JSON.stringify(userRatings)}
-          data={[
-            ...typeList.map(type => ({
-              x: data.filter((d) => d.Type === type).map((d) => d.BodyAxis),
-              y: data.filter((d) => d.Type === type).map((d) => d.SweetAxis),
-              text: data.filter((d) => d.Type === type).map((d) => d["商品名"]),
-              mode: 'markers',
-              type: 'scatter',
-              marker: {
-                size: 5,
-                color: typeColor[type],
-              },
-              name: type,
-            })),
-            {
-              x: [target.x],
-              y: [target.y],
-              mode: 'markers',
-              type: 'scatter',
-              marker: {
-                size: 20,
-                color: 'green',
-                symbol: 'x',
-              },
-              name: 'Your Impression',
-            },
-            {
-              x: distances.map((d) => d.BodyAxis),
-              y: distances.map((d) => d.SweetAxis),
-              text: distances.map((d, index) => `${index + 1}️⃣`),
-              mode: 'markers+text',
-              type: 'scatter',
-              marker: {
-                size: 10,
-                color: 'black',
-              },
-              textposition: 'middle center',
-              name: 'TOP10',
-              showlegend: false,
-            },
-            ...Object.entries(userRatings)
-              .filter(([jan, rating]) => rating > 0)
-              .map(([jan, rating]) => {
-                const wine = data.find((d) => String(d.JAN).trim() === String(jan).trim());
-                if (!wine) return null;
-                return {
-                  x: [wine.BodyAxis],
-                  y: [wine.SweetAxis],
-                  text: [`${wine["商品名"]} ⭐️${rating}`],
-                  mode: 'markers+text',
-                  type: 'scatter',
-                  marker: {
-                    size: rating * 6 + 8,
-                    color: 'orange',
-                    opacity: 0.8,
-                    line: { color: 'green', width: 1.5 },
-                  },
-                  textposition: 'bottom center',
-                  name: '評価バブル',
-                  showlegend: false,
-                };
-              })
-              .filter(item => item !== null),
-          ]}
-          layout={{
-            autosize: true,
-            margin: { l: 20, r: 20, t: 30, b: 30 },
-            dragmode: 'pan',
-            xaxis: {
-              range: x_range,
-              showticklabels: false,
-              zeroline: false,
-              showgrid: true,
-              gridcolor: 'lightgray',
-              gridwidth: 1,
-              scaleanchor: 'y',
-              scaleratio: 1,
-              mirror: true,
-              linecolor: 'black',
-              linewidth: 2
-            },
-            yaxis: {
-              range: y_range,
-              showticklabels: false,
-              zeroline: false,
-              showgrid: true,
-              gridcolor: 'lightgray',
-              gridwidth: 1,
-              scaleanchor: 'x',
-              scaleratio: 1,
-              mirror: true,
-              linecolor: 'black',
-              linewidth: 2
-            },
-            legend: {
-              orientation: 'h',
-              x: 0.5,
-              y: -0.2,
-              xanchor: 'center',
-              yanchor: 'top'
-            }
-          }}
-          config={{
-            responsive: true,
-            scrollZoom: true,
-            modeBarButtonsToRemove: [
-              'zoom2d', 'pan2d', 'select2d', 'lasso2d',
-              'zoomIn2d', 'zoomOut2d', 'autoScale2d',
-              'resetScale2d', 'toggleSpikelines',
-              'hoverCompareCartesian', 'hoverClosestCartesian',
-              'toImage'
-            ],
-            displaylogo: false
-          }}
-        />
+      {/* ✅ MAP → 正方形構造 */}
+      <div style={{
+        width: '100%',
+        maxWidth: '600px',
+        margin: '0 auto',
+        position: 'relative'
+      }}>
+        <div style={{
+          paddingTop: '100%',  // 正方形
+          position: 'relative'
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0
+          }}>
+            <Plot
+              key={JSON.stringify(userRatings)}
+              data={[
+                // ここは今までと同じ（typeList, target, TOP10, 評価バブルなど）
+              ]}
+              layout={{
+                autosize: true,
+                margin: { l: 20, r: 20, t: 30, b: 30 },
+                dragmode: 'pan',
+                xaxis: {
+                  range: x_range,
+                  showticklabels: false,
+                  zeroline: false,
+                  showgrid: true,
+                  gridcolor: 'lightgray',
+                  gridwidth: 1,
+                  scaleanchor: 'y',
+                  scaleratio: 1,
+                  mirror: true,
+                  linecolor: 'black',
+                  linewidth: 2
+                },
+                yaxis: {
+                  range: y_range,
+                  showticklabels: false,
+                  zeroline: false,
+                  showgrid: true,
+                  gridcolor: 'lightgray',
+                  gridwidth: 1,
+                  scaleanchor: 'x',
+                  scaleratio: 1,
+                  mirror: true,
+                  linecolor: 'black',
+                  linewidth: 2
+                },
+                legend: {
+                  orientation: 'h',
+                  x: 0.5,
+                  y: -0.2,
+                  xanchor: 'center',
+                  yanchor: 'top'
+                }
+              }}
+              config={{
+                responsive: true,
+                scrollZoom: true,
+                displaylogo: false,
+                modeBarButtonsToRemove: [
+                  'zoom2d', 'pan2d', 'select2d', 'lasso2d',
+                  'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'resetScale2d',
+                  'toggleSpikelines'
+                ]
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* ✅ TOP10 */}

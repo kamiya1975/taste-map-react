@@ -4,7 +4,7 @@
 body {
   margin: 0;
   padding: 0;
-  overflow-x: hidden; /* 横スクロール禁止 */
+  overflow-x: hidden;
   font-family: Arial, sans-serif;
   background-color: #fff;
 }
@@ -20,6 +20,26 @@ h2 {
 input[type="range"] {
   width: 100%;
   margin-top: 5px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  width: 30px;
+  height: 30px;
+  background: white;
+  border: 2px solid #999;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 3px rgba(0,0,0,0.5);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 30px;
+  height: 30px;
+  background: white;
+  border: 2px solid #999;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 3px rgba(0,0,0,0.5);
 }
 
 /* セレクト（評価用） */
@@ -43,11 +63,9 @@ button:hover {
   background-color: #e0e0e0;
 }
 
-/* Plotly グラフ → 外枠 div (padding: 0 10px) に依存してレスポンシブ */
-/* ★ aspect-ratio 固定で正方形にして下のリストがズレない！ */
+/* Plotly グラフ */
 .js-plotly-plot {
   width: 100% !important;
-  aspect-ratio: 1 / 1; /* ⭐️ 追加 → 高さ固定！ */
   height: auto !important;
   box-sizing: border-box;
   padding: 0 !important;
