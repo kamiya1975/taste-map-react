@@ -132,10 +132,9 @@ function MapPage() {
   ] : [y_min, y_max];
 
   return (
-    <div style={{ padding: '10px 5% 30px 5%', boxSizing: 'border-box' }}>
+    <div style={{ padding: '10px 5% 30px 5%' }}>
       <h2>基準のワインを飲んだ印象は？</h2>
 
-      {/* ✅ 甘さスライダー */}
       <div style={{ marginBottom: '20px' }}>
         <label style={{ fontWeight: 'bold' }}>
           甘さスライダー（pc2）:
@@ -154,7 +153,6 @@ function MapPage() {
         </div>
       </div>
 
-      {/* ✅ ボディスライダー */}
       <div style={{ marginBottom: '20px' }}>
         <label style={{ fontWeight: 'bold' }}>
           ボディスライダー（pc1）:
@@ -173,7 +171,6 @@ function MapPage() {
         </div>
       </div>
 
-      {/* ✅ MAP */}
       <Plot
         key={JSON.stringify(userRatings)}
         data={[
@@ -241,7 +238,9 @@ function MapPage() {
         ]}
         layout={{
           autosize: true,
-          title: 'TasteMAP',
+          width: undefined,
+          height: undefined,
+          responsive: true,
           dragmode: 'pan',
           xaxis: {
             title: 'BodyAxis',
@@ -286,19 +285,11 @@ function MapPage() {
           }
         }}
         config={{
-          scrollZoom: true
-        }}
-        style={{
-          width: '100%',
-          height: 'calc(100vw - 20px)',
-          maxWidth: '100%',
-          margin: '0 auto',
-          display: 'block',
-          boxSizing: 'border-box'
+          scrollZoom: true,
+          responsive: true
         }}
       />
 
-      {/* ✅ TOP10 */}
       <h2>近いワイン TOP10（評価つき）</h2>
       {top10List}
     </div>
