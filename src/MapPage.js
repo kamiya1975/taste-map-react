@@ -8,18 +8,16 @@ function MapPage() {
   const [slider_pc2, setSliderPc2] = useState(50);
   const [userRatings, setUserRatings] = useState({});
 
-// ✅ Plotly 初回 resize 用
-useEffect(() => {
-  const handleResize = () => {
-    window.dispatchEvent(new Event('resize'));
-  };
+  // ✅ Plotly 初回 resize 用
+  useEffect(() => {
+    const handleResize = () => {
+      window.dispatchEvent(new Event('resize'));
+    };
 
-  // 初回ロード時に 300ms 後に resize イベントを発火
-  setTimeout(handleResize, 300);
+    setTimeout(handleResize, 300);
 
-  // Cleanup（今回は不要だけど一応書いてOK）
-  return () => window.removeEventListener('resize', handleResize);
-}, []);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const ratingOptions = ["未評価", "★", "★★", "★★★", "★★★★", "★★★★★"];
 
@@ -175,13 +173,14 @@ useEffect(() => {
       </div>
 
       {/* ✅ MAP */}
-      {/* ✅ MAP */}
       <div style={{
-       padding: '0 10px',
-       aspectRatio: '1',
-       width: '100%',
-       maxWidth: '600px',
-       margin: '0 auto'
+        padding: '0 10px',
+        paddingBottom: '20px', // ⭐️ 追加 → TOP10 保護
+        aspectRatio: '1',
+        width: '100%',
+        maxWidth: '600px',
+        margin: '0 auto',
+        overflowX: 'hidden' // ⭐️ 追加 → 横スクロール禁止
       }}>
         <Plot
           key={JSON.stringify(userRatings)}
@@ -249,7 +248,7 @@ useEffect(() => {
               .filter(item => item !== null),
           ]}
           layout={{
-            margin: { l: 20, r: 20, t: 30, b: 30 }, // ⭐️ autosize 消してOK
+            margin: { l: 20, r: 20, t: 30, b: 30 },
             dragmode: 'pan',
             xaxis: {
               range: x_range,
@@ -280,7 +279,7 @@ useEffect(() => {
             legend: {
               orientation: 'h',
               x: 0.5,
-              y: -0.2,
+              y: -0.25, // ⭐️ 少し下げて TOP10 保護
               xanchor: 'center',
               yanchor: 'top'
             }
@@ -288,7 +287,7 @@ useEffect(() => {
           config={{
             responsive: true,
             scrollZoom: true,
-            displayModeBar: false // ⭐️ 不要ボタン OFF
+            displayModeBar: false
           }}
         />
       </div>
