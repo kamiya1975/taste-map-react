@@ -132,7 +132,7 @@ function MapPage() {
   ] : [y_min, y_max];
 
   return (
-    <div style={{ padding: '10px 5% 30px 5%', maxWidth: '600px', margin: '0 auto' }}>
+    <div style={{ padding: '10px 5% 30px 5%' }}>
       <h2>基準のワインを飲んだ印象は？</h2>
 
       {/* ✅ 甘さスライダー */}
@@ -289,7 +289,7 @@ function MapPage() {
         config={{
           scrollZoom: true
         }}
-        style={{ width: '100%', height: 'auto' }}   // ⭐️ ← ここがスマホ対応！！
+        style={{ width: '100vw', height: '100vw' }}   // ⭐️ ← ここで画面幅いっぱい！
       />
 
       {/* ✅ TOP10 */}
