@@ -241,7 +241,6 @@ function MapPage() {
         ]}
         layout={{
           autosize: true,
-          responsive: true,
           title: 'TasteMAP',
           dragmode: 'pan',
           xaxis: {
@@ -290,8 +289,12 @@ function MapPage() {
           scrollZoom: true
         }}
         style={{
-          width: '100vw',
-          height: '100vw'
+          width: '100%',
+          height: 'calc(100vw - 20px)',
+          maxWidth: '100%',
+          margin: '0 auto',
+          display: 'block',
+          boxSizing: 'border-box'
         }}
       />
 

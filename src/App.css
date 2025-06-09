@@ -1,38 +1,55 @@
-.App {
-  text-align: center;
+/* TasteMAP 用 最新版 App.css */
+
+/* 横スクロール防止 */
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-family: Arial, sans-serif;
+  background-color: #fff;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* h2 見出し */
+h2 {
+  font-size: 1.5rem;
+  margin-top: 20px;
+  margin-bottom: 10px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+/* スライダー */
+input[type="range"] {
+  width: 100%;
+  margin-top: 5px;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+/* セレクト（評価用） */
+select {
+  font-size: 1rem;
+  padding: 5px;
 }
 
-.App-link {
-  color: #61dafb;
+/* ボタン */
+button {
+  font-size: 1rem;
+  padding: 5px 10px;
+  cursor: pointer;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* ボタン hover */
+button:hover {
+  background-color: #e0e0e0;
+}
+
+/* Plotly グラフに対する対策 */
+.js-plotly-plot {
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
+/* 最下部の TOP10 */
+h2 + div {
+  margin-bottom: 20px;
 }
