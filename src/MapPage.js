@@ -165,16 +165,7 @@ function MapPage() {
       </div>
 
       {/* ✅ MAP */}
-      <div
-        style={{
-          width: '100vw',
-          boxSizing: 'border-box',
-          padding: '0 10px 20px',
-          minHeight: '400px',
-          overflowX: 'hidden',
-          margin: '0 auto'
-        }}
-      >
+      <div className="plot-container">
         <Plot
           useResizeHandler={true}
           style={{ width: '100vw', height: '100%' }}
