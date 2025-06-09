@@ -1,4 +1,4 @@
-/* TasteMAP 用 最新版 App.css */
+/* TasteMAP 最新版 App.css */
 
 /* 横スクロール防止 */
 body {
@@ -9,7 +9,7 @@ body {
   background-color: #fff;
 }
 
-/* h2 見出し */
+/* H2 見出し */
 h2 {
   font-size: 1.5rem;
   margin-top: 20px;
@@ -45,11 +45,13 @@ button:hover {
 
 /* Plotly グラフに対する対策 */
 .js-plotly-plot {
-  max-width: 100vw;
+  max-width: 100%;
+  width: 100%;
+  height: auto;
   box-sizing: border-box;
 }
 
-/* 最下部の TOP10 */
+/* 画面下 TOP10 */
 h2 + div {
   margin-bottom: 20px;
 }
