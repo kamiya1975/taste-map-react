@@ -8,7 +8,6 @@ function MapPage() {
   const [slider_pc2, setSliderPc2] = useState(50);
   const [userRatings, setUserRatings] = useState({});
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [selectedPC, setSelectedPC] = useState('PC3');
 
   useEffect(() => {
     const handleResize = () => window.dispatchEvent(new Event('resize'));
@@ -62,12 +61,16 @@ function MapPage() {
   const range_up_y = blendF ? y_max - blendF.SweetAxis : 0;
 
   const target = {
-    x: blendF ? (slider_pc1 <= 50
-      ? blendF.BodyAxis - ((50 - slider_pc1) / 50) * range_left_x
-      : blendF.BodyAxis + ((slider_pc1 - 50) / 50) * range_right_x) : 0,
-    y: blendF ? (slider_pc2 <= 50
-      ? blendF.SweetAxis - ((50 - slider_pc2) / 50) * range_down_y
-      : blendF.SweetAxis + ((slider_pc2 - 50) / 50) * range_up_y) : 0,
+    x: blendF
+      ? slider_pc1 <= 50
+        ? blendF.BodyAxis - ((50 - slider_pc1) / 50) * range_left_x
+        : blendF.BodyAxis + ((slider_pc1 - 50) / 50) * range_right_x
+      : 0,
+    y: blendF
+      ? slider_pc2 <= 50
+        ? blendF.SweetAxis - ((50 - slider_pc2) / 50) * range_down_y
+        : blendF.SweetAxis + ((slider_pc2 - 50) / 50) * range_up_y
+      : 0,
   };
 
   const distances = data.filter(d => d.JAN !== 'blendF')
@@ -81,17 +84,6 @@ function MapPage() {
 
   const typeColor = { Spa: 'blue', White: 'gold', Red: 'red', Rose: 'pink' };
   const typeList = ['Spa', 'White', 'Red', 'Rose'];
-
-  const zoomFactor = 1 / zoomLevel;
-  const x_range = blendF ? [
-    blendF.BodyAxis - Math.max(range_left_x, range_right_x) * zoomFactor,
-    blendF.BodyAxis + Math.max(range_left_x, range_right_x) * zoomFactor
-  ] : [x_min, x_max];
-
-  const y_range = blendF ? [
-    blendF.SweetAxis - Math.max(range_down_y, range_up_y) * zoomFactor,
-    blendF.SweetAxis + Math.max(range_down_y, range_up_y) * zoomFactor
-  ] : [y_min, y_max];
 
   const top10List = distances.map((item, index) => {
     const jan = item.JAN;
@@ -111,19 +103,20 @@ function MapPage() {
     );
   });
 
+  const zoomFactor = 1 / zoomLevel;
+  const x_range = blendF ? [
+    blendF.BodyAxis - Math.max(range_left_x, range_right_x) * zoomFactor,
+    blendF.BodyAxis + Math.max(range_left_x, range_right_x) * zoomFactor
+  ] : [x_min, x_max];
+
+  const y_range = blendF ? [
+    blendF.SweetAxis - Math.max(range_down_y, range_up_y) * zoomFactor,
+    blendF.SweetAxis + Math.max(range_down_y, range_up_y) * zoomFactor
+  ] : [y_min, y_max];
+
   return (
     <div style={{ padding: '10px' }}>
       <h2>基準のワインを飲んだ印象は？</h2>
-
-      <div style={{ marginBottom: '20px' }}>
-        <label htmlFor="pc-select" style={{ fontWeight: 'bold' }}>等高線に使う軸：</label>
-        <select id="pc-select" value={selectedPC} onChange={(e) => setSelectedPC(e.target.value)}>
-          <option value="PC1">PC1</option>
-          <option value="PC2">PC2</option>
-          <option value="PC3">PC3</option>
-          <option value="PC4">PC4</option>
-        </select>
-      </div>
 
       <div style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '5px' }}>
@@ -141,34 +134,26 @@ function MapPage() {
         <input type="range" min="0" max="100" value={slider_pc1} onChange={(e) => setSliderPc1(Number(e.target.value))} />
       </div>
 
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '10px' }}>
+        <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.1, 3))}>＋</button>
+        <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.1, 0.5))}>−</button>
+      </div>
+
       <div className="plot-container">
         <Plot
           useResizeHandler={true}
           style={{ width: 'calc(100vw - 20px)', height: '100%' }}
-          data={[
-            ...typeList.map(type => ({
+          key={JSON.stringify(userRatings) + zoomLevel}
+          data={[...
+            typeList.map(type => ({
               x: data.filter(d => d.Type === type).map(d => d.BodyAxis),
               y: data.filter(d => d.Type === type).map(d => d.SweetAxis),
               text: data.filter(d => d.Type === type).map(d => d["商品名"]),
-              mode: 'markers', type: 'scatter',
+              mode: 'markers',
+              type: 'scatter',
               marker: { size: 5, color: typeColor[type] },
               name: type,
             })),
-            {
-              z: data.map(d => d[selectedPC]),
-              x: data.map(d => d.BodyAxis),
-              y: data.map(d => d.SweetAxis),
-              type: 'contour',
-              colorscale: 'YlGnBu',
-              contours: {
-                coloring: 'heatmap',
-                showlabels: true,
-                labelfont: { size: 12, color: 'black' }
-              },
-              showscale: true,
-              name: `${selectedPC} 等高線`,
-              opacity: 0.4
-            },
             {
               x: [target.x], y: [target.y],
               mode: 'markers', type: 'scatter',
@@ -200,8 +185,7 @@ function MapPage() {
             }).filter(Boolean)
           ]}
           layout={{
-            margin: { l: 30, r: 30, t: 30, b: 30 },
-            dragmode: 'pan',
+            margin: { l: 30, r: 30, t: 30, b: 30 }, dragmode: 'pan',
             xaxis: {
               range: x_range, showticklabels: false, zeroline: false,
               showgrid: true, gridcolor: 'lightgray', gridwidth: 1,
