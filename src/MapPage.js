@@ -174,6 +174,7 @@ function MapPage() {
               mode: 'markers', type: 'scatter',
               marker: { size: 20, color: 'green', symbol: 'x' },
               name: 'あなたの好み',
+              hoverinfo: 'skip',
             },
             {
               x: distances.map(d => d.BodyAxis),
@@ -183,6 +184,7 @@ function MapPage() {
               marker: { size: 10, color: 'black' },
               textposition: 'middle center',
               name: 'TOP10', showlegend: false,
+              hoverinfo: 'text',
             },
             
           ]}
