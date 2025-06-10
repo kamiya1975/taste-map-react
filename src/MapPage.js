@@ -187,7 +187,7 @@ function MapPage() {
             {
               x: distances.map(d => d.BodyAxis),
               y: distances.map(d => d.SweetAxis),
-              text: distances.map((d, index) => `${index + 1}️⃣`),
+              text: distances.map((d, index) => `${index + 1}.`),
               mode: 'markers+text',
               type: 'scatter',
               marker: { size: 10, color: 'black' },
