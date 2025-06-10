@@ -155,6 +155,20 @@ function MapPage() {
               marker: { size: 5, color: typeColor[type] },
               name: type,
             })),
+             ...Object.entries(userRatings).filter(([jan, rating]) => rating > 0).map(([jan, rating]) => {
+              const wine = data.find(d => String(d.JAN).trim() === String(jan).trim());
+              if (!wine) return null;
+              return {
+                x: [wine.BodyAxis], y: [wine.SweetAxis],
+                text: [""],
+                mode: 'markers+text', type: 'scatter',
+                marker: {
+                  size: rating * 6 + 8, color: 'orange', opacity: 0.8,
+                  line: { color: 'green', width: 1.5 },
+                },
+                textposition: 'bottom center', name: '評価バブル', showlegend: false,
+              };
+            }).filter(Boolean),
             {
               x: [target.x], y: [target.y],
               mode: 'markers', type: 'scatter',
