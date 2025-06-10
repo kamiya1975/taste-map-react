@@ -183,6 +183,7 @@ function MapPage() {
               text: distances.map((d, i) => '❶❷❸❹❺❻❼❽❾❿'[i] || `${i + 1}`),
               mode: 'markers+text', type: 'scatter',
               marker: { size: 10, color: 'black' },
+              textfont: { color: 'white', size: 12 },
               textposition: 'middle center',
               name: 'TOP10', showlegend: false,
               hoverinfo: 'text',
