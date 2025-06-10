@@ -167,6 +167,7 @@ function MapPage() {
                   line: { color: 'green', width: 1.5 },
                 },
                 textposition: 'bottom center', name: '評価バブル', showlegend: false,
+                hoverinfo: 'skip',
               };
             }).filter(Boolean),
             {
