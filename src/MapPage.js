@@ -264,7 +264,7 @@ function MapPage() {
         />
       </div>
 
-      <h2>近いワイン TOP10（評価つき）</h2>
+      <h2>あなたの味覚に寄り添うワイン</h2>
       {top10List}
     </div>
   );
