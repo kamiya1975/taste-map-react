@@ -91,7 +91,7 @@ function MapPage() {
     const price = item.希望小売価格 !== null ? `${parseInt(item.希望小売価格).toLocaleString()} 円` : "価格未設定";
     return (
       <div key={jan} className="top10-item">
-        <strong>{`❶❷❸❹❺❻❼❽❾❿`[index] || `${index + 1}`}. {item['商品名']} ({item.Type}) {price}</strong>
+        <strong>{`${index + 1}.`} {item['商品名']} ({item.Type}) {price}</strong>
         <div style={{ display: 'flex', alignItems: 'center', marginTop: '5px' }}>
           <select value={currentRating} onChange={(e) => handleRatingChange(jan, parseInt(e.target.value))}>
             {ratingOptions.map((label, idx) => (
