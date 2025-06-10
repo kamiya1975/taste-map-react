@@ -182,7 +182,7 @@ function MapPage() {
                 color: 'green',
                 symbol: 'x',
               },
-              name: 'Your Impression',
+              name: 'あなたの好み',
             },
             {
               x: distances.map(d => d.BodyAxis),
@@ -264,7 +264,7 @@ function MapPage() {
         />
       </div>
 
-      <h2>あなたの味覚に寄り添うワイン</h2>
+      <h2>あなたの好みに寄り添うワイン</h2>
       {top10List}
     </div>
   );
