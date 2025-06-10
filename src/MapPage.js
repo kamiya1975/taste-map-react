@@ -140,7 +140,7 @@ function MapPage() {
 
       <div style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '5px' }}>
-          <span>← 甘みは不要</span>
+          <span>← こんなに甘みは不要</span>
           <span>もっと甘みが欲しい →</span>
         </div>
         <input type="range" min="0" max="100" value={slider_pc2} onChange={(e) => setSliderPc2(Number(e.target.value))} />
@@ -148,8 +148,8 @@ function MapPage() {
 
       <div style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', marginBottom: '5px' }}>
-          <span>← 軽やかが良い</span>
-          <span>濃厚なコクを望む →</span>
+          <span>← もっと軽やかが良い</span>
+          <span>濃厚なコクが欲しい →</span>
         </div>
         <input type="range" min="0" max="100" value={slider_pc1} onChange={(e) => setSliderPc1(Number(e.target.value))} />
       </div>
