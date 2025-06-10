@@ -220,7 +220,7 @@ function MapPage() {
               .filter(Boolean),
           ]}
           layout={{
-            margin: { l: 20, r: 20, t: 30, b: 30 },
+            margin: { l: 20, r: 20, t: 20, b: 20 },
             dragmode: 'pan',
             xaxis: {
               range: x_range,
