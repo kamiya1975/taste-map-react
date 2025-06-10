@@ -148,7 +148,8 @@ function MapPage() {
             typeList.map(type => ({
               x: data.filter(d => d.Type === type).map(d => d.BodyAxis),
               y: data.filter(d => d.Type === type).map(d => d.SweetAxis),
-              text: data.filter(d => d.Type === type).map(d => d["商品名"]),
+              text: data.filter(d => d.Type === type).map(d => `${d["商品名"]}`), // 商品名のみ表示
+              hoverinfo: 'text+name', // ✅ 座標（x,y）は非表示にする
               mode: 'markers',
               type: 'scatter',
               marker: { size: 5, color: typeColor[type] },
@@ -169,20 +170,7 @@ function MapPage() {
               textposition: 'middle center',
               name: 'TOP10', showlegend: false,
             },
-            ...Object.entries(userRatings).filter(([jan, rating]) => rating > 0).map(([jan, rating]) => {
-              const wine = data.find(d => String(d.JAN).trim() === String(jan).trim());
-              if (!wine) return null;
-              return {
-                x: [wine.BodyAxis], y: [wine.SweetAxis],
-                text: [`${wine["商品名"]} ⭐️${rating}`],
-                mode: 'markers+text', type: 'scatter',
-                marker: {
-                  size: rating * 6 + 8, color: 'orange', opacity: 0.8,
-                  line: { color: 'green', width: 1.5 },
-                },
-                textposition: 'bottom center', name: '評価バブル', showlegend: false,
-              };
-            }).filter(Boolean)
+            
           ]}
           layout={{
             margin: { l: 30, r: 30, t: 30, b: 30 }, dragmode: 'pan',
