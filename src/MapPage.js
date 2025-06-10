@@ -170,7 +170,6 @@ function MapPage() {
               };
             }).filter(Boolean),
             {
-              x: [target.x], y: [target.y],
               mode: 'markers', type: 'scatter',
               marker: { size: 20, color: 'green', symbol: 'x' },
               name: 'あなたの好み',
