@@ -135,7 +135,7 @@ function MapPage() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '10px' }}>
-        <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.1, 3))}>＋</button>
+        <button onClick={() => setZoomLevel(prev => Math.min(prev + 0.1, 10))}>＋</button>
         <button onClick={() => setZoomLevel(prev => Math.max(prev - 0.1, 0.2))}>−</button>
       </div>
 
