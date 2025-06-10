@@ -7,7 +7,7 @@ function MapPage() {
   const [slider_pc1, setSliderPc1] = useState(50);
   const [slider_pc2, setSliderPc2] = useState(50);
   const [userRatings, setUserRatings] = useState({});
-  const [zoomLevel, setZoomLevel] = useState(0.1); // ✅ 初期ズームイン
+  const [zoomLevel, setZoomLevel] = useState(2.0); // ✅ 初期ズームイン
   const zoomFactor = 1 / zoomLevel;
 
   useEffect(() => {
