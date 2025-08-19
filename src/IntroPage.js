@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './App.css';
-import Picker from 'react-mobile-picker';
 
 // ✅ スタイル定義
 const styles = {
