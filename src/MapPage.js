@@ -418,6 +418,23 @@ const ratingCircleLayers = useMemo(() => {
     })
   : null;
 
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  return (
+    <div style={{ 
+      position: "absolute", 
+      top: 0,
+      left: 0,
+      margin: 0,
+      padding: 0,
+      width: "100%", 
+      height: "100%",
+       }}>
+      {!is3D && (
+        <>
+        </>
+      )}
+
       <DeckGL
         views={
           is3D
