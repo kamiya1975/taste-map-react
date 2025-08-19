@@ -1,14 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
-import {
-  ScatterplotLayer,
-  ColumnLayer,
-  LineLayer,
-  TextLayer,
-  GridCellLayer,
-  IconLayer,
-} from "@deck.gl/layers";
+import {ScatterplotLayer,ColumnLayer,LineLayer,TextLayer,GridCellLayer,IconLayer,} from "@deck.gl/layers";
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,14 +12,7 @@ function App() {
   const location = useLocation();
   const [data, setData] = useState([]);
   const [is3D, setIs3D] = useState(false);
-  const [viewState, setViewState] = useState({
-    target: [0, 0, 0],
-    rotationX: 0,
-    rotationOrbit: 0,
-    zoom: 5,
-    minZoom: 4.0,
-    maxZoom: 10.0,
-  });
+  const [viewState, setViewState] = useState({target: [0, 0, 0],rotationX: 0,rotationOrbit: 0,zoom: 5,minZoom: 4.0,maxZoom: 10.0,});
   const [saved2DViewState, setSaved2DViewState] = useState(null);
   const [userPinCoords, setUserPinCoords] = useState(null);
   const [nearestPoints, setNearestPoints] = useState([]);
@@ -90,30 +76,59 @@ useEffect(() => {
   };
 }, []);
 
-  // PCA + UMAPをマージして読み込み
-  useEffect(() => {
-    Promise.all([
-      fetch("pca_result.json").then((res) => res.json()),
-      fetch("umap_data.json").then((res) => res.json())
-    ])
-    .then(([pcaData, umapData]) => {
-      const umapMap = {};
-      umapData.forEach((item) => {
-        umapMap[item.JAN] = item;
-      });
+  // UMAP+PCAを1ファイルから読み込み（PC1→BodyAxis、PC2→SweetAxis に正規化）
+useEffect(() => {
+  const url = `${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`;
 
-      const merged = pcaData.map((item) => ({
-        ...item,
-        ...(umapMap[item.JAN] || {})
-      }));
-
-      setData(merged);
-      localStorage.setItem("umapData", JSON.stringify(merged));
+  fetch(url)
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
     })
-    .catch((error) => {
-      console.error("データ取得エラー:", error);
+    .then((rows) => {
+      const cleaned = (rows || [])
+        .filter(Boolean)
+        .map((r) => {
+          // 数値化のユーティリティ
+          const toNum = (v) => (v === "" || v == null ? NaN : Number(v));
+
+          return {
+            // 既存コードが参照する共通キーに合わせる
+            JAN: String(r.JAN ?? ""),
+            Type: r.Type ?? "Other",
+
+            // ここが肝：PC1/PC2 を Body/Sweet 軸として使う
+            BodyAxis: toNum(r.PC1),
+            SweetAxis: toNum(r.PC2),
+
+            // UMAP座標も残しておく（必要なら別表示に使える）
+            UMAP1: toNum(r.UMAP1),
+            UMAP2: toNum(r.UMAP2),
+
+            // メタ情報はそのまま保持（日本語カラム）
+            商品名: r["商品名"],
+            国: r["国"],
+            産地: r["産地"],
+            葡萄品種: r["葡萄品種"],
+            生産年: r["生産年"],
+            "容量 ml": toNum(r["容量 ml"]),
+            希望小売価格: toNum(r["希望小売価格"]),
+          };
+        })
+        .filter(
+          (r) =>
+            Number.isFinite(r.BodyAxis) &&
+            Number.isFinite(r.SweetAxis) &&
+            r.JAN !== ""
+        );
+
+      setData(cleaned);
+      localStorage.setItem("umapData", JSON.stringify(cleaned));
+    })
+    .catch((err) => {
+      console.error("UMAP_PCA_coordinates.json の取得に失敗:", err);
     });
-  }, []);
+}, []);
 
   useEffect(() => {
     localStorage.setItem("userRatings", JSON.stringify(userRatings));
