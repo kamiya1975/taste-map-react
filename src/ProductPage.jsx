@@ -141,19 +141,6 @@ export default function ProductPage() {
         borderBottom: "none",
       }}
     >
-      {/* 閉じるボタン */}
-      <div
-        onClick={() => window.close()}
-        style={{
-          position: "absolute",
-          top: "12px",
-          right: "20px",
-          fontSize: "36px",
-          cursor: "pointer",
-        }}
-      >
-        ×
-      </div>
 
       {/* 商品画像 */}
       <div style={{ textAlign: "center", marginBottom: "16px" }}>
