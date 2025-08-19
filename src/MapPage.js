@@ -208,6 +208,7 @@ function App() {
         getFillColor: (d) =>
           String(d.JAN) === String(selectedJAN) ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other),
         radiusUnits: "meters",
+        getRadius: 0.03,
         pickable: true,
         onClick: null, // クリック処理は DeckGL 側で一元化
       });
