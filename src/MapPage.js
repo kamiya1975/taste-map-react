@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
 import { ScatterplotLayer, ColumnLayer, LineLayer, TextLayer, GridCellLayer, PathLayer } from "@deck.gl/layers";
@@ -30,7 +30,7 @@ function App() {
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // ✅ 新規: 打点タップで開く ProductPage ドロワー用
+  // 商品ドロワーと選択中JAN（選択中はオレンジ表示）
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
 
@@ -42,7 +42,7 @@ function App() {
     }
   }, [location.state]);
 
-  // ドロワー開閉に関わらず、常に userRatings を同期（起動時＋フォーカス/ストレージ変更時）
+  // userRatings を常時同期
   useEffect(() => {
     const syncUserRatings = () => {
       const stored = localStorage.getItem("userRatings");
@@ -63,7 +63,7 @@ function App() {
     };
   }, []);
 
-  // UMAP+PCA を1ファイルから読み込み（PC1→BodyAxis、PC2→SweetAxis に正規化）
+  // UMAP+PCA を読み込み（UMAP1→BodyAxis, UMAP2→SweetAxis）
   useEffect(() => {
     const url = `${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`;
     fetch(url)
@@ -118,6 +118,7 @@ function App() {
     Sparkling: [255, 255, 0],
     Other: [150, 150, 150],
   };
+  const ORANGE = [255, 140, 0];
 
   const gridInterval = 0.2;
   const cellSize = 0.2;
@@ -156,59 +157,65 @@ function App() {
     return Array.from(map.values());
   }, [data, userRatings, is3D]);
 
-  // ✅ 打点クリックで ProductPage を開く挙動
+  // 商品ドロワーを開く
   const openProductDrawer = (jan) => {
-    setSelectedJAN(jan);
+    setSelectedJAN(jan);           // 選択中 → オレンジ化
     setProductDrawerOpen(true);
   };
 
+  // クリック位置（マップ座標）から最近傍ワインを検索
+  const findNearestWine = (coord /* [x,y] */) => {
+    if (!coord || !Array.isArray(data) || data.length === 0) return null;
+    const [cx, cy] = coord;
+    let best = null;
+    let bestD2 = Infinity;
+    for (const d of data) {
+      const x = d.BodyAxis;
+      const y = is3D ? d.SweetAxis : -d.SweetAxis; // 表示系に合わせる
+      const dx = x - cx;
+      const dy = y - cy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        best = d;
+      }
+    }
+    return best;
+  };
+
+  // メインレイヤ（2D/3D）
   const mainLayer = useMemo(() => {
     if (is3D) {
       return new ColumnLayer({
         id: `columns-${zMetric}`,
         data,
         diskResolution: 12,
-        //radius: 0.03,//打点の調整
-        radius: 0.06,         // 0.04～0.10 で調整 3D柱太さ
+        radius: 0.06,         // 0.04～0.10 で調整
         extruded: true,
         elevationScale: 2,
         getPosition: (d) => [d.BodyAxis, d.SweetAxis],
         getElevation: (d) => (zMetric ? Number(d[zMetric]) || 0 : 0),
-        getFillColor: (d) => typeColorMap[d.Type] || typeColorMap.Other,
+        getFillColor: (d) =>
+          d.JAN === selectedJAN ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other),
         pickable: true,
-        onClick: (info) => {
-          if (info && info.object) {
-            const { BodyAxis, SweetAxis } = info.object;
-            setViewState((prev) => ({
-              ...prev,
-              target: [BodyAxis, SweetAxis, 0],
-              ...ZOOM_LIMITS,
-            }));
-            // 3Dでも商品を開きたい場合は以下を有効化
-            openProductDrawer(JAN); 
-          }
-        },
+        onClick: null, // クリック処理は DeckGL 側で一元化
       });
     } else {
       return new ScatterplotLayer({
         id: "scatter",
         data,
         getPosition: (d) => [d.BodyAxis, -d.SweetAxis, 0],
-        getFillColor: (d) => typeColorMap[d.Type] || typeColorMap.Other,
-        //getRadius: 0.03,//打点の調整
+        getFillColor: (d) =>
+          d.JAN === selectedJAN ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other),
         radiusUnits: "pixels",
-        getRadius: 3,
-        radiusMinPixels: 2, // ← ここを 2～6 で調整してください（小さくしたいなら 2～3）
+        getRadius: 2,          // 小さめ打点（2〜3pxがおすすめ）
+        radiusMinPixels: 2,
         radiusMaxPixels: 8,
         pickable: true,
-        onClick: (info) => {
-          if (info && info.object) {
-            openProductDrawer(info.object.JAN);
-          }
-        },
+        onClick: null, // クリック処理は DeckGL 側で一元化
       });
     }
-  }, [data, is3D, zMetric]);
+  }, [data, is3D, zMetric, selectedJAN]);
 
   // 評価サークル（◎）
   const ratingCircleLayers = useMemo(() => {
@@ -342,8 +349,16 @@ function App() {
           minZoom: 4.0,
           maxZoom: ZOOM_LIMITS.maxZoom,
         }}
-        // ⛔ 以前の「マップ空間クリックで近傍一覧を出す」処理は削除
-        onClick={() => {}}
+        // 画面のどこをタップしても、その位置に最も近い打点の詳細を開く
+        onClick={(info) => {
+          const coord = info?.coordinate; // [x, y]（本マップ座標）
+          const nearest = findNearestWine(coord);
+          if (nearest) {
+            openProductDrawer(nearest.JAN);
+          }
+        }}
+        // ピクセル半径を広げて保険のPicking（最近傍探索は別途実施）
+        pickingRadius={8}
         layers={[
           ...ratingCircleLayers,
           new GridCellLayer({
@@ -719,7 +734,7 @@ function App() {
         </button>
       </Drawer>
 
-      {/* ★ 評価一覧パネル（トグルで出す既存機能は維持） */}
+      {/* ★ 評価一覧パネル */}
       <RatedWinePanel
         isOpen={isRatingListOpen}
         onClose={() => {
@@ -731,7 +746,7 @@ function App() {
         sortedRatedWineList={sortedRatedWineList ?? []}
       />
 
-      {/* ✅ 新規: ProductPage を下から出すドロワー（iframeで /products/:JAN を表示） */}
+      {/* 商品ページドロワー（/products/:JAN） */}
       <Drawer
         anchor="bottom"
         open={productDrawerOpen}
