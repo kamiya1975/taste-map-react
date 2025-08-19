@@ -168,7 +168,7 @@ function App() {
         id: `columns-${zMetric}`,
         data,
         diskResolution: 12,
-        radius: 0.01,//打点の調整
+        radius: 0.03,//打点の調整
         extruded: true,
         elevationScale: 2,
         getPosition: (d) => [d.BodyAxis, d.SweetAxis],
@@ -194,7 +194,7 @@ function App() {
         data,
         getPosition: (d) => [d.BodyAxis, -d.SweetAxis, 0],
         getFillColor: (d) => typeColorMap[d.Type] || typeColorMap.Other,
-        getRadius: 0.01,//打点の調整
+        getRadius: 0.03,//打点の調整
         pickable: true,
         onClick: (info) => {
           if (info && info.object) {
