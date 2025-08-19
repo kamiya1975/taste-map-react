@@ -168,7 +168,8 @@ function App() {
         id: `columns-${zMetric}`,
         data,
         diskResolution: 12,
-        radius: 0.03,//打点の調整
+        //radius: 0.03,//打点の調整
+        radius: 0.06,         // 0.04～0.10 で調整 3D柱太さ
         extruded: true,
         elevationScale: 2,
         getPosition: (d) => [d.BodyAxis, d.SweetAxis],
@@ -184,7 +185,7 @@ function App() {
               ...ZOOM_LIMITS,
             }));
             // 3Dでも商品を開きたい場合は以下を有効化
-            // openProductDrawer(info.object.JAN);
+            openProductDrawer(JAN); 
           }
         },
       });
@@ -194,7 +195,11 @@ function App() {
         data,
         getPosition: (d) => [d.BodyAxis, -d.SweetAxis, 0],
         getFillColor: (d) => typeColorMap[d.Type] || typeColorMap.Other,
-        getRadius: 0.03,//打点の調整
+        //getRadius: 0.03,//打点の調整
+        radiusUnits: "pixels",
+        getRadius: 3,
+        radiusMinPixels: 2, // ← ここを 2～6 で調整してください（小さくしたいなら 2～3）
+        radiusMaxPixels: 8,
         pickable: true,
         onClick: (info) => {
           if (info && info.object) {
@@ -294,7 +299,7 @@ function App() {
     ? new ScatterplotLayer({
         id: "slider-mark",
         data: [sliderMarkCoords],
-        getPosition: (d) => [d[0], is3D ? -d[1] : d[1], 0],
+        getPosition: (d) => [d[0], is3D ? d[1] : -d[1], 0],
         getFillColor: [255, 0, 0, 180],
         getRadius: 0.25,
         radiusUnits: "meters",
@@ -335,7 +340,7 @@ function App() {
           minRotationX: 5,
           maxRotationX: 90,
           minZoom: 4.0,
-          maxZoom: 8.0,
+          maxZoom: ZOOM_LIMITS.maxZoom,
         }}
         // ⛔ 以前の「マップ空間クリックで近傍一覧を出す」処理は削除
         onClick={() => {}}
