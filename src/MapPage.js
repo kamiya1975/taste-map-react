@@ -418,55 +418,6 @@ const ratingCircleLayers = useMemo(() => {
     })
   : null;
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-  return (
-    <div style={{ 
-      position: "absolute", 
-      top: 0,
-      left: 0,
-      margin: 0,
-      padding: 0,
-      width: "100%", 
-      height: "100%",
-       }}>
-      {!is3D && (
-        <>
-          <div style={{
-            position: "absolute", top: "10px", left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 2, background: "rgba(255,255,255,0.85)",
-            padding: "4px 8px", borderRadius: "4px",
-            fontSize: "14px", fontWeight: "bold",
-            fontFamily: "Helvetica Neue, Arial, sans-serif",
-          }}>↑ Sweet</div>
-          <div style={{
-            position: "absolute", bottom: "200px", left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 2, background: "rgba(255,255,255,0.85)",
-            padding: "4px 8px", borderRadius: "4px",
-            fontSize: "14px", fontWeight: "bold",
-            fontFamily: "Helvetica Neue, Arial, sans-serif",
-          }}>↓ Dry</div>
-          <div style={{
-            position: "absolute", top: "35%", left: "10px",
-            transform: "translateY(-50%)",
-            zIndex: 2, background: "rgba(255,255,255,0.85)",
-            padding: "4px 8px", borderRadius: "4px",
-            fontSize: "14px", fontWeight: "bold",
-            fontFamily: "Helvetica Neue, Arial, sans-serif",
-          }}>← Light</div>
-          <div style={{
-            position: "absolute", top: "35%", right: "10px",
-            transform: "translateY(-50%)",
-            zIndex: 2, background: "rgba(255,255,255,0.85)",
-            padding: "4px 8px", borderRadius: "4px",
-            fontSize: "14px", fontWeight: "bold",
-            fontFamily: "Helvetica Neue, Arial, sans-serif",
-          }}>Heavy →</div>
-        </>
-      )}
-
       <DeckGL
         views={
           is3D
