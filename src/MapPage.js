@@ -190,7 +190,7 @@ function App() {
         id: `columns-${zMetric}`,
         data,
         diskResolution: 12,
-        radius: 0.06,         // 0.04～0.10 で調整
+        radius: 0.03,//打点の調整
         extruded: true,
         elevationScale: 2,
         getPosition: (d) => [d.BodyAxis, d.SweetAxis],
@@ -206,11 +206,8 @@ function App() {
         data,
         getPosition: (d) => [d.BodyAxis, -d.SweetAxis, 0],
         getFillColor: (d) =>
-          d.JAN === selectedJAN ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other),
-        radiusUnits: "pixels",
-        getRadius: 2,          // 小さめ打点（2〜3pxがおすすめ）
-        radiusMinPixels: 2,
-        radiusMaxPixels: 8,
+          String(d.JAN) === String(selectedJAN) ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other),
+        radiusUnits: "meters",
         pickable: true,
         onClick: null, // クリック処理は DeckGL 側で一元化
       });
@@ -350,12 +347,15 @@ function App() {
           maxZoom: ZOOM_LIMITS.maxZoom,
         }}
         // 画面のどこをタップしても、その位置に最も近い打点の詳細を開く
-        onClick={(info) => {
-          const coord = info?.coordinate; // [x, y]（本マップ座標）
-          const nearest = findNearestWine(coord);
-          if (nearest) {
-            openProductDrawer(nearest.JAN);
-          }
+          onClick={(info) => {
+            const picked = info?.object;
+            if (picked?.JAN) {
+              openProductDrawer(picked.JAN);
+              return;
+            }
+            const coord = info?.coordinate; // [x, y]（表示系と同じ座標系）
+            const nearest = findNearestWine(coord);
+            if (nearest?.JAN) openProductDrawer(nearest.JAN);
         }}
         // ピクセル半径を広げて保険のPicking（最近傍探索は別途実施）
         pickingRadius={8}
