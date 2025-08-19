@@ -734,7 +734,7 @@ function App() {
         PaperProps={{
           style: {
             width: "100%",
-            height: "100vh",
+            height: "80vh",
             borderTopLeftRadius: "12px",
             borderTopRightRadius: "12px",
             overflow: "hidden",
