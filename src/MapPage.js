@@ -97,13 +97,14 @@ useEffect(() => {
             JAN: String(r.JAN ?? ""),
             Type: r.Type ?? "Other",
 
-            // ここが肝：PC1/PC2 を Body/Sweet 軸として使う
-            BodyAxis: toNum(r.PC1),
-            SweetAxis: toNum(r.PC2),
+            // 2Dマップの軸を UMAP にする
+            BodyAxis: Number(r.UMAP1),   // ← x軸
+            SweetAxis: Number(r.UMAP2),  // ← y軸
 
-            // UMAP座標も残しておく（必要なら別表示に使える）
-            UMAP1: toNum(r.UMAP1),
-            UMAP2: toNum(r.UMAP2),
+            // PCAも残しておく（3D表示や他の分析用に使える）
+            PC1: Number(r.PC1),
+            PC2: Number(r.PC2),
+            PC3: Number(r.PC3),
 
             // メタ情報はそのまま保持（日本語カラム）
             商品名: r["商品名"],
