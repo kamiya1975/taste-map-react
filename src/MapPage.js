@@ -568,11 +568,8 @@ const ratingCircleLayers = useMemo(() => {
           }}
         >
           <option value="">ー</option>
-          <option value="ブドウ糖">甘味</option>
-          <option value="リンゴ酸">フルティー</option>
-          <option value="総ポリフェノール">渋味</option>
-          <option value="Vanillin">Vanillin</option>
-          <option value="Furfural">Furfural</option>
+          <option value="PC2">甘味</option>
+          <option value="PC1">ボディ</option>
         </select>
       )}
 
