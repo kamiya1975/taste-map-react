@@ -770,7 +770,7 @@ function App() {
           <iframe
             title={`product-${selectedJAN}`}
             src={`/products/${selectedJAN}`}
-            style={{ border: "none", width: "100%", height: "calc(75vh - 48px)" }}
+            style={{ border: "none", width: "100%", height: "calc(100vh - 48px)" }}
           />
         ) : (
           <div style={{ padding: 16 }}>商品を選択してください。</div>
