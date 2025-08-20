@@ -412,71 +412,85 @@ function App() {
         }}
         // ピクセル半径を広げて保険のPicking（最近傍探索は別途実施）
         pickingRadius={8}
-        layers={[
-          ...ratingCircleLayers,
-          
-          // ★ 濃淡オレンジのヒートブロック（2D & ハイライト選択時のみ）
-          (!is3D && highlight2D) ? new GridCellLayer({
-            id: "grid-cells-heat",
-            data: cells,
-            cellSize,
-            getPosition: (d) => d.position,
-            getFillColor: (d) => {
-              const c = d.count || 0;
-              if (c === 0) return [0, 0, 0, 0];             // ← データ無しセルは完全透明（背景が暗くならない）
-              const tRaw  = Math.min(1, c / (p90CellCount || 1)); // p90で頭打ち
-              const gamma = 0.55;                            // ← 0.5〜0.8 で調整（小さいほど濃淡がはっきり）
-              const t = Math.pow(tRaw, gamma);
-              const low  = [255, 255, 255]; // ほぼ白
-              const high = [255, 128,   0]; // 明るいオレンジ
-              const r = Math.round(low[0] + (high[0] - low[0]) * t);
-              const g = Math.round(low[1] + (high[1] - low[1]) * t);
-              const b = Math.round(low[2] + (high[2] - low[2]) * t);
-              const a = Math.round(0 + 180 * t);   // 上限αも控えめに
-              return [r, g, b, a];
-            },
-            getElevation: 0,
-            pickable: false,
-            parameters: { depthTest: false }, // 上に確実に描く（任意）
-            updateTriggers: { getFillColor: [p90CellCount] },
-          }): null,
-          // 2D時: 上位10%ブロックをオレンジで重ね描き
-          (!is3D && highlightCells.length > 0) ? new GridCellLayer({
-            id: "grid-cells-top10",
-            data: highlightCells,
-            cellSize,
-            getPosition: (d) => d.position,
-            getFillColor: [255, 140, 0, 200], // ORANGE with alpha
-            getElevation: 0,
-            pickable: false,
-            parameters: { depthTest: false }, // 上に描く
-          }) : null,
+layers={[
+  ...ratingCircleLayers,
 
-          new LineLayer({
-            id: "grid-lines-thin",
-            data: thinLines,
-            getSourcePosition: (d) => d.sourcePosition,
-            getTargetPosition: (d) => d.targetPosition,
-            getColor: [200, 200, 200, 100],
-            getWidth: 1,
-            widthUnits: "pixels",
-            pickable: false,
-          }),
-          new LineLayer({
-            id: "grid-lines-thick",
-            data: thickLines,
-            getSourcePosition: (d) => d.sourcePosition,
-            getTargetPosition: (d) => d.targetPosition,
-            getColor: [180, 180, 180, 120],
-            getWidth: 1.25,
-            widthUnits: "pixels",
-            pickable: false,
-          }),
-          mainLayer,
-          sliderMarkLayer,
-          ratingDateLayer,
-        ]}
-      />
+  // ① ベースのグレー層（常時）
+  new GridCellLayer({
+    id: "grid-cells-base",
+    data: cells,
+    cellSize,
+    getPosition: (d) => d.position,
+    getFillColor: (d) =>
+      d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
+    getElevation: 0,
+    pickable: false,
+  }),
+
+  // ② 濃淡オレンジ（2D & プルダウン選択時のみ）
+  (!is3D && highlight2D) ? new GridCellLayer({
+    id: "grid-cells-heat",
+    data: cells,
+    cellSize,
+    getPosition: (d) => d.position,
+    getFillColor: (d) => {
+      const c = d.count || 0;
+      if (c === 0) return [0, 0, 0, 0];
+      const tRaw = Math.min(1, c / (p90CellCount || 1)); // p90 で頭打ち
+      const t = Math.pow(tRaw, 0.55);                    // 濃淡カーブ
+      const low  = [255, 255, 255];                      // ほぼ白（下のグレーを活かす）
+      const high = [255, 128,   0];                      // 明るいオレンジ
+      const r = Math.round(low[0] + (high[0] - low[0]) * t);
+      const g = Math.round(low[1] + (high[1] - low[1]) * t);
+      const b = Math.round(low[2] + (high[2] - low[2]) * t);
+      const a = Math.round(0 + 180 * t);
+      return [r, g, b, a];
+    },
+    getElevation: 0,
+    pickable: false,
+    parameters: { depthTest: false },
+    updateTriggers: { getFillColor: [p90CellCount] },
+  }) : null,
+
+  // ③ 上位10%ブロック（必要なら）
+  (!is3D && highlightCells.length > 0) ? new GridCellLayer({
+    id: "grid-cells-top10",
+    data: highlightCells,
+    cellSize,
+    getPosition: (d) => d.position,
+    getFillColor: [255, 140, 0, 200],
+    getElevation: 0,
+    pickable: false,
+    parameters: { depthTest: false },
+  }) : null,
+
+  // ④ グリッド線
+  new LineLayer({
+    id: "grid-lines-thin",
+    data: thinLines,
+    getSourcePosition: (d) => d.sourcePosition,
+    getTargetPosition: (d) => d.targetPosition,
+    getColor: [200, 200, 200, 100],
+    getWidth: 1,
+    widthUnits: "pixels",
+    pickable: false,
+  }),
+  new LineLayer({
+    id: "grid-lines-thick",
+    data: thickLines,
+    getSourcePosition: (d) => d.sourcePosition,
+    getTargetPosition: (d) => d.targetPosition,
+    getColor: [180, 180, 180, 120],
+    getWidth: 1.25,
+    widthUnits: "pixels",
+    pickable: false,
+  }),
+
+  // ⑤ 打点・その他
+  mainLayer,
+  sliderMarkLayer,
+  ratingDateLayer,
+]}
 
       {is3D && (
         <select
