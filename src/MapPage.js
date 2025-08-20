@@ -122,10 +122,36 @@ function App() {
   const ORANGE = [255, 140, 0];
   const gridInterval = 0.2;
   const cellSize = 0.2;
-  const HEAT_ALPHA_MIN = 72;    // 最低でも見える透明度
-  const HEAT_ALPHA_MAX = 220;   // 最大透明度
+  
+  // ヒートの見え方（オレンジ系）
+  const HEAT_ALPHA_MIN = 96;    // 最低でも見える透明度
+  const HEAT_ALPHA_MAX = 230;   // 濃い時の最大透明度
   const HEAT_GAMMA     = 0.80;  // 濃淡カーブ（0.6〜0.9で調整）
-  const HEAT_CLIP_PCT  = [0.05, 0.95]; // 5〜95%で外れ値をクリップして正規化
+
+  // オレンジの段階色（Material Orange をベース）
+  const ORANGE_GRADIENT = [
+    [255, 243, 224], // #FFF3E0  very light
+    [255, 204, 128], // #FFCC80  light
+    [255, 183,  77], // #FFB74D  mid (添付寄り)
+    [251, 140,   0], // #FB8C00  vivid
+    [239, 108,   0], // #EF6C00  deep
+  ];
+
+  // 線形補間ヘルパー
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const sampleGradient = (stops, t) => {
+    const n = stops.length - 1;
+    const pos = t * n;
+    const i = Math.floor(pos);
+    const f = pos - i;
+    const c0 = stops[i];
+    const c1 = stops[Math.min(i + 1, n)];
+    return [
+      Math.round(lerp(c0[0], c1[0], f)),
+      Math.round(lerp(c0[1], c1[1], f)),
+      Math.round(lerp(c0[2], c1[2], f)),
+  ];
+  };
 
   // グリッド線
   const { thinLines, thickLines } = useMemo(() => {
@@ -162,7 +188,7 @@ function App() {
   }, [data, userRatings, is3D]);
 
   // 2D: セルごとの平均PC値（PC1=ボディ / PC2=甘味）を計算
-const { cellAvgMap, vMin, vMax } = useMemo(() => {
+  const { cellAvgMap, vMin, vMax } = useMemo(() => {
   if (is3D || !highlight2D) return { cellAvgMap: new Map(), vMin: 0, vMax: 1 };
 
   const sumMap = new Map(); // key -> PC合計
@@ -443,25 +469,19 @@ const { cellAvgMap, vMin, vMax } = useMemo(() => {
             const val = cellAvgMap.get(key);
             if (val == null) return [0, 0, 0, 0]; // そのセルにワイン無し
 
-           // vMin〜vMax で 0..1 に正規化（外れ値クリップ済み）
-           let t = (val - vMin) / (vMax - vMin);
-           t = Math.max(0, Math.min(1, t));
-           t = Math.pow(t, HEAT_GAMMA); // 濃淡カーブ
+            // 0..1 に正規化（vMin/vMax は既存の平均PCの正規化値）
+            let t = (val - vMin) / (vMax - vMin);
+            t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
 
-           // 明るいクリーム → オレンジ（単調増加の連続ヒート）
-           const low  = [255, 245, 235];
-           const high = [255,  90,   0];
-           const r = Math.round(low[0] + (high[0] - low[0]) * t);
-           const g = Math.round(low[1] + (high[1] - low[1]) * t);
-           const b = Math.round(low[2] + (high[2] - low[2]) * t);
+            // オレンジ系グラデーションをサンプリング
+            const [r, g, b] = sampleGradient(ORANGE_GRADIENT, t);
 
-           const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
-           return [r, g, b, a];
-          },
-          getElevation: 0,
-          pickable: false,
-          parameters: { depthTest: false },
-          updateTriggers: { getFillColor: [highlight2D, vMin, vMax, HEAT_GAMMA] },
+            // 透明度も段階的に
+            const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
+            return [r, g, b, a];
+         },
+         parameters: { depthTest: false },
+         updateTriggers: { getFillColor: [highlight2D, vMin, vMax, HEAT_GAMMA] },
         }) : null,
 
         // ④ グリッド線
