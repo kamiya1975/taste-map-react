@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import DeckGL from "@deck.gl/react";
-import { OrbitView, OrthographicView } from "@deck.gl/core";
+import { OrbitView, OrthographicView, COORDINATE_SYSTEM } from "@deck.gl/core";
 import { ScatterplotLayer, ColumnLayer, LineLayer, TextLayer, GridCellLayer, PathLayer } from "@deck.gl/layers";
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
@@ -130,6 +130,8 @@ function App() {
   const HEAT_CLIP_PCT  = [0.05, 0.95]; // 外れ値クリップ
   const MIN_COUNT_FOR_HEAT = 1;        // この件数未満のセルは非表示
   const COUNT_CLIP     = 4;            // 件数が少ないセルは薄く
+  const toViewY = (y) => (is3D ? y : -y);
+
   // オレンジ段階色
   const ORANGE_GRADIENT = [
     [255, 243, 224],
@@ -174,7 +176,7 @@ function App() {
     const map = new Map();
     data.forEach((d) => {
       const x = Math.floor(d.BodyAxis / cellSize) * cellSize;
-      const y = Math.floor((is3D ? d.SweetAxis : -d.SweetAxis) / cellSize) * cellSize;
+      const y = Math.floor(toViewY(d.SweetAxis) / cellSize) * cellSize;
       const key = `${x},${y}`;
       if (!map.has(key)) {
         map.set(key, { position: [x, y], count: 0, hasRating: false });
@@ -188,8 +190,8 @@ function App() {
   }, [data, userRatings, is3D]);
 
   // 2D: セルごとの平均PC値 → 0..1 に正規化した t を前計算（描画用に最適化）
-  const { heatCells, avgHash } = useMemo(() => {
-    if (is3D || !highlight2D) return { heatCells: [], avgHash: "empty" };
+  const { heatCells, heatKey } = useMemo(() => {
+    if (is3D || !highlight2D) return { heatCells: [], heatKey: "empty" };
 
     const sumMap = new Map(); // key -> PC合計
     const cntMap = new Map(); // key -> 件数
@@ -198,7 +200,7 @@ function App() {
       const v = Number(d[highlight2D]); // PC1 or PC2
       if (!Number.isFinite(v)) continue;
       const x = Math.floor(d.BodyAxis / cellSize) * cellSize;
-      const y = Math.floor((-d.SweetAxis) / cellSize) * cellSize; // 2DはY反転
+      const y = Math.floor(toViewY(d.SweetAxis) / cellSize) * cellSize;
       const key = `${x},${y}`;
       sumMap.set(key, (sumMap.get(key) || 0) + v);
       cntMap.set(key, (cntMap.get(key) || 0) + 1);
@@ -213,7 +215,7 @@ function App() {
       const [xs, ys] = key.split(",");
       samples.push({ position: [Number(xs), Number(ys)], avg, count });
     }
-    if (samples.length === 0) return { heatCells: [], avgHash: "none" };
+    if (samples.length === 0) return { heatCells: [], heatKey: "none" };
 
     // 平均PCの分布をパーセンタイルでクリップ
     const vals = samples.map(s => s.avg).sort((a,b)=>a-b);
@@ -223,17 +225,22 @@ function App() {
     const hi = vals[hiIdx];
     const den = Math.max(1e-9, hi - lo);
 
-    // t を前計算（0..1, ガンマ補正込み）
+     // t と color(RGBA) を前計算（0..1, ガンマ補正込み）
     const heat = samples.map(s => {
       let t = (s.avg - lo) / den;
       t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
-      return { ...s, t };
+      const [r, g, b] = sampleGradient(ORANGE_GRADIENT, t);
+      const conf = Math.min(1, s.count / COUNT_CLIP);
+      const a = Math.round(
+      (HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t) * (0.6 + 0.4 * conf)
+      );
+      return { position: s.position, color: [r, g, b, a] };
     });
 
     // DeckGLのトリガー用ハッシュ
-    const hash = `${heat.length}|${lo.toFixed(3)}|${hi.toFixed(3)}|${highlight2D}`;
+    const key = `${heat.length}|${lo.toFixed(3)}|${hi.toFixed(3)}|${highlight2D}`;;
 
-    return { heatCells: heat, avgHash: hash };
+    return { heatCells: heat, heatKey: key };
   }, [data, highlight2D, is3D, cellSize]);
 
   // 商品ドロワーを開く
@@ -250,7 +257,7 @@ function App() {
     let bestD2 = Infinity;
     for (const d of data) {
       const x = d.BodyAxis;
-      const y = is3D ? d.SweetAxis : -d.SweetAxis; // 表示系に合わせる
+      const y = toViewY(d.SweetAxis);
       const dx = x - cx;
       const dy = y - cy;
       const d2 = dx * dx + dy * dy;
@@ -288,7 +295,7 @@ function App() {
       return new ScatterplotLayer({
         id: "scatter",
         data,
-        getPosition: (d) => [d.BodyAxis, -d.SweetAxis, 0],
+        getPosition: (d) => [d.BodyAxis, toViewY(d.SweetAxis), 0],
         getFillColor: (d) =>
           String(d.JAN) === String(selectedJAN)
             ? ORANGE
@@ -300,6 +307,7 @@ function App() {
         getRadius: 0.03,
         pickable: true,
         onClick: null, // クリック処理は DeckGL 側で一元化
+        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
       });
     }
   }, [data, is3D, zMetric, selectedJAN]);
@@ -309,7 +317,7 @@ function App() {
     const lineColor = [255, 0, 0, 255];
     return Object.entries(userRatings).flatMap(([jan, ratingObj]) => {
       const item = data.find((d) => String(d.JAN) === String(jan));
-      if (!item || !item.BodyAxis || !item.SweetAxis) return [];
+      if (!item || item.BodyAxis == null || item.SweetAxis == null) return [];
       const count = Math.min(ratingObj.rating, 5);
       const radiusBase = 0.10;
 
@@ -464,27 +472,20 @@ function App() {
         }) : null,
 
         // ② 平均PC値ヒート（2D & プルダウン選択時のみ）
-        (!is3D && highlight2D) ? new GridCellLayer({
-          id: `grid-cells-heat-${highlight2D}-${avgHash}`, // ← idにhashも入れて確実に再生成
-          data: heatCells,                                  // 事前計算済みの d.t を使用
-          cellSize,
-          getPosition: (d) => d.position,
-          getFillColor: (d) => {
-            // オレンジ系グラデーション
-            const [r, g, b] = sampleGradient(ORANGE_GRADIENT, d.t);
-
-            // 件数が少ないセルは薄く（1〜4本で0.6→1.0へ）
-            const conf = Math.min(1, d.count / COUNT_CLIP);
-            const a = Math.round(
-              (HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * d.t) * (0.6 + 0.4 * conf)
-            );
-            return [r, g, b, a];
-          },
-          pickable: false,
-          parameters: { depthTest: false },
-          // d.t や d.count は data に含まれているのでトリガーは hash のみで十分
-          updateTriggers: { getFillColor: [avgHash] },
-        }) : null,
+         (!is3D && highlight2D) ? new GridCellLayer({
+           id: `grid-cells-heat-${highlight2D}-${heatKey}`,
+           data: heatCells,            // すでに color を持つ
+           cellSize,
+           getPosition: (d) => d.position,
+           getFillColor: (d) => d.color,
+           pickable: false,
+           parameters: {
+             depthTest: false,
+             // 念のためブレンド有効を明示（WebGL定数は luma 側で補完されます）
+             blend: true
+           },
+           coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+          }) : null,
 
         // ④ グリッド線
         new LineLayer({
