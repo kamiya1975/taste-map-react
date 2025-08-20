@@ -123,7 +123,7 @@ function App() {
 
   const gridInterval = 0.2;
   const cellSize = 0.2;
-  const TOP_HIGHLIGHT_N = 10; // 上位N本をハイライト
+  const TOP_HIGHLIGHT_N = 30; // 上位N本をハイライト
 
   // グリッド線
   const { thinLines, thickLines } = useMemo(() => {
@@ -534,8 +534,8 @@ function App() {
           style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}
         >
           <option value="">ー</option>
-          <option value="PC1">ボディ（上位10本）</option>
-          <option value="PC2">甘味（上位10本）</option>
+          <option value="PC2">甘味</option>
+          <option value="PC1">ボディ</option>
         </select>
       )}
 
