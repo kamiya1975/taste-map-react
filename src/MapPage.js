@@ -1,14 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
-import {
-  ScatterplotLayer,
-  ColumnLayer,
-  LineLayer,
-  TextLayer,
-  GridCellLayer,
-  PathLayer,
-} from "@deck.gl/layers";
+import { ScatterplotLayer, ColumnLayer, LineLayer, TextLayer, GridCellLayer, PathLayer } from "@deck.gl/layers";
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -37,7 +30,7 @@ function App() {
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // 起動時からヒートを出したいとのことなので "PC2=甘味" を初期選択
+  // ▼ 2Dヒートマップの対象（初期表示：甘味=PC2）
   const [highlight2D, setHighlight2D] = useState("PC2");
 
   // 商品ドロワーと選択中JAN（選択中はオレンジ表示）
@@ -89,8 +82,8 @@ function App() {
             return {
               JAN: String(r.JAN ?? ""),
               Type: r.Type ?? "Other",
-              BodyAxis: Number(r.UMAP1), // x軸
-              SweetAxis: Number(r.UMAP2), // y軸
+              BodyAxis: Number(r.UMAP1),   // x軸
+              SweetAxis: Number(r.UMAP2),  // y軸
               PC1: Number(r.PC1),
               PC2: Number(r.PC2),
               PC3: Number(r.PC3),
@@ -122,58 +115,59 @@ function App() {
   }, [userRatings]);
 
   const typeColorMap = {
-    White: [150, 150, 150], // [0, 120, 255],
-    Red: [150, 150, 150], // [255, 0, 0],
-    Rose: [150, 150, 150], // [255, 102, 204],
-    Sparkling: [150, 150, 150], // [255, 255, 0],
-    Other: [150, 150, 150], // [150, 150, 150],
+    White: [150, 150, 150],
+    Red: [150, 150, 150],
+    Rose: [150, 150, 150],
+    Sparkling: [150, 150, 150],
+    Other: [150, 150, 150],
   };
   const ORANGE = [255, 140, 0];
 
-  const gridInterval = 0.2;
+  // === グリッド/セル設定（ズレ防止のため一元化） ===
   const cellSize = 0.2;
+  const gridInterval = cellSize;
 
-  // === HeatMapの見え方（平均PCの色/濃淡）===
-  const HEAT_ALPHA_MIN = 72; // 最低でも見える透明度
-  const HEAT_ALPHA_MAX = 220; // 最大透明度
-  const HEAT_GAMMA = 0.8; // 濃淡カーブ（0.6〜0.9で調整）
-  const HEAT_CLIP_PCT = [0.05, 0.95]; // 5〜95%で外れ値をクリップして正規化
+  // セルindex/中心/キー（浮動小数誤差を避ける）
+  const toIndex = (v) => Math.floor(v / cellSize);
+  const toCenter = (i) => (i + 0.5) * cellSize;
+  const keyOf = (ix, iy) => `${ix},${iy}`;
 
-  // グリッド線
+  // === HeatMapの見え方（平均PCの色/濃淡） ===
+  const HEAT_ALPHA_MIN = 72;    // 最低でも見える透明度
+  const HEAT_ALPHA_MAX = 220;   // 最大透明度
+  const HEAT_GAMMA     = 0.80;  // 濃淡カーブ（0.6〜0.9で調整）
+  const HEAT_CLIP_PCT  = [0.05, 0.95]; // 5〜95%で外れ値をクリップ
+
+  // グリッド線（cellSize に同期）
   const { thinLines, thickLines } = useMemo(() => {
     const thin = [];
     const thick = [];
     for (let i = -500; i <= 500; i++) {
       const x = i * gridInterval;
-      const xLine = {
-        sourcePosition: [x, -100, 0],
-        targetPosition: [x, 100, 0],
-      };
-      if (i % 5 === 0) thick.push(xLine);
-      else thin.push(xLine);
+      const xLine = { sourcePosition: [x, -100, 0], targetPosition: [x, 100, 0] };
+      (i % 5 === 0 ? thick : thin).push(xLine);
 
       const y = i * gridInterval;
-      const yLine = {
-        sourcePosition: [-100, y, 0],
-        targetPosition: [100, y, 0],
-      };
-      if (i % 5 === 0) thick.push(yLine);
-      else thin.push(yLine);
+      const yLine = { sourcePosition: [-100, y, 0], targetPosition: [100, y, 0] };
+      (i % 5 === 0 ? thick : thin).push(yLine);
     }
     return { thinLines: thin, thickLines: thick };
   }, [gridInterval]);
 
-  // === 1) セル集計：セル中心（+0.5セル）にスナップして key を揃える ===
+  // セル集計（中心座標＋整数キーでズレなし）
   const cells = useMemo(() => {
     const map = new Map();
     data.forEach((d) => {
-      const cx = (Math.floor(d.BodyAxis / cellSize) + 0.5) * cellSize;
-      const cy =
-        (Math.floor((is3D ? d.SweetAxis : -d.SweetAxis) / cellSize) + 0.5) *
-        cellSize;
-      const key = `${cx},${cy}`;
+      const ix = toIndex(d.BodyAxis);
+      const iy = toIndex(is3D ? d.SweetAxis : -d.SweetAxis); // 2DはY反転
+      const key = keyOf(ix, iy);
       if (!map.has(key)) {
-        map.set(key, { position: [cx, cy], count: 0, hasRating: false });
+        map.set(key, {
+          ix, iy,
+          position: [toCenter(ix), toCenter(iy)],
+          count: 0,
+          hasRating: false
+        });
       }
       if (userRatings[d.JAN]) {
         map.get(key).hasRating = true;
@@ -183,10 +177,9 @@ function App() {
     return Array.from(map.values());
   }, [data, userRatings, is3D, cellSize]);
 
-  // === 2) セルごとの平均PC値（PC1=ボディ / PC2=甘味） ===
-  const { cellAvgMap, vMin, vMax } = useMemo(() => {
-    if (is3D || !highlight2D)
-      return { cellAvgMap: new Map(), vMin: 0, vMax: 1 };
+  // 2D: セルごとの平均PC値を描画用配列に整形
+  const { heatCells, vMin, vMax, avgHash } = useMemo(() => {
+    if (is3D || !highlight2D) return { heatCells: [], vMin: 0, vMax: 1, avgHash: "empty" };
 
     const sumMap = new Map(); // key -> PC合計
     const cntMap = new Map(); // key -> 件数
@@ -195,36 +188,41 @@ function App() {
       const v = Number(d[highlight2D]); // PC1 or PC2
       if (!Number.isFinite(v)) continue;
 
-      // センターにスナップ（2DはY反転）
-      const cx = (Math.floor(d.BodyAxis / cellSize) + 0.5) * cellSize;
-      const cy =
-        (Math.floor((-d.SweetAxis) / cellSize) + 0.5) * cellSize;
-      const key = `${cx},${cy}`;
+      const ix = toIndex(d.BodyAxis);
+      const iy = toIndex(-d.SweetAxis); // 2DはY反転
+      const key = keyOf(ix, iy);
 
       sumMap.set(key, (sumMap.get(key) || 0) + v);
       cntMap.set(key, (cntMap.get(key) || 0) + 1);
     }
 
-    const avgMap = new Map();
     const vals = [];
-    for (const [key, s] of sumMap.entries()) {
-      const c = cntMap.get(key) || 1;
-      const avg = s / c;
-      avgMap.set(key, avg);
+    const cellsArr = [];
+    for (const [key, sum] of sumMap.entries()) {
+      const count = cntMap.get(key) || 1;
+      const avg = sum / count;
       vals.push(avg);
+      const [ix, iy] = key.split(",").map(Number);
+      cellsArr.push({
+        ix, iy,
+        position: [toCenter(ix), toCenter(iy)],
+        avg,
+        count
+      });
     }
 
-    if (vals.length === 0) return { cellAvgMap: avgMap, vMin: 0, vMax: 1 };
+    if (vals.length === 0) return { heatCells: [], vMin: 0, vMax: 1, avgHash: "none" };
 
-    // 外れ値に強い正規化（パーセンタイルでクリップ）
     vals.sort((a, b) => a - b);
     const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
     const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
     const lo = vals[loIdx];
     const hi = vals[hiIdx];
-    const epsHi = hi - lo < 1e-9 ? lo + 1e-9 : hi; // hi==lo の発散防止
+    const epsHi = (hi - lo) < 1e-9 ? lo + 1e-9 : hi;
 
-    return { cellAvgMap: avgMap, vMin: lo, vMax: epsHi };
+    const hash = `${cellsArr.length}|${lo.toFixed(3)}|${epsHi.toFixed(3)}|${highlight2D}`;
+
+    return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
   }, [data, highlight2D, is3D, cellSize]);
 
   // 商品ドロワーを開く
@@ -268,12 +266,12 @@ function App() {
         getFillColor: (d) =>
           String(d.JAN) === String(selectedJAN)
             ? ORANGE
-            : typeColorMap[d.Type] || typeColorMap.Other,
+            : (typeColorMap[d.Type] || typeColorMap.Other),
         updateTriggers: {
-          getFillColor: [selectedJAN], // 念のため3D側も
+          getFillColor: [selectedJAN],
         },
         pickable: true,
-        onClick: null, // クリック処理は DeckGL 側で一元化
+        onClick: null,
       });
     } else {
       return new ScatterplotLayer({
@@ -283,14 +281,14 @@ function App() {
         getFillColor: (d) =>
           String(d.JAN) === String(selectedJAN)
             ? ORANGE
-            : typeColorMap[d.Type] || typeColorMap.Other,
+            : (typeColorMap[d.Type] || typeColorMap.Other),
         updateTriggers: {
           getFillColor: [selectedJAN],
         },
         radiusUnits: "meters",
         getRadius: 0.03,
         pickable: true,
-        onClick: null, // クリック処理は DeckGL 側で一元化
+        onClick: null,
       });
     }
   }, [data, is3D, zMetric, selectedJAN]);
@@ -302,7 +300,7 @@ function App() {
       const item = data.find((d) => String(d.JAN) === String(jan));
       if (!item || !item.BodyAxis || !item.SweetAxis) return [];
       const count = Math.min(ratingObj.rating, 5);
-      const radiusBase = 0.1;
+      const radiusBase = 0.10;
 
       return Array.from({ length: count }).map((_, i) => {
         const angleSteps = 40;
@@ -310,9 +308,7 @@ function App() {
           const angle = (j / angleSteps) * 2 * Math.PI;
           const radius = radiusBase * (i + 1);
           const x = item.BodyAxis + Math.cos(angle) * radius;
-          const y =
-            (is3D ? item.SweetAxis : -item.SweetAxis) +
-            Math.sin(angle) * radius;
+          const y = (is3D ? item.SweetAxis : -item.SweetAxis) + Math.sin(angle) * radius;
           return [x, y];
         });
         path.push(path[0]);
@@ -423,13 +419,12 @@ function App() {
         }}
         controller={{
           dragPan: true,
-          dragRotate: is3D, // 2Dでは回転不可
+          dragRotate: is3D,
           minRotationX: 5,
           maxRotationX: 90,
           minZoom: 4.0,
           maxZoom: ZOOM_LIMITS.maxZoom,
         }}
-        // 画面のどこをタップしても、その位置に最も近い打点の詳細を開く
         onClick={(info) => {
           const picked = info?.object;
           if (picked?.JAN) {
@@ -440,63 +435,47 @@ function App() {
           const nearest = findNearestWine(coord);
           if (nearest?.JAN) openProductDrawer(nearest.JAN);
         }}
-        // ピクセル半径を広げて保険のPicking（最近傍探索は別途実施）
         pickingRadius={8}
         layers={[
           ...ratingCircleLayers,
 
           // ① ベースのグレー層（ヒート非表示のときだけ）
-          !is3D && !highlight2D
-            ? new GridCellLayer({
-                id: "grid-cells-base",
-                data: cells,
-                cellSize,
-                getPosition: (d) => d.position,
-                getFillColor: (d) =>
-                  d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
-                getElevation: 0,
-                pickable: false,
-              })
-            : null,
+          (!is3D && !highlight2D) ? new GridCellLayer({
+            id: "grid-cells-base",
+            data: cells,
+            cellSize,
+            getPosition: (d) => d.position,
+            getFillColor: (d) => d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
+            getElevation: 0,
+            pickable: false,
+          }) : null,
 
           // ② 平均PC値ヒート（2D & プルダウン選択時のみ）
-          !is3D && highlight2D
-            ? new GridCellLayer({
-                id: `grid-cells-heat-${highlight2D}-${vMin.toFixed(
-                  3
-                )}-${vMax.toFixed(3)}`, // 変化時に再生成
-                data: cells, // セル中心に置かれた配列
-                cellSize,
-                getPosition: (d) => d.position,
-                getFillColor: (d) => {
-                  const key = `${d.position[0]},${d.position[1]}`;
-                  const val = cellAvgMap.get(key);
-                  if (val == null) return [0, 0, 0, 0]; // そのセルにワイン無し
+          (!is3D && highlight2D) ? new GridCellLayer({
+            id: `grid-cells-heat-${highlight2D}`,
+            data: heatCells,            // ← データがあるセルだけ
+            cellSize,
+            getPosition: (d) => d.position,
+            getFillColor: (d) => {
+              // 0..1 に正規化 → ガンマ補正
+              let t = (d.avg - vMin) / (vMax - vMin);
+              t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
 
-                  // vMin〜vMax で 0..1 に正規化（外れ値クリップ済み）
-                  let t = (val - vMin) / (vMax - vMin);
-                  t = Math.max(0, Math.min(1, t));
-                  t = Math.pow(t, HEAT_GAMMA); // 濃淡カーブ
+              // 明るいクリーム → 濃いオレンジ
+              const low  = [255, 245, 235];
+              const high = [255,  90,   0];
+              const r = Math.round(low[0] + (high[0] - low[0]) * t);
+              const g = Math.round(low[1] + (high[1] - low[1]) * t);
+              const b = Math.round(low[2] + (high[2] - low[2]) * t);
 
-                  // 明るいクリーム → 濃いオレンジ
-                  const low = [255, 245, 235];
-                  const high = [255, 90, 0];
-                  const r = Math.round(low[0] + (high[0] - low[0]) * t);
-                  const g = Math.round(low[1] + (high[1] - low[1]) * t);
-                  const b = Math.round(low[2] + (high[2] - low[2]) * t);
-                  const a = Math.round(
-                    HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t
-                  );
-                  return [r, g, b, a];
-                },
-                getElevation: 0,
-                pickable: false,
-                parameters: { depthTest: false }, // 重なりで沈まないように
-                updateTriggers: {
-                  getFillColor: [highlight2D, vMin, vMax, HEAT_GAMMA],
-                },
-              })
-            : null,
+              const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
+              return [r, g, b, a];
+            },
+            getElevation: 0,
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: { getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash] },
+          }) : null,
 
           // ④ グリッド線
           new LineLayer({
@@ -546,19 +525,12 @@ function App() {
         </select>
       )}
 
-      {/* 2D: ヒート対象（左上） */}
+      {/* 2D: ヒートマップ切替（左上） */}
       {!is3D && (
         <select
           value={highlight2D}
           onChange={(e) => setHighlight2D(e.target.value)}
-          style={{
-            position: "absolute",
-            top: "10px",
-            left: "10px",
-            zIndex: 1,
-            padding: "6px",
-            fontSize: "14px",
-          }}
+          style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}
         >
           <option value="">ー</option>
           <option value="PC2">甘味</option>
@@ -722,9 +694,7 @@ function App() {
           </button>
         </div>
 
-        <h2
-          style={{ textAlign: "center", fontSize: "20px", marginBottom: "24px" }}
-        >
+        <h2 style={{ textAlign: "center", fontSize: "20px", marginBottom: "24px" }}>
           基準のワインを飲んだ印象は？
         </h2>
 
@@ -809,17 +779,13 @@ function App() {
 
             const sweetValue =
               sweetness <= 50
-                ? blendF.SweetAxis -
-                  ((50 - sweetness) / 50) * (blendF.SweetAxis - minSweet)
-                : blendF.SweetAxis +
-                  ((sweetness - 50) / 50) * (maxSweet - blendF.SweetAxis);
+                ? blendF.SweetAxis - ((50 - sweetness) / 50) * (blendF.SweetAxis - minSweet)
+                : blendF.SweetAxis + ((sweetness - 50) / 50) * (maxSweet - blendF.SweetAxis);
 
             const bodyValue =
               body <= 50
-                ? blendF.BodyAxis -
-                  ((50 - body) / 50) * (blendF.BodyAxis - minBody)
-                : blendF.BodyAxis +
-                  ((body - 50) / 50) * (maxBody - blendF.BodyAxis);
+                ? blendF.BodyAxis - ((50 - body) / 50) * (blendF.BodyAxis - minBody)
+                : blendF.BodyAxis + ((body - 50) / 50) * (maxBody - blendF.BodyAxis);
 
             const coords = [bodyValue, -sweetValue];
             setSliderMarkCoords(coords);
@@ -859,34 +825,19 @@ function App() {
       >
         <h3 style={{ marginTop: 0 }}>ユーザー設定</h3>
         <div style={{ marginBottom: "20px" }}>
-          <button
-            onClick={() => alert("ニックネーム変更画面へ")}
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          >
+          <button onClick={() => alert("ニックネーム変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
             ニックネーム変更
           </button>
-          <button
-            onClick={() => alert("パスワード変更画面へ")}
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          >
+          <button onClick={() => alert("パスワード変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
             パスワード変更
           </button>
-          <button
-            onClick={() => alert("お気に入り店舗設定へ")}
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          >
+          <button onClick={() => alert("お気に入り店舗設定へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
             お気に入り店舗管理
           </button>
-          <button
-            onClick={() => alert("利用規約を表示")}
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          >
+          <button onClick={() => alert("利用規約を表示")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
             利用規約・プライバシーポリシー
           </button>
-          <button
-            onClick={() => alert("アプリの使い方説明を表示")}
-            style={{ width: "100%", padding: "10px" }}
-          >
+          <button onClick={() => alert("アプリの使い方説明を表示")} style={{ width: "100%", padding: "10px" }}>
             アプリの使い方
           </button>
         </div>
@@ -961,11 +912,7 @@ function App() {
           <iframe
             title={`product-${selectedJAN}`}
             src={`/products/${selectedJAN}`}
-            style={{
-              border: "none",
-              width: "100%",
-              height: "calc(100vh - 48px)",
-            }}
+            style={{ border: "none", width: "100%", height: "calc(100vh - 48px)" }}
           />
         ) : (
           <div style={{ padding: 16 }}>商品を選択してください。</div>
@@ -975,13 +922,7 @@ function App() {
   );
 } // App end
 
-function RatedWinePanel({
-  isOpen,
-  onClose,
-  userRatings,
-  data,
-  sortedRatedWineList,
-}) {
+function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineList }) {
   const displayList = useMemo(() => {
     if (!Array.isArray(sortedRatedWineList)) return [];
     const total = sortedRatedWineList.length;
@@ -1054,9 +995,7 @@ function RatedWinePanel({
               {displayList.map((item, idx) => (
                 <li
                   key={idx}
-                  onClick={() =>
-                    window.open(`/products/${item.JAN}`, "_blank")
-                  }
+                  onClick={() => window.open(`/products/${item.JAN}`, "_blank")}
                   style={{
                     padding: "10px 0",
                     borderBottom: "1px solid #eee",
@@ -1077,21 +1016,17 @@ function RatedWinePanel({
                       {item.displayIndex}.
                     </strong>
                     <span style={{ fontSize: "15px", color: "#555" }}>
-                      {item.date
-                        ? new Date(item.date).toLocaleDateString()
-                        : "（日付不明）"}
+                      {item.date ? new Date(item.date).toLocaleDateString() : "（日付不明）"}
                     </span>
                     <br />
                     {item.商品名 || "（名称不明）"}
                   </div>
                   <small>
                     Type: {item.Type || "不明"} / 価格:{" "}
-                    {item.希望小売価格
-                      ? `¥${item.希望小売価格.toLocaleString()}`
-                      : "不明"}
+                    {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
                     <br />
-                    Body: {item.BodyAxis?.toFixed(2)}, Sweet:{" "}
-                    {item.SweetAxis?.toFixed(2)} / 星評価: {item.rating ?? "なし"}
+                    Body: {item.BodyAxis?.toFixed(2)}, Sweet: {item.SweetAxis?.toFixed(2)} / 星評価:{" "}
+                    {item.rating ?? "なし"}
                   </small>
                 </li>
               ))}
