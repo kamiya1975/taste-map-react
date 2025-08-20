@@ -251,7 +251,7 @@ function App() {
 
   // クリック位置（マップ座標）から最近傍ワインを検索
   const findNearestWine = (coord /* [x,y] */) => {
-    if (!coord || !Array.isArray(data) || data.length === 0) return null;
+    if (!Array.isArray(coord) || coord.length < 2 || !Array.isArray(data) || data.length === 0) return null;
     const [cx, cy] = coord;
     let best = null;
     let bestD2 = Infinity;
@@ -429,12 +429,20 @@ function App() {
         }
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => {
+          // DeckGLが初期化/リサイズ時に target や zoom を欠落させる場合があるためフォールバック
+          const prev = viewState;
+          const t = Array.isArray(vs?.target)
+            ? vs.target
+            : (Array.isArray(prev?.target) ? prev.target : [0, 0, 0]);
           const limitedTarget = [
-            Math.max(-15, Math.min(15, vs.target[0])),
-            Math.max(-15, Math.min(15, vs.target[1])),
-            vs.target[2],
+            Math.max(-15, Math.min(15, (t[0] ?? 0))),
+            Math.max(-15, Math.min(15, (t[1] ?? 0))),
+            t[2] ?? 0,
           ];
-          setViewState({ ...vs, target: limitedTarget });
+          const nextZoom = Number.isFinite(vs?.zoom)
+            ? vs.zoom
+            : (Number.isFinite(prev?.zoom) ? prev.zoom : 5);
+          setViewState({ ...prev, ...vs, target: limitedTarget, zoom: nextZoom });
         }}
         controller={{
           dragPan: true,
@@ -562,8 +570,9 @@ function App() {
               ...ZOOM_LIMITS,
             });
           } else {
+            const base = saved2DViewState ?? viewState ?? { target: [0, 0, 0], zoom: 5 };
             setViewState({
-              ...saved2DViewState,
+              ...base,
               rotationX: 0,
               rotationOrbit: 0,
               ...ZOOM_LIMITS,
