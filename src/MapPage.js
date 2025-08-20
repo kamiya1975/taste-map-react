@@ -460,15 +460,15 @@ function App() {
             // 1件を最薄、p90(上位セル内)で頭打ち
             const denom = Math.max(2, p90Top10Count);
             const tRaw = Math.min(1, (c - 1) / (denom - 1));
-            const t = Math.pow(tRaw, 0.55);   // 濃淡カーブ（0.5〜0.6で調整）
+            const t = Math.pow(tRaw, 0.6);   // 濃淡カーブ（0.5〜0.6で調整）
 
             // ほぼ白 → 明るいオレンジの間で補間（下のグレーを活かす）
             const low  = [255, 255, 255];
-            const high = [255, 128,   0];
+            const high = [255, 90,   0];
             const r = Math.round(low[0] + (high[0] - low[0]) * t);
             const g = Math.round(low[1] + (high[1] - low[1]) * t);
             const b = Math.round(low[2] + (high[2] - low[2]) * t);
-            const a = Math.round(0 + 180 * t); // α控えめ
+            const a = Math.round(0 + 300 * t); // α控えめ
 
             return [r, g, b, a];
           },
@@ -478,7 +478,7 @@ function App() {
           updateTriggers: { getFillColor: [p90Top10Count, top10Signature] },
         }) : null,
 
-        // ③ 上位10%ブロック（必要なら）
+        // ③ 上位10%ブロック
         (!is3D && highlightCells.length > 0) ? new GridCellLayer({
           id: "grid-cells-top10",
           data: highlightCells,
