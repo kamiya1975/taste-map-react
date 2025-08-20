@@ -159,9 +159,13 @@ function App() {
   }, [data, userRatings, is3D]);
 
   // ★ 追加：セル内件数の最大値（濃淡の正規化に使用）
-  const maxCellCount = useMemo(() => {
-    if (!cells || cells.length === 0) return 1;
-    return cells.reduce((m, c) => Math.max(m, c.count || 0), 1);
+  const p90CellCount = useMemo(() => {
+    const arr = (cells || [])
+      .map(c => c.count || 0)
+      .sort((a,b)=>a-b);
+    if (arr.length === 0) return 1;
+    const idx = Math.floor(0.9 * (arr.length - 1));
+    return Math.max(1, arr[idx]);
   }, [cells]);
 
   // 2D: PC1/PC2 の上位10%を含むブロックを計算（セルキーの Set）
@@ -410,8 +414,9 @@ function App() {
         pickingRadius={8}
         layers={[
           ...ratingCircleLayers,
-          // ★ 濃淡オレンジのヒートブロック
-          new GridCellLayer({
+          
+          // ★ 濃淡オレンジのヒートブロック（2D & ハイライト選択時のみ）
+          (!is3D && highlight2D) ? new GridCellLayer({
             id: "grid-cells-heat",
             data: cells,
             cellSize,
@@ -419,22 +424,22 @@ function App() {
             getFillColor: (d) => {
               const c = d.count || 0;
               if (c === 0) return [0, 0, 0, 0];             // ← データ無しセルは完全透明（背景が暗くならない）
-              const tRaw  = Math.min(1, c / (maxCellCount || 1));
-              const gamma = 0.6;                            // ← 0.5〜0.8 で調整（小さいほど濃淡がはっきり）
+              const tRaw  = Math.min(1, c / (p90CellCount || 1)); // p90で頭打ち
+              const gamma = 0.55;                            // ← 0.5〜0.8 で調整（小さいほど濃淡がはっきり）
               const t = Math.pow(tRaw, gamma);
-              const low  = [255, 250, 245];    // さらに明るい薄オレンジ
-              const high = [255, 105,  0];     // 明るく鮮やかなオレンジ
+              const low  = [255, 255, 255]; // ほぼ白
+              const high = [255, 128,   0]; // 明るいオレンジ
               const r = Math.round(low[0] + (high[0] - low[0]) * t);
               const g = Math.round(low[1] + (high[1] - low[1]) * t);
               const b = Math.round(low[2] + (high[2] - low[2]) * t);
-              const a = Math.round(20 + 230 * t); // 透明度レンジ拡大でコントラストUP
+              const a = Math.round(0 + 180 * t);   // 上限αも控えめに
               return [r, g, b, a];
             },
             getElevation: 0,
             pickable: false,
             parameters: { depthTest: false }, // 上に確実に描く（任意）
-            updateTriggers: { getFillColor: [maxCellCount] },
-          }),
+            updateTriggers: { getFillColor: [p90CellCount] },
+          }): null,
           // 2D時: 上位10%ブロックをオレンジで重ね描き
           (!is3D && highlightCells.length > 0) ? new GridCellLayer({
             id: "grid-cells-top10",
