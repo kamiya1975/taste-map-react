@@ -120,10 +120,12 @@ function App() {
     Other: [150, 150, 150],//[150, 150, 150],
   };
   const ORANGE = [255, 140, 0];
-
   const gridInterval = 0.2;
   const cellSize = 0.2;
-  const TOP_HIGHLIGHT_N = 30; // 上位N本をハイライト
+  const HEAT_ALPHA_MIN = 72;    // 最低でも見える透明度
+  const HEAT_ALPHA_MAX = 220;   // 最大透明度
+  const HEAT_GAMMA     = 0.80;  // 濃淡カーブ（0.6〜0.9で調整）
+  const HEAT_CLIP_PCT  = [0.05, 0.95]; // 5〜95%で外れ値をクリップして正規化
 
   // グリッド線
   const { thinLines, thickLines } = useMemo(() => {
@@ -159,52 +161,48 @@ function App() {
     return Array.from(map.values());
   }, [data, userRatings, is3D]);
 
-  // 2D: PC1/PC2 の「上位10本（ワイン数）」が入るセルキー集合と、そのセル内の上位本数カウント
-  const { top10CellKeys, topCountsMap } = useMemo(() => {
-    if (is3D || !highlight2D) return { top10CellKeys: new Set(), topCountsMap: new Map() };
-    // metric = PC1 (甘味) or PC2 (ボディ)
-    const topRows = data
-      .map(d => ({ row: d, v: Number(d[highlight2D]) }))
-      .filter(x => Number.isFinite(x.v))
-      .sort((a, b) => b.v - a.v)                 // 値の大きい順
-      .slice(0, TOP_HIGHLIGHT_N)
-      .map(x => x.row);
+  // 2D: セルごとの平均PC値（PC1=ボディ / PC2=甘味）を計算
+const { cellAvgMap, vMin, vMax } = useMemo(() => {
+  if (is3D || !highlight2D) return { cellAvgMap: new Map(), vMin: 0, vMax: 1 };
 
-    const set = new Set();
-    const map = new Map(); // key -> 上位本数（そのセルに含まれる上位ワインの数）
+  const sumMap = new Map(); // key -> PC合計
+  const cntMap = new Map(); // key -> 件数
 
-    for (const r of topRows) {
-      const x = Math.floor(r.BodyAxis / cellSize) * cellSize;
-      const y = Math.floor((-r.SweetAxis) / cellSize) * cellSize; // 2DはY反転
-      const key = `${x},${y}`;
-      set.add(key);
-      map.set(key, (map.get(key) || 0) + 1);
-    }
-    return { top10CellKeys: set, topCountsMap: map };
-  }, [data, highlight2D, is3D, cellSize]);
+  for (const d of data) {
+    const v = Number(d[highlight2D]); // PC1 or PC2
+    if (!Number.isFinite(v)) continue;
 
-  // 上位セル（= top10CellKeys）における「上位本数」の p90（濃淡正規化用）
-  const p90Top10Count = useMemo(() => {
-    const counts = Array.from(topCountsMap.values()).sort((a, b) => a - b);
-    if (counts.length === 0) return 1;
-    const idx = Math.floor(0.9 * (counts.length - 1));
-    return Math.max(1, counts[idx]);
-  }, [topCountsMap]);
+    // 2DはY反転でセル分けしているので、キー生成も合わせる
+    const x = Math.floor(d.BodyAxis / cellSize) * cellSize;
+    const y = Math.floor((-d.SweetAxis) / cellSize) * cellSize;
+    const key = `${x},${y}`;
 
-  // updateTriggers 安定化用（Setは参照比較になるため）
-  const top10Signature = useMemo(
-    () => Array.from(top10CellKeys).sort().join("|"),
-    [top10CellKeys]
-  );
+    sumMap.set(key, (sumMap.get(key) || 0) + v);
+    cntMap.set(key, (cntMap.get(key) || 0) + 1);
+  }
 
-  // ハイライト用セルの配列（GridCellLayer に渡す形）
-  const highlightCells = useMemo(() => {
-    if (!top10CellKeys.size) return [];
-    return Array.from(top10CellKeys).map((key) => {
-      const [x, y] = key.split(",").map(Number);
-      return { position: [x, y] };
-    });
-  }, [top10CellKeys]);
+  const avgMap = new Map();
+  const vals = [];
+  for (const [key, s] of sumMap.entries()) {
+    const avg = s / cntMap.get(key);
+    avgMap.set(key, avg);
+    vals.push(avg);
+  }
+
+  if (vals.length === 0) return { cellAvgMap: avgMap, vMin: 0, vMax: 1 };
+
+  // 外れ値に強い正規化（パーセンタイルでクリップ）
+  vals.sort((a, b) => a - b);
+  const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
+  const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
+  const lo = vals[loIdx];
+  const hi = vals[hiIdx];
+
+  // 万一 hi==lo のときの発散防止
+  const epsHi = (hi - lo) < 1e-9 ? lo + 1e-9 : hi;
+
+  return { cellAvgMap: avgMap, vMin: lo, vMax: epsHi };
+}, [data, highlight2D, is3D, cellSize]);
 
   // 商品ドロワーを開く
   const openProductDrawer = (jan) => {
@@ -434,7 +432,7 @@ function App() {
           pickable: false,
         }),
 
-        // ② 上位10%だけを塗るヒート（2D & プルダウン選択時のみ）
+        // ② 平均PC値ヒート（2D & プルダウン選択時のみ）
         (!is3D && highlight2D) ? new GridCellLayer({
           id: "grid-cells-heat",
           data: cells,
@@ -442,40 +440,28 @@ function App() {
           getPosition: (d) => d.position,
           getFillColor: (d) => {
             const key = `${d.position[0]},${d.position[1]}`;
-            // 上位10本が入るセル以外は透明
-            if (!top10CellKeys.has(key)) return [0, 0, 0, 0];
+            const val = cellAvgMap.get(key);
+            if (val == null) return [0, 0, 0, 0]; // そのセルにワイン無し
 
-            // そのセルに含まれる「上位本数」で濃淡を決める
-             const c = topCountsMap.get(key) || 0;
+           // vMin〜vMax で 0..1 に正規化（外れ値クリップ済み）
+           let t = (val - vMin) / (vMax - vMin);
+           t = Math.max(0, Math.min(1, t));
+           t = Math.pow(t, HEAT_GAMMA); // 濃淡カーブ
 
-            // 1本を最薄、p90 で頭打ち
-            const denom = Math.max(2, p90Top10Count);
-            const tRaw = Math.min(1, (c - 1) / (denom - 1));
-            const t = Math.pow(tRaw, 0.6);   // 濃淡カーブ
+           // 明るいクリーム → オレンジ（単調増加の連続ヒート）
+           const low  = [255, 245, 235];
+           const high = [255,  90,   0];
+           const r = Math.round(low[0] + (high[0] - low[0]) * t);
+           const g = Math.round(low[1] + (high[1] - low[1]) * t);
+           const b = Math.round(low[2] + (high[2] - low[2]) * t);
 
-            // ほぼ白 → 明るいオレンジ
-            const low  = [255, 255, 255];
-            const high = [255, 90,   0];
-            const r = Math.round(low[0] + (high[0] - low[0]) * t);
-            const g = Math.round(low[1] + (high[1] - low[1]) * t);
-            const b = Math.round(low[2] + (high[2] - low[2]) * t);
-            const a = Math.round(0 + 300 * t);
-
-            return [r, g, b, a];
+           const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
+           return [r, g, b, a];
           },
-          updateTriggers: { getFillColor: [p90Top10Count, top10Signature] },
-        }) : null,
-
-        // ③ 上位10%ブロック
-       (!is3D && highlightCells.length > 0) ? new GridCellLayer({
-          id: "grid-cells-top10",
-          data: highlightCells,
-          cellSize,
-          getPosition: (d) => d.position,
-          getFillColor: [255, 140, 0, 200],
           getElevation: 0,
           pickable: false,
           parameters: { depthTest: false },
+          updateTriggers: { getFillColor: [highlight2D, vMin, vMax, HEAT_GAMMA] },
         }) : null,
 
         // ④ グリッド線
