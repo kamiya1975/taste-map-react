@@ -412,8 +412,8 @@ function App() {
         }}
         // ピクセル半径を広げて保険のPicking（最近傍探索は別途実施）
         pickingRadius={8}
-layers={[
-  ...ratingCircleLayers,
+        layers={[
+        ...ratingCircleLayers,
 
   // ① ベースのグレー層（常時）
   new GridCellLayer({
@@ -491,6 +491,7 @@ layers={[
   sliderMarkLayer,
   ratingDateLayer,
 ]}
+/>
 
       {is3D && (
         <select
