@@ -29,6 +29,7 @@ function App() {
   const [showRatingDates, setShowRatingDates] = useState(false);
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [highlight2D, setHighlight2D] = useState("");
 
   // 商品ドロワーと選択中JAN（選択中はオレンジ表示）
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
@@ -156,6 +157,36 @@ function App() {
     });
     return Array.from(map.values());
   }, [data, userRatings, is3D]);
+
+  // 2D: PC1/PC2 の上位10%を含むブロックを計算（セルキーの Set）
+  const top10CellKeys = useMemo(() => {
+    if (is3D || !highlight2D) return new Set();
+    const vals = data
+      .map((d) => Number(d[highlight2D]))
+      .filter((v) => Number.isFinite(v))
+      .sort((a, b) => a - b);
+    if (vals.length === 0) return new Set();
+    const idx = Math.floor(0.9 * (vals.length - 1)); // 上位10%しきい値（p90）
+    const thr = vals[idx];
+    const set = new Set();
+    for (const d of data) {
+      const v = Number(d[highlight2D]);
+      if (!Number.isFinite(v) || v < thr) continue;
+      const x = Math.floor(d.BodyAxis / cellSize) * cellSize;
+      const y = Math.floor((-d.SweetAxis) / cellSize) * cellSize; // 2DはY反転
+      set.add(`${x},${y}`);
+    }
+    return set;
+  }, [data, highlight2D, is3D, cellSize]);
+
+  // ハイライト用セルの配列（GridCellLayer に渡す形）
+  const highlightCells = useMemo(() => {
+    if (!top10CellKeys.size) return [];
+    return Array.from(top10CellKeys).map((key) => {
+      const [x, y] = key.split(",").map(Number);
+      return { position: [x, y] };
+    });
+  }, [top10CellKeys]);
 
   // 商品ドロワーを開く
   const openProductDrawer = (jan) => {
@@ -382,6 +413,17 @@ function App() {
             getElevation: 0,
             pickable: false,
           }),
+          // 2D時: 上位10%ブロックをオレンジで重ね描き
+          (!is3D && highlightCells.length > 0) ? new GridCellLayer({
+            id: "grid-cells-top10",
+            data: highlightCells,
+            cellSize,
+            getPosition: (d) => d.position,
+            getFillColor: [255, 140, 0, 200], // ORANGE with alpha
+            getElevation: 0,
+            pickable: false,
+            parameters: { depthTest: false }, // 上に描く
+          }) : null,
           new LineLayer({
             id: "grid-lines-thin",
             data: thinLines,
@@ -424,6 +466,19 @@ function App() {
           <option value="">ー</option>
           <option value="PC2">甘味</option>
           <option value="PC1">ボディ</option>
+        </select>
+      )}
+
+      {/* 2D: 上位10%ハイライトのプルダウン（左上） */}
+      {!is3D && (
+        <select
+          value={highlight2D}
+          onChange={(e) => setHighlight2D(e.target.value)}
+          style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}
+        >
+          <option value="">（2Dハイライト）ー</option>
+          <option value="PC1">ボディ（PC1）上位10%</option>
+          <option value="PC2">甘味（PC2）上位10%</option>
         </select>
       )}
 
