@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import DeckGL from "@deck.gl/react";
-import { OrbitView, OrthographicView } from "@deck.gl/core";
+import { OrbitView, OrthographicView, COORDINATE_SYSTEM } from "@deck.gl/core";
 import { ScatterplotLayer, ColumnLayer, LineLayer, TextLayer, GridCellLayer, PathLayer } from "@deck.gl/layers";
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
@@ -120,10 +120,40 @@ function App() {
     Other: [150, 150, 150],//[150, 150, 150],
   };
   const ORANGE = [255, 140, 0];
-
   const gridInterval = 0.2;
   const cellSize = 0.2;
-  const TOP_HIGHLIGHT_N = 30; // 上位N本をハイライト
+  
+  // ヒートの見え方（オレンジ系）
+  const HEAT_ALPHA_MIN = 96;
+  const HEAT_ALPHA_MAX = 230;
+  const HEAT_GAMMA     = 0.80;
+  const HEAT_CLIP_PCT  = [0.05, 0.95]; // 外れ値クリップ
+  const MIN_COUNT_FOR_HEAT = 1;        // この件数未満のセルは非表示
+  const COUNT_CLIP     = 4;            // 件数が少ないセルは薄く
+  const toViewY = (y) => (is3D ? y : -y);
+
+  // オレンジ段階色
+  const ORANGE_GRADIENT = [
+    [255, 243, 224],
+    [255, 204, 128],
+    [255, 183,  77],
+    [251, 140,   0],
+    [239, 108,   0],
+  ];
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const sampleGradient = (stops, t) => {
+    const n = stops.length - 1;
+    const pos = t * n;
+    const i = Math.floor(pos);
+    const f = pos - i;
+    const c0 = stops[i];
+    const c1 = stops[Math.min(i + 1, n)];
+    return [
+      Math.round(lerp(c0[0], c1[0], f)),
+      Math.round(lerp(c0[1], c1[1], f)),
+      Math.round(lerp(c0[2], c1[2], f)),
+    ];
+  };
 
   // グリッド線
   const { thinLines, thickLines } = useMemo(() => {
@@ -146,7 +176,7 @@ function App() {
     const map = new Map();
     data.forEach((d) => {
       const x = Math.floor(d.BodyAxis / cellSize) * cellSize;
-      const y = Math.floor((is3D ? d.SweetAxis : -d.SweetAxis) / cellSize) * cellSize;
+      const y = Math.floor(toViewY(d.SweetAxis) / cellSize) * cellSize;
       const key = `${x},${y}`;
       if (!map.has(key)) {
         map.set(key, { position: [x, y], count: 0, hasRating: false });
@@ -159,52 +189,59 @@ function App() {
     return Array.from(map.values());
   }, [data, userRatings, is3D]);
 
-  // 2D: PC1/PC2 の「上位10本（ワイン数）」が入るセルキー集合と、そのセル内の上位本数カウント
-  const { top10CellKeys, topCountsMap } = useMemo(() => {
-    if (is3D || !highlight2D) return { top10CellKeys: new Set(), topCountsMap: new Map() };
-    // metric = PC1 (甘味) or PC2 (ボディ)
-    const topRows = data
-      .map(d => ({ row: d, v: Number(d[highlight2D]) }))
-      .filter(x => Number.isFinite(x.v))
-      .sort((a, b) => b.v - a.v)                 // 値の大きい順
-      .slice(0, TOP_HIGHLIGHT_N)
-      .map(x => x.row);
+  // 2D: セルごとの平均PC値 → 0..1 に正規化した t を前計算（描画用に最適化）
+  const { heatCells, heatKey } = useMemo(() => {
+    if (is3D || !highlight2D) return { heatCells: [], heatKey: "empty" };
 
-    const set = new Set();
-    const map = new Map(); // key -> 上位本数（そのセルに含まれる上位ワインの数）
+    const sumMap = new Map(); // key -> PC合計
+    const cntMap = new Map(); // key -> 件数
 
-    for (const r of topRows) {
-      const x = Math.floor(r.BodyAxis / cellSize) * cellSize;
-      const y = Math.floor((-r.SweetAxis) / cellSize) * cellSize; // 2DはY反転
+    for (const d of data) {
+      const v = Number(d[highlight2D]); // PC1 or PC2
+      if (!Number.isFinite(v)) continue;
+      const x = Math.floor(d.BodyAxis / cellSize) * cellSize;
+      const y = Math.floor(toViewY(d.SweetAxis) / cellSize) * cellSize;
       const key = `${x},${y}`;
-      set.add(key);
-      map.set(key, (map.get(key) || 0) + 1);
+      sumMap.set(key, (sumMap.get(key) || 0) + v);
+      cntMap.set(key, (cntMap.get(key) || 0) + 1);
     }
-    return { top10CellKeys: set, topCountsMap: map };
-  }, [data, highlight2D, is3D, cellSize]);
 
-  // 上位セル（= top10CellKeys）における「上位本数」の p90（濃淡正規化用）
-  const p90Top10Count = useMemo(() => {
-    const counts = Array.from(topCountsMap.values()).sort((a, b) => a - b);
-    if (counts.length === 0) return 1;
-    const idx = Math.floor(0.9 * (counts.length - 1));
-    return Math.max(1, counts[idx]);
-  }, [topCountsMap]);
+    // データが入ったセルだけ抽出
+    const samples = [];
+    for (const [key, sum] of sumMap.entries()) {
+      const count = cntMap.get(key) || 0;
+      if (count < MIN_COUNT_FOR_HEAT) continue; // 件数閾値
+      const avg = sum / count;
+      const [xs, ys] = key.split(",");
+      samples.push({ position: [Number(xs), Number(ys)], avg, count });
+    }
+    if (samples.length === 0) return { heatCells: [], heatKey: "none" };
 
-  // updateTriggers 安定化用（Setは参照比較になるため）
-  const top10Signature = useMemo(
-    () => Array.from(top10CellKeys).sort().join("|"),
-    [top10CellKeys]
-  );
+    // 平均PCの分布をパーセンタイルでクリップ
+    const vals = samples.map(s => s.avg).sort((a,b)=>a-b);
+    const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
+    const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
+    const lo = vals[loIdx];
+    const hi = vals[hiIdx];
+    const den = Math.max(1e-9, hi - lo);
 
-  // ハイライト用セルの配列（GridCellLayer に渡す形）
-  const highlightCells = useMemo(() => {
-    if (!top10CellKeys.size) return [];
-    return Array.from(top10CellKeys).map((key) => {
-      const [x, y] = key.split(",").map(Number);
-      return { position: [x, y] };
+     // t と color(RGBA) を前計算（0..1, ガンマ補正込み）
+    const heat = samples.map(s => {
+      let t = (s.avg - lo) / den;
+      t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
+      const [r, g, b] = sampleGradient(ORANGE_GRADIENT, t);
+      const conf = Math.min(1, s.count / COUNT_CLIP);
+      const a = Math.round(
+      (HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t) * (0.6 + 0.4 * conf)
+      );
+      return { position: s.position, color: [r, g, b, a] };
     });
-  }, [top10CellKeys]);
+
+    // DeckGLのトリガー用ハッシュ
+    const key = `${heat.length}|${lo.toFixed(3)}|${hi.toFixed(3)}|${highlight2D}`;;
+
+    return { heatCells: heat, heatKey: key };
+  }, [data, highlight2D, is3D, cellSize]);
 
   // 商品ドロワーを開く
   const openProductDrawer = (jan) => {
@@ -214,13 +251,13 @@ function App() {
 
   // クリック位置（マップ座標）から最近傍ワインを検索
   const findNearestWine = (coord /* [x,y] */) => {
-    if (!coord || !Array.isArray(data) || data.length === 0) return null;
+    if (!Array.isArray(coord) || coord.length < 2 || !Array.isArray(data) || data.length === 0) return null;
     const [cx, cy] = coord;
     let best = null;
     let bestD2 = Infinity;
     for (const d of data) {
       const x = d.BodyAxis;
-      const y = is3D ? d.SweetAxis : -d.SweetAxis; // 表示系に合わせる
+      const y = toViewY(d.SweetAxis);
       const dx = x - cx;
       const dy = y - cy;
       const d2 = dx * dx + dy * dy;
@@ -258,7 +295,7 @@ function App() {
       return new ScatterplotLayer({
         id: "scatter",
         data,
-        getPosition: (d) => [d.BodyAxis, -d.SweetAxis, 0],
+        getPosition: (d) => [d.BodyAxis, toViewY(d.SweetAxis), 0],
         getFillColor: (d) =>
           String(d.JAN) === String(selectedJAN)
             ? ORANGE
@@ -270,6 +307,7 @@ function App() {
         getRadius: 0.03,
         pickable: true,
         onClick: null, // クリック処理は DeckGL 側で一元化
+        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
       });
     }
   }, [data, is3D, zMetric, selectedJAN]);
@@ -279,7 +317,7 @@ function App() {
     const lineColor = [255, 0, 0, 255];
     return Object.entries(userRatings).flatMap(([jan, ratingObj]) => {
       const item = data.find((d) => String(d.JAN) === String(jan));
-      if (!item || !item.BodyAxis || !item.SweetAxis) return [];
+      if (!item || item.BodyAxis == null || item.SweetAxis == null) return [];
       const count = Math.min(ratingObj.rating, 5);
       const radiusBase = 0.10;
 
@@ -391,12 +429,20 @@ function App() {
         }
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => {
+          // DeckGLが初期化/リサイズ時に target や zoom を欠落させる場合があるためフォールバック
+          const prev = viewState;
+          const t = Array.isArray(vs?.target)
+            ? vs.target
+            : (Array.isArray(prev?.target) ? prev.target : [0, 0, 0]);
           const limitedTarget = [
-            Math.max(-15, Math.min(15, vs.target[0])),
-            Math.max(-15, Math.min(15, vs.target[1])),
-            vs.target[2],
+            Math.max(-15, Math.min(15, (t[0] ?? 0))),
+            Math.max(-15, Math.min(15, (t[1] ?? 0))),
+            t[2] ?? 0,
           ];
-          setViewState({ ...vs, target: limitedTarget });
+          const nextZoom = Number.isFinite(vs?.zoom)
+            ? vs.zoom
+            : (Number.isFinite(prev?.zoom) ? prev.zoom : 5);
+          setViewState({ ...prev, ...vs, target: limitedTarget, zoom: nextZoom });
         }}
         controller={{
           dragPan: true,
@@ -422,61 +468,32 @@ function App() {
         layers={[
         ...ratingCircleLayers,
 
-        // ① ベースのグレー層（常時）
-        new GridCellLayer({
+        // ① ベースのグレー層（ヒート非表示のときだけ）
+        (!is3D && !highlight2D) ? new GridCellLayer({
           id: "grid-cells-base",
           data: cells,
           cellSize,
           getPosition: (d) => d.position,
-          getFillColor: (d) =>
-            d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
+          getFillColor: (d) => d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
           getElevation: 0,
           pickable: false,
-        }),
-
-        // ② 上位10%だけを塗るヒート（2D & プルダウン選択時のみ）
-        (!is3D && highlight2D) ? new GridCellLayer({
-          id: "grid-cells-heat",
-          data: cells,
-          cellSize,
-          getPosition: (d) => d.position,
-          getFillColor: (d) => {
-            const key = `${d.position[0]},${d.position[1]}`;
-            // 上位10本が入るセル以外は透明
-            if (!top10CellKeys.has(key)) return [0, 0, 0, 0];
-
-            // そのセルに含まれる「上位本数」で濃淡を決める
-             const c = topCountsMap.get(key) || 0;
-
-            // 1本を最薄、p90 で頭打ち
-            const denom = Math.max(2, p90Top10Count);
-            const tRaw = Math.min(1, (c - 1) / (denom - 1));
-            const t = Math.pow(tRaw, 0.6);   // 濃淡カーブ
-
-            // ほぼ白 → 明るいオレンジ
-            const low  = [255, 255, 255];
-            const high = [255, 90,   0];
-            const r = Math.round(low[0] + (high[0] - low[0]) * t);
-            const g = Math.round(low[1] + (high[1] - low[1]) * t);
-            const b = Math.round(low[2] + (high[2] - low[2]) * t);
-            const a = Math.round(0 + 300 * t);
-
-            return [r, g, b, a];
-          },
-          updateTriggers: { getFillColor: [p90Top10Count, top10Signature] },
         }) : null,
 
-        // ③ 上位10%ブロック
-       (!is3D && highlightCells.length > 0) ? new GridCellLayer({
-          id: "grid-cells-top10",
-          data: highlightCells,
-          cellSize,
-          getPosition: (d) => d.position,
-          getFillColor: [255, 140, 0, 200],
-          getElevation: 0,
-          pickable: false,
-          parameters: { depthTest: false },
-        }) : null,
+        // ② 平均PC値ヒート（2D & プルダウン選択時のみ）
+         (!is3D && highlight2D) ? new GridCellLayer({
+           id: `grid-cells-heat-${highlight2D}-${heatKey}`,
+           data: heatCells,            // すでに color を持つ
+           cellSize,
+           getPosition: (d) => d.position,
+           getFillColor: (d) => d.color,
+           pickable: false,
+           parameters: {
+             depthTest: false,
+             // 念のためブレンド有効を明示（WebGL定数は luma 側で補完されます）
+             blend: true
+           },
+           coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+          }) : null,
 
         // ④ グリッド線
         new LineLayer({
@@ -553,8 +570,9 @@ function App() {
               ...ZOOM_LIMITS,
             });
           } else {
+            const base = saved2DViewState ?? viewState ?? { target: [0, 0, 0], zoom: 5 };
             setViewState({
-              ...saved2DViewState,
+              ...base,
               rotationX: 0,
               rotationOrbit: 0,
               ...ZOOM_LIMITS,
@@ -1040,3 +1058,4 @@ function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineLis
 }
 
 export default App;
+
