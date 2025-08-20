@@ -426,20 +426,22 @@ function App() {
             data: cells,
             cellSize,
             getPosition: (d) => d.position,
-            // 件数が多いセルほど濃く・不透明に
             getFillColor: (d) => {
-              const t = Math.min(1, (d.count || 0) / (maxCellCount || 1)); // 0..1
-              const low  = [255, 224, 178]; // 薄いオレンジ（#FFE0B2）
-              const high = [255, 140,   0]; // 濃いオレンジ（#FF8C00）
+              const c = d.count || 0;
+              if (c === 0) return [0, 0, 0, 0];             // ← データ無しセルは完全透明（背景が暗くならない）
+              const tRaw  = Math.min(1, c / (maxCellCount || 1));
+              const gamma = 0.7;                            // ← 0.5〜0.8 で調整（小さいほど濃淡がはっきり）
+              const t = Math.pow(tRaw, gamma);
+              const low  = [255, 245, 235];                 // ← もっと明るい薄オレンジ（#FFF5EB）
+              const high = [255, 120,  0];                  // ← 明るい強めオレンジ（#FF7800 近辺）
               const r = Math.round(low[0] + (high[0] - low[0]) * t);
               const g = Math.round(low[1] + (high[1] - low[1]) * t);
               const b = Math.round(low[2] + (high[2] - low[2]) * t);
-              const a = Math.round(80 + 140 * t);       // 80〜220 のアルファ
+              const a = Math.round(30 + 210 * t);           // ← 30〜240 に拡大（透明度レンジでコントラスト強化）
               return [r, g, b, a];
             },
             getElevation: 0,
             pickable: false,
-            // maxCellCount 変化で再評価
             updateTriggers: { getFillColor: [maxCellCount] },
           }),
           // 2D時: 上位10%ブロックをオレンジで重ね描き
@@ -453,7 +455,7 @@ function App() {
             pickable: false,
             parameters: { depthTest: false }, // 上に描く
           }) : null,
-          
+
           new LineLayer({
             id: "grid-lines-thin",
             data: thinLines,
