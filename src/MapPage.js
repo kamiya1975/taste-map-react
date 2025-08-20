@@ -521,8 +521,8 @@ function App() {
           }}
         >
           <option value="">ー</option>
-          <option value="PC2">ボディ</option>
-          <option value="PC1">甘味</option>
+          <option value="PC2">甘味</option>
+          <option value="PC1">ボディ</option>
         </select>
       )}
 
@@ -534,8 +534,8 @@ function App() {
           style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}
         >
           <option value="">ー</option>
-          <option value="PC1">甘味（上位10%）</option>
-          <option value="PC2">ボディ（上位10%）</option>
+          <option value="PC1">ボディ（上位10本）</option>
+          <option value="PC2">甘味（上位10本）</option>
         </select>
       )}
 
