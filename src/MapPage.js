@@ -479,16 +479,16 @@ function App() {
         }) : null,
 
         // ③ 上位10%ブロック
-        (!is3D && highlightCells.length > 0) ? new GridCellLayer({
-          id: "grid-cells-top10",
-          data: highlightCells,
-          cellSize,
-          getPosition: (d) => d.position,
-          getFillColor: [255, 140, 0, 200],
-          getElevation: 0,
-          pickable: false,
-          parameters: { depthTest: false },
-        }) : null,
+       //(!is3D && highlightCells.length > 0) ? new GridCellLayer({
+          //id: "grid-cells-top10",
+          //data: highlightCells,
+          //cellSize,
+          //getPosition: (d) => d.position,
+          //getFillColor: [255, 140, 0, 200],
+          //getElevation: 0,
+          //pickable: false,
+          //parameters: { depthTest: false },
+        //}) : null,
 
         // ④ グリッド線
         new LineLayer({
