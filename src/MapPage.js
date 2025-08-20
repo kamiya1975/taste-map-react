@@ -410,19 +410,9 @@ function App() {
         pickingRadius={8}
         layers={[
           ...ratingCircleLayers,
-          new GridCellLayer({
-            id: "grid-cells",
-            data: cells,
-            cellSize,
-            getPosition: (d) => d.position,
-            getFillColor: (d) =>
-              d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
-            getElevation: 0,
-            pickable: false,
-          }),
           // ★ 濃淡オレンジのヒートブロック
           new GridCellLayer({
-            id: "grid-cells",
+            id: "grid-cells-heat",
             data: cells,
             cellSize,
             getPosition: (d) => d.position,
@@ -430,18 +420,19 @@ function App() {
               const c = d.count || 0;
               if (c === 0) return [0, 0, 0, 0];             // ← データ無しセルは完全透明（背景が暗くならない）
               const tRaw  = Math.min(1, c / (maxCellCount || 1));
-              const gamma = 0.7;                            // ← 0.5〜0.8 で調整（小さいほど濃淡がはっきり）
+              const gamma = 0.6;                            // ← 0.5〜0.8 で調整（小さいほど濃淡がはっきり）
               const t = Math.pow(tRaw, gamma);
-              const low  = [255, 245, 235];                 // ← もっと明るい薄オレンジ（#FFF5EB）
-              const high = [255, 120,  0];                  // ← 明るい強めオレンジ（#FF7800 近辺）
+              const low  = [255, 250, 245];    // さらに明るい薄オレンジ
+              const high = [255, 105,  0];     // 明るく鮮やかなオレンジ
               const r = Math.round(low[0] + (high[0] - low[0]) * t);
               const g = Math.round(low[1] + (high[1] - low[1]) * t);
               const b = Math.round(low[2] + (high[2] - low[2]) * t);
-              const a = Math.round(30 + 210 * t);           // ← 30〜240 に拡大（透明度レンジでコントラスト強化）
+              const a = Math.round(20 + 230 * t); // 透明度レンジ拡大でコントラストUP
               return [r, g, b, a];
             },
             getElevation: 0,
             pickable: false,
+            parameters: { depthTest: false }, // 上に確実に描く（任意）
             updateTriggers: { getFillColor: [maxCellCount] },
           }),
           // 2D時: 上位10%ブロックをオレンジで重ね描き
