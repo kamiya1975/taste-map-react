@@ -128,8 +128,9 @@ function App() {
   const gridInterval = cellSize;
 
   // セルindex/中心/キー（浮動小数誤差を避ける）
-  const toIndex = (v) => Math.floor((v + cellSize / 2) / cellSize);
-  const toCenter = (i) => i * cellSize;
+  const EPS = 1e-9;
+  const toIndex = (v) => Math.floor((v + EPS) / cellSize);         // 境界ごとにbin割当
+  const toCenter = (i) => (i + 0.5) * cellSize;                     // 中心は「境界+半セル」
   const keyOf = (ix, iy) => `${ix},${iy}`;
 
   // === HeatMapの見え方（平均PCの色/濃淡） ===
