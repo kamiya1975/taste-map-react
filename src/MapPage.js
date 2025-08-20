@@ -1,16 +1,24 @@
 import React, { useEffect, useState, useMemo } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView, COORDINATE_SYSTEM } from "@deck.gl/core";
-import { ScatterplotLayer, ColumnLayer, LineLayer, TextLayer, GridCellLayer, PathLayer } from "@deck.gl/layers";
+import {
+  ScatterplotLayer,
+  ColumnLayer,
+  LineLayer,
+  TextLayer,
+  GridCellLayer,
+  PathLayer,
+} from "@deck.gl/layers";
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-// import CircleRatingDisplay from "./components/CircleRatingDisplay"; // 未使用ならコメントアウト
+// import CircleRatingDisplay from "./components/CircleRatingDisplay"; // 使っていないので一旦外します
 
 function App() {
   const location = useLocation();
   const [data, setData] = useState([]);
   const [is3D, setIs3D] = useState(false);
+
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
     rotationX: 0,
@@ -31,26 +39,27 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [highlight2D, setHighlight2D] = useState("");
 
-  // 選択中JAN（選択中はオレンジ表示）
+  // 商品ドロワーと選択中JAN
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
 
   const ZOOM_LIMITS = { minZoom: 4.0, maxZoom: 10.0 };
 
-  // ---------- 共通ユーティリティ ----------
+  // ---- ユーティリティ（ここを強化） ----
   const clampTarget = (tIn) => {
     const t = Array.isArray(tIn) ? tIn : [0, 0, 0];
-    const x = Math.max(-15, Math.min(15, t[0] ?? 0));
-    const y = Math.max(-15, Math.min(15, t[1] ?? 0));
-    const z = t[2] ?? 0;
-    return [x, y, z];
+    return [
+      Math.max(-15, Math.min(15, t[0] ?? 0)),
+      Math.max(-15, Math.min(15, t[1] ?? 0)),
+      t[2] ?? 0,
+    ];
   };
-  const mergeViewStateSafe = (vs, prev) => {
-    const next = vs && typeof vs === "object" ? vs : {};
+  const mergeViewStateSafe = (next, prev) => {
     const p = prev && typeof prev === "object" ? prev : {};
-    const target = clampTarget(next.target ?? p.target);
-    const zoom = Number.isFinite(next.zoom) ? next.zoom : (Number.isFinite(p.zoom) ? p.zoom : 5);
-    return { ...p, ...next, target, zoom };
+    const n = next && typeof next === "object" ? next : {};
+    const target = clampTarget(n.target ?? p.target);
+    const zoom = Number.isFinite(n.zoom) ? n.zoom : (Number.isFinite(p.zoom) ? p.zoom : 5);
+    return { ...p, ...n, target, zoom };
   };
   const toViewY = (y) => (is3D ? y : -y);
 
@@ -142,9 +151,9 @@ function App() {
   const HEAT_ALPHA_MIN = 96;
   const HEAT_ALPHA_MAX = 230;
   const HEAT_GAMMA = 0.8;
-  const HEAT_CLIP_PCT = [0.05, 0.95]; // 外れ値クリップ
-  const MIN_COUNT_FOR_HEAT = 1;       // この件数未満のセルは非表示
-  const COUNT_CLIP = 4;               // 件数が少ないセルは薄く
+  const HEAT_CLIP_PCT = [0.05, 0.95];
+  const MIN_COUNT_FOR_HEAT = 1;
+  const COUNT_CLIP = 4;
 
   // オレンジ段階色
   const ORANGE_GRADIENT = [
@@ -181,15 +190,19 @@ function App() {
     return { thinLines: thin, thickLines: thick };
   }, [gridInterval]);
 
-  // ヒートブロック（ヒート非表示時のグレー背景にも使う集計）
+  // セル集計（ヒート非表示のグレー背景にも使用）
   const cells = useMemo(() => {
     const map = new Map();
     data.forEach((d) => {
       const x = Math.floor(d.BodyAxis / cellSize) * cellSize;
       const y = Math.floor(toViewY(d.SweetAxis) / cellSize) * cellSize;
       const key = `${x},${y}`;
-      if (!map.has(key)) map.set(key, { position: [x, y], count: 0, hasRating: false });
-      if (userRatings[d.JAN]) map.get(key).hasRating = true;
+      if (!map.has(key)) {
+        map.set(key, { position: [x, y, 0], count: 0, hasRating: false });
+      }
+      if (userRatings[d.JAN]) {
+        map.get(key).hasRating = true;
+      }
       map.get(key).count += 1;
     });
     return Array.from(map.values());
@@ -199,8 +212,8 @@ function App() {
   const { heatCells, heatKey } = useMemo(() => {
     if (is3D || !highlight2D) return { heatCells: [], heatKey: "empty" };
 
-    const sumMap = new Map(); // key -> PC合計
-    const cntMap = new Map(); // key -> 件数
+    const sumMap = new Map();
+    const cntMap = new Map();
 
     for (const d of data) {
       const v = Number(d[highlight2D]); // PC1 or PC2
@@ -218,7 +231,7 @@ function App() {
       if (count < MIN_COUNT_FOR_HEAT) continue;
       const avg = sum / count;
       const [xs, ys] = key.split(",");
-      samples.push({ position: [Number(xs), Number(ys)], avg, count });
+      samples.push({ position: [Number(xs), Number(ys), 0], avg, count });
     }
     if (samples.length === 0) return { heatCells: [], heatKey: "none" };
 
@@ -242,14 +255,13 @@ function App() {
     return { heatCells: heat, heatKey: key };
   }, [data, highlight2D, is3D, cellSize]);
 
-  // 商品ドロワーを開く
   const openProductDrawer = (jan) => {
     setSelectedJAN(jan);
     setProductDrawerOpen(true);
   };
 
-  // クリック位置から最近傍ワインを検索
-  const findNearestWine = (coord /* [x,y] */) => {
+  // クリック位置から最近傍ワイン
+  const findNearestWine = (coord) => {
     if (!Array.isArray(coord) || coord.length < 2 || !Array.isArray(data) || data.length === 0) return null;
     const [cx, cy] = coord;
     let best = null, bestD2 = Infinity;
@@ -264,7 +276,7 @@ function App() {
     return best;
   };
 
-  // メインレイヤ（2D/3D）
+  // メインレイヤ
   const mainLayer = useMemo(() => {
     if (is3D) {
       return new ColumnLayer({
@@ -274,9 +286,12 @@ function App() {
         radius: 0.03,
         extruded: true,
         elevationScale: 2,
-        getPosition: (d) => [d.BodyAxis, d.SweetAxis],
+        getPosition: (d) => [d.BodyAxis, d.SweetAxis, 0],
         getElevation: (d) => (zMetric ? Number(d[zMetric]) || 0 : 0),
-        getFillColor: (d) => (String(d.JAN) === String(selectedJAN) ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other)),
+        getFillColor: (d) =>
+          String(d.JAN) === String(selectedJAN)
+            ? ORANGE
+            : (typeColorMap[d.Type] || typeColorMap.Other),
         updateTriggers: { getFillColor: [selectedJAN] },
         pickable: true,
         onClick: null,
@@ -286,7 +301,10 @@ function App() {
       id: "scatter",
       data,
       getPosition: (d) => [d.BodyAxis, toViewY(d.SweetAxis), 0],
-      getFillColor: (d) => (String(d.JAN) === String(selectedJAN) ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other)),
+      getFillColor: (d) =>
+        String(d.JAN) === String(selectedJAN)
+          ? ORANGE
+          : (typeColorMap[d.Type] || typeColorMap.Other),
       updateTriggers: { getFillColor: [selectedJAN] },
       radiusUnits: "meters",
       getRadius: 0.03,
@@ -312,7 +330,7 @@ function App() {
           const radius = radiusBase * (i + 1);
           const x = item.BodyAxis + Math.cos(angle) * radius;
           const y = toViewY(item.SweetAxis) + Math.sin(angle) * radius;
-          return [x, y];
+          return [x, y, 0];
         });
         path.push(path[0]);
         return new PathLayer({
@@ -324,6 +342,7 @@ function App() {
           widthUnits: "pixels",
           parameters: { depthTest: false },
           pickable: false,
+          coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         });
       });
     });
@@ -374,6 +393,7 @@ function App() {
           fontFamily: '"Helvetica Neue", Arial, sans-serif',
           characterSet: "0123456789",
           parameters: { depthTest: false },
+          coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         })
       : null;
 
@@ -382,7 +402,7 @@ function App() {
     ? new ScatterplotLayer({
         id: "slider-mark",
         data: [sliderMarkCoords],
-        getPosition: (d) => [d[0], is3D ? d[1] : -d[1], 0],
+        getPosition: (d) => [d[0] ?? 0, (is3D ? d[1] : -d[1]) ?? 0, 0],
         getFillColor: [255, 0, 0, 180],
         getRadius: 0.25,
         radiusUnits: "meters",
@@ -394,7 +414,12 @@ function App() {
   return (
     <div style={{ position: "absolute", top: 0, left: 0, margin: 0, padding: 0, width: "100%", height: "100%" }}>
       <DeckGL
-        views={is3D ? new OrbitView({ near: 0.1, far: 1000 }) : new OrthographicView({ near: -1, far: 1 })}
+        // 2D/3Dそれぞれ別IDのビューを使う（内部状態の衝突回避）
+        views={
+          is3D
+            ? [new OrbitView({ id: "orbit", near: 0.1, far: 1000 })]
+            : [new OrthographicView({ id: "ortho", near: -1, far: 1 })]
+        }
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => {
           setViewState((prev) => mergeViewStateSafe(vs, prev));
@@ -409,7 +434,10 @@ function App() {
         }}
         onClick={(info) => {
           const picked = info?.object;
-          if (picked?.JAN) { openProductDrawer(picked.JAN); return; }
+          if (picked?.JAN) {
+            openProductDrawer(picked.JAN);
+            return;
+          }
           const coord = info?.coordinate;
           const nearest = findNearestWine(coord);
           if (nearest?.JAN) openProductDrawer(nearest.JAN);
@@ -436,7 +464,7 @@ function App() {
           (!is3D && highlight2D)
             ? new GridCellLayer({
                 id: `grid-cells-heat-${highlight2D}-${heatKey}`,
-                data: heatCells, // すでに color を持つ
+                data: heatCells, // color を持つ
                 cellSize,
                 getPosition: (d) => d.position,
                 getFillColor: (d) => d.color,
@@ -487,7 +515,6 @@ function App() {
         </select>
       )}
 
-      {/* 2D: ハイライトのプルダウン（左上） */}
       {!is3D && (
         <select
           value={highlight2D}
@@ -574,7 +601,7 @@ function App() {
         </button>
       )}
 
-      {/* 評価切替 ★ボタン（番号ラベルの表示ON/OFF） */}
+      {/* 評価切替 ★ボタン */}
       {!is3D && (
         <button
           onClick={() => {
@@ -662,11 +689,21 @@ function App() {
           </button>
         </div>
 
-        <h2 style={{ textAlign: "center", fontSize: "20px", marginBottom: "24px" }}>基準のワインを飲んだ印象は？</h2>
+        <h2 style={{ textAlign: "center", fontSize: "20px", marginBottom: "24px" }}>
+          基準のワインを飲んだ印象は？
+        </h2>
 
         {/* 甘味スライダー */}
         <div style={{ marginBottom: "32px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: "bold", marginBottom: "6px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "14px",
+              fontWeight: "bold",
+              marginBottom: "6px",
+            }}
+          >
             <span>← こんなに甘みは不要</span>
             <span>もっと甘みが欲しい →</span>
           </div>
@@ -691,7 +728,15 @@ function App() {
 
         {/* コクスライダー */}
         <div style={{ marginBottom: "32px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: "bold", marginBottom: "6px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "14px",
+              fontWeight: "bold",
+              marginBottom: "6px",
+            }}
+          >
             <span>← もっと軽やかが良い</span>
             <span>濃厚なコクが欲しい →</span>
           </div>
@@ -773,13 +818,33 @@ function App() {
       >
         <h3 style={{ marginTop: 0 }}>ユーザー設定</h3>
         <div style={{ marginBottom: "20px" }}>
-          <button onClick={() => alert("ニックネーム変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>ニックネーム変更</button>
-          <button onClick={() => alert("パスワード変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>パスワード変更</button>
-          <button onClick={() => alert("お気に入り店舗設定へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>お気に入り店舗管理</button>
-          <button onClick={() => alert("利用規約を表示")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>利用規約・プライバシーポリシー</button>
-          <button onClick={() => alert("アプリの使い方説明を表示")} style={{ width: "100%", padding: "10px" }}>アプリの使い方</button>
+          <button onClick={() => alert("ニックネーム変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+            ニックネーム変更
+          </button>
+          <button onClick={() => alert("パスワード変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+            パスワード変更
+          </button>
+          <button onClick={() => alert("お気に入り店舗設定へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+            お気に入り店舗管理
+          </button>
+          <button onClick={() => alert("利用規約を表示")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+            利用規約・プライバシーポリシー
+          </button>
+          <button onClick={() => alert("アプリの使い方説明を表示")} style={{ width: "100%", padding: "10px" }}>
+            アプリの使い方
+          </button>
         </div>
-        <button onClick={() => setIsSettingsOpen(false)} style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer", width: "100%" }}>
+        <button
+          onClick={() => setIsSettingsOpen(false)}
+          style={{
+            background: "#eee",
+            border: "1px solid #ccc",
+            padding: "6px 10px",
+            borderRadius: "4px",
+            cursor: "pointer",
+            width: "100%",
+          }}
+        >
           閉じる
         </button>
       </Drawer>
@@ -787,27 +852,61 @@ function App() {
       {/* ★ 評価一覧パネル */}
       <RatedWinePanel
         isOpen={isRatingListOpen}
-        onClose={() => { setIsRatingListOpen(false); setShowRatingDates(false); }}
+        onClose={() => {
+          setIsRatingListOpen(false);
+          setShowRatingDates(false);
+        }}
         userRatings={userRatings}
         data={data}
         sortedRatedWineList={sortedRatedWineList ?? []}
       />
 
-      {/* 商品ページドロワー（/products/:JAN） */}
+      {/* 商品ページドロワー */}
       <Drawer
         anchor="bottom"
         open={productDrawerOpen}
         onClose={() => setProductDrawerOpen(false)}
-        PaperProps={{ style: { width: "100%", height: "100vh", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", overflow: "hidden" } }}
+        PaperProps={{
+          style: {
+            width: "100%",
+            height: "100vh",
+            borderTopLeftRadius: "12px",
+            borderTopRightRadius: "12px",
+            overflow: "hidden",
+          },
+        }}
       >
-        <div style={{ height: "48px", padding: "8px 12px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f9f9f9" }}>
+        <div
+          style={{
+            height: "48px",
+            padding: "8px 12px",
+            borderBottom: "1px solid #eee",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "#f9f9f9",
+          }}
+        >
           <div style={{ fontWeight: 600 }}>商品ページ</div>
-          <button onClick={() => setProductDrawerOpen(false)} style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}>
+          <button
+            onClick={() => setProductDrawerOpen(false)}
+            style={{
+              background: "#eee",
+              border: "1px solid #ccc",
+              padding: "6px 10px",
+              borderRadius: "4px",
+              cursor: "pointer",
+            }}
+          >
             閉じる
           </button>
         </div>
         {selectedJAN ? (
-          <iframe title={`product-${selectedJAN}`} src={`/products/${selectedJAN}`} style={{ border: "none", width: "100%", height: "calc(100vh - 48px)" }} />
+          <iframe
+            title={`product-${selectedJAN}`}
+            src={`/products/${selectedJAN}`}
+            style={{ border: "none", width: "100%", height: "calc(100vh - 48px)" }}
+          />
         ) : (
           <div style={{ padding: 16 }}>商品を選択してください。</div>
         )}
@@ -820,7 +919,10 @@ function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineLis
   const displayList = useMemo(() => {
     if (!Array.isArray(sortedRatedWineList)) return [];
     const total = sortedRatedWineList.length;
-    return sortedRatedWineList.map((item, idx) => ({ ...item, displayIndex: total - idx }));
+    return sortedRatedWineList.map((item, idx) => ({
+      ...item,
+      displayIndex: total - idx,
+    }));
   }, [sortedRatedWineList]);
 
   return (
@@ -844,26 +946,66 @@ function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineLis
             borderTopRightRadius: "12px",
             display: "flex",
             flexDirection: "column",
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            fontFamily:
+              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
           }}
         >
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid #ddd", background: "#f9f9f9", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div
+            style={{
+              padding: "12px 16px",
+              borderBottom: "1px solid #ddd",
+              background: "#f9f9f9",
+              flexShrink: 0,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <h3 style={{ margin: 0 }}>あなたが評価したワイン</h3>
-            <button onClick={onClose} style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}>
+            <button
+              onClick={onClose}
+              style={{
+                background: "#eee",
+                border: "1px solid #ccc",
+                padding: "6px 10px",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
               閉じる
             </button>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", backgroundColor: "#fff" }}>
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "12px 16px",
+              backgroundColor: "#fff",
+            }}
+          >
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {displayList.map((item, idx) => (
                 <li
                   key={idx}
                   onClick={() => window.open(`/products/${item.JAN}`, "_blank")}
-                  style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}
+                  style={{
+                    padding: "10px 0",
+                    borderBottom: "1px solid #eee",
+                    cursor: "pointer",
+                  }}
                 >
                   <div>
-                    <strong style={{ display: "inline-block", color: "rgb(50, 50, 50)", fontSize: "16px", fontWeight: "bold", marginRight: "4px", fontFamily: '"Helvetica Neue", Arial, sans-serif' }}>
+                    <strong
+                      style={{
+                        display: "inline-block",
+                        color: "rgb(50, 50, 50)",
+                        fontSize: "16px",
+                        fontWeight: "bold",
+                        marginRight: "4px",
+                        fontFamily: '"Helvetica Neue", Arial, sans-serif',
+                      }}
+                    >
                       {item.displayIndex}.
                     </strong>
                     <span style={{ fontSize: "15px", color: "#555" }}>
@@ -873,9 +1015,11 @@ function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineLis
                     {item.商品名 || "（名称不明）"}
                   </div>
                   <small>
-                    Type: {item.Type || "不明"} / 価格: {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
+                    Type: {item.Type || "不明"} / 価格:{" "}
+                    {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
                     <br />
-                    Body: {item.BodyAxis?.toFixed(2)}, Sweet: {item.SweetAxis?.toFixed(2)} / 星評価: {item.rating ?? "なし"}
+                    Body: {item.BodyAxis?.toFixed(2)}, Sweet: {item.SweetAxis?.toFixed(2)} / 星評価:{" "}
+                    {item.rating ?? "なし"}
                   </small>
                 </li>
               ))}
