@@ -12,8 +12,9 @@ import {
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-// import CircleRatingDisplay from "./components/CircleRatingDisplay"; // 使っていないので一旦外します
+import CircleRatingDisplay from "./components/CircleRatingDisplay";
 
+// ========= App =========
 function App() {
   const location = useLocation();
   const [data, setData] = useState([]);
@@ -28,6 +29,7 @@ function App() {
     maxZoom: 10.0,
   });
   const [saved2DViewState, setSaved2DViewState] = useState(null);
+
   const [zMetric, setZMetric] = useState("");
   const [userRatings, setUserRatings] = useState({});
   const [isSliderOpen, setIsSliderOpen] = useState(false);
@@ -39,35 +41,36 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [highlight2D, setHighlight2D] = useState("");
 
-  // 商品ドロワーと選択中JAN
+  // 商品ドロワー
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
 
   const ZOOM_LIMITS = { minZoom: 4.0, maxZoom: 10.0 };
 
-  // ---- ユーティリティ（ここを強化） ----
-  const clampTarget = (tIn) => {
-    const t = Array.isArray(tIn) ? tIn : [0, 0, 0];
-    return [
-      Math.max(-15, Math.min(15, t[0] ?? 0)),
-      Math.max(-15, Math.min(15, t[1] ?? 0)),
-      t[2] ?? 0,
-    ];
-  };
+  // ===== helpers (安全な配列/ビュー状態マージ) =====
+  const asArr3 = (v) =>
+    Array.isArray(v) ? [v[0] ?? 0, v[1] ?? 0, v[2] ?? 0] : [0, 0, 0];
+
   const mergeViewStateSafe = (next, prev) => {
     const p = prev && typeof prev === "object" ? prev : {};
     const n = next && typeof next === "object" ? next : {};
-    const target = clampTarget(n.target ?? p.target);
-    const zoom = Number.isFinite(n.zoom) ? n.zoom : (Number.isFinite(p.zoom) ? p.zoom : 5);
+    const target = asArr3(n.target ?? p.target);
+    const zoom = Number.isFinite(n.zoom)
+      ? n.zoom
+      : Number.isFinite(p.zoom)
+      ? p.zoom
+      : 5;
     return { ...p, ...n, target, zoom };
   };
-  const toViewY = (y) => (is3D ? y : -y);
 
+  // ===== location.state 経由でのスライダー自動オープン =====
   useEffect(() => {
-    if (location.state?.autoOpenSlider) setIsSliderOpen(true);
+    if (location.state?.autoOpenSlider) {
+      setIsSliderOpen(true);
+    }
   }, [location.state]);
 
-  // userRatings を常時同期
+  // ===== userRatings 同期 =====
   useEffect(() => {
     const syncUserRatings = () => {
       const stored = localStorage.getItem("userRatings");
@@ -88,7 +91,11 @@ function App() {
     };
   }, []);
 
-  // UMAP+PCA を読み込み（UMAP1→BodyAxis, UMAP2→SweetAxis）
+  useEffect(() => {
+    localStorage.setItem("userRatings", JSON.stringify(userRatings));
+  }, [userRatings]);
+
+  // ===== データ読み込み =====
   useEffect(() => {
     const url = `${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`;
     fetch(url)
@@ -104,8 +111,8 @@ function App() {
             return {
               JAN: String(r.JAN ?? ""),
               Type: r.Type ?? "Other",
-              BodyAxis: Number(r.UMAP1),   // x軸
-              SweetAxis: Number(r.UMAP2),  // y軸
+              BodyAxis: Number(r.UMAP1), // x軸
+              SweetAxis: Number(r.UMAP2), // y軸
               PC1: Number(r.PC1),
               PC2: Number(r.PC2),
               PC3: Number(r.PC3),
@@ -132,10 +139,7 @@ function App() {
       });
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("userRatings", JSON.stringify(userRatings));
-  }, [userRatings]);
-
+  // ===== 表示系の定数 =====
   const typeColorMap = {
     White: [150, 150, 150],
     Red: [150, 150, 150],
@@ -146,8 +150,9 @@ function App() {
   const ORANGE = [255, 140, 0];
   const gridInterval = 0.2;
   const cellSize = 0.2;
+  const toViewY = (y) => (is3D ? y : -y);
 
-  // ヒートの見え方（オレンジ系）
+  // ===== ヒートの見え方（オレンジ系） =====
   const HEAT_ALPHA_MIN = 96;
   const HEAT_ALPHA_MAX = 230;
   const HEAT_GAMMA = 0.8;
@@ -155,7 +160,7 @@ function App() {
   const MIN_COUNT_FOR_HEAT = 1;
   const COUNT_CLIP = 4;
 
-  // オレンジ段階色
+  // オレンジ段階色（明→濃）
   const ORANGE_GRADIENT = [
     [255, 243, 224],
     [255, 204, 128],
@@ -171,26 +176,38 @@ function App() {
     const f = pos - i;
     const c0 = stops[i];
     const c1 = stops[Math.min(i + 1, n)];
-    return [Math.round(lerp(c0[0], c1[0], f)), Math.round(lerp(c0[1], c1[1], f)), Math.round(lerp(c0[2], c1[2], f))];
+    return [
+      Math.round(lerp(c0[0], c1[0], f)),
+      Math.round(lerp(c0[1], c1[1], f)),
+      Math.round(lerp(c0[2], c1[2], f)),
+    ];
   };
 
-  // グリッド線
+  // ===== グリッド線 =====
   const { thinLines, thickLines } = useMemo(() => {
     const thin = [];
     const thick = [];
     for (let i = -500; i <= 500; i++) {
       const x = i * gridInterval;
-      const xLine = { sourcePosition: [x, -100, 0], targetPosition: [x, 100, 0] };
-      if (i % 5 === 0) thick.push(xLine); else thin.push(xLine);
+      const xLine = {
+        sourcePosition: [x, -100, 0],
+        targetPosition: [x, 100, 0],
+      };
+      if (i % 5 === 0) thick.push(xLine);
+      else thin.push(xLine);
 
       const y = i * gridInterval;
-      const yLine = { sourcePosition: [-100, y, 0], targetPosition: [100, y, 0] };
-      if (i % 5 === 0) thick.push(yLine); else thin.push(yLine);
+      const yLine = {
+        sourcePosition: [-100, y, 0],
+        targetPosition: [100, y, 0],
+      };
+      if (i % 5 === 0) thick.push(yLine);
+      else thin.push(yLine);
     }
     return { thinLines: thin, thickLines: thick };
   }, [gridInterval]);
 
-  // セル集計（ヒート非表示のグレー背景にも使用）
+  // ===== セル集計（点の存在/件数） =====
   const cells = useMemo(() => {
     const map = new Map();
     data.forEach((d) => {
@@ -198,7 +215,7 @@ function App() {
       const y = Math.floor(toViewY(d.SweetAxis) / cellSize) * cellSize;
       const key = `${x},${y}`;
       if (!map.has(key)) {
-        map.set(key, { position: [x, y, 0], count: 0, hasRating: false });
+        map.set(key, { position: [x, y], count: 0, hasRating: false });
       }
       if (userRatings[d.JAN]) {
         map.get(key).hasRating = true;
@@ -208,7 +225,7 @@ function App() {
     return Array.from(map.values());
   }, [data, userRatings, is3D]);
 
-  // 平均PC値ヒート（色まで前計算）
+  // ===== 2Dヒート: 平均PC値 → [position,color] 前計算 =====
   const { heatCells, heatKey } = useMemo(() => {
     if (is3D || !highlight2D) return { heatCells: [], heatKey: "empty" };
 
@@ -231,10 +248,11 @@ function App() {
       if (count < MIN_COUNT_FOR_HEAT) continue;
       const avg = sum / count;
       const [xs, ys] = key.split(",");
-      samples.push({ position: [Number(xs), Number(ys), 0], avg, count });
+      samples.push({ position: [Number(xs), Number(ys)], avg, count });
     }
     if (samples.length === 0) return { heatCells: [], heatKey: "none" };
 
+    // クリップして正規化
     const vals = samples.map((s) => s.avg).sort((a, b) => a - b);
     const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
     const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
@@ -247,36 +265,47 @@ function App() {
       t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
       const [r, g, b] = sampleGradient(ORANGE_GRADIENT, t);
       const conf = Math.min(1, s.count / COUNT_CLIP);
-      const a = Math.round((HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t) * (0.6 + 0.4 * conf));
+      const a = Math.round(
+        (HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t) *
+          (0.6 + 0.4 * conf)
+      );
       return { position: s.position, color: [r, g, b, a] };
     });
 
-    const key = `${heat.length}|${lo.toFixed(3)}|${hi.toFixed(3)}|${highlight2D}`;
+    const key = `${heat.length}|${lo.toFixed(3)}|${hi.toFixed(
+      3
+    )}|${highlight2D}`;
     return { heatCells: heat, heatKey: key };
   }, [data, highlight2D, is3D, cellSize]);
 
+  // ===== 商品ドロワー =====
   const openProductDrawer = (jan) => {
     setSelectedJAN(jan);
     setProductDrawerOpen(true);
   };
 
-  // クリック位置から最近傍ワイン
-  const findNearestWine = (coord) => {
-    if (!Array.isArray(coord) || coord.length < 2 || !Array.isArray(data) || data.length === 0) return null;
+  // ===== 最近傍検索 =====
+  const findNearestWine = (coord /* [x,y] */) => {
+    if (!Array.isArray(coord) || coord.length < 2 || data.length === 0)
+      return null;
     const [cx, cy] = coord;
-    let best = null, bestD2 = Infinity;
+    let best = null;
+    let bestD2 = Infinity;
     for (const d of data) {
       const x = d.BodyAxis;
       const y = toViewY(d.SweetAxis);
       const dx = x - cx;
       const dy = y - cy;
       const d2 = dx * dx + dy * dy;
-      if (d2 < bestD2) { bestD2 = d2; best = d; }
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        best = d;
+      }
     }
     return best;
   };
 
-  // メインレイヤ
+  // ===== メインレイヤ（2D/3D） =====
   const mainLayer = useMemo(() => {
     if (is3D) {
       return new ColumnLayer({
@@ -286,35 +315,36 @@ function App() {
         radius: 0.03,
         extruded: true,
         elevationScale: 2,
-        getPosition: (d) => [d.BodyAxis, d.SweetAxis, 0],
+        getPosition: (d) => [d.BodyAxis, d.SweetAxis],
         getElevation: (d) => (zMetric ? Number(d[zMetric]) || 0 : 0),
         getFillColor: (d) =>
           String(d.JAN) === String(selectedJAN)
             ? ORANGE
-            : (typeColorMap[d.Type] || typeColorMap.Other),
+            : typeColorMap[d.Type] || typeColorMap.Other,
         updateTriggers: { getFillColor: [selectedJAN] },
         pickable: true,
         onClick: null,
       });
+    } else {
+      return new ScatterplotLayer({
+        id: "scatter",
+        data,
+        getPosition: (d) => [d.BodyAxis, toViewY(d.SweetAxis), 0],
+        getFillColor: (d) =>
+          String(d.JAN) === String(selectedJAN)
+            ? ORANGE
+            : typeColorMap[d.Type] || typeColorMap.Other,
+        updateTriggers: { getFillColor: [selectedJAN] },
+        radiusUnits: "meters",
+        getRadius: 0.03,
+        pickable: true,
+        onClick: null,
+        coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
+      });
     }
-    return new ScatterplotLayer({
-      id: "scatter",
-      data,
-      getPosition: (d) => [d.BodyAxis, toViewY(d.SweetAxis), 0],
-      getFillColor: (d) =>
-        String(d.JAN) === String(selectedJAN)
-          ? ORANGE
-          : (typeColorMap[d.Type] || typeColorMap.Other),
-      updateTriggers: { getFillColor: [selectedJAN] },
-      radiusUnits: "meters",
-      getRadius: 0.03,
-      pickable: true,
-      onClick: null,
-      coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-    });
   }, [data, is3D, zMetric, selectedJAN]);
 
-  // 評価サークル（◎）
+  // ===== 評価サークル（◎） =====
   const ratingCircleLayers = useMemo(() => {
     const lineColor = [255, 0, 0, 255];
     return Object.entries(userRatings).flatMap(([jan, ratingObj]) => {
@@ -329,8 +359,8 @@ function App() {
           const angle = (j / angleSteps) * 2 * Math.PI;
           const radius = radiusBase * (i + 1);
           const x = item.BodyAxis + Math.cos(angle) * radius;
-          const y = toViewY(item.SweetAxis) + Math.sin(angle) * radius;
-          return [x, y, 0];
+          const y = toViewY(-toViewY(item.SweetAxis)) + Math.sin(angle) * radius; // = is3D?item.SweetAxis:-item.SweetAxis
+          return [x, y];
         });
         path.push(path[0]);
         return new PathLayer({
@@ -342,13 +372,12 @@ function App() {
           widthUnits: "pixels",
           parameters: { depthTest: false },
           pickable: false,
-          coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         });
       });
     });
   }, [data, userRatings, is3D]);
 
-  // 評価日番号ラベル（★トグル）
+  // ===== 評価日番号ラベル =====
   const sortedRatedWineList = useMemo(() => {
     if (!Array.isArray(data)) return [];
     return Object.entries(userRatings)
@@ -376,9 +405,12 @@ function App() {
       ? new TextLayer({
           id: "rating-index-labels",
           data: sortedRatedWineList.map((item) => {
-            const y = toViewY(item.SweetAxis);
+            const y = is3D ? item.SweetAxis : -item.SweetAxis;
             const z = is3D ? (Number(item[zMetric]) || 0) + 0.1 : 0;
-            return { position: [item.BodyAxis, y, z], text: String(displayIndexMap[item.JAN] ?? "?") };
+            return {
+              position: [item.BodyAxis, y, z],
+              text: String(displayIndexMap[item.JAN] ?? "?"),
+            };
           }),
           getPosition: (d) => d.position,
           getText: (d) => d.text,
@@ -393,16 +425,18 @@ function App() {
           fontFamily: '"Helvetica Neue", Arial, sans-serif',
           characterSet: "0123456789",
           parameters: { depthTest: false },
-          coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
         })
       : null;
 
-  // スライダーで打点表示
+  // ===== スライダーマーク =====
   const sliderMarkLayer = sliderMarkCoords
     ? new ScatterplotLayer({
         id: "slider-mark",
         data: [sliderMarkCoords],
-        getPosition: (d) => [d[0] ?? 0, (is3D ? d[1] : -d[1]) ?? 0, 0],
+        getPosition: (d) => {
+          const a = Array.isArray(d) ? d : [0, 0];
+          return [a[0] ?? 0, is3D ? (a[1] ?? 0) : -(a[1] ?? 0), 0];
+        },
         getFillColor: [255, 0, 0, 180],
         getRadius: 0.25,
         radiusUnits: "meters",
@@ -411,18 +445,38 @@ function App() {
       })
     : null;
 
+  // ===== JSX =====
   return (
-    <div style={{ position: "absolute", top: 0, left: 0, margin: 0, padding: 0, width: "100%", height: "100%" }}>
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        margin: 0,
+        padding: 0,
+        width: "100%",
+        height: "100%",
+      }}
+    >
       <DeckGL
-        // 2D/3Dそれぞれ別IDのビューを使う（内部状態の衝突回避）
         views={
           is3D
-            ? [new OrbitView({ id: "orbit", near: 0.1, far: 1000 })]
-            : [new OrthographicView({ id: "ortho", near: -1, far: 1 })]
+            ? new OrbitView({ near: 0.1, far: 1000 })
+            : new OrthographicView({ near: -1, far: 1 })
         }
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => {
-          setViewState((prev) => mergeViewStateSafe(vs, prev));
+          setViewState((prev) => {
+            // DeckGL が欠落させることがある target/zoom を安全に補う
+            const merged = mergeViewStateSafe(vs, prev);
+            const t = merged.target;
+            const limitedTarget = [
+              Math.max(-15, Math.min(15, t[0] ?? 0)),
+              Math.max(-15, Math.min(15, t[1] ?? 0)),
+              t[2] ?? 0,
+            ];
+            return { ...merged, target: limitedTarget };
+          });
         }}
         controller={{
           dragPan: true,
@@ -433,81 +487,97 @@ function App() {
           maxZoom: ZOOM_LIMITS.maxZoom,
         }}
         onClick={(info) => {
-          const picked = info?.object;
-          if (picked?.JAN) {
+          const picked = info && info.object;
+          if (picked && picked.JAN) {
             openProductDrawer(picked.JAN);
             return;
           }
-          const coord = info?.coordinate;
+          const coord = Array.isArray(info && info.coordinate)
+            ? info.coordinate
+            : null;
+          if (!coord) return; // 座標が無いケースを防御
           const nearest = findNearestWine(coord);
-          if (nearest?.JAN) openProductDrawer(nearest.JAN);
+          if (nearest && nearest.JAN) openProductDrawer(nearest.JAN);
         }}
         pickingRadius={8}
-        layers={[
-          ...ratingCircleLayers,
+        layers={
+          [
+            ...ratingCircleLayers,
 
-          // ① ベースのグレー層（ヒート非表示のときだけ）
-          (!is3D && !highlight2D)
-            ? new GridCellLayer({
+            // ① ベースのグレー層
+            !is3D &&
+              !highlight2D &&
+              new GridCellLayer({
                 id: "grid-cells-base",
                 data: cells,
                 cellSize,
-                getPosition: (d) => d.position,
-                getFillColor: (d) => (d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40]),
+                getPosition: (d) =>
+                  Array.isArray(d?.position) ? d.position : [0, 0],
+                getFillColor: (d) =>
+                  d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
                 getElevation: 0,
                 pickable: false,
                 coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-              })
-            : null,
+              }),
 
-          // ② 平均PC値ヒート（2D & プルダウン選択時のみ）
-          (!is3D && highlight2D)
-            ? new GridCellLayer({
+            // ② 平均PC値ヒート（2D & プルダウン選択時のみ）
+            !is3D &&
+              highlight2D &&
+              new GridCellLayer({
                 id: `grid-cells-heat-${highlight2D}-${heatKey}`,
-                data: heatCells, // color を持つ
+                data: heatCells, // {position, color}
                 cellSize,
-                getPosition: (d) => d.position,
-                getFillColor: (d) => d.color,
+                getPosition: (d) =>
+                  Array.isArray(d?.position) ? d.position : [0, 0],
+                getFillColor: (d) => d.color || [0, 0, 0, 0],
                 pickable: false,
                 parameters: { depthTest: false, blend: true },
+                updateTriggers: { getFillColor: [heatKey] },
                 coordinateSystem: COORDINATE_SYSTEM.CARTESIAN,
-              })
-            : null,
+              }),
 
-          // ④ グリッド線
-          new LineLayer({
-            id: "grid-lines-thin",
-            data: thinLines,
-            getSourcePosition: (d) => d.sourcePosition,
-            getTargetPosition: (d) => d.targetPosition,
-            getColor: [200, 200, 200, 100],
-            getWidth: 1,
-            widthUnits: "pixels",
-            pickable: false,
-          }),
-          new LineLayer({
-            id: "grid-lines-thick",
-            data: thickLines,
-            getSourcePosition: (d) => d.sourcePosition,
-            getTargetPosition: (d) => d.targetPosition,
-            getColor: [180, 180, 180, 120],
-            getWidth: 1.25,
-            widthUnits: "pixels",
-            pickable: false,
-          }),
+            // ④ グリッド線
+            new LineLayer({
+              id: "grid-lines-thin",
+              data: thinLines,
+              getSourcePosition: (d) => d.sourcePosition,
+              getTargetPosition: (d) => d.targetPosition,
+              getColor: [200, 200, 200, 100],
+              getWidth: 1,
+              widthUnits: "pixels",
+              pickable: false,
+            }),
+            new LineLayer({
+              id: "grid-lines-thick",
+              data: thickLines,
+              getSourcePosition: (d) => d.sourcePosition,
+              getTargetPosition: (d) => d.targetPosition,
+              getColor: [180, 180, 180, 120],
+              getWidth: 1.25,
+              widthUnits: "pixels",
+              pickable: false,
+            }),
 
-          // ⑤ 打点・その他
-          mainLayer,
-          sliderMarkLayer,
-          ratingDateLayer,
-        ]}
+            // ⑤ 打点・その他
+            mainLayer,
+            sliderMarkLayer,
+            ratingDateLayer,
+          ].filter(Boolean) // ← null を除去して安全に
+        }
       />
 
       {is3D && (
         <select
           value={zMetric}
           onChange={(e) => setZMetric(e.target.value)}
-          style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}
+          style={{
+            position: "absolute",
+            top: "10px",
+            left: "10px",
+            zIndex: 1,
+            padding: "6px",
+            fontSize: "14px",
+          }}
         >
           <option value="">ー</option>
           <option value="PC2">甘味</option>
@@ -519,7 +589,14 @@ function App() {
         <select
           value={highlight2D}
           onChange={(e) => setHighlight2D(e.target.value)}
-          style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}
+          style={{
+            position: "absolute",
+            top: "10px",
+            left: "10px",
+            zIndex: 1,
+            padding: "6px",
+            fontSize: "14px",
+          }}
         >
           <option value="">ー</option>
           <option value="PC2">甘味</option>
@@ -536,7 +613,7 @@ function App() {
             setViewState((prev) =>
               mergeViewStateSafe(
                 {
-                  target: [prev?.target?.[0] ?? 0, prev?.target?.[1] ?? 0, 0],
+                  target: asArr3(prev?.target),
                   zoom: Number.isFinite(prev?.zoom) ? prev.zoom : 5,
                   rotationX: 45,
                   rotationOrbit: 0,
@@ -546,7 +623,8 @@ function App() {
               )
             );
           } else {
-            const base = saved2DViewState ?? { target: [0, 0, 0], zoom: 5 };
+            const base =
+              saved2DViewState ?? { target: [0, 0, 0], zoom: 5, ...ZOOM_LIMITS };
             setViewState((prev) =>
               mergeViewStateSafe(
                 { ...base, rotationX: 0, rotationOrbit: 0, ...ZOOM_LIMITS },
@@ -571,7 +649,6 @@ function App() {
         {is3D ? "2D" : "3D"}
       </button>
 
-      {/* 2Dモード時の丸ボタン（スライダー表示） */}
       {!is3D && (
         <button
           onClick={() => {
@@ -601,7 +678,6 @@ function App() {
         </button>
       )}
 
-      {/* 評価切替 ★ボタン */}
       {!is3D && (
         <button
           onClick={() => {
@@ -631,7 +707,6 @@ function App() {
         </button>
       )}
 
-      {/* 設定（⚙） */}
       <button
         onClick={() => setIsSettingsOpen(true)}
         style={{
@@ -774,20 +849,29 @@ function App() {
 
             const sweetValue =
               sweetness <= 50
-                ? blendF.SweetAxis - ((50 - sweetness) / 50) * (blendF.SweetAxis - minSweet)
-                : blendF.SweetAxis + ((sweetness - 50) / 50) * (maxSweet - blendF.SweetAxis);
+                ? blendF.SweetAxis -
+                  ((50 - sweetness) / 50) * (blendF.SweetAxis - minSweet)
+                : blendF.SweetAxis +
+                  ((sweetness - 50) / 50) * (maxSweet - blendF.SweetAxis);
 
             const bodyValue =
               body <= 50
-                ? blendF.BodyAxis - ((50 - body) / 50) * (blendF.BodyAxis - minBody)
-                : blendF.BodyAxis + ((body - 50) / 50) * (maxBody - blendF.BodyAxis);
+                ? blendF.BodyAxis -
+                  ((50 - body) / 50) * (blendF.BodyAxis - minBody)
+                : blendF.BodyAxis +
+                  ((body - 50) / 50) * (maxBody - blendF.BodyAxis);
 
             const coords = [bodyValue, -sweetValue];
             setSliderMarkCoords(coords);
             setIsSliderOpen(false);
             setViewState((prev) =>
               mergeViewStateSafe(
-                { target: [coords[0], coords[1] + 5.5, 0], zoom: 4.5, ...ZOOM_LIMITS },
+                {
+                  ...prev,
+                  target: [coords[0] ?? 0, (coords[1] ?? 0) + 5.5, 0],
+                  zoom: 4.5,
+                  ...ZOOM_LIMITS,
+                },
                 prev
               )
             );
@@ -814,23 +898,40 @@ function App() {
         anchor="left"
         open={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        PaperProps={{ style: { width: "300px", padding: "20px", boxSizing: "border-box" } }}
+        PaperProps={{
+          style: { width: "300px", padding: "20px", boxSizing: "border-box" },
+        }}
       >
         <h3 style={{ marginTop: 0 }}>ユーザー設定</h3>
         <div style={{ marginBottom: "20px" }}>
-          <button onClick={() => alert("ニックネーム変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+          <button
+            onClick={() => alert("ニックネーム変更画面へ")}
+            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
+          >
             ニックネーム変更
           </button>
-          <button onClick={() => alert("パスワード変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+          <button
+            onClick={() => alert("パスワード変更画面へ")}
+            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
+          >
             パスワード変更
           </button>
-          <button onClick={() => alert("お気に入り店舗設定へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+          <button
+            onClick={() => alert("お気に入り店舗設定へ")}
+            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
+          >
             お気に入り店舗管理
           </button>
-          <button onClick={() => alert("利用規約を表示")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+          <button
+            onClick={() => alert("利用規約を表示")}
+            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
+          >
             利用規約・プライバシーポリシー
           </button>
-          <button onClick={() => alert("アプリの使い方説明を表示")} style={{ width: "100%", padding: "10px" }}>
+          <button
+            onClick={() => alert("アプリの使い方説明を表示")}
+            style={{ width: "100%", padding: "10px" }}
+          >
             アプリの使い方
           </button>
         </div>
@@ -915,7 +1016,14 @@ function App() {
   );
 } // App end
 
-function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineList }) {
+// ========= RatedWinePanel =========
+function RatedWinePanel({
+  isOpen,
+  onClose,
+  userRatings,
+  data,
+  sortedRatedWineList,
+}) {
   const displayList = useMemo(() => {
     if (!Array.isArray(sortedRatedWineList)) return [];
     const total = sortedRatedWineList.length;
@@ -1009,17 +1117,21 @@ function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineLis
                       {item.displayIndex}.
                     </strong>
                     <span style={{ fontSize: "15px", color: "#555" }}>
-                      {item.date ? new Date(item.date).toLocaleDateString() : "（日付不明）"}
+                      {item.date
+                        ? new Date(item.date).toLocaleDateString()
+                        : "（日付不明）"}
                     </span>
                     <br />
                     {item.商品名 || "（名称不明）"}
                   </div>
                   <small>
                     Type: {item.Type || "不明"} / 価格:{" "}
-                    {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
+                    {item.希望小売価格
+                      ? `¥${item.希望小売価格.toLocaleString()}`
+                      : "不明"}
                     <br />
-                    Body: {item.BodyAxis?.toFixed(2)}, Sweet: {item.SweetAxis?.toFixed(2)} / 星評価:{" "}
-                    {item.rating ?? "なし"}
+                    Body: {item.BodyAxis?.toFixed(2)}, Sweet:{" "}
+                    {item.SweetAxis?.toFixed(2)} / 星評価: {item.rating ?? "なし"}
                   </small>
                 </li>
               ))}
