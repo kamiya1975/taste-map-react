@@ -30,8 +30,8 @@ function App() {
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // ▼ 2Dヒートマップの対象（初期表示：甘味=PC2）
-  const [highlight2D, setHighlight2D] = useState("PC2");
+  // ▼ 2Dヒートマップの対象（初期表示：ー）
+  const [highlight2D, setHighlight2D] = useState("");
 
   // 商品ドロワーと選択中JAN（選択中はオレンジ表示）
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
@@ -128,8 +128,8 @@ function App() {
   const gridInterval = cellSize;
 
   // セルindex/中心/キー（浮動小数誤差を避ける）
-  const toIndex = (v) => Math.floor(v / cellSize);
-  const toCenter = (i) => (i + 0.5) * cellSize;
+  const toIndex = (v) => Math.floor((v + cellSize / 2) / cellSize);
+  const toCenter = (i) => i * cellSize;
   const keyOf = (ix, iy) => `${ix},${iy}`;
 
   // === HeatMapの見え方（平均PCの色/濃淡） ===
