@@ -127,6 +127,7 @@ function App() {
   const HEAT_ALPHA_MIN = 96;    // 最低でも見える透明度
   const HEAT_ALPHA_MAX = 230;   // 濃い時の最大透明度
   const HEAT_GAMMA     = 0.80;  // 濃淡カーブ（0.6〜0.9で調整）
+  const HEAT_CLIP_PCT  = [0.05, 0.95]; // 5〜95%で外れ値をクリップして正規化
 
   // オレンジの段階色（Material Orange をベース）
   const ORANGE_GRADIENT = [
