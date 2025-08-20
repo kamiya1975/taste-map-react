@@ -123,6 +123,7 @@ function App() {
 
   const gridInterval = 0.2;
   const cellSize = 0.2;
+  const TOP_HIGHLIGHT_N = 10; // 上位N本をハイライト
 
   // グリッド線
   const { thinLines, thickLines } = useMemo(() => {
@@ -158,40 +159,37 @@ function App() {
     return Array.from(map.values());
   }, [data, userRatings, is3D]);
 
-  // 2D: PC1/PC2 の上位10%を含むブロックを計算（セルキーの Set）
-  const top10CellKeys = useMemo(() => {
-   if (is3D || !highlight2D) return new Set();
-   const vals = data
-     .map((d) => Number(d[highlight2D]))
-     .filter((v) => Number.isFinite(v))
-     .sort((a, b) => a - b);
-   if (vals.length === 0) return new Set();
+  // 2D: PC1/PC2 の「上位10本（ワイン数）」が入るセルキー集合と、そのセル内の上位本数カウント
+  const { top10CellKeys, topCountsMap } = useMemo(() => {
+    if (is3D || !highlight2D) return { top10CellKeys: new Set(), topCountsMap: new Map() };
+    // metric = PC1 (甘味) or PC2 (ボディ)
+    const topRows = data
+      .map(d => ({ row: d, v: Number(d[highlight2D]) }))
+      .filter(x => Number.isFinite(x.v))
+      .sort((a, b) => b.v - a.v)                 // 値の大きい順
+      .slice(0, TOP_HIGHLIGHT_N)
+      .map(x => x.row);
 
-   // 上位10%しきい値（p90）
-   const idx = Math.floor(0.9 * (vals.length - 1));
-   const thr = vals[idx];
-   const set = new Set();
-   for (const d of data) {
-     const v = Number(d[highlight2D]);
-     if (!Number.isFinite(v) || v < thr) continue;
-     const x = Math.floor(d.BodyAxis / cellSize) * cellSize;
-     const y = Math.floor((-d.SweetAxis) / cellSize) * cellSize; // 2DはY反転
-     set.add(`${x},${y}`);
-   }
-   return set;
+    const set = new Set();
+    const map = new Map(); // key -> 上位本数（そのセルに含まれる上位ワインの数）
+
+    for (const r of topRows) {
+      const x = Math.floor(r.BodyAxis / cellSize) * cellSize;
+      const y = Math.floor((-r.SweetAxis) / cellSize) * cellSize; // 2DはY反転
+      const key = `${x},${y}`;
+      set.add(key);
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    return { top10CellKeys: set, topCountsMap: map };
   }, [data, highlight2D, is3D, cellSize]);
 
-  // 上位10%セルだけの p90 を計算（濃淡の正規化用）
+  // 上位セル（= top10CellKeys）における「上位本数」の p90（濃淡正規化用）
   const p90Top10Count = useMemo(() => {
-    if (!top10CellKeys.size) return 1;
-    const list = cells
-      .filter(c => top10CellKeys.has(`${c.position[0]},${c.position[1]}`))
-      .map(c => c.count || 0)
-      .sort((a,b)=>a-b);
-    if (list.length === 0) return 1;
-    const idx = Math.floor(0.9 * (list.length - 1));
-    return Math.max(1, list[idx]);
-  }, [cells, top10CellKeys]);
+    const counts = Array.from(topCountsMap.values()).sort((a, b) => a - b);
+    if (counts.length === 0) return 1;
+    const idx = Math.floor(0.9 * (counts.length - 1));
+    return Math.max(1, counts[idx]);
+  }, [topCountsMap]);
 
   // updateTriggers 安定化用（Setは参照比較になるため）
   const top10Signature = useMemo(
@@ -444,28 +442,27 @@ function App() {
           getPosition: (d) => d.position,
           getFillColor: (d) => {
             const key = `${d.position[0]},${d.position[1]}`;
-            // ← 上位10%以外は完全透明にしてベースだけ見せる
+            // 上位10本が入るセル以外は透明
             if (!top10CellKeys.has(key)) return [0, 0, 0, 0];
 
-            const c = d.count || 0;
-            // 1件を最薄、p90(上位セル内)で頭打ち
+            // そのセルに含まれる「上位本数」で濃淡を決める
+             const c = topCountsMap.get(key) || 0;
+
+            // 1本を最薄、p90 で頭打ち
             const denom = Math.max(2, p90Top10Count);
             const tRaw = Math.min(1, (c - 1) / (denom - 1));
-            const t = Math.pow(tRaw, 0.6);   // 濃淡カーブ（0.5〜0.6で調整）
+            const t = Math.pow(tRaw, 0.6);   // 濃淡カーブ
 
-            // ほぼ白 → 明るいオレンジの間で補間（下のグレーを活かす）
+            // ほぼ白 → 明るいオレンジ
             const low  = [255, 255, 255];
             const high = [255, 90,   0];
             const r = Math.round(low[0] + (high[0] - low[0]) * t);
             const g = Math.round(low[1] + (high[1] - low[1]) * t);
             const b = Math.round(low[2] + (high[2] - low[2]) * t);
-            const a = Math.round(0 + 300 * t); // α控えめ
+            const a = Math.round(0 + 300 * t);
 
             return [r, g, b, a];
           },
-          getElevation: 0,
-          pickable: false,
-          parameters: { depthTest: false },
           updateTriggers: { getFillColor: [p90Top10Count, top10Signature] },
         }) : null,
 
