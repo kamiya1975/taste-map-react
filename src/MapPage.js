@@ -124,22 +124,20 @@ function App() {
   const cellSize = 0.2;
   
   // ヒートの見え方（オレンジ系）
-  const HEAT_ALPHA_MIN = 96;    // 最低でも見える透明度
-  const HEAT_ALPHA_MAX = 230;   // 濃い時の最大透明度
-  const HEAT_GAMMA     = 0.80;  // 濃淡カーブ（0.6〜0.9で調整）
-  const HEAT_CLIP_PCT  = [0.05, 0.95]; // 5〜95%で外れ値をクリップして正規化
-  const COUNT_CLIP     = 4;     // 件数が少ないセルを薄くする閾値
-
-  // オレンジの段階色（Material Orange をベース）
+  const HEAT_ALPHA_MIN = 96;
+  const HEAT_ALPHA_MAX = 230;
+  const HEAT_GAMMA     = 0.80;
+  const HEAT_CLIP_PCT  = [0.05, 0.95]; // 外れ値クリップ
+  const MIN_COUNT_FOR_HEAT = 1;        // この件数未満のセルは非表示
+  const COUNT_CLIP     = 4;            // 件数が少ないセルは薄く
+  // オレンジ段階色
   const ORANGE_GRADIENT = [
-    [255, 243, 224], // #FFF3E0  very light
-    [255, 204, 128], // #FFCC80  light
-    [255, 183,  77], // #FFB74D  mid (添付寄り)
-    [251, 140,   0], // #FB8C00  vivid
-    [239, 108,   0], // #EF6C00  deep
+    [255, 243, 224],
+    [255, 204, 128],
+    [255, 183,  77],
+    [251, 140,   0],
+    [239, 108,   0],
   ];
-
-  // 線形補間ヘルパー
   const lerp = (a, b, t) => a + (b - a) * t;
   const sampleGradient = (stops, t) => {
     const n = stops.length - 1;
@@ -152,7 +150,7 @@ function App() {
       Math.round(lerp(c0[0], c1[0], f)),
       Math.round(lerp(c0[1], c1[1], f)),
       Math.round(lerp(c0[2], c1[2], f)),
-  ];
+    ];
   };
 
   // グリッド線
@@ -189,9 +187,9 @@ function App() {
     return Array.from(map.values());
   }, [data, userRatings, is3D]);
 
-  // 2D: セルごとの平均PC値を描画用配列に整形（データがあるセルだけを描画）
-  const { heatCells, vMin, vMax, avgHash } = useMemo(() => {
-    if (is3D || !highlight2D) return { heatCells: [], vMin: 0, vMax: 1, avgHash: "empty" };
+  // 2D: セルごとの平均PC値 → 0..1 に正規化した t を前計算（描画用に最適化）
+  const { heatCells, avgHash } = useMemo(() => {
+    if (is3D || !highlight2D) return { heatCells: [], avgHash: "empty" };
 
     const sumMap = new Map(); // key -> PC合計
     const cntMap = new Map(); // key -> 件数
@@ -199,39 +197,43 @@ function App() {
     for (const d of data) {
       const v = Number(d[highlight2D]); // PC1 or PC2
       if (!Number.isFinite(v)) continue;
-
-      // 2DはY反転でセル分け
       const x = Math.floor(d.BodyAxis / cellSize) * cellSize;
-      const y = Math.floor((-d.SweetAxis) / cellSize) * cellSize;
+      const y = Math.floor((-d.SweetAxis) / cellSize) * cellSize; // 2DはY反転
       const key = `${x},${y}`;
-
       sumMap.set(key, (sumMap.get(key) || 0) + v);
       cntMap.set(key, (cntMap.get(key) || 0) + 1);
     }
 
-    const vals = [];
-    const cellsArr = [];
+    // データが入ったセルだけ抽出
+    const samples = [];
     for (const [key, sum] of sumMap.entries()) {
-      const count = cntMap.get(key) || 1;
+      const count = cntMap.get(key) || 0;
+      if (count < MIN_COUNT_FOR_HEAT) continue; // 件数閾値
       const avg = sum / count;
-      vals.push(avg);
       const [xs, ys] = key.split(",");
-      cellsArr.push({ position: [Number(xs), Number(ys)], avg, count });
+      samples.push({ position: [Number(xs), Number(ys)], avg, count });
     }
+    if (samples.length === 0) return { heatCells: [], avgHash: "none" };
 
-    if (vals.length === 0) return { heatCells: [], vMin: 0, vMax: 1, avgHash: "none" };
-
-    vals.sort((a, b) => a - b);
+    // 平均PCの分布をパーセンタイルでクリップ
+    const vals = samples.map(s => s.avg).sort((a,b)=>a-b);
     const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
     const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
     const lo = vals[loIdx];
     const hi = vals[hiIdx];
-    const epsHi = (hi - lo) < 1e-9 ? lo + 1e-9 : hi; // 発散対策
+    const den = Math.max(1e-9, hi - lo);
 
-    // DeckGLのupdateTriggers用に、内容が変わったことを表す簡易ハッシュ
-    const hash = `${cellsArr.length}|${lo.toFixed(3)}|${epsHi.toFixed(3)}|${highlight2D}`;
+    // t を前計算（0..1, ガンマ補正込み）
+    const heat = samples.map(s => {
+      let t = (s.avg - lo) / den;
+      t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
+      return { ...s, t };
+    });
 
-    return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
+    // DeckGLのトリガー用ハッシュ
+    const hash = `${heat.length}|${lo.toFixed(3)}|${hi.toFixed(3)}|${highlight2D}`;
+
+    return { heatCells: heat, avgHash: hash };
   }, [data, highlight2D, is3D, cellSize]);
 
   // 商品ドロワーを開く
@@ -463,28 +465,25 @@ function App() {
 
         // ② 平均PC値ヒート（2D & プルダウン選択時のみ）
         (!is3D && highlight2D) ? new GridCellLayer({
-          id: `grid-cells-heat-${highlight2D}`, // idにもmetricを含めて再生成を明確に
-          data: heatCells,                      // ← cells ではなく heatCells を使う
+          id: `grid-cells-heat-${highlight2D}-${avgHash}`, // ← idにhashも入れて確実に再生成
+          data: heatCells,                                  // 事前計算済みの d.t を使用
           cellSize,
           getPosition: (d) => d.position,
           getFillColor: (d) => {
-            // 0..1 に正規化 → ガンマ補正
-            let t = (d.avg - vMin) / (vMax - vMin);
-            t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
-
             // オレンジ系グラデーション
-            const [r, g, b] = sampleGradient(ORANGE_GRADIENT, t);
+            const [r, g, b] = sampleGradient(ORANGE_GRADIENT, d.t);
 
-            // 件数が少ないセルは少し薄く（ノイズ抑制）
-            const conf = Math.min(1, d.count / COUNT_CLIP); // 1〜4本で0.25→1に上昇
-            const baseA = HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t;
-            const a = Math.round(baseA * (0.6 + 0.4 * conf)); // 60%〜100%の範囲に
-
+            // 件数が少ないセルは薄く（1〜4本で0.6→1.0へ）
+            const conf = Math.min(1, d.count / COUNT_CLIP);
+            const a = Math.round(
+              (HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * d.t) * (0.6 + 0.4 * conf)
+            );
             return [r, g, b, a];
           },
           pickable: false,
           parameters: { depthTest: false },
-          updateTriggers: { getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash] },
+          // d.t や d.count は data に含まれているのでトリガーは hash のみで十分
+          updateTriggers: { getFillColor: [avgHash] },
         }) : null,
 
         // ④ グリッド線
