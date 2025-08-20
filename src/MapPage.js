@@ -158,6 +158,12 @@ function App() {
     return Array.from(map.values());
   }, [data, userRatings, is3D]);
 
+  // ★ 追加：セル内件数の最大値（濃淡の正規化に使用）
+  const maxCellCount = useMemo(() => {
+    if (!cells || cells.length === 0) return 1;
+    return cells.reduce((m, c) => Math.max(m, c.count || 0), 1);
+  }, [cells]);
+
   // 2D: PC1/PC2 の上位10%を含むブロックを計算（セルキーの Set）
   const top10CellKeys = useMemo(() => {
     if (is3D || !highlight2D) return new Set();
@@ -414,6 +420,28 @@ function App() {
             getElevation: 0,
             pickable: false,
           }),
+          // ★ 濃淡オレンジのヒートブロック
+          new GridCellLayer({
+            id: "grid-cells",
+            data: cells,
+            cellSize,
+            getPosition: (d) => d.position,
+            // 件数が多いセルほど濃く・不透明に
+            getFillColor: (d) => {
+              const t = Math.min(1, (d.count || 0) / (maxCellCount || 1)); // 0..1
+              const low  = [255, 224, 178]; // 薄いオレンジ（#FFE0B2）
+              const high = [255, 140,   0]; // 濃いオレンジ（#FF8C00）
+              const r = Math.round(low[0] + (high[0] - low[0]) * t);
+              const g = Math.round(low[1] + (high[1] - low[1]) * t);
+              const b = Math.round(low[2] + (high[2] - low[2]) * t);
+              const a = Math.round(80 + 140 * t);       // 80〜220 のアルファ
+              return [r, g, b, a];
+            },
+            getElevation: 0,
+            pickable: false,
+            // maxCellCount 変化で再評価
+            updateTriggers: { getFillColor: [maxCellCount] },
+          }),
           // 2D時: 上位10%ブロックをオレンジで重ね描き
           (!is3D && highlightCells.length > 0) ? new GridCellLayer({
             id: "grid-cells-top10",
@@ -425,6 +453,7 @@ function App() {
             pickable: false,
             parameters: { depthTest: false }, // 上に描く
           }) : null,
+          
           new LineLayer({
             id: "grid-lines-thin",
             data: thinLines,
@@ -477,9 +506,9 @@ function App() {
           onChange={(e) => setHighlight2D(e.target.value)}
           style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}
         >
-          <option value="">（2Dハイライト）ー</option>
-          <option value="PC1">甘味（PC2）上位10%</option>
-          <option value="PC2">ボディ（PC1）上位10%</option>
+          <option value="">ー</option>
+          <option value="PC1">甘味（上位10%）</option>
+          <option value="PC2">ボディ（上位10%）</option>
         </select>
       )}
 
