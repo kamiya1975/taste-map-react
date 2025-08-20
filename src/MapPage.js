@@ -166,6 +166,7 @@ function App() {
       .filter((v) => Number.isFinite(v))
       .sort((a, b) => a - b);
     if (vals.length === 0) return new Set();
+    const idxHi = Math.floor(0.9 * (vals.length - 1)); // 上位10%しきい値
     const idx = Math.floor(0.9 * (vals.length - 1)); // 上位10%しきい値（p90）
     const thr = vals[idx];
     const set = new Set();
@@ -477,8 +478,8 @@ function App() {
           style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}
         >
           <option value="">（2Dハイライト）ー</option>
-          <option value="PC1">ボディ（PC1）上位10%</option>
-          <option value="PC2">甘味（PC2）上位10%</option>
+          <option value="PC1">甘味（PC2）上位10%</option>
+          <option value="PC2">ボディ（PC1）上位10%</option>
         </select>
       )}
 
