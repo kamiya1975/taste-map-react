@@ -196,7 +196,12 @@ function App() {
         getPosition: (d) => [d.BodyAxis, d.SweetAxis],
         getElevation: (d) => (zMetric ? Number(d[zMetric]) || 0 : 0),
         getFillColor: (d) =>
-          d.JAN === selectedJAN ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other),
+          String(d.JAN) === String(selectedJAN)
+            ? ORANGE
+            : (typeColorMap[d.Type] || typeColorMap.Other),
+        updateTriggers: {
+          getFillColor: [selectedJAN],   // 念のため3D側も
+        },
         pickable: true,
         onClick: null, // クリック処理は DeckGL 側で一元化
       });
@@ -206,7 +211,12 @@ function App() {
         data,
         getPosition: (d) => [d.BodyAxis, -d.SweetAxis, 0],
         getFillColor: (d) =>
-          String(d.JAN) === String(selectedJAN) ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other),
+          String(d.JAN) === String(selectedJAN)
+            ? ORANGE
+            : (typeColorMap[d.Type] || typeColorMap.Other),
+        updateTriggers: {
+          getFillColor: [selectedJAN],
+        },
         radiusUnits: "meters",
         getRadius: 0.03,
         pickable: true,
