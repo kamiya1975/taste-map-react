@@ -158,36 +158,27 @@ function App() {
     return Array.from(map.values());
   }, [data, userRatings, is3D]);
 
-  // ★ 追加：セル内件数の最大値（濃淡の正規化に使用）
-  const p90CellCount = useMemo(() => {
-    const arr = (cells || [])
-      .map(c => c.count || 0)
-      .sort((a,b)=>a-b);
-    if (arr.length === 0) return 1;
-    const idx = Math.floor(0.9 * (arr.length - 1));
-    return Math.max(1, arr[idx]);
-  }, [cells]);
-
   // 2D: PC1/PC2 の上位10%を含むブロックを計算（セルキーの Set）
   const top10CellKeys = useMemo(() => {
-    if (is3D || !highlight2D) return new Set();
-    const vals = data
-      .map((d) => Number(d[highlight2D]))
-      .filter((v) => Number.isFinite(v))
-      .sort((a, b) => a - b);
-    if (vals.length === 0) return new Set();
-    const idxHi = Math.floor(0.9 * (vals.length - 1)); // 上位10%しきい値
-    const idx = Math.floor(0.9 * (vals.length - 1)); // 上位10%しきい値（p90）
-    const thr = vals[idx];
-    const set = new Set();
-    for (const d of data) {
-      const v = Number(d[highlight2D]);
-      if (!Number.isFinite(v) || v < thr) continue;
-      const x = Math.floor(d.BodyAxis / cellSize) * cellSize;
-      const y = Math.floor((-d.SweetAxis) / cellSize) * cellSize; // 2DはY反転
-      set.add(`${x},${y}`);
-    }
-    return set;
+   if (is3D || !highlight2D) return new Set();
+   const vals = data
+     .map((d) => Number(d[highlight2D]))
+     .filter((v) => Number.isFinite(v))
+     .sort((a, b) => a - b);
+   if (vals.length === 0) return new Set();
+
+   // 上位10%しきい値（p90）
+   const idx = Math.floor(0.9 * (vals.length - 1));
+   const thr = vals[idx];
+   const set = new Set();
+   for (const d of data) {
+     const v = Number(d[highlight2D]);
+     if (!Number.isFinite(v) || v < thr) continue;
+     const x = Math.floor(d.BodyAxis / cellSize) * cellSize;
+     const y = Math.floor((-d.SweetAxis) / cellSize) * cellSize; // 2DはY反転
+     set.add(`${x},${y}`);
+   }
+   return set;
   }, [data, highlight2D, is3D, cellSize]);
 
   // 上位10%セルだけの p90 を計算（濃淡の正規化用）
@@ -411,7 +402,7 @@ function App() {
         }}
         controller={{
           dragPan: true,
-          dragRotate: true,
+          dragRotate: is3D,
           minRotationX: 5,
           maxRotationX: 90,
           minZoom: 4.0,
@@ -479,16 +470,16 @@ function App() {
         }) : null,
 
         // ③ 上位10%ブロック
-       //(!is3D && highlightCells.length > 0) ? new GridCellLayer({
-          //id: "grid-cells-top10",
-          //data: highlightCells,
-          //cellSize,
-          //getPosition: (d) => d.position,
-          //getFillColor: [255, 140, 0, 200],
-          //getElevation: 0,
-          //pickable: false,
-          //parameters: { depthTest: false },
-        //}) : null,
+       (!is3D && highlightCells.length > 0) ? new GridCellLayer({
+          id: "grid-cells-top10",
+          data: highlightCells,
+          cellSize,
+          getPosition: (d) => d.position,
+          getFillColor: [255, 140, 0, 200],
+          getElevation: 0,
+          pickable: false,
+          parameters: { depthTest: false },
+        }) : null,
 
         // ④ グリッド線
         new LineLayer({
@@ -533,8 +524,8 @@ function App() {
           }}
         >
           <option value="">ー</option>
-          <option value="PC2">甘味</option>
-          <option value="PC1">ボディ</option>
+          <option value="PC2">ボディ</option>
+          <option value="PC1">甘味</option>
         </select>
       )}
 
@@ -567,8 +558,8 @@ function App() {
           } else {
             setViewState({
               ...saved2DViewState,
-              rotationX: undefined,
-              rotationOrbit: undefined,
+              rotationX: 0,
+              rotationOrbit: 0,
               ...ZOOM_LIMITS,
             });
           }
