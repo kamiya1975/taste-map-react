@@ -190,6 +190,24 @@ function App() {
     return set;
   }, [data, highlight2D, is3D, cellSize]);
 
+  // 上位10%セルだけの p90 を計算（濃淡の正規化用）
+  const p90Top10Count = useMemo(() => {
+    if (!top10CellKeys.size) return 1;
+    const list = cells
+      .filter(c => top10CellKeys.has(`${c.position[0]},${c.position[1]}`))
+      .map(c => c.count || 0)
+      .sort((a,b)=>a-b);
+    if (list.length === 0) return 1;
+    const idx = Math.floor(0.9 * (list.length - 1));
+    return Math.max(1, list[idx]);
+  }, [cells, top10CellKeys]);
+
+  // updateTriggers 安定化用（Setは参照比較になるため）
+  const top10Signature = useMemo(
+    () => Array.from(top10CellKeys).sort().join("|"),
+    [top10CellKeys]
+  );
+
   // ハイライト用セルの配列（GridCellLayer に渡す形）
   const highlightCells = useMemo(() => {
     if (!top10CellKeys.size) return [];
@@ -415,83 +433,91 @@ function App() {
         layers={[
         ...ratingCircleLayers,
 
-  // ① ベースのグレー層（常時）
-  new GridCellLayer({
-    id: "grid-cells-base",
-    data: cells,
-    cellSize,
-    getPosition: (d) => d.position,
-    getFillColor: (d) =>
-      d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
-    getElevation: 0,
-    pickable: false,
-  }),
+        // ① ベースのグレー層（常時）
+        new GridCellLayer({
+          id: "grid-cells-base",
+          data: cells,
+          cellSize,
+          getPosition: (d) => d.position,
+          getFillColor: (d) =>
+            d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
+          getElevation: 0,
+          pickable: false,
+        }),
 
-  // ② 濃淡オレンジ（2D & プルダウン選択時のみ）
-  (!is3D && highlight2D) ? new GridCellLayer({
-    id: "grid-cells-heat",
-    data: cells,
-    cellSize,
-    getPosition: (d) => d.position,
-    getFillColor: (d) => {
-      const c = d.count || 0;
-      if (c === 0) return [0, 0, 0, 0];
-      const tRaw = Math.min(1, c / (p90CellCount || 1)); // p90 で頭打ち
-      const t = Math.pow(tRaw, 0.55);                    // 濃淡カーブ
-      const low  = [255, 255, 255];                      // ほぼ白（下のグレーを活かす）
-      const high = [255, 128,   0];                      // 明るいオレンジ
-      const r = Math.round(low[0] + (high[0] - low[0]) * t);
-      const g = Math.round(low[1] + (high[1] - low[1]) * t);
-      const b = Math.round(low[2] + (high[2] - low[2]) * t);
-      const a = Math.round(0 + 180 * t);
-      return [r, g, b, a];
-    },
-    getElevation: 0,
-    pickable: false,
-    parameters: { depthTest: false },
-    updateTriggers: { getFillColor: [p90CellCount] },
-  }) : null,
+        // ② 上位10%だけを塗るヒート（2D & プルダウン選択時のみ）
+        (!is3D && highlight2D) ? new GridCellLayer({
+          id: "grid-cells-heat",
+          data: cells,
+          cellSize,
+          getPosition: (d) => d.position,
+          getFillColor: (d) => {
+            const key = `${d.position[0]},${d.position[1]}`;
+            // ← 上位10%以外は完全透明にしてベースだけ見せる
+            if (!top10CellKeys.has(key)) return [0, 0, 0, 0];
 
-  // ③ 上位10%ブロック（必要なら）
-  (!is3D && highlightCells.length > 0) ? new GridCellLayer({
-    id: "grid-cells-top10",
-    data: highlightCells,
-    cellSize,
-    getPosition: (d) => d.position,
-    getFillColor: [255, 140, 0, 200],
-    getElevation: 0,
-    pickable: false,
-    parameters: { depthTest: false },
-  }) : null,
+            const c = d.count || 0;
+            // 1件を最薄、p90(上位セル内)で頭打ち
+            const denom = Math.max(2, p90Top10Count);
+            const tRaw = Math.min(1, (c - 1) / (denom - 1));
+            const t = Math.pow(tRaw, 0.55);   // 濃淡カーブ（0.5〜0.6で調整）
 
-  // ④ グリッド線
-  new LineLayer({
-    id: "grid-lines-thin",
-    data: thinLines,
-    getSourcePosition: (d) => d.sourcePosition,
-    getTargetPosition: (d) => d.targetPosition,
-    getColor: [200, 200, 200, 100],
-    getWidth: 1,
-    widthUnits: "pixels",
-    pickable: false,
-  }),
-  new LineLayer({
-    id: "grid-lines-thick",
-    data: thickLines,
-    getSourcePosition: (d) => d.sourcePosition,
-    getTargetPosition: (d) => d.targetPosition,
-    getColor: [180, 180, 180, 120],
-    getWidth: 1.25,
-    widthUnits: "pixels",
-    pickable: false,
-  }),
+            // ほぼ白 → 明るいオレンジの間で補間（下のグレーを活かす）
+            const low  = [255, 255, 255];
+            const high = [255, 128,   0];
+            const r = Math.round(low[0] + (high[0] - low[0]) * t);
+            const g = Math.round(low[1] + (high[1] - low[1]) * t);
+            const b = Math.round(low[2] + (high[2] - low[2]) * t);
+            const a = Math.round(0 + 180 * t); // α控えめ
 
-  // ⑤ 打点・その他
-  mainLayer,
-  sliderMarkLayer,
-  ratingDateLayer,
-]}
-/>
+            return [r, g, b, a];
+          },
+          getElevation: 0,
+          pickable: false,
+          parameters: { depthTest: false },
+          updateTriggers: { getFillColor: [p90Top10Count, top10Signature] },
+        }) : null,
+
+        // ③ 上位10%ブロック（必要なら）
+        (!is3D && highlightCells.length > 0) ? new GridCellLayer({
+          id: "grid-cells-top10",
+          data: highlightCells,
+          cellSize,
+          getPosition: (d) => d.position,
+          getFillColor: [255, 140, 0, 200],
+          getElevation: 0,
+          pickable: false,
+          parameters: { depthTest: false },
+        }) : null,
+
+        // ④ グリッド線
+        new LineLayer({
+          id: "grid-lines-thin",
+          data: thinLines,
+          getSourcePosition: (d) => d.sourcePosition,
+          getTargetPosition: (d) => d.targetPosition,
+          getColor: [200, 200, 200, 100],
+          getWidth: 1,
+          widthUnits: "pixels",
+          pickable: false,
+        }),
+        new LineLayer({
+          id: "grid-lines-thick",
+          data: thickLines,
+          getSourcePosition: (d) => d.sourcePosition,
+          getTargetPosition: (d) => d.targetPosition,
+          getColor: [180, 180, 180, 120],
+          getWidth: 1.25,
+          widthUnits: "pixels",
+          pickable: false,
+        }),
+
+        // ⑤ 打点・その他
+        mainLayer,
+        sliderMarkLayer,
+        ratingDateLayer,
+      ]}
+      />
 
       {is3D && (
         <select
