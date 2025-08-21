@@ -463,8 +463,8 @@ function App() {
               t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
 
               // 明るいクリーム → 濃いオレンジ
-              const low  = [255, 245, 235];
-              const high = [255,  90,   0];
+              const low  = [255, 230, 200];
+              const high = [255,  140,   0];
               const r = Math.round(low[0] + (high[0] - low[0]) * t);
               const g = Math.round(low[1] + (high[1] - low[1]) * t);
               const b = Math.round(low[2] + (high[2] - low[2]) * t);
