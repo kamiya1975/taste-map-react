@@ -457,22 +457,23 @@ function App() {
             data: heatCells,            // ← データがあるセルだけ
             cellSize,
             getPosition: (d) => d.position,
-            getFillColor: (d) => {
+            //getFillColor: (d) => {
               // 0..1 に正規化 → ガンマ補正
-              let t = (d.avg - vMin) / (vMax - vMin);
-              if (!Number.isFinite(t)) t = 0;
-              t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
+              //let t = (d.avg - vMin) / (vMax - vMin);
+              //if (!Number.isFinite(t)) t = 0;
+              //t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
 
               // 明るいクリーム → 濃いオレンジ
-              const low  = [255, 245, 235];
-              const high = [255,  140,   0];
-              const r = Math.round(low[0] + (high[0] - low[0]) * t);
-              const g = Math.round(low[1] + (high[1] - low[1]) * t);
-              const b = Math.round(low[2] + (high[2] - low[2]) * t);
+              //const low  = [255, 245, 235];
+              //const high = [255,  140,   0];
+              //const r = Math.round(low[0] + (high[0] - low[0]) * t);
+              //const g = Math.round(low[1] + (high[1] - low[1]) * t);
+              //const b = Math.round(low[2] + (high[2] - low[2]) * t);
 
-              const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
-              return [r, g, b, a];
-            },
+              //const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
+              //return [r, g, b, a];
+            //},
+            getFillColor: () => [0, 255, 0, 220],
             getElevation: 0,
             pickable: false,
             parameters: { depthTest: false },
