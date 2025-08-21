@@ -460,6 +460,14 @@ function App() {
             cellSize,
             getPosition: (d) => d.position,
             getFillColor: () => [255, 165, 0, 255], // #FFA500 完全不透明
+
+            // ✨ 見え方を暗くする要因を排除
+            extruded: false,             // 立体化オフ（ライティングを避ける）
+            getElevation: 0,             // 念のため明示
+            opacity: 1,                  // 不透明
+            parameters: { depthTest: false }, // 下のレイヤの影響を受けない
+
+            pickable: false
             //getFillColor: (d) => {
               // 0..1 に正規化 → ガンマ補正
               //let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
