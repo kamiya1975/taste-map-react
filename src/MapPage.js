@@ -464,6 +464,7 @@ function App() {
               let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
               if (!Number.isFinite(t)) t = 0;
               t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA))); // ガンマ補正
+              console.log("avg:", d.avg, "t:", t);
 
               // 線形補間（LOW→HIGH）
               const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t);
