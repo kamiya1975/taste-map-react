@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
 import { ScatterplotLayer, ColumnLayer, LineLayer, TextLayer, GridCellLayer, PathLayer } from "@deck.gl/layers";
@@ -6,7 +6,7 @@ import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import CircleRatingDisplay from "./components/CircleRatingDisplay";
-import { Matrix4 } from '@math.gl/core';
+import { Matrix4 } from "@math.gl/core";
 
 function App() {
   const location = useLocation();
@@ -30,63 +30,24 @@ function App() {
   const [showRatingDates, setShowRatingDates] = useState(false);
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [rotationDeg, setRotationDeg] = useState(0);      // 2Dの地図回転角（度）
-  const rotationRef = useRef({ base: 0, startAngle: 0 }); // ジェスチャ一時保存
+  const [rotationDeg, setRotationDeg] = useState(0); // 2D回転角
+  const rotationRef = useRef({ base: 0, startAngle: 0 }); // ジェスチャ保存
 
-  // 2Dの地図回転
+  // 2Dの地図回転 matrix
   const getSceneModelMatrix = useMemo(() => {
-    if (is3D) return null; // 3Dは未回転
+    if (is3D) return null;
     const cx = viewState.target?.[0] ?? 0;
     const cy = viewState.target?.[1] ?? 0;
     const rad = (rotationDeg * Math.PI) / 180;
-    return new Matrix4()
-      .translate([cx, cy, 0])
-      .rotateZ(rad)
-      .translate([-cx, -cy, 0]);
+    return new Matrix4().translate([cx, cy, 0]).rotateZ(rad).translate([-cx, -cy, 0]);
   }, [is3D, rotationDeg, viewState.target]);
 
   // 角度計算ヘルパ
   const angleBetween = (t0, t1) => {
     const dx = t1.clientX - t0.clientX;
     const dy = t1.clientY - t0.clientY;
-    return Math.atan2(dy, dx); // ラジアン
+    return Math.atan2(dy, dx);
   };
-
-  // DeckGL の上に載せる全画面透明DIVでタッチを拾う
-  <div
-    onTouchStart={(e) => {
-      if (is3D) return;
-      if (e.touches.length === 2) {
-        const a = angleBetween(e.touches[0], e.touches[1]);
-        rotationRef.current = { base: rotationDeg, startAngle: a };
-      }
-    }}
-    onTouchMove={(e) => {
-      if (is3D) return;
-      if (e.touches.length === 2) {
-        e.preventDefault(); // スクロール抑止
-        const a = angleBetween(e.touches[0], e.touches[1]);
-        const delta = a - rotationRef.current.startAngle; // ラジアン差
-        setRotationDeg(rotationRef.current.base + (delta * 180) / Math.PI);
-      }
-    }}
-    onTouchEnd={(e) => {
-      if (is3D) return;
-      if (e.touches.length < 2) {
-        // 指が離れたら確定
-        rotationRef.current = { base: rotationDeg, startAngle: 0 };
-      }
-    }}
-    style={{
-      position: 'absolute',
-      inset: 0,
-      zIndex: 2,           // UIボタンより下/上は好みで調整
-      touchAction: 'none', // 必須: ブラウザの既定ジェスチャ無効化
-      background: 'transparent',
-      // クリック阻害が気になる場合は pointerEvents:'none' にして、
-      // 2本指検出だけ DeckGL の onPointerMove で拾う実装に差し替えも可
-    }}
-  />
 
   // ▼ 2Dヒートマップの対象（初期表示：ー）
   const [highlight2D, setHighlight2D] = useState("");
@@ -382,6 +343,7 @@ function App() {
           getWidth: 0.3,
           widthUnits: "pixels",
           parameters: { depthTest: false },
+          modelMatrix: getSceneModelMatrix,
           pickable: false,
         });
       });
@@ -425,6 +387,7 @@ function App() {
           }),
           getPosition: (d) => d.position,
           getText: (d) => d.text,
+          modelMatrix: getSceneModelMatrix,
           getSize: 0.4,
           sizeUnits: "meters",
           sizeMinPixels: 12,
@@ -445,6 +408,7 @@ function App() {
         id: "slider-mark",
         data: [sliderMarkCoords],
         getPosition: (d) => [d[0], is3D ? d[1] : -d[1], 0],
+        modelMatrix: getSceneModelMatrix,
         getFillColor: [255, 0, 0, 180],
         getRadius: 0.25,
         radiusUnits: "meters",
@@ -507,6 +471,7 @@ function App() {
             data: cells,
             cellSize,
             getPosition: (d) => d.position,
+            modelMatrix: getSceneModelMatrix,
             getFillColor: (d) => d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
             getElevation: 0,
             pickable: false,
@@ -612,6 +577,38 @@ function App() {
           <option value="PC1">Bady(PC1)</option>
           <option value="PC3">----(PC3)</option>
         </select>
+      )}
+
+      {/* DeckGL の直後に追加 */}
+      {!is3D && (
+        <div
+          onTouchStart={(e) => {
+            if (e.touches.length === 2) {
+              const a = angleBetween(e.touches[0], e.touches[1]);
+              rotationRef.current = { base: rotationDeg, startAngle: a };
+            }
+          }}
+          onTouchMove={(e) => {
+            if (e.touches.length === 2) {
+              e.preventDefault(); // ブラウザ既定のピンチ回避
+              const a = angleBetween(e.touches[0], e.touches[1]);
+              const delta = a - rotationRef.current.startAngle;
+              setRotationDeg(rotationRef.current.base + (delta * 180) / Math.PI);
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (e.touches.length < 2) {
+              rotationRef.current = { base: rotationDeg, startAngle: 0 };
+            }
+           }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 0,          // UIボタン(zIndex:1)より下
+            touchAction: "none",
+            background: "transparent",
+           }}
+        />
       )}
 
       <button
