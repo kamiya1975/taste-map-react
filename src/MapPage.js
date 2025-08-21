@@ -484,7 +484,7 @@ function App() {
                 HEAT_ALPHA_MIN, HEAT_ALPHA_MAX
               ],
             },
-          }) : null
+          }) : null,
 
           // ④ グリッド線
           new LineLayer({
