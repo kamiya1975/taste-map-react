@@ -459,18 +459,19 @@ function App() {
             data: heatCells,            // ← データがあるセルだけ
             cellSize,
             getPosition: (d) => d.position,
-            getFillColor: (d) => {
+            getFillColor: () => [255, 165, 0, 255], // #FFA500 完全不透明
+            //getFillColor: (d) => {
               // 0..1 に正規化 → ガンマ補正
-              let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
-              if (!Number.isFinite(t)) t = 0;
-              t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA))); // ガンマ補正
+              //let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
+              //if (!Number.isFinite(t)) t = 0;
+              //t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA))); // ガンマ補正
 
               // ★テスト: ほぼ最大のセルは絶対オレンジで塗る
-              if (t >= 0.99) return [255, 165, 0, 255]; // #FFA500
+              //if (t >= 0.99) return [255, 165, 0, 255]; // #FFA500
 
               // それ以外は一旦ほぼ透明の白
-              return [255, 255, 255, 0];
-              },
+              //return [255, 255, 255, 0];
+              //},
 
               // 線形補間（LOW→HIGH）
               //console.log("avg:", d.avg, "t:", t);
