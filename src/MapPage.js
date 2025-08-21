@@ -465,26 +465,33 @@ function App() {
               if (!Number.isFinite(t)) t = 0;
               t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA))); // ガンマ補正
 
+              // ★テスト: ほぼ最大のセルは絶対オレンジで塗る
+              if (t >= 0.99) return [255, 165, 0, 255]; // #FFA500
+
+              // それ以外は一旦ほぼ透明の白
+              return [255, 255, 255, 0];
+              },
+
               // 線形補間（LOW→HIGH）
-              console.log("avg:", d.avg, "t:", t);
-              
-              const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t);
-              const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t);
-              const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t);
-              const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
-              return [r, g, b, a];
-            },
-            getElevation: 0,
-            pickable: false,
-            parameters: { depthTest: false },
+              //console.log("avg:", d.avg, "t:", t);
+
+              //const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t);
+              //const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t);
+              //const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t);
+              //const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
+              //return [r, g, b, a];
+            //},
+            //getElevation: 0,
+            //pickable: false,
+            //parameters: { depthTest: false },
             // ← パレットやアルファもトリガーに含め、色変更時に必ず再計算
-            updateTriggers: {
-              getFillColor: [
-                vMin, vMax, HEAT_GAMMA, avgHash,
-                ...HEAT_COLOR_LOW, ...HEAT_COLOR_HIGH,
-                HEAT_ALPHA_MIN, HEAT_ALPHA_MAX
-              ],
-            },
+            //updateTriggers: {
+              //getFillColor: [
+                //vMin, vMax, HEAT_GAMMA, avgHash,
+                //...HEAT_COLOR_LOW, ...HEAT_COLOR_HIGH,
+                //HEAT_ALPHA_MIN, HEAT_ALPHA_MAX
+              //],
+            //},
           }) : null,
 
           // ④ グリッド線
