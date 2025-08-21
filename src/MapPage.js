@@ -30,10 +30,6 @@ function App() {
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // ヒートの色（最小はほぼ白、最大は添付オレンジ）
-  const HEAT_COLOR_LOW  = [255, 245, 235];
-  const HEAT_COLOR_HIGH = [255, 140,   0];
-
   // ▼ 2Dヒートマップの対象（初期表示：ー）
   const [highlight2D, setHighlight2D] = useState("");
 
@@ -138,10 +134,12 @@ function App() {
   const keyOf = (ix, iy) => `${ix},${iy}`;
 
   // === HeatMapの見え方（平均PCの色/濃淡） ===
-  const HEAT_ALPHA_MIN = 72;    // 最低でも見える透明度
-  const HEAT_ALPHA_MAX = 220;   // 最大透明度
-  const HEAT_GAMMA     = 0.80;  // 濃淡カーブ（0.6〜0.9で調整）
-  const HEAT_CLIP_PCT  = [0.05, 0.95]; // 5〜95%で外れ値をクリップ
+  const HEAT_ALPHA_MIN = 32;    // 最低でも見える透明度
+  const HEAT_ALPHA_MAX = 255;   // 最大透明度
+  const HEAT_GAMMA     = 0.65;  // 濃淡カーブ（0.6〜0.9で調整）
+  const HEAT_CLIP_PCT  = [0.00, 0.98]; // 5〜95%で外れ値をクリップ
+  const HEAT_COLOR_LOW  = [255, 255, 255]; // 純白
+  const HEAT_COLOR_HIGH = [255, 165,   0]; // より“オレンジ”に（#FFA500 相当）
 
   // グリッド線（cellSize に同期）
   const { thinLines, thickLines } = useMemo(() => {
