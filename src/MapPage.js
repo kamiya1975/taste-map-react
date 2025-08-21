@@ -532,9 +532,9 @@ function App() {
           }}
         >
           <option value="">ー</option>
-          <option value="PC2">Sweet</option>
-          <option value="PC1">Body</option>
-          <option value="PC3">PC3</option>
+          <option value="PC2">Sweet(PC2)</option>
+          <option value="PC1">Bady(PC1)</option>
+          <option value="PC3">----(PC3)</option>
         </select>
       )}
 
@@ -546,9 +546,9 @@ function App() {
           style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}
         >
           <option value="">ー</option>
-          <option value="PC2">Sweet</option>
-          <option value="PC1">Bady</option>
-          <option value="PC3">PC3</option>
+          <option value="PC2">Sweet(PC2)</option>
+          <option value="PC1">Bady(PC1)</option>
+          <option value="PC3">----(PC3)</option>
         </select>
       )}
 
