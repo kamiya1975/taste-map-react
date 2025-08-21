@@ -534,6 +534,7 @@ function App() {
           <option value="">ー</option>
           <option value="PC2">Sweet</option>
           <option value="PC1">Body</option>
+          <option value="PC3">PC3</option>
         </select>
       )}
 
@@ -547,6 +548,7 @@ function App() {
           <option value="">ー</option>
           <option value="PC2">Sweet</option>
           <option value="PC1">Bady</option>
+          <option value="PC3">PC3</option>
         </select>
       )}
 
