@@ -6,6 +6,7 @@ import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import CircleRatingDisplay from "./components/CircleRatingDisplay";
+import { Matrix4 } from '@math.gl/core';
 
 function App() {
   const location = useLocation();
@@ -29,6 +30,63 @@ function App() {
   const [showRatingDates, setShowRatingDates] = useState(false);
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [rotationDeg, setRotationDeg] = useState(0);      // 2Dの地図回転角（度）
+  const rotationRef = useRef({ base: 0, startAngle: 0 }); // ジェスチャ一時保存
+
+  // 2Dの地図回転
+  const getSceneModelMatrix = useMemo(() => {
+    if (is3D) return null; // 3Dは未回転
+    const cx = viewState.target?.[0] ?? 0;
+    const cy = viewState.target?.[1] ?? 0;
+    const rad = (rotationDeg * Math.PI) / 180;
+    return new Matrix4()
+      .translate([cx, cy, 0])
+      .rotateZ(rad)
+      .translate([-cx, -cy, 0]);
+  }, [is3D, rotationDeg, viewState.target]);
+
+  // 角度計算ヘルパ
+  const angleBetween = (t0, t1) => {
+    const dx = t1.clientX - t0.clientX;
+    const dy = t1.clientY - t0.clientY;
+    return Math.atan2(dy, dx); // ラジアン
+  };
+
+  // DeckGL の上に載せる全画面透明DIVでタッチを拾う
+  <div
+    onTouchStart={(e) => {
+      if (is3D) return;
+      if (e.touches.length === 2) {
+        const a = angleBetween(e.touches[0], e.touches[1]);
+        rotationRef.current = { base: rotationDeg, startAngle: a };
+      }
+    }}
+    onTouchMove={(e) => {
+      if (is3D) return;
+      if (e.touches.length === 2) {
+        e.preventDefault(); // スクロール抑止
+        const a = angleBetween(e.touches[0], e.touches[1]);
+        const delta = a - rotationRef.current.startAngle; // ラジアン差
+        setRotationDeg(rotationRef.current.base + (delta * 180) / Math.PI);
+      }
+    }}
+    onTouchEnd={(e) => {
+      if (is3D) return;
+      if (e.touches.length < 2) {
+        // 指が離れたら確定
+        rotationRef.current = { base: rotationDeg, startAngle: 0 };
+      }
+    }}
+    style={{
+      position: 'absolute',
+      inset: 0,
+      zIndex: 2,           // UIボタンより下/上は好みで調整
+      touchAction: 'none', // 必須: ブラウザの既定ジェスチャ無効化
+      background: 'transparent',
+      // クリック阻害が気になる場合は pointerEvents:'none' にして、
+      // 2本指検出だけ DeckGL の onPointerMove で拾う実装に差し替えも可
+    }}
+  />
 
   // ▼ 2Dヒートマップの対象（初期表示：ー）
   const [highlight2D, setHighlight2D] = useState("");
@@ -281,6 +339,7 @@ function App() {
         id: "scatter",
         data,
         getPosition: (d) => [d.BodyAxis, -d.SweetAxis, 0],
+        modelMatrix: getSceneModelMatrix,
         getFillColor: (d) =>
           String(d.JAN) === String(selectedJAN)
             ? ORANGE
@@ -459,6 +518,7 @@ function App() {
             data: heatCells,            // ← データがあるセルだけ
             cellSize,
             getPosition: (d) => d.position,
+            modelMatrix: getSceneModelMatrix,
             getFillColor: (d) => {
               // 0..1 に正規化 → ガンマ補正
               let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
@@ -495,6 +555,7 @@ function App() {
             data: thinLines,
             getSourcePosition: (d) => d.sourcePosition,
             getTargetPosition: (d) => d.targetPosition,
+            modelMatrix: getSceneModelMatrix,
             getColor: [200, 200, 200, 100],
             getWidth: 1,
             widthUnits: "pixels",
@@ -505,6 +566,7 @@ function App() {
             data: thickLines,
             getSourcePosition: (d) => d.sourcePosition,
             getTargetPosition: (d) => d.targetPosition,
+            modelMatrix: getSceneModelMatrix,
             getColor: [180, 180, 180, 120],
             getWidth: 1.25,
             widthUnits: "pixels",
