@@ -134,10 +134,10 @@ function App() {
   const keyOf = (ix, iy) => `${ix},${iy}`;
 
   // === HeatMapの見え方（平均PCの色/濃淡） ===
-  const HEAT_ALPHA_MIN = 32;    // 最低でも見える透明度
+  const HEAT_ALPHA_MIN = 24;    // 最低でも見える透明度
   const HEAT_ALPHA_MAX = 255;   // 最大透明度
   const HEAT_GAMMA     = 0.65;  // 濃淡カーブ（0.6〜0.9で調整）
-  const HEAT_CLIP_PCT  = [0.00, 0.90]; // 5〜95%で外れ値をクリップ
+  const HEAT_CLIP_PCT  = [0.00, 0.98]; // 5〜95%で外れ値をクリップ
   const HEAT_COLOR_LOW  = [255, 255, 255]; // 純白
   const HEAT_COLOR_HIGH = [255, 165,   0]; // より“オレンジ”に（#FFA500 相当）
 
@@ -459,48 +459,34 @@ function App() {
             data: heatCells,            // ← データがあるセルだけ
             cellSize,
             getPosition: (d) => d.position,
-            getFillColor: () => [255, 165, 0, 255], // #FFA500 完全不透明
-
-            // ✨ 見え方を暗くする要因を排除
-            extruded: false,             // 立体化オフ（ライティングを避ける）
-            getElevation: 0,             // 念のため明示
-            opacity: 1,                  // 不透明
-            parameters: { depthTest: false }, // 下のレイヤの影響を受けない
-
-            pickable: false
-            //getFillColor: (d) => {
+            getFillColor: (d) => {
               // 0..1 に正規化 → ガンマ補正
-              //let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
-              //if (!Number.isFinite(t)) t = 0;
-              //t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA))); // ガンマ補正
-
-              // ★テスト: ほぼ最大のセルは絶対オレンジで塗る
-              //if (t >= 0.99) return [255, 165, 0, 255]; // #FFA500
-
-              // それ以外は一旦ほぼ透明の白
-              //return [255, 255, 255, 0];
-              //},
+              let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
+              if (!Number.isFinite(t)) t = 0;
+              t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA))); // ガンマ補正
 
               // 線形補間（LOW→HIGH）
-              //console.log("avg:", d.avg, "t:", t);
+              const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t);
+              const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t);
+              const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t);
+              const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
+              return [r, g, b, a];
+            },
 
-              //const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t);
-              //const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t);
-              //const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t);
-              //const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
-              //return [r, g, b, a];
-            //},
-            //getElevation: 0,
-            //pickable: false,
-            //parameters: { depthTest: false },
-            // ← パレットやアルファもトリガーに含め、色変更時に必ず再計算
-            //updateTriggers: {
-              //getFillColor: [
-                //vMin, vMax, HEAT_GAMMA, avgHash,
-                //...HEAT_COLOR_LOW, ...HEAT_COLOR_HIGH,
-                //HEAT_ALPHA_MIN, HEAT_ALPHA_MAX
-              //],
-            //},
+            // ✨ 暗くなる要因を回避（固定オレンジで効いた設定を維持）
+            extruded: false,
+            getElevation: 0,
+            opacity: 1,
+            parameters: { depthTest: false },
+
+            pickable: false,
+            updateTriggers: {
+              getFillColor: [
+                vMin, vMax, HEAT_GAMMA, avgHash,
+                ...HEAT_COLOR_LOW, ...HEAT_COLOR_HIGH,
+                HEAT_ALPHA_MIN, HEAT_ALPHA_MAX
+              ],
+            },
           }) : null,
 
           // ④ グリッド線
