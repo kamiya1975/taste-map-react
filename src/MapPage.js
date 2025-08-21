@@ -30,6 +30,10 @@ function App() {
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  // ヒートの色（最小はほぼ白、最大は添付オレンジ）
+  const HEAT_COLOR_LOW  = [255, 245, 235];
+  const HEAT_COLOR_HIGH = [255, 140,   0];
+
   // ▼ 2Dヒートマップの対象（初期表示：ー）
   const [highlight2D, setHighlight2D] = useState("");
 
@@ -453,32 +457,34 @@ function App() {
 
           // ② 平均PC値ヒート（2D & プルダウン選択時のみ）
           (!is3D && highlight2D) ? new GridCellLayer({
-            id: `grid-cells-heat-${highlight2D}`,
+            id: `grid-cells-heat-${highlight2D}-p${HEAT_COLOR_LOW.join("_")}-${HEAT_COLOR_HIGH.join("_")}`,
             data: heatCells,            // ← データがあるセルだけ
             cellSize,
             getPosition: (d) => d.position,
-            //getFillColor: (d) => {
+            getFillColor: (d) => {
               // 0..1 に正規化 → ガンマ補正
-              //let t = (d.avg - vMin) / (vMax - vMin);
-              //if (!Number.isFinite(t)) t = 0;
-              //t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
+              let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
+              if (!Number.isFinite(t)) t = 0;
+              t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA))); // ガンマ補正
 
-              // 明るいクリーム → 濃いオレンジ
-              //const low  = [255, 245, 235];
-              //const high = [255,  140,   0];
-              //const r = Math.round(low[0] + (high[0] - low[0]) * t);
-              //const g = Math.round(low[1] + (high[1] - low[1]) * t);
-              //const b = Math.round(low[2] + (high[2] - low[2]) * t);
-
-              //const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
-              //return [r, g, b, a];
-            //},
-            getFillColor: () => [0, 255, 0, 220],
+              // 線形補間（LOW→HIGH）
+              const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t);
+              const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t);
+              const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
+              return [r, g, b, a];
+            },
             getElevation: 0,
             pickable: false,
             parameters: { depthTest: false },
-            updateTriggers: { getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash, 255,245,235, 255,140,0] },
-          }) : null,
+            // ← パレットやアルファもトリガーに含め、色変更時に必ず再計算
+            updateTriggers: {
+              getFillColor: [
+                vMin, vMax, HEAT_GAMMA, avgHash,
+                ...HEAT_COLOR_LOW, ...HEAT_COLOR_HIGH,
+                HEAT_ALPHA_MIN, HEAT_ALPHA_MAX
+              ],
+            },
+          }) : null
 
           // ④ グリッド線
           new LineLayer({
