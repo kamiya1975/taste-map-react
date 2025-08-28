@@ -203,7 +203,7 @@ export default function ProductPage() {
         style={{
           position: "fixed",
           top: 12,
-          right: 12,
+          left: 12,
           zIndex: 1000,
         }}
       >

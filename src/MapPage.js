@@ -666,7 +666,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
           }}
         >
           <div style={{ padding: "12px 16px", borderBottom: "1px solid #ddd", background: "#f9f9f9", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ margin: 0 }}>あなたのお気に入り</h3>
+            <h3 style={{ margin: 0 }}>お気に入り</h3>
             <button onClick={onClose} style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}>閉じる</button>
           </div>
 
