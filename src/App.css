@@ -154,13 +154,24 @@ body {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-html, body {
+html, body, #root {
   margin: 0;
   padding: 0;
   width: 100vw;
   height: 100vh;
   overflow-x: hidden;
+  background: #fff;          /* ← 追加：常に白 */
 }
+
+  /* イントロ一式も白で固定（最上部が確実に白になるように） */
+  .intro-wrapper,
+  .slides-container,
+  .slide {
+    background: #fff;
+}
+
+  /* iOS でライト系UIを優先させる保険 */
+  :root { color-scheme: light; }
 
 /* App.css */
 input[type="range"]::-webkit-slider-thumb {
