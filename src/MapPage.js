@@ -131,6 +131,7 @@ function App() {
   const EPS = 1e-9;
   const toIndex = (v) => Math.floor((v + EPS) / cellSize);
   const toCorner = (i) => i * cellSize;
+  const toCenter = toCorner;
   const keyOf = (ix, iy) => `${ix},${iy}`;
 
   // === HeatMapの見え方（平均PCの色/濃淡） ===
