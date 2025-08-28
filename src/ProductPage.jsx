@@ -2,13 +2,10 @@ import React, { useEffect, useState } from "react";
 
 /** =========================
  *  ハートボタン（お気に入り）
- *  - localStorage: favorites を更新
- *  - 親（マップ）のAppへ postMessage で通知
  * ========================= */
 function HeartButton({ jan, size = 22 }) {
   const [fav, setFav] = useState(false);
 
-  // 初期読み込み & storage同期
   useEffect(() => {
     const readFav = () => {
       try {
@@ -19,7 +16,6 @@ function HeartButton({ jan, size = 22 }) {
       }
     };
     readFav();
-
     const onStorage = (e) => {
       if (e.key === "favorites") readFav();
     };
@@ -37,7 +33,6 @@ function HeartButton({ jan, size = 22 }) {
     localStorage.setItem("favorites", JSON.stringify(favs));
     setFav(!!favs[jan]);
 
-    // 親（App）へ通知（受け口は既に実装済み）
     window.parent?.postMessage({ type: "TOGGLE_FAVORITE", jan }, "*");
   };
 
@@ -66,7 +61,7 @@ function HeartButton({ jan, size = 22 }) {
 }
 
 /** =========================
- *  評価コンポーネント（◎で統一、中心塗り）
+ *  評価コンポーネント（◎）
  * ========================= */
 const CircleRating = ({ value, currentRating, onClick }) => {
   const outerSize = 40;
@@ -115,7 +110,6 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // /products/:JAN の末尾からJANを取得（既存仕様踏襲）
   const jan = window.location.pathname.split("/").pop();
 
   useEffect(() => {
@@ -138,13 +132,11 @@ export default function ProductPage() {
     } else {
       let weather = {};
       try {
-        // ① IPinfo で位置情報取得
         const token = process.env.REACT_APP_IPINFO_TOKEN;
         const ipRes = await fetch(`https://ipinfo.io/json?token=${token}`);
         const ipData = await ipRes.json();
         const [lat, lon] = (ipData.loc || ",").split(",");
 
-        // ② 日時情報作成（Asia/Tokyo）
         const now = new Date();
         const yyyy = now.getFullYear();
         const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -154,7 +146,6 @@ export default function ProductPage() {
         const hourStr = `${HH}:00`;
         const targetTime = `${dateStr}T${hourStr}`;
 
-        // ③ Open-Meteoで気象データ取得
         const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,surface_pressure,cloudcover,precipitation,wind_speed_10m,weathercode&timezone=Asia%2FTokyo`;
 
         const weatherRes = await fetch(meteoUrl);
@@ -205,49 +196,34 @@ export default function ProductPage() {
         padding: "16px",
       }}
     >
-      {/* タイトル行 + ハート */}
       {/* 商品画像 */}
-       <div style={{ textAlign: "center", marginBottom: 16 }}>
-         <img0
-           src={`/img/${jan}.png`}
-           alt="商品画像"
-           style={{ maxHeight: 300, objectFit: "contain" }}
-           onError={(e) => {
-             e.currentTarget.style.opacity = 0.3;
-           }}
-          />
-        </div>
+      <div style={{ textAlign: "center", marginBottom: 16 }}>
+        <img
+          src={`/img/${jan}.png`}
+          alt="商品画像"
+          style={{ maxHeight: 300, objectFit: "contain" }}
+          onError={(e) => {
+            e.currentTarget.style.opacity = 0.3;
+          }}
+        />
+      </div>
 
       {/* 商品名 + ハート */}
       <div
         style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 8,
-      }}
-    >
-      <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 20 }}>
-        {product.商品名 || "（名称不明）"}
-      </h2>
-      <HeartButton jan={jan} />
-    </div>
-
-    {/* タイプマーク + 価格 */}
-    <p style={{ display: "flex", alignItems: "center", margin: "4px 0 12px 0" }}>
-      <span
-        style={{
-          width: 16,
-          height: 16,
-          backgroundColor: "#651E3E",
-          borderRadius: 4,
-          marginRight: 8,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 8,
         }}
-      />
-      ¥{Number(price).toLocaleString()}
-    </p>
+      >
+        <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 20 }}>
+          {product.商品名 || "（名称不明）"}
+        </h2>
+        <HeartButton jan={jan} />
+      </div>
 
-      {/* 価格・基本情報 */}
+      {/* タイプマーク + 価格 */}
       <p style={{ display: "flex", alignItems: "center", margin: "4px 0 12px 0" }}>
         <span
           style={{
@@ -261,24 +237,12 @@ export default function ProductPage() {
         ¥{Number(price).toLocaleString()}
       </p>
 
-      {/* 商品画像 */}
-      <div style={{ textAlign: "center", marginBottom: 16 }}>
-        <img
-          src={`/img/${jan}.png`}
-          alt="商品画像"
-          style={{ maxHeight: 300, objectFit: "contain" }}
-          onError={(e) => {
-            e.currentTarget.style.opacity = 0.3;
-          }}
-        />
-      </div>
-
       {/* 味データ */}
       <p style={{ margin: "4px 0" }}>
         Body: {Number(product.BodyAxis).toFixed(2)}, Sweet: {Number(product.SweetAxis).toFixed(2)}
       </p>
 
-      {/* 原産地・年（キー名が無ければ既定値） */}
+      {/* 原産地・年 */}
       <p style={{ margin: "4px 0" }}>
         {product.産地 || product.生産地 || "リオハ, スペイン"} / {product.生産年 || product.収穫年 || "1996"}
       </p>
@@ -333,8 +297,11 @@ export default function ProductPage() {
         </div>
       </div>
 
-      {/* 説明（ダミー） */}
+      {/* 解説文 */}
       <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
         昨今では、世界標準の飲み物と言えるまでになっています。
