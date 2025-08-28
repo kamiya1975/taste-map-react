@@ -130,7 +130,7 @@ function App() {
   // セルindex/中心/キー（浮動小数誤差を避ける）
   const EPS = 1e-9;
   const toIndex = (v) => Math.floor((v + EPS) / cellSize);
-  const toCenter = (i) => (i) * cellSize;
+  const toCorner = (i) => i * cellSize;
   const keyOf = (ix, iy) => `${ix},${iy}`;
 
   // === HeatMapの見え方（平均PCの色/濃淡） ===
@@ -208,7 +208,7 @@ function App() {
       const [ix, iy] = key.split(",").map(Number);
       cellsArr.push({
         ix, iy,
-        position: [toCenter(ix), toCenter(iy)],
+        position: [toCorner(ix), toCorner(iy)],
         avg,
         count
       });
@@ -533,7 +533,7 @@ function App() {
         >
           <option value="">ー</option>
           <option value="PC2">Sweet(PC2)</option>
-          <option value="PC1">Bady(PC1)</option>
+          <option value="PC1">Body(PC1)</option>
           <option value="PC3">----(PC3)</option>
         </select>
       )}
@@ -547,7 +547,7 @@ function App() {
         >
           <option value="">ー</option>
           <option value="PC2">Sweet(PC2)</option>
-          <option value="PC1">Bady(PC1)</option>
+          <option value="PC1">Body(PC1)</option>
           <option value="PC3">----(PC3)</option>
         </select>
       )}
