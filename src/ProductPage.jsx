@@ -206,26 +206,46 @@ export default function ProductPage() {
       }}
     >
       {/* タイトル行 + ハート */}
+      {/* 商品画像 */}
+       <div style={{ textAlign: "center", marginBottom: 16 }}>
+         <img0
+           src={`/img/${jan}.png`}
+           alt="商品画像"
+           style={{ maxHeight: 300, objectFit: "contain" }}
+           onError={(e) => {
+             e.currentTarget.style.opacity = 0.3;
+           }}
+          />
+        </div>
+
+      {/* 商品名 + ハート */}
       <div
         style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          gap: 12,
-          marginBottom: 8,
-          position: "sticky",
-          top: 0,
-          background: "#fff",
-          paddingTop: 8,
-          paddingBottom: 8,
-          zIndex: 2,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 8,
+      }}
+    >
+      <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 20 }}>
+        {product.商品名 || "（名称不明）"}
+      </h2>
+      <HeartButton jan={jan} />
+    </div>
+
+    {/* タイプマーク + 価格 */}
+    <p style={{ display: "flex", alignItems: "center", margin: "4px 0 12px 0" }}>
+      <span
+        style={{
+          width: 16,
+          height: 16,
+          backgroundColor: "#651E3E",
+          borderRadius: 4,
+          marginRight: 8,
         }}
-      >
-        <div style={{ fontWeight: 700, fontSize: 20, lineHeight: 1.35 }}>
-          {product.商品名 || "（名称不明）"}
-        </div>
-        <HeartButton jan={jan} />
-      </div>
+      />
+      ¥{Number(price).toLocaleString()}
+    </p>
 
       {/* 価格・基本情報 */}
       <p style={{ display: "flex", alignItems: "center", margin: "4px 0 12px 0" }}>
