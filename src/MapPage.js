@@ -27,7 +27,7 @@ function App() {
   const [body, setBody] = useState(50);
   const [sliderMarkCoords, setSliderMarkCoords] = useState(null);
   const [showRatingDates, setShowRatingDates] = useState(false);
-  const [isRatingListOpen, setIsRatingListOpen] = useState(false);
+  const [isRatingListOpen, setIsRatingListOpen] = useState(false); // お気に入りパネルの開閉に再利用
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // ▼ 2Dヒートマップの対象（初期表示：ー）
@@ -36,6 +36,9 @@ function App() {
   // 商品ドロワーと選択中JAN（選択中はオレンジ表示）
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
+
+  // 追加：お気に入り（JAN -> {addedAt}）
+  const [favorites, setFavorites] = useState({});
 
   const ZOOM_LIMITS = { minZoom: 4.0, maxZoom: 10.0 };
 
@@ -63,6 +66,27 @@ function App() {
     return () => {
       window.removeEventListener("focus", syncUserRatings);
       window.removeEventListener("storage", syncUserRatings);
+    };
+  }, []);
+
+  // お気に入りを常時同期
+  useEffect(() => {
+    const syncFavorites = () => {
+      const stored = localStorage.getItem("favorites");
+      if (stored) {
+        try {
+          setFavorites(JSON.parse(stored));
+        } catch (e) {
+          console.error("Failed to parse favorites:", e);
+        }
+      }
+    };
+    syncFavorites();
+    window.addEventListener("focus", syncFavorites);
+    window.addEventListener("storage", syncFavorites);
+    return () => {
+      window.removeEventListener("focus", syncFavorites);
+      window.removeEventListener("storage", syncFavorites);
     };
   }, []);
 
@@ -114,6 +138,36 @@ function App() {
     localStorage.setItem("userRatings", JSON.stringify(userRatings));
   }, [userRatings]);
 
+  useEffect(() => {
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+  }, [favorites]);
+
+  // お気に入りのトグル
+  const toggleFavorite = (jan) => {
+    setFavorites((prev) => {
+      const next = { ...prev };
+      if (next[jan]) {
+        delete next[jan];
+      } else {
+        next[jan] = { addedAt: new Date().toISOString() };
+      }
+      return next;
+    });
+  };
+  const isFavorite = (jan) => !!favorites[jan];
+
+  // 商品ページ（iframe）からの postMessage を受けてお気に入りを更新
+  useEffect(() => {
+    const onMsg = (e) => {
+      const { type, jan } = e.data || {};
+      if (type === "TOGGLE_FAVORITE" && jan) {
+        toggleFavorite(String(jan));
+      }
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+
   const typeColorMap = {
     White: [150, 150, 150],
     Red: [150, 150, 150],
@@ -131,7 +185,7 @@ function App() {
   const EPS = 1e-9;
   const toIndex = (v) => Math.floor((v + EPS) / cellSize);
   const toCorner = (i) => i * cellSize;
-  const toCenter = toCorner;
+  const toCenter = toCorner; // 互換のため残す
   const keyOf = (ix, iy) => `${ix},${iy}`;
 
   // === HeatMapの見え方（平均PCの色/濃淡） ===
@@ -140,7 +194,7 @@ function App() {
   const HEAT_GAMMA     = 0.65;  // 濃淡カーブ（0.6〜0.9で調整）
   const HEAT_CLIP_PCT  = [0.00, 0.98]; // 5〜95%で外れ値をクリップ
   const HEAT_COLOR_LOW  = [255, 255, 255]; // 純白
-  const HEAT_COLOR_HIGH = [255, 165,   0]; // より“オレンジ”に（#FFA500 相当）
+  const HEAT_COLOR_HIGH = [255, 165,   0]; // より“オレンジ”に
 
   // グリッド線（cellSize に同期）
   const { thinLines, thickLines } = useMemo(() => {
@@ -170,16 +224,20 @@ function App() {
           ix, iy,
           position: [toCenter(ix), toCenter(iy)],
           count: 0,
-          hasRating: false
+          hasRating: false,
+          hasFavorite: false,
         });
       }
       if (userRatings[d.JAN]) {
         map.get(key).hasRating = true;
       }
+      if (favorites[d.JAN]) {
+        map.get(key).hasFavorite = true;
+      }
       map.get(key).count += 1;
     });
     return Array.from(map.values());
-  }, [data, userRatings, is3D, cellSize]);
+  }, [data, userRatings, favorites, is3D, cellSize]);
 
   // 2D: セルごとの平均PC値を描画用配列に整形
   const { heatCells, vMin, vMax, avgHash } = useMemo(() => {
@@ -330,7 +388,7 @@ function App() {
     });
   }, [data, userRatings, is3D]);
 
-  // 評価日番号ラベル（★トグル）
+  // 評価日番号ラベル（★トグルのまま維持）
   const sortedRatedWineList = useMemo(() => {
     if (!Array.isArray(data)) return [];
     return Object.entries(userRatings)
@@ -449,7 +507,11 @@ function App() {
             data: cells,
             cellSize,
             getPosition: (d) => d.position,
-            getFillColor: (d) => d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
+            // お気に入りセルをやや強調（評価は従来どおり）
+            getFillColor: (d) =>
+              d.hasFavorite ? [255, 165, 0, 140] :
+              d.hasRating   ? [180, 100, 50, 150] :
+                              [200, 200, 200, 40],
             getElevation: 0,
             pickable: false,
           }) : null,
@@ -621,7 +683,7 @@ function App() {
         </button>
       )}
 
-      {/* 評価切替 ★ボタン（番号ラベルの表示ON/OFF） */}
+      {/* お気に入り（♡）パネルの表示トグル（番号ラベルON/OFFはそのまま連動） */}
       {!is3D && (
         <button
           onClick={() => {
@@ -871,16 +933,15 @@ function App() {
         </button>
       </Drawer>
 
-      {/* ★ 評価一覧パネル */}
-      <RatedWinePanel
+      {/* ♡ お気に入りパネル */}
+      <FavoritePanel
         isOpen={isRatingListOpen}
         onClose={() => {
           setIsRatingListOpen(false);
           setShowRatingDates(false);
         }}
-        userRatings={userRatings}
+        favorites={favorites}
         data={data}
-        sortedRatedWineList={sortedRatedWineList ?? []}
       />
 
       {/* 商品ページドロワー（/products/:JAN） */}
@@ -937,15 +998,18 @@ function App() {
   );
 } // App end
 
-function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineList }) {
-  const displayList = useMemo(() => {
-    if (!Array.isArray(sortedRatedWineList)) return [];
-    const total = sortedRatedWineList.length;
-    return sortedRatedWineList.map((item, idx) => ({
-      ...item,
-      displayIndex: total - idx,
-    }));
-  }, [sortedRatedWineList]);
+function FavoritePanel({ isOpen, onClose, favorites, data }) {
+  // favorites: { JAN: {addedAt} }
+  const list = useMemo(() => {
+    const arr = Object.entries(favorites).map(([jan, meta]) => {
+      const m = data.find((d) => String(d.JAN) === String(jan));
+      if (!m) return null;
+      return { ...m, addedAt: meta?.addedAt ?? null };
+    }).filter(Boolean);
+    // 追加日時の新しい順
+    arr.sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
+    return arr.map((item, idx) => ({ ...item, displayIndex: arr.length - idx }));
+  }, [favorites, data]);
 
   return (
     <AnimatePresence>
@@ -983,7 +1047,7 @@ function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineLis
               alignItems: "center",
             }}
           >
-            <h3 style={{ margin: 0 }}>あなたが評価したワイン</h3>
+            <h3 style={{ margin: 0 }}>お気に入り</h3>
             <button
               onClick={onClose}
               style={{
@@ -1007,7 +1071,7 @@ function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineLis
             }}
           >
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {displayList.map((item, idx) => (
+              {list.map((item, idx) => (
                 <li
                   key={idx}
                   onClick={() => window.open(`/products/${item.JAN}`, "_blank")}
@@ -1031,20 +1095,21 @@ function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineLis
                       {item.displayIndex}.
                     </strong>
                     <span style={{ fontSize: "15px", color: "#555" }}>
-                      {item.date ? new Date(item.date).toLocaleDateString() : "（日付不明）"}
+                      {item.addedAt ? new Date(item.addedAt).toLocaleDateString() : "（追加日不明）"}
                     </span>
                     <br />
                     {item.商品名 || "（名称不明）"}
                   </div>
                   <small>
-                    Type: {item.Type || "不明"} / 価格:{" "}
-                    {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
+                    Type: {item.Type || "不明"} / 価格: {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
                     <br />
-                    Body: {item.BodyAxis?.toFixed(2)}, Sweet: {item.SweetAxis?.toFixed(2)} / 星評価:{" "}
-                    {item.rating ?? "なし"}
+                    Body: {item.BodyAxis?.toFixed(2)}, Sweet: {item.SweetAxis?.toFixed(2)}
                   </small>
                 </li>
               ))}
+              {list.length === 0 && (
+                <li style={{ color: "#777" }}>まだお気に入りがありません。商品ページの「♡」から追加できます。</li>
+              )}
             </ul>
           </div>
         </motion.div>
@@ -1054,4 +1119,3 @@ function RatedWinePanel({ isOpen, onClose, userRatings, data, sortedRatedWineLis
 }
 
 export default App;
-
