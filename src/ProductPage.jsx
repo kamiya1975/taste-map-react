@@ -126,62 +126,68 @@ export default function ProductPage() {
   }, [jan]);
 
   const handleCircleClick = async (value) => {
-    const newRating = value === rating ? 0 : value;
-    setRating(newRating);
+  const newRating = value === rating ? 0 : value;
+  setRating(newRating);
 
-    const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
+  const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
+  let payload = null;
 
-    if (newRating === 0) {
-      delete ratings[jan];
-    } else {
-      let weather = {};
-      try {
-        const token = process.env.REACT_APP_IPINFO_TOKEN;
-        const ipRes = await fetch(`https://ipinfo.io/json?token=${token}`);
-        const ipData = await ipRes.json();
-        const [lat, lon] = (ipData.loc || ",").split(",");
+  if (newRating === 0) {
+    delete ratings[jan];
+  } else {
+    let weather = {};
+    try {
+      const token = process.env.REACT_APP_IPINFO_TOKEN;
+      const ipRes = await fetch(`https://ipinfo.io/json?token=${token}`);
+      const ipData = await ipRes.json();
+      const [lat, lon] = (ipData.loc || ",").split(",");
 
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, "0");
-        const dd = String(now.getDate()).padStart(2, "0");
-        const HH = String(now.getHours()).padStart(2, "0");
-        const dateStr = `${yyyy}-${mm}-${dd}`;
-        const hourStr = `${HH}:00`;
-        const targetTime = `${dateStr}T${hourStr}`;
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      const HH = String(now.getHours()).padStart(2, "0");
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+      const targetTime = `${dateStr}T${HH}:00`;
 
-        const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,surface_pressure,cloudcover,precipitation,wind_speed_10m,weathercode&timezone=Asia%2FTokyo`;
+      const meteoUrl =
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        `&start_date=${dateStr}&end_date=${dateStr}` +
+        `&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,surface_pressure,cloudcover,precipitation,wind_speed_10m,weathercode` +
+        `&timezone=Asia%2FTokyo`;
 
-        const weatherRes = await fetch(meteoUrl);
-        const weatherData = await weatherRes.json();
-        const hourly = weatherData.hourly || {};
-        const idx = Array.isArray(hourly.time) ? hourly.time.indexOf(targetTime) : -1;
+      const weatherRes = await fetch(meteoUrl);
+      const weatherData = await weatherRes.json();
+      const hourly = weatherData.hourly || {};
+      const idx = Array.isArray(hourly.time) ? hourly.time.indexOf(targetTime) : -1;
 
-        if (idx !== -1) {
-          weather = {
-            temperature: hourly.temperature_2m?.[idx],
-            apparentTemperature: hourly.apparent_temperature?.[idx],
-            humidity: hourly.relative_humidity_2m?.[idx],
-            pressure: hourly.surface_pressure?.[idx],
-            cloudcover: hourly.cloudcover?.[idx],
-            precipitation: hourly.precipitation?.[idx],
-            windSpeed: hourly.wind_speed_10m?.[idx],
-            weatherCode: hourly.weathercode?.[idx],
-          };
-        }
-      } catch (err) {
-        console.warn("気象情報の取得に失敗しました:", err);
+      if (idx !== -1) {
+        weather = {
+          temperature: hourly.temperature_2m?.[idx],
+          apparentTemperature: hourly.apparent_temperature?.[idx],
+          humidity: hourly.relative_humidity_2m?.[idx],
+          pressure: hourly.surface_pressure?.[idx],
+          cloudcover: hourly.cloudcover?.[idx],
+          precipitation: hourly.precipitation?.[idx],
+          windSpeed: hourly.wind_speed_10m?.[idx],
+          weatherCode: hourly.weathercode?.[idx],
+        };
       }
-
-      ratings[jan] = {
-        rating: newRating,
-        date: new Date().toISOString(),
-        weather,
-      };
+    } catch (err) {
+      console.warn("気象情報の取得に失敗しました:", err);
     }
 
-    localStorage.setItem("userRatings", JSON.stringify(ratings));
-  };
+    payload = { rating: newRating, date: new Date().toISOString(), weather };
+    ratings[jan] = payload;
+  }
+
+  localStorage.setItem("userRatings", JSON.stringify(ratings));
+
+  // ★ 追加：親（Map）に即時通知
+  try {
+    window.parent?.postMessage({ type: "RATING_UPDATED", jan, payload }, "*");
+  } catch {}
+};
 
   if (!product) return <div style={{ padding: 16 }}>商品が見つかりませんでした。</div>;
 

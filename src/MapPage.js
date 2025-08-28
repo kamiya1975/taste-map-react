@@ -156,17 +156,34 @@ function MapPage() {
   };
   const isFavorite = (jan) => !!favorites[jan];
 
-  // 商品ページ（iframe）からの postMessage を受けてお気に入りを更新
-  useEffect(() => {
-    const onMsg = (e) => {
-      const { type, jan } = e.data || {};
-      if (type === "TOGGLE_FAVORITE" && jan) {
-        toggleFavorite(String(jan));
-      }
-    };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
-  }, []);
+  // 商品ページ（iframe）からの postMessage を受けて状態更新
+useEffect(() => {
+  const onMsg = (e) => {
+    const { type, jan, payload } = e.data || {};
+    if (!type) return;
+
+    if (type === "TOGGLE_FAVORITE" && jan) {
+      toggleFavorite(String(jan));
+    }
+
+    if (type === "RATING_UPDATED" && jan) {
+      // 受信次第、Map 側の userRatings を即時更新
+      setUserRatings((prev) => {
+        const next = { ...prev };
+        if (!payload || !payload.rating) {
+          delete next[jan];
+        } else {
+          next[jan] = payload; // { rating, date, weather }
+        }
+        localStorage.setItem("userRatings", JSON.stringify(next)); // ついでに鏡合わせ
+        return next;
+      });
+    }
+  };
+
+  window.addEventListener("message", onMsg);
+  return () => window.removeEventListener("message", onMsg);
+}, []); // 依存なし
 
   const typeColorMap = {
     White: [150, 150, 150],
