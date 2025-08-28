@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 
 /** =========================
  *  ハートボタン（お気に入り）
+ *  - localStorage.favorites を更新
+ *  - 親（地図ページ）へ postMessage で通知
  * ========================= */
 function HeartButton({ jan, size = 22 }) {
   const [fav, setFav] = useState(false);
@@ -52,6 +54,7 @@ function HeartButton({ jan, size = 22 }) {
         cursor: "pointer",
         fontSize: size,
         lineHeight: 1,
+        boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
       }}
       title={fav ? "お気に入りに登録済み" : "お気に入りに追加"}
     >
@@ -110,6 +113,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
+  // /products/:JAN の末尾からJAN
   const jan = window.location.pathname.split("/").pop();
 
   useEffect(() => {
@@ -181,10 +185,7 @@ export default function ProductPage() {
 
   if (!product) return <div style={{ padding: 16 }}>商品が見つかりませんでした。</div>;
 
-  const price =
-    product.希望小売価格 ??
-    product.価格 ??
-    1800;
+  const price = product.希望小売価格 ?? product.価格 ?? 1800;
 
   return (
     <div
@@ -194,9 +195,22 @@ export default function ProductPage() {
         maxWidth: "500px",
         margin: "0 auto",
         padding: "16px",
+        position: "relative",
       }}
     >
-      {/* 商品画像 */}
+      {/* 画面右上に固定の♡（iframe内のビューポート基準） */}
+      <div
+        style={{
+          position: "fixed",
+          top: 12,
+          right: 12,
+          zIndex: 1000,
+        }}
+      >
+        <HeartButton jan={jan} size={22} />
+      </div>
+
+      {/* 商品画像（そのまま） */}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
         <img
           src={`/img/${jan}.png`}
@@ -208,22 +222,12 @@ export default function ProductPage() {
         />
       </div>
 
-      {/* 商品名 + ハート */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 8,
-        }}
-      >
-        <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 20 }}>
-          {product.商品名 || "（名称不明）"}
-        </h2>
-        <HeartButton jan={jan} />
-      </div>
+      {/* 商品名（画像の下に） */}
+      <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 20 }}>
+        {product.商品名 || "（名称不明）"}
+      </h2>
 
-      {/* タイプマーク + 価格 */}
+      {/* タイプマーク＋価格（画像の下に） */}
       <p style={{ display: "flex", alignItems: "center", margin: "4px 0 12px 0" }}>
         <span
           style={{
@@ -244,7 +248,7 @@ export default function ProductPage() {
 
       {/* 原産地・年 */}
       <p style={{ margin: "4px 0" }}>
-        {product.産地 || product.生産地 || "リオハ, スペイン"} / {product.生産年 || product.収穫年 || "1996"}
+        {product.産地 || product.生産地 || "シチリア / イタリア"} / {product.生産年 || product.収穫年 || "2022"}
       </p>
 
       {/* 評価（◎） */}
@@ -297,11 +301,8 @@ export default function ProductPage() {
         </div>
       </div>
 
-      {/* 解説文 */}
+      {/* 説明ダミー */}
       <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
         昨今では、世界標準の飲み物と言えるまでになっています。
