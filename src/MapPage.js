@@ -647,7 +647,7 @@ function App() {
             fontSize: "20px",
           }}
         >
-          ★
+          ♡
         </button>
       )}
 
