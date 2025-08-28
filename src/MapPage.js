@@ -998,18 +998,22 @@ function App() {
   );
 } // App end
 
-function FavoritePanel({ isOpen, onClose, favorites, data }) {
-  // favorites: { JAN: {addedAt} }
-  const list = useMemo(() => {
-    const arr = Object.entries(favorites).map(([jan, meta]) => {
-      const m = data.find((d) => String(d.JAN) === String(jan));
-      if (!m) return null;
-      return { ...m, addedAt: meta?.addedAt ?? null };
-    }).filter(Boolean);
-    // 追加日時の新しい順
-    arr.sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
-    return arr.map((item, idx) => ({ ...item, displayIndex: arr.length - idx }));
-  }, [favorites, data]);
+function RatedWinePanel({
+  isOpen,
+  onClose,
+  userRatings,
+  data,
+  sortedRatedWineList,
+  onSelectJAN, // ★ 追加: ドロワーで開くためのコールバック
+}) {
+  const displayList = React.useMemo(() => {
+    if (!Array.isArray(sortedRatedWineList)) return [];
+    const total = sortedRatedWineList.length;
+    return sortedRatedWineList.map((item, idx) => ({
+      ...item,
+      displayIndex: total - idx,
+    }));
+  }, [sortedRatedWineList]);
 
   return (
     <AnimatePresence>
@@ -1047,7 +1051,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data }) {
               alignItems: "center",
             }}
           >
-            <h3 style={{ margin: 0 }}>お気に入り</h3>
+            <h3 style={{ margin: 0 }}>あなたのお気に入り</h3>
             <button
               onClick={onClose}
               style={{
@@ -1071,10 +1075,11 @@ function FavoritePanel({ isOpen, onClose, favorites, data }) {
             }}
           >
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {list.map((item, idx) => (
+              {displayList.map((item, idx) => (
                 <li
                   key={idx}
-                  onClick={() => window.open(`/products/${item.JAN}`, "_blank")}
+                  // ★ 変更ポイント：新規タブではなくドロワーで開く
+                  onClick={() => onSelectJAN?.(item.JAN)}
                   style={{
                     padding: "10px 0",
                     borderBottom: "1px solid #eee",
@@ -1095,21 +1100,19 @@ function FavoritePanel({ isOpen, onClose, favorites, data }) {
                       {item.displayIndex}.
                     </strong>
                     <span style={{ fontSize: "15px", color: "#555" }}>
-                      {item.addedAt ? new Date(item.addedAt).toLocaleDateString() : "（追加日不明）"}
+                      {item.date ? new Date(item.date).toLocaleDateString() : "（日付不明）"}
                     </span>
                     <br />
                     {item.商品名 || "（名称不明）"}
                   </div>
                   <small>
-                    Type: {item.Type || "不明"} / 価格: {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
+                    Type: {item.Type || "不明"} / 価格:{" "}
+                    {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
                     <br />
                     Body: {item.BodyAxis?.toFixed(2)}, Sweet: {item.SweetAxis?.toFixed(2)}
                   </small>
                 </li>
               ))}
-              {list.length === 0 && (
-                <li style={{ color: "#777" }}>まだお気に入りがありません。商品ページの「♡」から追加できます。</li>
-              )}
             </ul>
           </div>
         </motion.div>
@@ -1117,5 +1120,3 @@ function FavoritePanel({ isOpen, onClose, favorites, data }) {
     </AnimatePresence>
   );
 }
-
-export default App;
