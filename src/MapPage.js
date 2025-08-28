@@ -1120,3 +1120,4 @@ function RatedWinePanel({
     </AnimatePresence>
   );
 }
+export default MapPage;
