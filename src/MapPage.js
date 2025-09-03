@@ -335,6 +335,39 @@ function MapPage() {
     return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
   }, [data, highlight2D, is3D, cellSize]);
 
+  // PCA(PC1,PC2) -> UMAP(BodyAxis=UMAP1, SweetAxis=UMAP2) への kNN 回帰マッパー
+  const pca2umap = useMemo(() => {
+    if (!data?.length) return null;
+    const samples = data
+      .filter(d => Number.isFinite(d.PC1) && Number.isFinite(d.PC2) && Number.isFinite(d.BodyAxis) && Number.isFinite(d.SweetAxis))
+      .map(d => ({ pc1: d.PC1, pc2: d.PC2, x: d.BodyAxis, y: d.SweetAxis }));
+
+    const K = 15; // 近傍数（お好みで 10〜30）
+    return (pc1, pc2) => {
+      if (!Number.isFinite(pc1) || !Number.isFinite(pc2) || samples.length === 0) return [0, 0];
+      // 距離でソート
+      const neigh = samples
+        .map(s => {
+          const dx = pc1 - s.pc1, dy = pc2 - s.pc2;
+          const d2 = dx*dx + dy*dy;
+          return { s, d2 };
+        })
+        .sort((a, b) => a.d2 - b.d2)
+        .slice(0, Math.min(K, samples.length));
+
+      // 距離の逆数重み（0割防止のε付き）
+      const EPS = 1e-6;
+      let sw = 0, sx = 0, sy = 0;
+      neigh.forEach(({ s, d2 }) => {
+        const w = 1 / (Math.sqrt(d2) + EPS);
+        sw += w;
+        sx += w * s.x;
+        sy += w * s.y;
+      });
+      return sw > 0 ? [sx / sw, sy / sw] : [neigh[0].s.x, neigh[0].s.y];
+    };
+  }, [data]);
+
   // 商品ドロワーを開く
   const openProductDrawer = (jan) => {
     setSelectedJAN(jan);
@@ -654,25 +687,52 @@ function MapPage() {
         </div>
         <button
           onClick={() => {
+            if (!data?.length || !pca2umap) return;
+
             const blendF = data.find((d) => d.JAN === "blendF");
-            if (!blendF) return;
-            const sweetValues = data.map((d) => d.SweetAxis);
-            const bodyValues = data.map((d) => d.BodyAxis);
-            const minSweet = Math.min(...sweetValues);
-            const maxSweet = Math.max(...sweetValues);
-            const minBody = Math.min(...bodyValues);
-            const maxBody = Math.max(...bodyValues);
-            const sweetValue = sweetness <= 50
-              ? blendF.SweetAxis - ((50 - sweetness) / 50) * (blendF.SweetAxis - minSweet)
-              : blendF.SweetAxis + ((sweetness - 50) / 50) * (maxSweet - blendF.SweetAxis);
-            const bodyValue = body <= 50
-              ? blendF.BodyAxis - ((50 - body) / 50) * (blendF.BodyAxis - minBody)
-              : blendF.BodyAxis + ((body - 50) / 50) * (maxBody - blendF.BodyAxis);
-            const coords = [bodyValue, -sweetValue];
+            if (!blendF) return; // blendF が無い場合は別途：中央値を使う等に変更可
+
+            // PCA の全体レンジ
+            const pc1s = data.map(d => d.PC1).filter(Number.isFinite);
+            const pc2s = data.map(d => d.PC2).filter(Number.isFinite);
+            const minPC1 = Math.min(...pc1s), maxPC1 = Math.max(...pc1s);
+            const minPC2 = Math.min(...pc2s), maxPC2 = Math.max(...pc2s);
+
+            // 基準点（blendF）の PCA 値
+            const basePC1 = Number(blendF.PC1);
+            const basePC2 = Number(blendF.PC2);
+
+            // スライダー（0-100）を PCA 連続値へ補間
+            // Body スライダー → PC1,  Sweet スライダー → PC2
+            const pc1Value =
+              body <= 50
+                ? basePC1 - ((50 - body) / 50) * (basePC1 - minPC1)
+                : basePC1 + ((body - 50) / 50) * (maxPC1 - basePC1);
+
+            const pc2Value =
+              sweetness <= 50
+                ? basePC2 - ((50 - sweetness) / 50) * (basePC2 - minPC2)
+                : basePC2 + ((sweetness - 50) / 50) * (maxPC2 - basePC2);
+
+            // PCA → UMAP へ変換（BodyAxis=x, SweetAxis=y）
+            const [umapX, umapY] = pca2umap(pc1Value, pc2Value);
+
+            // 2D表示はY反転で描画しているため反映
+            const coords = [umapX, -umapY];
+
             setSliderMarkCoords(coords);
             setIsSliderOpen(false);
-            setViewState((prev) => ({ ...prev, target: [coords[0], coords[1] + 5.5, 0], zoom: 4.5, ...ZOOM_LIMITS }));
+           setViewState((prev) => ({
+              ...prev,
+              target: [coords[0], coords[1] + 5.5, 0],
+              zoom: 4.5,
+              ...ZOOM_LIMITS
+            }));
+
+            // 共有したい場合は保存（任意）
+            localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: [umapX, umapY] }));
           }}
+
           style={{ background: "#fff", color: "#007bff", padding: "14px 30px", fontSize: "16px", fontWeight: "bold", border: "2px solid #007bff", borderRadius: "6px", cursor: "pointer", display: "block", margin: "0 auto" }}
         >
           あなたの好みをMapに表示
