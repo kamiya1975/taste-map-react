@@ -782,8 +782,19 @@ function MapPage() {
               target: [coords[0], coords[1], 0],
               zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)),
           }));
-        }}   {/* ← ここが大事（}} を入れる） */}
-        style={{ background: "#fff", color: "#007bff", padding: "14px 30px", fontSize: "16px", fontWeight: "bold", border: "2px solid #007bff", borderRadius: "6px", cursor: "pointer", display: "block", margin: "0 auto" }}
+        }}
+        style={{ 
+          background: "#fff", 
+          color: "#007bff", 
+          padding: "14px 30px", 
+          fontSize: "16px", 
+          fontWeight: "bold", 
+          border: "2px solid #007bff", 
+          borderRadius: "6px", 
+          cursor: "pointer", 
+          display: "block", 
+          margin: "0 auto" 
+        }}
       >
         あなたの好みをMapに表示
       </button>
