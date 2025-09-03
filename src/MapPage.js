@@ -29,6 +29,8 @@ function MapPage() {
   const [showRatingDates, setShowRatingDates] = useState(false);
   const [isRatingListOpen, setIsRatingListOpen] = useState(false); // ← お気に入りパネル開閉に再利用
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // 外部（SliderPage 等）で保存されたユーザーのUMAP座標を表示するため
+  const [userPin, setUserPin] = useState(null); // [x, y] (UMAP)
 
   // ▼ 2Dヒートマップの対象（初期表示：ー）
   const [highlight2D, setHighlight2D] = useState("");
@@ -89,6 +91,55 @@ function MapPage() {
       window.removeEventListener("storage", syncFavorites);
     };
   }, []);
+
+  // ---- userPinCoords 受け取り（localStorage）----
+  const readUserPinFromStorage = () => {
+    try {
+      const raw = localStorage.getItem("userPinCoords");
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      // 互換: 旧形式 [x, y] / 新形式 { coordsUMAP:[x,y], ... }
+      if (Array.isArray(obj) && obj.length >= 2) return [Number(obj[0]), Number(obj[1])];
+      if (obj && Array.isArray(obj.coordsUMAP) && obj.coordsUMAP.length >= 2) {
+        return [Number(obj.coordsUMAP[0]), Number(obj.coordsUMAP[1])];
+      }
+      if (obj && Array.isArray(obj.coords) && obj.coords.length >= 2) {
+        return [Number(obj.coords[0]), Number(obj.coords[1])];
+      }
+      return null;
+    } catch (e) {
+      console.warn("userPinCoords の解析に失敗:", e);
+      return null;
+    }
+  };
+
+  // マウント時 & フォーカス/ストレージ変化で同期
+  useEffect(() => {
+    const sync = () => setUserPin(readUserPinFromStorage());
+    sync(); // 初期読み込み
+    const onFocus = () => sync();
+    const onStorage = (e) => {
+      if (!e || e.key === "userPinCoords") sync();
+    };
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  // userPin が来たら少し上にずらして見やすく寄せる（2Dのみ）
+  useEffect(() => {
+    if (!userPin) return;
+    setViewState((prev) => ({
+      ...prev,
+      target: [userPin[0], (is3D ? userPin[1] : -userPin[1]) + 5.5, 0],
+      zoom: Math.max(prev.zoom ?? 4.5, 4.5),
+      ...ZOOM_LIMITS,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userPin]);
 
   // UMAP+PCA を読み込み（UMAP1→BodyAxis, UMAP2→SweetAxis）
   useEffect(() => {
@@ -157,33 +208,33 @@ function MapPage() {
   const isFavorite = (jan) => !!favorites[jan];
 
   // 商品ページ（iframe）からの postMessage を受けて状態更新
-useEffect(() => {
-  const onMsg = (e) => {
-    const { type, jan, payload } = e.data || {};
-    if (!type) return;
+  useEffect(() => {
+    const onMsg = (e) => {
+      const { type, jan, payload } = e.data || {};
+      if (!type) return;
 
-    if (type === "TOGGLE_FAVORITE" && jan) {
-      toggleFavorite(String(jan));
-    }
+      if (type === "TOGGLE_FAVORITE" && jan) {
+        toggleFavorite(String(jan));
+      }
 
-    if (type === "RATING_UPDATED" && jan) {
-      // 受信次第、Map 側の userRatings を即時更新
-      setUserRatings((prev) => {
-        const next = { ...prev };
-        if (!payload || !payload.rating) {
-          delete next[jan];
-        } else {
-          next[jan] = payload; // { rating, date, weather }
-        }
-        localStorage.setItem("userRatings", JSON.stringify(next)); // ついでに鏡合わせ
-        return next;
-      });
-    }
-  };
+      if (type === "RATING_UPDATED" && jan) {
+        // 受信次第、Map 側の userRatings を即時更新
+        setUserRatings((prev) => {
+          const next = { ...prev };
+          if (!payload || !payload.rating) {
+            delete next[jan];
+          } else {
+            next[jan] = payload; // { rating, date, weather }
+          }
+          localStorage.setItem("userRatings", JSON.stringify(next)); // ついでに鏡合わせ
+          return next;
+        });
+      }
+    };
 
-  window.addEventListener("message", onMsg);
-  return () => window.removeEventListener("message", onMsg);
-}, []); // 依存なし
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []); // 依存なし
 
   const typeColorMap = {
     White: [150, 150, 150],
@@ -373,7 +424,7 @@ useEffect(() => {
     });
   }, [data, userRatings, is3D]);
 
-  // 評価日番号ラベル（★トグルのまま維持）
+  // 評価日番号ラベル
   const sortedRatedWineList = useMemo(() => {
     if (!Array.isArray(data)) return [];
     return Object.entries(userRatings)
@@ -433,6 +484,25 @@ useEffect(() => {
         pickable: false,
       })
     : null;
+
+  // 外部（SliderPage等）から渡されたユーザーピンを描画（UMAP座標）
+  const userPinLayer = useMemo(() => {
+    if (!userPin) return null;
+    return new ScatterplotLayer({
+      id: "user-pin",
+      data: [{ x: userPin[0], y: userPin[1] }],
+      getPosition: (d) => [d.x, is3D ? d.y : -d.y, 0], // 2DではY反転に合わせる
+      getRadius: 0.32,
+      radiusUnits: "meters",
+      getFillColor: [0, 120, 255, 230],
+      stroked: true,
+      getLineWidth: 2,
+      lineWidthUnits: "pixels",
+      getLineColor: [255, 255, 255, 255],
+      pickable: false,
+      parameters: { depthTest: false },
+    });
+  }, [userPin, is3D]);
 
   return (
     <div style={{ position: "absolute", top: 0, left: 0, margin: 0, padding: 0, width: "100%", height: "100%" }}>
@@ -502,6 +572,7 @@ useEffect(() => {
           new LineLayer({ id: "grid-lines-thin", data: thinLines, getSourcePosition: (d) => d.sourcePosition, getTargetPosition: (d) => d.targetPosition, getColor: [200, 200, 200, 100], getWidth: 1, widthUnits: "pixels", pickable: false }),
           new LineLayer({ id: "grid-lines-thick", data: thickLines, getSourcePosition: (d) => d.sourcePosition, getTargetPosition: (d) => d.targetPosition, getColor: [180, 180, 180, 120], getWidth: 1.25, widthUnits: "pixels", pickable: false }),
           mainLayer,
+          userPinLayer,
           sliderMarkLayer,
           ratingDateLayer,
         ]}
