@@ -559,7 +559,7 @@ function MapPage() {
       id: "user-pin",
       data: [{ x: userPin[0], y: userPin[1] }],
       getPosition: (d) => [d.x, is3D ? d.y : -d.y, 0], // 2DではY反転に合わせる
-      getRadius: 0.32,
+      getRadius: 0.10,
       radiusUnits: "meters",
       getFillColor: [0, 120, 255, 230],
       stroked: true,
