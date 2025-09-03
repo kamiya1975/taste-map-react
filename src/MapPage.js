@@ -589,7 +589,7 @@ function MapPage() {
           dragRotate: is3D,
           minRotationX: 5,
           maxRotationX: 90,
-          maxRotationX: 90,
+          minZoom: ZOOM_LIMITS.min,
           maxZoom: ZOOM_LIMITS.max,
         }}
         onClick={(info) => {
@@ -686,9 +686,18 @@ function MapPage() {
           setIs3D(nextIs3D);
           if (nextIs3D) {
             setSaved2DViewState(viewState);
-            setViewState({ target: [...], zoom: ..., rotationX: 45, rotationOrbit: 0 });
+            setViewState({
+              target: [viewState.target[0], viewState.target[1], 0],
+              zoom: viewState.zoom,
+              rotationX: 45,
+              rotationOrbit: 0,
+            });
           } else {
-            setViewState({ ...saved2DViewState, rotationX: 0, rotationOrbit: 0 });
+            setViewState({
+              ...(saved2DViewState ?? { target: [0, 0, 0], zoom: INITIAL_ZOOM, rotationX: 0, rotationOrbit: 0 }),
+              rotationX: 0,
+              rotationOrbit: 0,
+            });
           }
         }}
         style={{ position: "absolute", top: "10px", right: "10px", zIndex: 1, padding: "8px 12px", fontSize: "14px", background: "#fff", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer" }}
@@ -774,8 +783,8 @@ function MapPage() {
             setIsSliderOpen(false);
             setViewState((prev) => ({
               ...prev,
-              target: [coords[0], coords[1], 0],
-              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)),
+              target: [userPin[0], is3D ? userPin[1] : -userPin[1], 0],
+              zoom: prev.zoom ?? INITIAL_ZOOM,
             }));
 
             // 共有したい場合は保存（任意）
