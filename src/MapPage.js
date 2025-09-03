@@ -574,11 +574,22 @@ function MapPage() {
           // 1) ズームをクランプ（ユーザー操作時）
           const z = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom));
           // 2) ターゲットも必要ならクランプ
+          const panBounds = useMemo(() => {
+            if (!data.length) return { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
+            const xs = data.map(d => d.BodyAxis);
+            const ys = data.map(d => d.SweetAxis);
+            const xmin = Math.min(...xs), xmax = Math.max(...xs);
+            const pad = 0.8; // 余白
+            return { xmin: xmin - pad, xmax: xmax + pad, ymin: ymin - pad, ymax: ymax + pad };
+          }, [data]);
+
+          // onViewStateChange 内
           const limitedTarget = [
-            Math.max(-10, Math.min(10, vs.target[0])),
-            Math.max(-10, Math.min(10, vs.target[1])),
+            Math.max(panBounds.xmin, Math.min(panBounds.xmax, vs.target[0])),
+            Math.max(panBounds.ymin, Math.min(panBounds.ymax, vs.target[1])),
             vs.target[2],
           ];
+
           setViewState({ ...vs, zoom: z, target: limitedTarget });
         }}
         controller={{
