@@ -798,6 +798,7 @@ function MapPage() {
       >
         あなたの好みをMapに表示
       </button>
+      </Drawer>  
 
       {/* 設定ドロワー */}
       <Drawer anchor="left" open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} PaperProps={{ style: { width: "300px", padding: "20px", boxSizing: "border-box" } }}>
