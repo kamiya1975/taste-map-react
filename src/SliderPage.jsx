@@ -222,7 +222,7 @@ function SliderPage() {
     }
 
     // （描画側で2DはY反転しているため、保存は反転しない＝UMAPの実値を保持）
-    navigate("/map");
+    navigate("/map", { state: { centerOnUserPin: true } });
   };
 
   return (

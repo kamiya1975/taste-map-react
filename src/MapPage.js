@@ -172,14 +172,21 @@ function MapPage() {
   // userPin が来たら少し上にずらして見やすく寄せる（2Dのみ）
   useEffect(() => {
     if (!userPin) return;
-    setViewState((prev) => ({
-      ...prev,
-      target: [userPin[0], (is3D ? userPin[1] : -userPin[1]) + 5.5, 0],
-      zoom: prev.zoom ?? INITIAL_ZOOM,
-      ...ZOOM_LIMITS,
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userPin]);
+    const shouldCenter = !!location.state?.centerOnUserPin;
+    if (shouldCenter) {
+      // 画面の中心にピタッと合わせる（2DはY反転だけ適用）
+      setViewState((prev) => ({
+        ...prev,
+        target: [userPin[0], is3D ? userPin[1] : -userPin[1], 0],
+        // ズームは維持。初回なら初期値を使う
+        zoom: prev.zoom ?? INITIAL_ZOOM,
+        ...ZOOM_LIMITS,
+      }));
+      // 一度センタリングしたらフラグをクリア（履歴の state を消す）
+      try { window.history.replaceState({}, document.title, window.location.pathname); } catch {}
+    }
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [userPin, is3D, location.state]);
 
   // UMAP+PCA を読み込み（UMAP1→BodyAxis, UMAP2→SweetAxis）
   useEffect(() => {
@@ -760,7 +767,7 @@ function MapPage() {
             setIsSliderOpen(false);
             setViewState((prev) => ({
               ...prev,
-              target: [coords[0], coords[1] + 5.5, 0],
+              target: [coords[0], coords[1], 0],
               zoom: prev.zoom ?? INITIAL_ZOOM,
               ...ZOOM_LIMITS
             }));
