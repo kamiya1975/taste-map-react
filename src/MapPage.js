@@ -18,6 +18,22 @@ function MapPage() {
     rotationOrbit: 0,
     zoom: INITIAL_ZOOM,
   });
+
+  const panBounds = useMemo(() => {
+    if (!data.length) return { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
+    const xs = data.map((d) => d.BodyAxis);
+    const ys = data.map((d) => (is3D ? d.SweetAxis : -d.SweetAxis));
+    const xmin = Math.min(...xs), xmax = Math.max(...xs);
+    const ymin = Math.min(...ys), ymax = Math.max(...ys);
+    const pad = 0.3; // 余白。小さくするほど可動域が狭くなる
+    return {
+      xmin: xmin - pad,
+      xmax: xmax + pad,
+      ymin: ymin - pad,
+      ymax: ymax + pad,
+    };
+  }, [data, is3D]);
+
   const [saved2DViewState, setSaved2DViewState] = useState(null);
   const [zMetric, setZMetric] = useState("");
   const [userRatings, setUserRatings] = useState({});
@@ -133,8 +149,8 @@ function MapPage() {
         const ay = Number(val[1]);
         if (Number.isFinite(ax) && Number.isFinite(ay)) {
           const [cx, cy] = umapCentroid;
-          const dUMAP   = (ax - cx) ** 2 + (ay - cy) ** 2;
-          const dFlipY  = (ax - cx) ** 2 + (-ay - cy) ** 2;
+          const dUMAP = (ax - cx) ** 2 + (ay - cy) ** 2;
+          const dFlipY = (ax - cx) ** 2 + (-ay - cy) ** 2;
           const umap = dUMAP <= dFlipY ? [ax, ay] : [ax, -ay];
           // 移行
           localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: umap, version: 2 }));
@@ -177,10 +193,12 @@ function MapPage() {
         zoom: prev.zoom ?? INITIAL_ZOOM,
       }));
       // 一度センタリングしたらフラグをクリア（履歴の state を消す）
-      try { window.history.replaceState({}, document.title, window.location.pathname); } catch {}
+      try {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch {}
     }
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-     }, [userPin, is3D, location.state]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userPin, is3D, location.state]);
 
   // UMAP+PCA を読み込み（UMAP1→BodyAxis, UMAP2→SweetAxis）
   useEffect(() => {
@@ -198,8 +216,8 @@ function MapPage() {
             return {
               JAN: String(r.JAN ?? ""),
               Type: r.Type ?? "Other",
-              BodyAxis: Number(r.UMAP1),   // x軸
-              SweetAxis: Number(r.UMAP2),  // y軸
+              BodyAxis: Number(r.UMAP1), // x軸
+              SweetAxis: Number(r.UMAP2), // y軸
               PC1: Number(r.PC1),
               PC2: Number(r.PC2),
               PC3: Number(r.PC3),
@@ -380,27 +398,33 @@ function MapPage() {
   const pca2umap = useMemo(() => {
     if (!data?.length) return null;
     const samples = data
-      .filter(d => Number.isFinite(d.PC1) && Number.isFinite(d.PC2) && Number.isFinite(d.BodyAxis) && Number.isFinite(d.SweetAxis))
-      .map(d => ({ pc1: d.PC1, pc2: d.PC2, x: d.BodyAxis, y: d.SweetAxis }));
+      .filter(
+        (d) =>
+          Number.isFinite(d.PC1) &&
+          Number.isFinite(d.PC2) &&
+          Number.isFinite(d.BodyAxis) &&
+          Number.isFinite(d.SweetAxis)
+      )
+      .map((d) => ({ pc1: d.PC1, pc2: d.PC2, x: d.BodyAxis, y: d.SweetAxis }));
 
     const K = 15; // 近傍数（お好みで 10〜30）
     return (pc1, pc2) => {
       if (!Number.isFinite(pc1) || !Number.isFinite(pc2) || samples.length === 0) return [0, 0];
       // 距離でソート
       const neigh = samples
-        .map(s => {
+        .map((s) => {
           const dx = pc1 - s.pc1, dy = pc2 - s.pc2;
-          const d2 = dx*dx + dy*dy;
+          const d2 = dx * dx + dy * dy;
           return { s, d2 };
         })
         .sort((a, b) => a.d2 - b.d2)
         .slice(0, Math.min(K, samples.length));
 
       // 距離の逆数重み（0割防止のε付き）
-      const EPS = 1e-6;
+      const EPS2 = 1e-6;
       let sw = 0, sx = 0, sy = 0;
       neigh.forEach(({ s, d2 }) => {
-        const w = 1 / (Math.sqrt(d2) + EPS);
+        const w = 1 / (Math.sqrt(d2) + EPS2);
         sw += w;
         sx += w * s.x;
         sy += w * s.y;
@@ -447,7 +471,8 @@ function MapPage() {
         elevationScale: 2,
         getPosition: (d) => [d.BodyAxis, d.SweetAxis],
         getElevation: (d) => (zMetric ? Number(d[zMetric]) || 0 : 0),
-        getFillColor: (d) => (String(d.JAN) === String(selectedJAN) ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other)),
+        getFillColor: (d) =>
+          String(d.JAN) === String(selectedJAN) ? ORANGE : typeColorMap[d.Type] || typeColorMap.Other,
         updateTriggers: { getFillColor: [selectedJAN] },
         pickable: true,
         onClick: null,
@@ -457,7 +482,8 @@ function MapPage() {
       id: "scatter",
       data,
       getPosition: (d) => [d.BodyAxis, -d.SweetAxis, 0],
-      getFillColor: (d) => (String(d.JAN) === String(selectedJAN) ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other)),
+      getFillColor: (d) =>
+        String(d.JAN) === String(selectedJAN) ? ORANGE : typeColorMap[d.Type] || typeColorMap.Other,
       updateTriggers: { getFillColor: [selectedJAN] },
       radiusUnits: "meters",
       getRadius: 0.03,
@@ -571,25 +597,14 @@ function MapPage() {
         views={is3D ? new OrbitView({ near: 0.1, far: 1000 }) : new OrthographicView({ near: -1, far: 1 })}
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => {
-          // 1) ズームをクランプ（ユーザー操作時）
+          // ズームをクランプ
           const z = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom));
-          // 2) ターゲットも必要ならクランプ
-          const panBounds = useMemo(() => {
-            if (!data.length) return { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
-            const xs = data.map(d => d.BodyAxis);
-            const ys = data.map(d => d.SweetAxis);
-            const xmin = Math.min(...xs), xmax = Math.max(...xs);
-            const pad = 0.8; // 余白
-            return { xmin: xmin - pad, xmax: xmax + pad, ymin: ymin - pad, ymax: ymax + pad };
-          }, [data]);
-
-          // onViewStateChange 内
+          // パン範囲をクランプ
           const limitedTarget = [
             Math.max(panBounds.xmin, Math.min(panBounds.xmax, vs.target[0])),
             Math.max(panBounds.ymin, Math.min(panBounds.ymax, vs.target[1])),
             vs.target[2],
           ];
-
           setViewState({ ...vs, zoom: z, target: limitedTarget });
         }}
         controller={{
@@ -606,7 +621,7 @@ function MapPage() {
             const coord = info?.coordinate; // UMAP座標（2Dはy反転後のキャンバス座標が渡る）
             const nearest = findNearestWine(coord);
             if (nearest?.JAN) openProductDrawer(nearest.JAN);
-             return;
+            return;
           }
 
           // 通常の点（ワイン）をクリックした？
@@ -624,21 +639,23 @@ function MapPage() {
         pickingRadius={8}
         layers={[
           ...ratingCircleLayers,
-          (!is3D && !highlight2D)
+          !is3D && !highlight2D
             ? new GridCellLayer({
                 id: "grid-cells-base",
                 data: cells,
                 cellSize,
                 getPosition: (d) => d.position,
                 getFillColor: (d) =>
-                  d.hasFavorite ? [255, 165, 0, 140] :
-                  d.hasRating   ? [180, 100, 50, 150] :
-                                  [200, 200, 200, 40],
+                  d.hasFavorite
+                    ? [255, 165, 0, 140]
+                    : d.hasRating
+                    ? [180, 100, 50, 150]
+                    : [200, 200, 200, 40],
                 getElevation: 0,
                 pickable: false,
               })
             : null,
-          (!is3D && highlight2D)
+          !is3D && highlight2D
             ? new GridCellLayer({
                 id: `grid-cells-heat-${highlight2D}-p${HEAT_COLOR_LOW.join("_")}-${HEAT_COLOR_HIGH.join("_")}`,
                 data: heatCells,
@@ -659,11 +676,31 @@ function MapPage() {
                 opacity: 1,
                 parameters: { depthTest: false },
                 pickable: false,
-                updateTriggers: { getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash, ...HEAT_COLOR_LOW, ...HEAT_COLOR_HIGH, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX] },
+                updateTriggers: {
+                  getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash, ...HEAT_COLOR_LOW, ...HEAT_COLOR_HIGH, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX],
+                },
               })
             : null,
-          new LineLayer({ id: "grid-lines-thin", data: thinLines, getSourcePosition: (d) => d.sourcePosition, getTargetPosition: (d) => d.targetPosition, getColor: [200, 200, 200, 100], getWidth: 1, widthUnits: "pixels", pickable: false }),
-          new LineLayer({ id: "grid-lines-thick", data: thickLines, getSourcePosition: (d) => d.sourcePosition, getTargetPosition: (d) => d.targetPosition, getColor: [180, 180, 180, 120], getWidth: 1.25, widthUnits: "pixels", pickable: false }),
+          new LineLayer({
+            id: "grid-lines-thin",
+            data: thinLines,
+            getSourcePosition: (d) => d.sourcePosition,
+            getTargetPosition: (d) => d.targetPosition,
+            getColor: [200, 200, 200, 100],
+            getWidth: 1,
+            widthUnits: "pixels",
+            pickable: false,
+          }),
+          new LineLayer({
+            id: "grid-lines-thick",
+            data: thickLines,
+            getSourcePosition: (d) => d.sourcePosition,
+            getTargetPosition: (d) => d.targetPosition,
+            getColor: [180, 180, 180, 120],
+            getWidth: 1.25,
+            widthUnits: "pixels",
+            pickable: false,
+          }),
           mainLayer,
           userPinLayer,
           ratingDateLayer,
@@ -671,7 +708,11 @@ function MapPage() {
       />
 
       {is3D && (
-        <select value={zMetric} onChange={(e) => setZMetric(e.target.value)} style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}>
+        <select
+          value={zMetric}
+          onChange={(e) => setZMetric(e.target.value)}
+          style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}
+        >
           <option value="">ー</option>
           <option value="PC2">Sweet(PC2)</option>
           <option value="PC1">Body(PC1)</option>
@@ -680,7 +721,11 @@ function MapPage() {
       )}
 
       {!is3D && (
-        <select value={highlight2D} onChange={(e) => setHighlight2D(e.target.value)} style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}>
+        <select
+          value={highlight2D}
+          onChange={(e) => setHighlight2D(e.target.value)}
+          style={{ position: "absolute", top: "10px", left: "10px", zIndex: 1, padding: "6px", fontSize: "14px" }}
+        >
           <option value="">ー</option>
           <option value="PC2">Sweet(PC2)</option>
           <option value="PC1">Body(PC1)</option>
@@ -708,15 +753,46 @@ function MapPage() {
             });
           }
         }}
-        style={{ position: "absolute", top: "10px", right: "10px", zIndex: 1, padding: "8px 12px", fontSize: "14px", background: "#fff", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer" }}
+        style={{
+          position: "absolute",
+          top: "10px",
+          right: "10px",
+          zIndex: 1,
+          padding: "8px 12px",
+          fontSize: "14px",
+          background: "#fff",
+          border: "1px solid #ccc",
+          borderRadius: "4px",
+          cursor: "pointer",
+        }}
       >
         {is3D ? "2D" : "3D"}
       </button>
 
       {!is3D && (
         <button
-          onClick={() => { setSweetness(50); setBody(50); setIsSliderOpen(true); }}
-          style={{ position: "absolute", top: "70px", right: "10px", zIndex: 1, width: "40px", height: "40px", borderRadius: "50%", background: "#eee", border: "1px solid #ccc", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "20px" }}
+          onClick={() => {
+            setSweetness(50);
+            setBody(50);
+            setIsSliderOpen(true);
+          }}
+          style={{
+            position: "absolute",
+            top: "70px",
+            right: "10px",
+            zIndex: 1,
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: "#eee",
+            border: "1px solid #ccc",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: "bold",
+            fontSize: "20px",
+          }}
         >
           ●
         </button>
@@ -724,34 +800,129 @@ function MapPage() {
 
       {!is3D && (
         <button
-          onClick={() => { const next = !showRatingDates; setShowRatingDates(next); setIsRatingListOpen(next); }}
-          style={{ position: "absolute", top: "120px", right: "10px", zIndex: 1, width: "40px", height: "40px", borderRadius: "50%", background: "#eee", border: "1px solid #ccc", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "20px" }}
+          onClick={() => {
+            const next = !showRatingDates;
+            setShowRatingDates(next);
+            setIsRatingListOpen(next);
+          }}
+          style={{
+            position: "absolute",
+            top: "120px",
+            right: "10px",
+            zIndex: 1,
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: "#eee",
+            border: "1px solid #ccc",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: "bold",
+            fontSize: "20px",
+          }}
         >
           ♡
         </button>
       )}
 
-      <button onClick={() => setIsSettingsOpen(true)} style={{ position: "absolute", bottom: "40px", left: "20px", zIndex: 1, width: "40px", height: "40px", borderRadius: "50%", background: "#eee", border: "1px solid #ccc", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "18px" }}>
+      <button
+        onClick={() => setIsSettingsOpen(true)}
+        style={{
+          position: "absolute",
+          bottom: "40px",
+          left: "20px",
+          zIndex: 1,
+          width: "40px",
+          height: "40px",
+          borderRadius: "50%",
+          background: "#eee",
+          border: "1px solid #ccc",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: "bold",
+          fontSize: "18px",
+        }}
+      >
         ⚙
       </button>
 
       {/* 嗜好スライダー */}
-      <Drawer anchor="bottom" open={isSliderOpen} onClose={() => setIsSliderOpen(false)} PaperProps={{ style: { width: "100%", height: "800px", padding: "24px", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "stretch", fontFamily: "sans-serif" } }}>
+      <Drawer
+        anchor="bottom"
+        open={isSliderOpen}
+        onClose={() => setIsSliderOpen(false)}
+        PaperProps={{
+          style: {
+            width: "100%",
+            height: "800px",
+            padding: "24px",
+            boxSizing: "border-box",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-start",
+            alignItems: "stretch",
+            fontFamily: "sans-serif",
+          },
+        }}
+      >
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={() => setIsSliderOpen(false)} style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}>閉じる</button>
+          <button
+            onClick={() => setIsSliderOpen(false)}
+            style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}
+          >
+            閉じる
+          </button>
         </div>
         <h2 style={{ textAlign: "center", fontSize: "20px", marginBottom: "24px" }}>基準のワインを飲んだ印象は？</h2>
         <div style={{ marginBottom: "32px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: "bold", marginBottom: "6px" }}>
-            <span>← こんなに甘みは不要</span><span>もっと甘みが欲しい →</span>
+            <span>← こんなに甘みは不要</span>
+            <span>もっと甘みが欲しい →</span>
           </div>
-          <input type="range" min="0" max="100" value={sweetness} onChange={(e) => setSweetness(Number(e.target.value))} style={{ width: "100%", appearance: "none", height: "10px", borderRadius: "5px", background: `linear-gradient(to right, #007bff ${sweetness}%, #ddd ${sweetness}%)`, outline: "none", marginTop: "8px", WebkitAppearance: "none" }} />
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={sweetness}
+            onChange={(e) => setSweetness(Number(e.target.value))}
+            style={{
+              width: "100%",
+              appearance: "none",
+              height: "10px",
+              borderRadius: "5px",
+              background: `linear-gradient(to right, #007bff ${sweetness}%, #ddd ${sweetness}%)`,
+              outline: "none",
+              marginTop: "8px",
+              WebkitAppearance: "none",
+            }}
+          />
         </div>
         <div style={{ marginBottom: "32px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: "bold", marginBottom: "6px" }}>
-            <span>← もっと軽やかが良い</span><span>濃厚なコクが欲しい →</span>
+            <span>← もっと軽やかが良い</span>
+            <span>濃厚なコクが欲しい →</span>
           </div>
-          <input type="range" min="0" max="100" value={body} onChange={(e) => setBody(Number(e.target.value))} style={{ width: "100%", appearance: "none", height: "10px", borderRadius: "5px", background: `linear-gradient(to right, #007bff ${body}%, #ddd ${body}%)`, outline: "none", marginTop: "8px", WebkitAppearance: "none" }} />
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={body}
+            onChange={(e) => setBody(Number(e.target.value))}
+            style={{
+              width: "100%",
+              appearance: "none",
+              height: "10px",
+              borderRadius: "5px",
+              background: `linear-gradient(to right, #007bff ${body}%, #ddd ${body}%)`,
+              outline: "none",
+              marginTop: "8px",
+              WebkitAppearance: "none",
+            }}
+          />
         </div>
         <button
           onClick={() => {
@@ -760,8 +931,8 @@ function MapPage() {
             const blendF = data.find((d) => d.JAN === "blendF");
             if (!blendF) return;
 
-            const pc1s = data.map(d => d.PC1).filter(Number.isFinite);
-            const pc2s = data.map(d => d.PC2).filter(Number.isFinite);
+            const pc1s = data.map((d) => d.PC1).filter(Number.isFinite);
+            const pc2s = data.map((d) => d.PC2).filter(Number.isFinite);
             const minPC1 = Math.min(...pc1s), maxPC1 = Math.max(...pc1s);
             const minPC2 = Math.min(...pc2s), maxPC2 = Math.max(...pc2s);
 
@@ -792,52 +963,95 @@ function MapPage() {
               ...prev,
               target: [coords[0], coords[1], 0],
               zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)),
-          }));
-        }}
-        style={{ 
-          background: "#fff", 
-          color: "#007bff", 
-          padding: "14px 30px", 
-          fontSize: "16px", 
-          fontWeight: "bold", 
-          border: "2px solid #007bff", 
-          borderRadius: "6px", 
-          cursor: "pointer", 
-          display: "block", 
-          margin: "0 auto" 
-        }}
-      >
-        あなたの好みをMapに表示
-      </button>
-      </Drawer>  
+            }));
+          }}
+          style={{
+            background: "#fff",
+            color: "#007bff",
+            padding: "14px 30px",
+            fontSize: "16px",
+            fontWeight: "bold",
+            border: "2px solid #007bff",
+            borderRadius: "6px",
+            cursor: "pointer",
+            display: "block",
+            margin: "0 auto",
+          }}
+        >
+          あなたの好みをMapに表示
+        </button>
+      </Drawer>
 
       {/* 設定ドロワー */}
-      <Drawer anchor="left" open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} PaperProps={{ style: { width: "300px", padding: "20px", boxSizing: "border-box" } }}>
+      <Drawer
+        anchor="left"
+        open={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        PaperProps={{ style: { width: "300px", padding: "20px", boxSizing: "border-box" } }}
+      >
         <h3 style={{ marginTop: 0 }}>ユーザー設定</h3>
         <div style={{ marginBottom: "20px" }}>
-          <button onClick={() => alert("ニックネーム変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>ニックネーム変更</button>
-          <button onClick={() => alert("パスワード変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>パスワード変更</button>
-          <button onClick={() => alert("お気に入り店舗設定へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>お気に入り店舗管理</button>
-          <button onClick={() => alert("利用規約を表示")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>利用規約・プライバシーポリシー</button>
-          <button onClick={() => alert("アプリの使い方説明を表示")} style={{ width: "100%", padding: "10px" }}>アプリの使い方</button>
+          <button onClick={() => alert("ニックネーム変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+            ニックネーム変更
+          </button>
+          <button onClick={() => alert("パスワード変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+            パスワード変更
+          </button>
+          <button onClick={() => alert("お気に入り店舗設定へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+            お気に入り店舗管理
+          </button>
+          <button onClick={() => alert("利用規約を表示")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
+            利用規約・プライバシーポリシー
+          </button>
+          <button onClick={() => alert("アプリの使い方説明を表示")} style={{ width: "100%", padding: "10px" }}>
+            アプリの使い方
+          </button>
         </div>
-        <button onClick={() => setIsSettingsOpen(false)} style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer", width: "100%" }}>閉じる</button>
+        <button
+          onClick={() => setIsSettingsOpen(false)}
+          style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer", width: "100%" }}
+        >
+          閉じる
+        </button>
       </Drawer>
 
       {/* ♡ お気に入りパネル */}
       <FavoritePanel
         isOpen={isRatingListOpen}
-        onClose={() => { setIsRatingListOpen(false); setShowRatingDates(false); }}
+        onClose={() => {
+          setIsRatingListOpen(false);
+          setShowRatingDates(false);
+        }}
         favorites={favorites}
         data={data}
         onSelectJAN={openProductDrawer}
       />
 
       {/* 商品ページドロワー（/products/:JAN） */}
-      <Drawer anchor="bottom" open={productDrawerOpen} onClose={() => setProductDrawerOpen(false)} PaperProps={{ style: { width: "100%", height: "100vh", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", overflow: "hidden" } }}>
-        <div style={{ height: "48px", padding: "8px 12px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f9f9f9" }}>
+      <Drawer
+        anchor="bottom"
+        open={productDrawerOpen}
+        onClose={() => setProductDrawerOpen(false)}
+        PaperProps={{ style: { width: "100%", height: "100vh", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", overflow: "hidden" } }}
+      >
+        <div
+          style={{
+            height: "48px",
+            padding: "8px 12px",
+            borderBottom: "1px solid #eee",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "#f9f9f9",
+          }}
+        >
           <div style={{ fontWeight: 600 }}>商品ページ</div>
-          <button onClick={() => setProductDrawerOpen(false)} style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}>閉じる</button>
+          <button
+            onClick={() => setProductDrawerOpen(false)}
+            style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}
+          >
+            閉じる
+          </button>
         </div>
         {selectedJAN ? (
           <iframe title={`product-${selectedJAN}`} src={`/products/${selectedJAN}`} style={{ border: "none", width: "100%", height: "calc(100vh - 48px)" }} />
@@ -852,11 +1066,13 @@ function MapPage() {
 // === お気に入り一覧パネル ===
 function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
   const list = React.useMemo(() => {
-    const arr = Object.entries(favorites || {}).map(([jan, meta]) => {
-      const item = (data || []).find((d) => String(d.JAN) === String(jan));
-      if (!item) return null;
-      return { ...item, addedAt: meta?.addedAt ?? null };
-    }).filter(Boolean);
+    const arr = Object.entries(favorites || {})
+      .map(([jan, meta]) => {
+        const item = (data || []).find((d) => String(d.JAN) === String(jan));
+        if (!item) return null;
+        return { ...item, addedAt: meta?.addedAt ?? null };
+      })
+      .filter(Boolean);
     // 追加日時の新しい順
     arr.sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
     // 表示番号（1,2,3…）
@@ -873,7 +1089,9 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
           transition={{ type: "spring", stiffness: 200, damping: 25 }}
           style={{
             position: "absolute",
-            bottom: 0, left: 0, right: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
             height: "500px",
             backgroundColor: "#fff",
             boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
@@ -882,12 +1100,28 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
             borderTopRightRadius: "12px",
             display: "flex",
             flexDirection: "column",
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            fontFamily:
+              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
           }}
         >
-          <div style={{ padding: "12px 16px", borderBottom: "1px solid #ddd", background: "#f9f9f9", flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div
+            style={{
+              padding: "12px 16px",
+              borderBottom: "1px solid #ddd",
+              background: "#f9f9f9",
+              flexShrink: 0,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <h3 style={{ margin: 0 }}>お気に入り</h3>
-            <button onClick={onClose} style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}>閉じる</button>
+            <button
+              onClick={onClose}
+              style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}
+            >
+              閉じる
+            </button>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", backgroundColor: "#fff" }}>
@@ -899,7 +1133,16 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
                   style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}
                 >
                   <div>
-                    <strong style={{ display: "inline-block", color: "rgb(50, 50, 50)", fontSize: "16px", fontWeight: "bold", marginRight: "4px", fontFamily: '"Helvetica Neue", Arial, sans-serif' }}>
+                    <strong
+                      style={{
+                        display: "inline-block",
+                        color: "rgb(50, 50, 50)",
+                        fontSize: "16px",
+                        fontWeight: "bold",
+                        marginRight: "4px",
+                        fontFamily: '"Helvetica Neue", Arial, sans-serif',
+                      }}
+                    >
                       {item.displayIndex}.
                     </strong>
                     <span style={{ fontSize: "15px", color: "#555" }}>
