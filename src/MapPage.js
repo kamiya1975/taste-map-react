@@ -561,7 +561,7 @@ function MapPage() {
       getPosition: (d) => [d.x, is3D ? d.y : -d.y, 0], // 2DではY反転に合わせる
       getRadius: 0.10,
       radiusUnits: "meters",
-      getFillColor: [0, 120, 255, 230],
+      getFillColor: [255, 140, 0, 230],
       stroked: true,
       getLineWidth: 2,
       lineWidthUnits: "pixels",
