@@ -11,6 +11,7 @@ function MapPage() {
   const location = useLocation();
   const [data, setData] = useState([]);
   const [is3D, setIs3D] = useState(false);
+  const ZOOM_LIMITS = { min: 4.0, max: 10.0 };
   const INITIAL_ZOOM = 7;
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
@@ -18,7 +19,6 @@ function MapPage() {
     rotationOrbit: 0,
     zoom: INITIAL_ZOOM,
   });
-  const ZOOM_LIMITS = { min: 4.0, max: 10.0 };
   const [saved2DViewState, setSaved2DViewState] = useState(null);
   const [zMetric, setZMetric] = useState("");
   const [userRatings, setUserRatings] = useState({});
@@ -53,8 +53,6 @@ function MapPage() {
 
   // お気に入り（JAN -> {addedAt}）
   const [favorites, setFavorites] = useState({});
-
-  const ZOOM_LIMITS = { minZoom: 4.0, maxZoom: 10.0 };
 
   useEffect(() => {
     if (location.state?.autoOpenSlider) {
@@ -591,11 +589,9 @@ function MapPage() {
           dragRotate: is3D,
           minRotationX: 5,
           maxRotationX: 90,
-          // ★ ここが“操作時の制限”
-          minZoom: ZOOM_LIMITS.min,
+          maxRotationX: 90,
           maxZoom: ZOOM_LIMITS.max,
         }}
-        controller={{ dragPan: true, dragRotate: is3D, minRotationX: 5, maxRotationX: 90, minZoom: 4.0, maxZoom: ZOOM_LIMITS.maxZoom }}
         onClick={(info) => {
           // 赤丸（slider-mark）をクリックした？
           if (info?.layer?.id === "slider-mark") {
@@ -690,9 +686,9 @@ function MapPage() {
           setIs3D(nextIs3D);
           if (nextIs3D) {
             setSaved2DViewState(viewState);
-            setViewState({ target: [viewState.target[0], viewState.target[1], 0], zoom: viewState.zoom, rotationX: 45, rotationOrbit: 0, ...ZOOM_LIMITS });
+            setViewState({ target: [...], zoom: ..., rotationX: 45, rotationOrbit: 0 });
           } else {
-            setViewState({ ...saved2DViewState, rotationX: 0, rotationOrbit: 0, ...ZOOM_LIMITS });
+            setViewState({ ...saved2DViewState, rotationX: 0, rotationOrbit: 0 });
           }
         }}
         style={{ position: "absolute", top: "10px", right: "10px", zIndex: 1, padding: "8px 12px", fontSize: "14px", background: "#fff", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer" }}
@@ -780,7 +776,6 @@ function MapPage() {
               ...prev,
               target: [coords[0], coords[1], 0],
               zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)),
-              ...ZOOM_LIMITS
             }));
 
             // 共有したい場合は保存（任意）
