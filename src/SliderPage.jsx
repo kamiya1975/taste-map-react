@@ -222,6 +222,13 @@ function SliderPage() {
       meta: { method: "local_affine_knn", k: 20 }
     };
     localStorage.setItem("userPinCoords", JSON.stringify(payload));
+    const already = localStorage.getItem("userPinCoords");
+    if (!already) {
+      localStorage.setItem(
+        "userPinCoords",
+        JSON.stringify([bodyValue, -sweetValue]) // 互換のため従来フォーマットでもOK
+      );
+    } 
     navigate("/map");
   };
 

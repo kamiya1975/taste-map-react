@@ -717,7 +717,7 @@ function MapPage() {
             const coords = [umapX, -umapY];
 
             setIsSliderOpen(false);
-           setViewState((prev) => ({
+            setViewState((prev) => ({
               ...prev,
               target: [coords[0], coords[1] + 5.5, 0],
               zoom: 4.5,
@@ -726,6 +726,9 @@ function MapPage() {
 
             // 共有したい場合は保存（任意）
             localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: [umapX, umapY] }));
+
+            // ★ 即時に青点を動かす（同一タブは storage イベントが来ないため）
+            setUserPin([umapX, umapY]);
           }}
 
           style={{ background: "#fff", color: "#007bff", padding: "14px 30px", fontSize: "16px", fontWeight: "bold", border: "2px solid #007bff", borderRadius: "6px", cursor: "pointer", display: "block", margin: "0 auto" }}
