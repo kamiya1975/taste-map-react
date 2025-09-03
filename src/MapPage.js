@@ -15,7 +15,7 @@ function MapPage() {
     target: [0, 0, 0],
     rotationX: 0,
     rotationOrbit: 0,
-    zoom: 5,
+    zoom: 4,
     minZoom: 4.0,
     maxZoom: 10.0,
   });
