@@ -11,7 +11,7 @@ function MapPage() {
   const location = useLocation();
   const [data, setData] = useState([]);
   const [is3D, setIs3D] = useState(false);
-  const INITIAL_ZOOM = 2;
+  const INITIAL_ZOOM = 6;
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
     rotationX: 0,
