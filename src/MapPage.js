@@ -5,7 +5,6 @@ import { ScatterplotLayer, ColumnLayer, LineLayer, TextLayer, GridCellLayer, Pat
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import CircleRatingDisplay from "./components/CircleRatingDisplay";
 
 function MapPage() {
   const location = useLocation();
@@ -175,9 +174,7 @@ function MapPage() {
       setViewState((prev) => ({
         ...prev,
         target: [userPin[0], is3D ? userPin[1] : -userPin[1], 0],
-        // ズームは維持。初回なら初期値を使う
         zoom: prev.zoom ?? INITIAL_ZOOM,
-        ...ZOOM_LIMITS,
       }));
       // 一度センタリングしたらフラグをクリア（履歴の state を消す）
       try { window.history.replaceState({}, document.title, window.location.pathname); } catch {}
@@ -750,20 +747,16 @@ function MapPage() {
             if (!data?.length || !pca2umap) return;
 
             const blendF = data.find((d) => d.JAN === "blendF");
-            if (!blendF) return; // blendF が無い場合は別途：中央値を使う等に変更可
+            if (!blendF) return;
 
-            // PCA の全体レンジ
             const pc1s = data.map(d => d.PC1).filter(Number.isFinite);
             const pc2s = data.map(d => d.PC2).filter(Number.isFinite);
             const minPC1 = Math.min(...pc1s), maxPC1 = Math.max(...pc1s);
             const minPC2 = Math.min(...pc2s), maxPC2 = Math.max(...pc2s);
 
-            // 基準点（blendF）の PCA 値
             const basePC1 = Number(blendF.PC1);
             const basePC2 = Number(blendF.PC2);
 
-            // スライダー（0-100）を PCA 連続値へ補間
-            // Body スライダー → PC1,  Sweet スライダー → PC2
             const pc1Value =
               body <= 50
                 ? basePC1 - ((50 - body) / 50) * (basePC1 - minPC1)
@@ -774,31 +767,26 @@ function MapPage() {
                 ? basePC2 - ((50 - sweetness) / 50) * (basePC2 - minPC2)
                 : basePC2 + ((sweetness - 50) / 50) * (maxPC2 - basePC2);
 
-            // PCA → UMAP へ変換（BodyAxis=x, SweetAxis=y）
             const [umapX, umapY] = pca2umap(pc1Value, pc2Value);
-
-            // 2D表示はY反転で描画しているため反映
             const coords = [umapX, -umapY];
 
             setIsSliderOpen(false);
-            setViewState((prev) => ({
-              ...prev,
-              target: [userPin[0], is3D ? userPin[1] : -userPin[1], 0],
-              zoom: prev.zoom ?? INITIAL_ZOOM,
-            }));
 
-            // 共有したい場合は保存（任意）
+            // ピン更新＆保存
+            setUserPin([umapX, umapY]);
             localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: [umapX, umapY] }));
 
-            // ★ 即時に青点を動かす（同一タブは storage イベントが来ないため）
-            setUserPin([umapX, umapY]);
-          }}
-
-          style={{ background: "#fff", color: "#007bff", padding: "14px 30px", fontSize: "16px", fontWeight: "bold", border: "2px solid #007bff", borderRadius: "6px", cursor: "pointer", display: "block", margin: "0 auto" }}
-        >
-          あなたの好みをMapに表示
-        </button>
-      </Drawer>
+            // センタリング
+            setViewState((prev) => ({
+              ...prev,
+              target: [coords[0], coords[1], 0],
+              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)),
+          }));
+        }}   {/* ← ここが大事（}} を入れる） */}
+        style={{ background: "#fff", color: "#007bff", padding: "14px 30px", fontSize: "16px", fontWeight: "bold", border: "2px solid #007bff", borderRadius: "6px", cursor: "pointer", display: "block", margin: "0 auto" }}
+      >
+        あなたの好みをMapに表示
+      </button>
 
       {/* 設定ドロワー */}
       <Drawer anchor="left" open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} PaperProps={{ style: { width: "300px", padding: "20px", boxSizing: "border-box" } }}>
