@@ -17,7 +17,7 @@ function MapPage() {
     rotationX: 0,
     rotationOrbit: 0,
     zoom: INITIAL_ZOOM,
-    minZoom: 4.0,
+    minZoom: 5.0,
     maxZoom: 10.0,
   });
   const [saved2DViewState, setSaved2DViewState] = useState(null);
