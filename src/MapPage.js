@@ -25,7 +25,6 @@ function MapPage() {
   const [isSliderOpen, setIsSliderOpen] = useState(false);
   const [sweetness, setSweetness] = useState(50);
   const [body, setBody] = useState(50);
-  const [sliderMarkCoords, setSliderMarkCoords] = useState(null);
   const [showRatingDates, setShowRatingDates] = useState(false);
   const [isRatingListOpen, setIsRatingListOpen] = useState(false); // ← お気に入りパネル開閉に再利用
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -505,19 +504,6 @@ function MapPage() {
         })
       : null;
 
-  // スライダーで打点表示
-  const sliderMarkLayer = sliderMarkCoords
-    ? new ScatterplotLayer({
-        id: "slider-mark",
-        data: [sliderMarkCoords],
-        getPosition: (d) => [d[0], is3D ? d[1] : -d[1], 0],
-        getFillColor: [255, 0, 0, 180],
-        getRadius: 0.25,
-        radiusUnits: "meters",
-        pickable: true,
-      })
-    : null;
-
   // 外部（SliderPage等）から渡されたユーザーピンを描画（UMAP座標）
   const userPinLayer = useMemo(() => {
     if (!userPin) return null;
@@ -617,7 +603,6 @@ function MapPage() {
           new LineLayer({ id: "grid-lines-thick", data: thickLines, getSourcePosition: (d) => d.sourcePosition, getTargetPosition: (d) => d.targetPosition, getColor: [180, 180, 180, 120], getWidth: 1.25, widthUnits: "pixels", pickable: false }),
           mainLayer,
           userPinLayer,
-          sliderMarkLayer,
           ratingDateLayer,
         ]}
       />
@@ -731,7 +716,6 @@ function MapPage() {
             // 2D表示はY反転で描画しているため反映
             const coords = [umapX, -umapY];
 
-            setSliderMarkCoords(coords);
             setIsSliderOpen(false);
            setViewState((prev) => ({
               ...prev,
