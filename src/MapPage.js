@@ -25,7 +25,7 @@ function MapPage() {
     const ys = data.map((d) => (is3D ? d.SweetAxis : -d.SweetAxis));
     const xmin = Math.min(...xs), xmax = Math.max(...xs);
     const ymin = Math.min(...ys), ymax = Math.max(...ys);
-    const pad = 0.3; // 余白。小さくするほど可動域が狭くなる
+    const pad = 1.0; // 余白。小さくするほど可動域が狭くなる
     return {
       xmin: xmin - pad,
       xmax: xmax + pad,
