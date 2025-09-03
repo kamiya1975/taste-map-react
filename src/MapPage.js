@@ -11,11 +11,12 @@ function MapPage() {
   const location = useLocation();
   const [data, setData] = useState([]);
   const [is3D, setIs3D] = useState(false);
+  const INITIAL_ZOOM = 4.2;
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
     rotationX: 0,
     rotationOrbit: 0,
-    zoom: 4.2,
+    zoom: INITIAL_ZOOM,
     minZoom: 4.0,
     maxZoom: 10.0,
   });
@@ -174,7 +175,7 @@ function MapPage() {
     setViewState((prev) => ({
       ...prev,
       target: [userPin[0], (is3D ? userPin[1] : -userPin[1]) + 5.5, 0],
-      zoom: Math.max(prev.zoom ?? 4.5, 4.5),
+      zoom: prev.zoom ?? INITIAL_ZOOM,
       ...ZOOM_LIMITS,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -760,7 +761,7 @@ function MapPage() {
             setViewState((prev) => ({
               ...prev,
               target: [coords[0], coords[1] + 5.5, 0],
-              zoom: 4.5,
+              zoom: prev.zoom ?? INITIAL_ZOOM,
               ...ZOOM_LIMITS
             }));
 
