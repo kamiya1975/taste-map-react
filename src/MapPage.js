@@ -514,7 +514,7 @@ function MapPage() {
         getFillColor: [255, 0, 0, 180],
         getRadius: 0.25,
         radiusUnits: "meters",
-        pickable: false,
+        pickable: true,
       })
     : null;
 
@@ -552,11 +552,22 @@ function MapPage() {
         }}
         controller={{ dragPan: true, dragRotate: is3D, minRotationX: 5, maxRotationX: 90, minZoom: 4.0, maxZoom: ZOOM_LIMITS.maxZoom }}
         onClick={(info) => {
+          // 赤丸（slider-mark）をクリックした？
+          if (info?.layer?.id === "slider-mark") {
+            const coord = info?.coordinate; // UMAP座標（2Dはy反転後のキャンバス座標が渡る）
+            const nearest = findNearestWine(coord);
+            if (nearest?.JAN) openProductDrawer(nearest.JAN);
+             return;
+          }
+
+          // 通常の点（ワイン）をクリックした？
           const picked = info?.object;
           if (picked?.JAN) {
             openProductDrawer(picked.JAN);
             return;
           }
+
+          // 何も拾えなかったら、クリック座標から最近傍を開く
           const coord = info?.coordinate;
           const nearest = findNearestWine(coord);
           if (nearest?.JAN) openProductDrawer(nearest.JAN);
