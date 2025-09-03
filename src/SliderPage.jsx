@@ -198,37 +198,30 @@ function SliderPage() {
 
   const handleNext = () => {
     if (!minMax || !blendF) return;
+
     const { minSweet, maxSweet, minBody, maxBody } = minMax;
 
-    // ---- スライダー（0-100）→ PCA連続値（BodyAxis, SweetAxis）へ補間 ----
-    const pcaSweet =
+    // スライダー（0-100）→ 連続値へ補間
+    const sweetValue =
       sweetness <= 50
         ? blendF.SweetAxis - ((50 - sweetness) / 50) * (blendF.SweetAxis - minSweet)
         : blendF.SweetAxis + ((sweetness - 50) / 50) * (maxSweet - blendF.SweetAxis);
 
-    const pcaBody =
+    const bodyValue =
       body <= 50
         ? blendF.BodyAxis - ((50 - body) / 50) * (blendF.BodyAxis - minBody)
         : blendF.BodyAxis + ((body - 50) / 50) * (maxBody - blendF.BodyAxis);
 
-    // ---- PCA (x=Body, y=Sweet) を UMAP に写像 ----
-    const [umapX, umapY] = pcaToUmap(pcaBody, pcaSweet, 20); // k=20 はお好みで
-
-    // MapPageは UMAP軸で描画 → そのまま保存（符号反転なし）
-    const payload = {
-      coordsUMAP: [umapX, umapY],
-      slider: { sweetness, body },
-      pcaPoint: [pcaBody, pcaSweet],
-      meta: { method: "local_affine_knn", k: 20 }
-    };
-    localStorage.setItem("userPinCoords", JSON.stringify(payload));
+    // ★ 初回だけ保存（新フォーマット：UMAPそのままの [x,y]）
     const already = localStorage.getItem("userPinCoords");
     if (!already) {
       localStorage.setItem(
         "userPinCoords",
-        JSON.stringify([bodyValue, -sweetValue]) // 互換のため従来フォーマットでもOK
+        JSON.stringify({ coordsUMAP: [bodyValue, sweetValue], version: 2 })
       );
-    } 
+    }
+
+    // （描画側で2DはY反転しているため、保存は反転しない＝UMAPの実値を保持）
     navigate("/map");
   };
 
