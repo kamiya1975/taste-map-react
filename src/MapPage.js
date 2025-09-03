@@ -28,6 +28,19 @@ function MapPage() {
   const [showRatingDates, setShowRatingDates] = useState(false);
   const [isRatingListOpen, setIsRatingListOpen] = useState(false); // ← お気に入りパネル開閉に再利用
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // UMAPのクラスタ中心（単純平均）
+  const umapCentroid = useMemo(() => {
+    if (!data?.length) return [0, 0];
+    let sx = 0, sy = 0, n = 0;
+    for (const d of data) {
+      if (Number.isFinite(d.BodyAxis) && Number.isFinite(d.SweetAxis)) {
+        sx += d.BodyAxis; sy += d.SweetAxis; n++;
+      }
+    }
+    return n ? [sx / n, sy / n] : [0, 0];
+  }, [data]);
+
   // 外部（SliderPage 等）で保存されたユーザーのUMAP座標を表示するため
   const [userPin, setUserPin] = useState(null); // [x, y] (UMAP)
 
@@ -91,20 +104,47 @@ function MapPage() {
     };
   }, []);
 
-  // ---- userPinCoords 受け取り（localStorage）----
+  // どの保存形式でも UMAP座標 [x,y] に正規化して返し、旧形式なら新形式に移行
   const readUserPinFromStorage = () => {
     try {
       const raw = localStorage.getItem("userPinCoords");
       if (!raw) return null;
-      const obj = JSON.parse(raw);
-      // 互換: 旧形式 [x, y] / 新形式 { coordsUMAP:[x,y], ... }
-      if (Array.isArray(obj) && obj.length >= 2) return [Number(obj[0]), Number(obj[1])];
-      if (obj && Array.isArray(obj.coordsUMAP) && obj.coordsUMAP.length >= 2) {
-        return [Number(obj.coordsUMAP[0]), Number(obj.coordsUMAP[1])];
+      const val = JSON.parse(raw);
+
+      // 新形式 { coordsUMAP:[x,y], ... }
+      if (val && Array.isArray(val.coordsUMAP) && val.coordsUMAP.length >= 2) {
+        const x = Number(val.coordsUMAP[0]);
+        const y = Number(val.coordsUMAP[1]);
+        if (Number.isFinite(x) && Number.isFinite(y)) return [x, y];
       }
-      if (obj && Array.isArray(obj.coords) && obj.coords.length >= 2) {
-        return [Number(obj.coords[0]), Number(obj.coords[1])];
+
+      // 旧：{ coords:[x, -y] }（キャンバス用反転Y）
+      if (val && Array.isArray(val.coords) && val.coords.length >= 2) {
+        const xCanvas = Number(val.coords[0]);
+        const yCanvas = Number(val.coords[1]);
+        if (Number.isFinite(xCanvas) && Number.isFinite(yCanvas)) {
+          const umap = [xCanvas, -yCanvas]; // 反転戻し
+          // 移行
+          localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: umap, version: 2 }));
+          return umap;
+        }
       }
+
+      // 最旧：配列 [x, ?y]（yがUMAPか-UMAPか不明）→ センターに近い方を採用
+      if (Array.isArray(val) && val.length >= 2) {
+        const ax = Number(val[0]);
+        const ay = Number(val[1]);
+        if (Number.isFinite(ax) && Number.isFinite(ay)) {
+          const [cx, cy] = umapCentroid;
+          const dUMAP   = (ax - cx) ** 2 + (ay - cy) ** 2;
+          const dFlipY  = (ax - cx) ** 2 + (-ay - cy) ** 2;
+          const umap = dUMAP <= dFlipY ? [ax, ay] : [ax, -ay];
+          // 移行
+          localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: umap, version: 2 }));
+          return umap;
+        }
+      }
+
       return null;
     } catch (e) {
       console.warn("userPinCoords の解析に失敗:", e);
