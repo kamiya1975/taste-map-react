@@ -17,9 +17,8 @@ function MapPage() {
     rotationX: 0,
     rotationOrbit: 0,
     zoom: INITIAL_ZOOM,
-    minZoom: 6.0,
-    maxZoom: 10.0,
   });
+  const ZOOM_LIMITS = { min: 4.0, max: 10.0 };
   const [saved2DViewState, setSaved2DViewState] = useState(null);
   const [zMetric, setZMetric] = useState("");
   const [userRatings, setUserRatings] = useState({});
@@ -577,12 +576,24 @@ function MapPage() {
         views={is3D ? new OrbitView({ near: 0.1, far: 1000 }) : new OrthographicView({ near: -1, far: 1 })}
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => {
+          // 1) ズームをクランプ（ユーザー操作時）
+          const z = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom));
+          // 2) ターゲットも必要ならクランプ
           const limitedTarget = [
             Math.max(-15, Math.min(15, vs.target[0])),
             Math.max(-15, Math.min(15, vs.target[1])),
             vs.target[2],
           ];
-          setViewState({ ...vs, target: limitedTarget });
+          setViewState({ ...vs, zoom: z, target: limitedTarget });
+        }}
+        controller={{
+          dragPan: true,
+          dragRotate: is3D,
+          minRotationX: 5,
+          maxRotationX: 90,
+          // ★ ここが“操作時の制限”
+          minZoom: ZOOM_LIMITS.min,
+          maxZoom: ZOOM_LIMITS.max,
         }}
         controller={{ dragPan: true, dragRotate: is3D, minRotationX: 5, maxRotationX: 90, minZoom: 4.0, maxZoom: ZOOM_LIMITS.maxZoom }}
         onClick={(info) => {
@@ -768,7 +779,7 @@ function MapPage() {
             setViewState((prev) => ({
               ...prev,
               target: [coords[0], coords[1], 0],
-              zoom: prev.zoom ?? INITIAL_ZOOM,
+              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)),
               ...ZOOM_LIMITS
             }));
 
