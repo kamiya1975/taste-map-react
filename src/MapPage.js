@@ -575,8 +575,8 @@ function MapPage() {
           const z = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom));
           // 2) ターゲットも必要ならクランプ
           const limitedTarget = [
-            Math.max(-8, Math.min(8, vs.target[0])),
-            Math.max(-6, Math.min(6, vs.target[1])),
+            Math.max(-10, Math.min(10, vs.target[0])),
+            Math.max(-10, Math.min(10, vs.target[1])),
             vs.target[2],
           ];
           setViewState({ ...vs, zoom: z, target: limitedTarget });
