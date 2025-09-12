@@ -10,6 +10,20 @@ import {
   PathLayer,
   IconLayer,
 } from "@deck.gl/layers";
+const compassLayer = new IconLayer({
+  id: "compass",
+  data: [{ position: [x, y], icon: "compass" }],
+  getIcon: () => ({
+    url: COMPASS_URL,
+    width: 128,   // 元画像の幅
+    height: 128,  // 元画像の高さ
+    anchorY: 128, // 下基準にするなら
+  }),
+  getPosition: d => d.position,
+  getSize: () => 10,       // ✅ 小ささを指定（例: 10〜30）
+  sizeScale: 1,            // ✅ デフォルトは1。大きすぎるなら0.5とか
+  pickable: false
+});
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
