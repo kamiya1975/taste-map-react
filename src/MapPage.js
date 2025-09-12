@@ -2,23 +2,12 @@ import React, { useEffect, useState, useMemo } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
 import { ScatterplotLayer, ColumnLayer, LineLayer, TextLayer, GridCellLayer, PathLayer, IconLayer } from "@deck.gl/layers";
-const compassLayer = new IconLayer({
-  id: "compass",
-  data: [{ position: [x, y], icon: "compass" }],
-  getIcon: () => ({
-    url: COMPASS_URL,
-    width: 128,   // 元画像の幅
-    height: 128,  // 元画像の高さ
-    anchorY: 128, // 下基準にするなら
-  }),
-  getPosition: d => d.position,
-  getSize: () => 10,       // ✅ 小ささを指定（例: 10〜30）
-  sizeScale: 1,            // ✅ デフォルトは1。大きすぎるなら0.5とか
-  pickable: false
-});
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+
+// ここだけ先頭に定義しておく（重複定義しない）
+const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 
 function MapPage() {
   const location = useLocation();
@@ -488,10 +477,9 @@ function MapPage() {
       : null;
 
   // ===== 嗜好コンパス：採用集合 & 重心 =====
-  // エルボー（折れ曲がり）検出：先頭～末尾直線からの垂線距離が最大の点まで採用
   const detectElbowIndex = (valsDesc) => {
     const n = valsDesc.length;
-    if (n <= 3) return n; // 少数なら全採用
+    if (n <= 3) return n;
     const x1 = 0, y1 = valsDesc[0];
     const x2 = n - 1, y2 = valsDesc[n - 1];
     const dx = x2 - x1, dy = y2 - y1;
@@ -502,17 +490,15 @@ function MapPage() {
       const dist = num / denom;
       if (dist > bestDist) { bestDist = dist; bestK = i; }
     }
-    return bestK + 1; // 添字→本数
+    return bestK + 1;
   };
 
-  // 採用集合の抽出と重心(UMAP1,UMAP2)の加重平均
   const compass = useMemo(() => {
     const rated = Object.entries(userRatings || {})
       .map(([jan, v]) => ({ jan: String(jan), rating: Number(v?.rating) }))
       .filter((r) => Number.isFinite(r.rating) && r.rating > 0);
     if (rated.length === 0) return { point: null, picked: [], rule: compassRule };
 
-    // data と突き合わせ（座標があるもののみ）
     const joined = rated
       .map((r) => {
         const it = data.find((d) => String(d.JAN) === r.jan);
@@ -524,30 +510,23 @@ function MapPage() {
 
     joined.sort((a, b) => b.rating - a.rating);
 
-    // A) 上位20%（最低3本）
     const n = joined.length;
     const k20 = Math.max(3, Math.ceil(n * 0.2));
     const top20 = joined.slice(0, Math.min(k20, n));
 
-    // B) エルボー
     const scores = joined.map((r) => r.rating);
     const kelbow = detectElbowIndex(scores);
     const elbowPick = joined.slice(0, Math.min(kelbow, n));
 
-    // ルール決定
     const picked = compassRule === "top20" ? top20 : elbowPick;
 
-    // 加重平均（重み＝rating）
     let sw = 0, sx = 0, sy = 0;
     picked.forEach((p) => { sw += p.rating; sx += p.rating * p.x; sy += p.rating * p.y; });
     if (sw <= 0) return { point: null, picked, rule: compassRule };
     return { point: [sx / sw, sy / sw], picked, rule: compassRule };
   }, [userRatings, data, compassRule]);
 
-  // コンパス画像URL
-  const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
-
-  // 嗜好コンパスの描画（IconLayer）
+  // 嗜好コンパス（IconLayer）
   const compassLayer = useMemo(() => {
     if (!compass?.point) return null;
     const [ux, uy] = compass.point;
@@ -557,7 +536,7 @@ function MapPage() {
       getPosition: (d) => d.position,
       getIcon: () => ({ url: COMPASS_URL, width: 310, height: 310, anchorX: 155, anchorY: 155 }),
       sizeUnits: "meters",
-      getSize: 1.2, // 地物スケールで調整可
+      getSize: 1.2,
       billboard: true,
       pickable: false,
       parameters: { depthTest: false },
@@ -606,7 +585,6 @@ function MapPage() {
           maxZoom: ZOOM_LIMITS.max,
         }}
         onClick={(info) => {
-          // 赤丸（slider-mark）想定の分岐は残す（必要なら後で追加）
           if (info?.layer?.id === "slider-mark") {
             const coord = info?.coordinate;
             const nearest = findNearestWine(coord);
@@ -797,7 +775,7 @@ function MapPage() {
             height: "40px",
             borderRadius: "50%",
             background: "#eee",
-            border: "1px solid #ccc",
+            border: "1px solid "#ccc",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -821,7 +799,7 @@ function MapPage() {
           height: "40px",
           borderRadius: "50%",
           background: "#eee",
-          border: "1px solid #ccc",
+          border: "1px solid "#ccc",
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
@@ -1078,9 +1056,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
         return { ...item, addedAt: meta?.addedAt ?? null };
       })
       .filter(Boolean);
-    // 追加日時の新しい順
     arr.sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
-    // 表示番号（1,2,3…）
     return arr.map((x, i) => ({ ...x, displayIndex: arr.length - i }));
   }, [favorites, data]);
 
