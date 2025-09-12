@@ -536,7 +536,7 @@ function MapPage() {
       getPosition: (d) => d.position,
       getIcon: () => ({ url: COMPASS_URL, width: 310, height: 310, anchorX: 155, anchorY: 155 }),
       sizeUnits: "meters",
-      getSize: 1.2,
+      getSize: 0.3,
       billboard: true,
       pickable: false,
       parameters: { depthTest: false },
