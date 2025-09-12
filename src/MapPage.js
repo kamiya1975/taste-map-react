@@ -739,7 +739,7 @@ function MapPage() {
           }}
           style={{
             position: "absolute",
-            top: "120px",
+            top: "70px",
             right: "10px",
             zIndex: 1,
             width: "40px",
