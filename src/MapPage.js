@@ -92,6 +92,12 @@ function MapPage() {
     };
   }, []);
 
+  // 評価の有無フラグ
+  const hasAnyRating = useMemo(
+    () => Object.values(userRatings || {}).some(v => Number(v?.rating) > 0),
+    [userRatings]
+  );
+
   // favorites を同期
   useEffect(() => {
     const syncFavorites = () => {
@@ -543,24 +549,29 @@ function MapPage() {
     });
   }, [compass, is3D]);
 
-  // ユーザーピン（スライダー結果）
-  const userPinLayer = useMemo(() => {
-    if (!userPin) return null;
-    return new ScatterplotLayer({
-      id: "user-pin",
-      data: [{ x: userPin[0], y: userPin[1] }],
-      getPosition: (d) => [d.x, is3D ? d.y : -d.y, 0],
-      getRadius: 0.10,
-      radiusUnits: "meters",
-      getFillColor: [255, 140, 0, 230],
-      stroked: true,
-      getLineWidth: 2,
-      lineWidthUnits: "pixels",
-      getLineColor: [255, 255, 255, 255],
+  // ★ 旧 userPinLayer は削除して、この新レイヤーを追加
+  const userPinCompassLayer = useMemo(() => {
+    // 評価が1件でも入ったら、初期のスライダー用コンパスは非表示
+    if (!userPin || hasAnyRating) return null;
+
+    return new IconLayer({
+      id: "user-pin-compass",
+      data: [{ position: [userPin[0], is3D ? userPin[1] : -userPin[1], 0] }],
+      getPosition: (d) => d.position,
+      getIcon: () => ({
+        url: COMPASS_URL,
+        width: 310,
+        height: 310,
+        anchorX: 155,
+        anchorY: 155,
+      }),
+      sizeUnits: "meters",
+      getSize: 0.5, // 見た目は compassLayer と揃えつつ少し小さめでもOK
+      billboard: true,
       pickable: false,
       parameters: { depthTest: false },
     });
-  }, [userPin, is3D]);
+  }, [userPin, hasAnyRating, is3D]);
 
   return (
     <div style={{ position: "absolute", top: 0, left: 0, margin: 0, padding: 0, width: "100%", height: "100%" }}>
@@ -661,7 +672,7 @@ function MapPage() {
             pickable: false,
           }),
           mainLayer,
-          userPinLayer,
+          userPinCompassLayer,
           ratingDateLayer,
           // 嗜好コンパス（個別重心のコンパス画像）
           compassLayer,
