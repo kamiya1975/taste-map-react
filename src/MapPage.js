@@ -671,11 +671,10 @@ function MapPage() {
             widthUnits: "pixels",
             pickable: false,
           }),
-          mainLayer,
           userPinCompassLayer,
           ratingDateLayer,
-          // 嗜好コンパス（個別重心のコンパス画像）
-          compassLayer,
+          compassLayer,// 嗜好コンパス（個別重心のコンパス画像）
+          mainLayer,
         ]}
       />
 
