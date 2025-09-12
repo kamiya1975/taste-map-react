@@ -1,7 +1,15 @@
 import React, { useEffect, useState, useMemo } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
-import { ScatterplotLayer, ColumnLayer, LineLayer, TextLayer, GridCellLayer, PathLayer } from "@deck.gl/layers";
+import {
+  ScatterplotLayer,
+  ColumnLayer,
+  LineLayer,
+  TextLayer,
+  GridCellLayer,
+  PathLayer,
+  IconLayer,
+} from "@deck.gl/layers";
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,13 +33,8 @@ function MapPage() {
     const ys = data.map((d) => (is3D ? d.SweetAxis : -d.SweetAxis));
     const xmin = Math.min(...xs), xmax = Math.max(...xs);
     const ymin = Math.min(...ys), ymax = Math.max(...ys);
-    const pad = 1.5; // 余白。小さくするほど可動域が狭くなる
-    return {
-      xmin: xmin - pad,
-      xmax: xmax + pad,
-      ymin: ymin - pad,
-      ymax: ymax + pad,
-    };
+    const pad = 1.5;
+    return { xmin: xmin - pad, xmax: xmax + pad, ymin: ymin - pad, ymax: ymax + pad };
   }, [data, is3D]);
 
   const [saved2DViewState, setSaved2DViewState] = useState(null);
@@ -41,8 +44,11 @@ function MapPage() {
   const [sweetness, setSweetness] = useState(50);
   const [body, setBody] = useState(50);
   const [showRatingDates, setShowRatingDates] = useState(false);
-  const [isRatingListOpen, setIsRatingListOpen] = useState(false); // ← お気に入りパネル開閉に再利用
+  const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // 嗜好コンパス：採用集合の決め方（"elbow" | "top20"）
+  const [compassRule, setCompassRule] = useState("elbow");
 
   // UMAPのクラスタ中心（単純平均）
   const umapCentroid = useMemo(() => {
@@ -56,13 +62,13 @@ function MapPage() {
     return n ? [sx / n, sy / n] : [0, 0];
   }, [data]);
 
-  // 外部（SliderPage 等）で保存されたユーザーのUMAP座標を表示するため
-  const [userPin, setUserPin] = useState(null); // [x, y] (UMAP)
+  // 外部で保存されたユーザーのUMAP座標ピン
+  const [userPin, setUserPin] = useState(null);
 
-  // ▼ 2Dヒートマップの対象（初期表示：ー）
+  // 2Dヒートマップの対象（初期：ー）
   const [highlight2D, setHighlight2D] = useState("");
 
-  // 商品ドロワーと選択中JAN（選択中はオレンジ表示）
+  // 商品ドロワーと選択中JAN
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
 
@@ -70,21 +76,16 @@ function MapPage() {
   const [favorites, setFavorites] = useState({});
 
   useEffect(() => {
-    if (location.state?.autoOpenSlider) {
-      setIsSliderOpen(true);
-    }
+    if (location.state?.autoOpenSlider) setIsSliderOpen(true);
   }, [location.state]);
 
-  // userRatings を常時同期
+  // userRatings を同期
   useEffect(() => {
     const syncUserRatings = () => {
       const stored = localStorage.getItem("userRatings");
       if (stored) {
-        try {
-          setUserRatings(JSON.parse(stored));
-        } catch (e) {
-          console.error("Failed to parse userRatings:", e);
-        }
+        try { setUserRatings(JSON.parse(stored)); }
+        catch (e) { console.error("Failed to parse userRatings:", e); }
       }
     };
     syncUserRatings();
@@ -96,16 +97,13 @@ function MapPage() {
     };
   }, []);
 
-  // お気に入りを常時同期
+  // favorites を同期
   useEffect(() => {
     const syncFavorites = () => {
       const stored = localStorage.getItem("favorites");
       if (stored) {
-        try {
-          setFavorites(JSON.parse(stored));
-        } catch (e) {
-          console.error("Failed to parse favorites:", e);
-        }
+        try { setFavorites(JSON.parse(stored)); }
+        catch (e) { console.error("Failed to parse favorites:", e); }
       }
     };
     syncFavorites();
@@ -117,47 +115,39 @@ function MapPage() {
     };
   }, []);
 
-  // どの保存形式でも UMAP座標 [x,y] に正規化して返し、旧形式なら新形式に移行
+  // userPin の読み出し（旧形式も救済）
   const readUserPinFromStorage = () => {
     try {
       const raw = localStorage.getItem("userPinCoords");
       if (!raw) return null;
       const val = JSON.parse(raw);
 
-      // 新形式 { coordsUMAP:[x,y], ... }
+      // 新形式 {coordsUMAP:[x,y]}
       if (val && Array.isArray(val.coordsUMAP) && val.coordsUMAP.length >= 2) {
-        const x = Number(val.coordsUMAP[0]);
-        const y = Number(val.coordsUMAP[1]);
+        const x = Number(val.coordsUMAP[0]); const y = Number(val.coordsUMAP[1]);
         if (Number.isFinite(x) && Number.isFinite(y)) return [x, y];
       }
-
-      // 旧：{ coords:[x, -y] }（キャンバス用反転Y）
+      // 旧 {coords:[x,-y]} をUMAPに移行
       if (val && Array.isArray(val.coords) && val.coords.length >= 2) {
-        const xCanvas = Number(val.coords[0]);
-        const yCanvas = Number(val.coords[1]);
+        const xCanvas = Number(val.coords[0]); const yCanvas = Number(val.coords[1]);
         if (Number.isFinite(xCanvas) && Number.isFinite(yCanvas)) {
-          const umap = [xCanvas, -yCanvas]; // 反転戻し
-          // 移行
+          const umap = [xCanvas, -yCanvas];
           localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: umap, version: 2 }));
           return umap;
         }
       }
-
-      // 最旧：配列 [x, ?y]（yがUMAPか-UMAPか不明）→ センターに近い方を採用
+      // 配列だけの最旧形式
       if (Array.isArray(val) && val.length >= 2) {
-        const ax = Number(val[0]);
-        const ay = Number(val[1]);
+        const ax = Number(val[0]); const ay = Number(val[1]);
         if (Number.isFinite(ax) && Number.isFinite(ay)) {
           const [cx, cy] = umapCentroid;
           const dUMAP = (ax - cx) ** 2 + (ay - cy) ** 2;
           const dFlipY = (ax - cx) ** 2 + (-ay - cy) ** 2;
           const umap = dUMAP <= dFlipY ? [ax, ay] : [ax, -ay];
-          // 移行
           localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: umap, version: 2 }));
           return umap;
         }
       }
-
       return null;
     } catch (e) {
       console.warn("userPinCoords の解析に失敗:", e);
@@ -165,49 +155,39 @@ function MapPage() {
     }
   };
 
-  // マウント時 & フォーカス/ストレージ変化で同期
+  // userPin 同期
   useEffect(() => {
     const sync = () => setUserPin(readUserPinFromStorage());
-    sync(); // 初期読み込み
+    sync();
     const onFocus = () => sync();
-    const onStorage = (e) => {
-      if (!e || e.key === "userPinCoords") sync();
-    };
+    const onStorage = (e) => { if (!e || e.key === "userPinCoords") sync(); };
     window.addEventListener("focus", onFocus);
     window.addEventListener("storage", onStorage);
     return () => {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("storage", onStorage);
     };
-  }, []);
+  }, [umapCentroid]);
 
-  // userPin が来たら少し上にずらして見やすく寄せる（2Dのみ）
+  // 初回センタリング（必要時）
   useEffect(() => {
     if (!userPin) return;
     const shouldCenter = !!location.state?.centerOnUserPin;
     if (shouldCenter) {
-      // 画面の中心にピタッと合わせる（2DはY反転だけ適用）
       setViewState((prev) => ({
         ...prev,
         target: [userPin[0], is3D ? userPin[1] : -userPin[1], 0],
         zoom: prev.zoom ?? INITIAL_ZOOM,
       }));
-      // 一度センタリングしたらフラグをクリア（履歴の state を消す）
-      try {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } catch {}
+      try { window.history.replaceState({}, document.title, window.location.pathname); } catch {}
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userPin, is3D, location.state]);
 
-  // UMAP+PCA を読み込み（UMAP1→BodyAxis, UMAP2→SweetAxis）
+  // データ読み込み
   useEffect(() => {
     const url = `${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`;
     fetch(url)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
+      .then((res) => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
       .then((rows) => {
         const cleaned = (rows || [])
           .filter(Boolean)
@@ -216,8 +196,8 @@ function MapPage() {
             return {
               JAN: String(r.JAN ?? ""),
               Type: r.Type ?? "Other",
-              BodyAxis: Number(r.UMAP1), // x軸
-              SweetAxis: Number(r.UMAP2), // y軸
+              BodyAxis: Number(r.UMAP1),
+              SweetAxis: Number(r.UMAP2),
               PC1: Number(r.PC1),
               PC2: Number(r.PC2),
               PC3: Number(r.PC3),
@@ -230,71 +210,47 @@ function MapPage() {
               希望小売価格: toNum(r["希望小売価格"]),
             };
           })
-          .filter(
-            (r) =>
-              Number.isFinite(r.BodyAxis) &&
-              Number.isFinite(r.SweetAxis) &&
-              r.JAN !== ""
-          );
+          .filter((r) => Number.isFinite(r.BodyAxis) && Number.isFinite(r.SweetAxis) && r.JAN !== "");
         setData(cleaned);
         localStorage.setItem("umapData", JSON.stringify(cleaned));
       })
-      .catch((err) => {
-        console.error("UMAP_PCA_coordinates.json の取得に失敗:", err);
-      });
+      .catch((err) => console.error("UMAP_PCA_coordinates.json の取得に失敗:", err));
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("userRatings", JSON.stringify(userRatings));
-  }, [userRatings]);
+  // 永続化
+  useEffect(() => { localStorage.setItem("userRatings", JSON.stringify(userRatings)); }, [userRatings]);
+  useEffect(() => { localStorage.setItem("favorites", JSON.stringify(favorites)); }, [favorites]);
 
-  useEffect(() => {
-    localStorage.setItem("favorites", JSON.stringify(favorites));
-  }, [favorites]);
-
-  // お気に入りのトグル
+  // お気に入りトグル
   const toggleFavorite = (jan) => {
     setFavorites((prev) => {
       const next = { ...prev };
-      if (next[jan]) {
-        delete next[jan];
-      } else {
-        next[jan] = { addedAt: new Date().toISOString() };
-      }
+      if (next[jan]) delete next[jan];
+      else next[jan] = { addedAt: new Date().toISOString() };
       return next;
     });
   };
-  const isFavorite = (jan) => !!favorites[jan];
-
-  // 商品ページ（iframe）からの postMessage を受けて状態更新
+  // 商品ページ（iframe）からの postMessage
   useEffect(() => {
     const onMsg = (e) => {
       const { type, jan, payload } = e.data || {};
       if (!type) return;
-
-      if (type === "TOGGLE_FAVORITE" && jan) {
-        toggleFavorite(String(jan));
-      }
-
+      if (type === "TOGGLE_FAVORITE" && jan) toggleFavorite(String(jan));
       if (type === "RATING_UPDATED" && jan) {
-        // 受信次第、Map 側の userRatings を即時更新
         setUserRatings((prev) => {
           const next = { ...prev };
-          if (!payload || !payload.rating) {
-            delete next[jan];
-          } else {
-            next[jan] = payload; // { rating, date, weather }
-          }
-          localStorage.setItem("userRatings", JSON.stringify(next)); // ついでに鏡合わせ
+          if (!payload || !payload.rating) delete next[jan];
+          else next[jan] = payload; // {rating,date,weather}
+          localStorage.setItem("userRatings", JSON.stringify(next));
           return next;
         });
       }
     };
-
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, []); // 依存なし
+  }, []);
 
+  // 色
   const typeColorMap = {
     White: [150, 150, 150],
     Red: [150, 150, 150],
@@ -304,18 +260,15 @@ function MapPage() {
   };
   const ORANGE = [255, 140, 0];
 
-  // === グリッド/セル設定（ズレ防止） ===
+  // === グリッド/セル ===
   const cellSize = 0.2;
   const gridInterval = cellSize;
 
-  // セルindex/中心/キー
   const EPS = 1e-9;
   const toIndex = (v) => Math.floor((v + EPS) / cellSize);
   const toCorner = (i) => i * cellSize;
-  const toCenter = toCorner;
   const keyOf = (ix, iy) => `${ix},${iy}`;
 
-  // === HeatMap の見え方 ===
   const HEAT_ALPHA_MIN = 24;
   const HEAT_ALPHA_MAX = 255;
   const HEAT_GAMMA = 0.65;
@@ -325,8 +278,7 @@ function MapPage() {
 
   // グリッド線
   const { thinLines, thickLines } = useMemo(() => {
-    const thin = [];
-    const thick = [];
+    const thin = [], thick = [];
     for (let i = -500; i <= 500; i++) {
       const x = i * gridInterval;
       (i % 5 === 0 ? thick : thin).push({ sourcePosition: [x, -100, 0], targetPosition: [x, 100, 0] });
@@ -344,14 +296,7 @@ function MapPage() {
       const iy = toIndex(is3D ? d.SweetAxis : -d.SweetAxis);
       const key = keyOf(ix, iy);
       if (!map.has(key)) {
-        map.set(key, {
-          ix,
-          iy,
-          position: [toCenter(ix), toCenter(iy)],
-          count: 0,
-          hasRating: false,
-          hasFavorite: false,
-        });
+        map.set(key, { ix, iy, position: [toCorner(ix), toCorner(iy)], count: 0, hasRating: false, hasFavorite: false });
       }
       if (userRatings[d.JAN]) map.get(key).hasRating = true;
       if (favorites[d.JAN]) map.get(key).hasFavorite = true;
@@ -363,19 +308,16 @@ function MapPage() {
   // 2D: セルごとの平均PC描画配列
   const { heatCells, vMin, vMax, avgHash } = useMemo(() => {
     if (is3D || !highlight2D) return { heatCells: [], vMin: 0, vMax: 1, avgHash: "empty" };
-    const sumMap = new Map();
-    const cntMap = new Map();
+    const sumMap = new Map(); const cntMap = new Map();
     for (const d of data) {
       const v = Number(d[highlight2D]);
       if (!Number.isFinite(v)) continue;
-      const ix = toIndex(d.BodyAxis);
-      const iy = toIndex(-d.SweetAxis);
+      const ix = toIndex(d.BodyAxis); const iy = toIndex(-d.SweetAxis);
       const key = keyOf(ix, iy);
       sumMap.set(key, (sumMap.get(key) || 0) + v);
       cntMap.set(key, (cntMap.get(key) || 0) + 1);
     }
-    const vals = [];
-    const cellsArr = [];
+    const vals = []; const cellsArr = [];
     for (const [key, sum] of sumMap.entries()) {
       const count = cntMap.get(key) || 1;
       const avg = sum / count;
@@ -387,79 +329,49 @@ function MapPage() {
     vals.sort((a, b) => a - b);
     const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
     const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
-    const lo = vals[loIdx];
-    const hi = vals[hiIdx];
+    const lo = vals[loIdx]; const hi = vals[hiIdx];
     const epsHi = hi - lo < 1e-9 ? lo + 1e-9 : hi;
     const hash = `${cellsArr.length}|${lo.toFixed(3)}|${epsHi.toFixed(3)}|${highlight2D}`;
     return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
   }, [data, highlight2D, is3D, cellSize]);
 
-  // PCA(PC1,PC2) -> UMAP(BodyAxis=UMAP1, SweetAxis=UMAP2) への kNN 回帰マッパー
+  // PCA(PC1,PC2) -> UMAP(BodyAxis, SweetAxis) kNN回帰
   const pca2umap = useMemo(() => {
     if (!data?.length) return null;
     const samples = data
-      .filter(
-        (d) =>
-          Number.isFinite(d.PC1) &&
-          Number.isFinite(d.PC2) &&
-          Number.isFinite(d.BodyAxis) &&
-          Number.isFinite(d.SweetAxis)
-      )
+      .filter((d) => Number.isFinite(d.PC1) && Number.isFinite(d.PC2) && Number.isFinite(d.BodyAxis) && Number.isFinite(d.SweetAxis))
       .map((d) => ({ pc1: d.PC1, pc2: d.PC2, x: d.BodyAxis, y: d.SweetAxis }));
-
-    const K = 15; // 近傍数（お好みで 10〜30）
+    const K = 15;
     return (pc1, pc2) => {
       if (!Number.isFinite(pc1) || !Number.isFinite(pc2) || samples.length === 0) return [0, 0];
-      // 距離でソート
       const neigh = samples
-        .map((s) => {
-          const dx = pc1 - s.pc1, dy = pc2 - s.pc2;
-          const d2 = dx * dx + dy * dy;
-          return { s, d2 };
-        })
+        .map((s) => { const dx = pc1 - s.pc1, dy = pc2 - s.pc2; const d2 = dx*dx + dy*dy; return { s, d2 }; })
         .sort((a, b) => a.d2 - b.d2)
         .slice(0, Math.min(K, samples.length));
-
-      // 距離の逆数重み（0割防止のε付き）
       const EPS2 = 1e-6;
       let sw = 0, sx = 0, sy = 0;
-      neigh.forEach(({ s, d2 }) => {
-        const w = 1 / (Math.sqrt(d2) + EPS2);
-        sw += w;
-        sx += w * s.x;
-        sy += w * s.y;
-      });
+      neigh.forEach(({ s, d2 }) => { const w = 1 / (Math.sqrt(d2) + EPS2); sw += w; sx += w*s.x; sy += w*s.y; });
       return sw > 0 ? [sx / sw, sy / sw] : [neigh[0].s.x, neigh[0].s.y];
     };
   }, [data]);
 
-  // 商品ドロワーを開く
-  const openProductDrawer = (jan) => {
-    setSelectedJAN(jan);
-    setProductDrawerOpen(true);
-  };
+  // 商品ドロワー
+  const openProductDrawer = (jan) => { setSelectedJAN(jan); setProductDrawerOpen(true); };
 
-  // クリック位置から最近傍
+  // クリック座標から最近傍検索
   const findNearestWine = (coord) => {
     if (!coord || !Array.isArray(data) || data.length === 0) return null;
     const [cx, cy] = coord;
-    let best = null;
-    let bestD2 = Infinity;
+    let best = null, bestD2 = Infinity;
     for (const d of data) {
-      const x = d.BodyAxis;
-      const y = is3D ? d.SweetAxis : -d.SweetAxis;
-      const dx = x - cx;
-      const dy = y - cy;
-      const d2 = dx * dx + dy * dy;
-      if (d2 < bestD2) {
-        bestD2 = d2;
-        best = d;
-      }
+      const x = d.BodyAxis; const y = is3D ? d.SweetAxis : -d.SweetAxis;
+      const dx = x - cx; const dy = y - cy; const d2 = dx*dx + dy*dy;
+      if (d2 < bestD2) { bestD2 = d2; best = d; }
     }
     return best;
   };
 
-  // メインレイヤ
+  // メイン（3D: Column / 2D: Scatter）
   const mainLayer = useMemo(() => {
     if (is3D) {
       return new ColumnLayer({
@@ -472,7 +384,7 @@ function MapPage() {
         getPosition: (d) => [d.BodyAxis, d.SweetAxis],
         getElevation: (d) => (zMetric ? Number(d[zMetric]) || 0 : 0),
         getFillColor: (d) =>
-          String(d.JAN) === String(selectedJAN) ? ORANGE : typeColorMap[d.Type] || typeColorMap.Other,
+          String(d.JAN) === String(selectedJAN) ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other),
         updateTriggers: { getFillColor: [selectedJAN] },
         pickable: true,
         onClick: null,
@@ -483,7 +395,7 @@ function MapPage() {
       data,
       getPosition: (d) => [d.BodyAxis, -d.SweetAxis, 0],
       getFillColor: (d) =>
-        String(d.JAN) === String(selectedJAN) ? ORANGE : typeColorMap[d.Type] || typeColorMap.Other,
+        String(d.JAN) === String(selectedJAN) ? ORANGE : (typeColorMap[d.Type] || typeColorMap.Other),
       updateTriggers: { getFillColor: [selectedJAN] },
       radiusUnits: "meters",
       getRadius: 0.03,
@@ -524,7 +436,7 @@ function MapPage() {
     });
   }, [data, userRatings, is3D]);
 
-  // 評価日番号ラベル
+  // 評価順インデックスのラベル
   const sortedRatedWineList = useMemo(() => {
     if (!Array.isArray(data)) return [];
     return Object.entries(userRatings)
@@ -539,11 +451,8 @@ function MapPage() {
   }, [userRatings, data]);
 
   const displayIndexMap = useMemo(() => {
-    const map = {};
-    const total = sortedRatedWineList.length;
-    sortedRatedWineList.forEach((item, idx) => {
-      map[item.JAN] = total - idx;
-    });
+    const map = {}; const total = sortedRatedWineList.length;
+    sortedRatedWineList.forEach((item, idx) => { map[item.JAN] = total - idx; });
     return map;
   }, [sortedRatedWineList]);
 
@@ -572,13 +481,90 @@ function MapPage() {
         })
       : null;
 
-  // 外部（SliderPage等）から渡されたユーザーピンを描画（UMAP座標）
+  // ===== 嗜好コンパス：採用集合 & 重心 =====
+  // エルボー（折れ曲がり）検出：先頭～末尾直線からの垂線距離が最大の点まで採用
+  const detectElbowIndex = (valsDesc) => {
+    const n = valsDesc.length;
+    if (n <= 3) return n; // 少数なら全採用
+    const x1 = 0, y1 = valsDesc[0];
+    const x2 = n - 1, y2 = valsDesc[n - 1];
+    const dx = x2 - x1, dy = y2 - y1;
+    const denom = Math.hypot(dx, dy) || 1;
+    let bestK = 1, bestDist = -Infinity;
+    for (let i = 1; i < n - 1; i++) {
+      const num = Math.abs(dy * (i - x1) - dx * (valsDesc[i] - y1));
+      const dist = num / denom;
+      if (dist > bestDist) { bestDist = dist; bestK = i; }
+    }
+    return bestK + 1; // 添字→本数
+  };
+
+  // 採用集合の抽出と重心(UMAP1,UMAP2)の加重平均
+  const compass = useMemo(() => {
+    const rated = Object.entries(userRatings || {})
+      .map(([jan, v]) => ({ jan: String(jan), rating: Number(v?.rating) }))
+      .filter((r) => Number.isFinite(r.rating) && r.rating > 0);
+    if (rated.length === 0) return { point: null, picked: [], rule: compassRule };
+
+    // data と突き合わせ（座標があるもののみ）
+    const joined = rated
+      .map((r) => {
+        const it = data.find((d) => String(d.JAN) === r.jan);
+        if (!it || !Number.isFinite(it.BodyAxis) || !Number.isFinite(it.SweetAxis)) return null;
+        return { ...r, x: it.BodyAxis, y: it.SweetAxis };
+      })
+      .filter(Boolean);
+    if (joined.length === 0) return { point: null, picked: [], rule: compassRule };
+
+    joined.sort((a, b) => b.rating - a.rating);
+
+    // A) 上位20%（最低3本）
+    const n = joined.length;
+    const k20 = Math.max(3, Math.ceil(n * 0.2));
+    const top20 = joined.slice(0, Math.min(k20, n));
+
+    // B) エルボー
+    const scores = joined.map((r) => r.rating);
+    const kelbow = detectElbowIndex(scores);
+    const elbowPick = joined.slice(0, Math.min(kelbow, n));
+
+    // ルール決定
+    const picked = compassRule === "top20" ? top20 : elbowPick;
+
+    // 加重平均（重み＝rating）
+    let sw = 0, sx = 0, sy = 0;
+    picked.forEach((p) => { sw += p.rating; sx += p.rating * p.x; sy += p.rating * p.y; });
+    if (sw <= 0) return { point: null, picked, rule: compassRule };
+    return { point: [sx / sw, sy / sw], picked, rule: compassRule };
+  }, [userRatings, data, compassRule]);
+
+  // コンパス画像URL
+  const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
+
+  // 嗜好コンパスの描画（IconLayer）
+  const compassLayer = useMemo(() => {
+    if (!compass?.point) return null;
+    const [ux, uy] = compass.point;
+    return new IconLayer({
+      id: "preference-compass",
+      data: [{ position: [ux, is3D ? uy : -uy, 0] }],
+      getPosition: (d) => d.position,
+      getIcon: () => ({ url: COMPASS_URL, width: 310, height: 310, anchorX: 155, anchorY: 155 }),
+      sizeUnits: "meters",
+      getSize: 1.2, // 地物スケールで調整可
+      billboard: true,
+      pickable: false,
+      parameters: { depthTest: false },
+    });
+  }, [compass, is3D]);
+
+  // ユーザーピン（スライダー結果）
   const userPinLayer = useMemo(() => {
     if (!userPin) return null;
     return new ScatterplotLayer({
       id: "user-pin",
       data: [{ x: userPin[0], y: userPin[1] }],
-      getPosition: (d) => [d.x, is3D ? d.y : -d.y, 0], // 2DではY反転に合わせる
+      getPosition: (d) => [d.x, is3D ? d.y : -d.y, 0],
       getRadius: 0.10,
       radiusUnits: "meters",
       getFillColor: [255, 140, 0, 230],
@@ -597,9 +583,7 @@ function MapPage() {
         views={is3D ? new OrbitView({ near: 0.1, far: 1000 }) : new OrthographicView({ near: -1, far: 1 })}
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => {
-          // ズームをクランプ
           const z = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom));
-          // パン範囲をクランプ
           const limitedTarget = [
             Math.max(panBounds.xmin, Math.min(panBounds.xmax, vs.target[0])),
             Math.max(panBounds.ymin, Math.min(panBounds.ymax, vs.target[1])),
@@ -616,22 +600,15 @@ function MapPage() {
           maxZoom: ZOOM_LIMITS.max,
         }}
         onClick={(info) => {
-          // 赤丸（slider-mark）をクリックした？
+          // 赤丸（slider-mark）想定の分岐は残す（必要なら後で追加）
           if (info?.layer?.id === "slider-mark") {
-            const coord = info?.coordinate; // UMAP座標（2Dはy反転後のキャンバス座標が渡る）
+            const coord = info?.coordinate;
             const nearest = findNearestWine(coord);
             if (nearest?.JAN) openProductDrawer(nearest.JAN);
             return;
           }
-
-          // 通常の点（ワイン）をクリックした？
           const picked = info?.object;
-          if (picked?.JAN) {
-            openProductDrawer(picked.JAN);
-            return;
-          }
-
-          // 何も拾えなかったら、クリック座標から最近傍を開く
+          if (picked?.JAN) { openProductDrawer(picked.JAN); return; }
           const coord = info?.coordinate;
           const nearest = findNearestWine(coord);
           if (nearest?.JAN) openProductDrawer(nearest.JAN);
@@ -646,11 +623,9 @@ function MapPage() {
                 cellSize,
                 getPosition: (d) => d.position,
                 getFillColor: (d) =>
-                  d.hasFavorite
-                    ? [255, 165, 0, 140]
-                    : d.hasRating
-                    ? [180, 100, 50, 150]
-                    : [200, 200, 200, 40],
+                  d.hasFavorite ? [255, 165, 0, 140] :
+                  d.hasRating   ? [180, 100, 50, 150] :
+                                   [200, 200, 200, 40],
                 getElevation: 0,
                 pickable: false,
               })
@@ -704,6 +679,8 @@ function MapPage() {
           mainLayer,
           userPinLayer,
           ratingDateLayer,
+          // 嗜好コンパス（個別重心のコンパス画像）
+          compassLayer,
         ]}
       />
 
@@ -814,7 +791,7 @@ function MapPage() {
             height: "40px",
             borderRadius: "50%",
             background: "#eee",
-            border: "1px solid #ccc",
+            border: "1px solid "#ccc",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -927,7 +904,6 @@ function MapPage() {
         <button
           onClick={() => {
             if (!data?.length || !pca2umap) return;
-
             const blendF = data.find((d) => d.JAN === "blendF");
             if (!blendF) return;
 
@@ -939,26 +915,21 @@ function MapPage() {
             const basePC1 = Number(blendF.PC1);
             const basePC2 = Number(blendF.PC2);
 
-            const pc1Value =
-              body <= 50
-                ? basePC1 - ((50 - body) / 50) * (basePC1 - minPC1)
-                : basePC1 + ((body - 50) / 50) * (maxPC1 - basePC1);
+            const pc1Value = body <= 50
+              ? basePC1 - ((50 - body) / 50) * (basePC1 - minPC1)
+              : basePC1 + ((body - 50) / 50) * (maxPC1 - basePC1);
 
-            const pc2Value =
-              sweetness <= 50
-                ? basePC2 - ((50 - sweetness) / 50) * (basePC2 - minPC2)
-                : basePC2 + ((sweetness - 50) / 50) * (maxPC2 - basePC2);
+            const pc2Value = sweetness <= 50
+              ? basePC2 - ((50 - sweetness) / 50) * (basePC2 - minPC2)
+              : basePC2 + ((sweetness - 50) / 50) * (maxPC2 - basePC2);
 
             const [umapX, umapY] = pca2umap(pc1Value, pc2Value);
             const coords = [umapX, -umapY];
 
             setIsSliderOpen(false);
-
-            // ピン更新＆保存
             setUserPin([umapX, umapY]);
             localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: [umapX, umapY] }));
 
-            // センタリング
             setViewState((prev) => ({
               ...prev,
               target: [coords[0], coords[1], 0],
@@ -990,6 +961,37 @@ function MapPage() {
         PaperProps={{ style: { width: "300px", padding: "20px", boxSizing: "border-box" } }}
       >
         <h3 style={{ marginTop: 0 }}>ユーザー設定</h3>
+
+        {/* 嗜好コンパス設定 */}
+        <div style={{ margin: "10px 0 20px 0", padding: "10px", border: "1px solid #eee", borderRadius: 6 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>嗜好コンパス（採用集合の決め方）</div>
+          <label style={{ display: "block", marginBottom: 6 }}>
+            <input
+              type="radio"
+              name="compassRule"
+              value="elbow"
+              checked={compassRule === "elbow"}
+              onChange={(e) => setCompassRule(e.target.value)}
+              style={{ marginRight: 6 }}
+            />
+            エルボー優先（折れ点まで採用）
+          </label>
+          <label style={{ display: "block" }}>
+            <input
+              type="radio"
+              name="compassRule"
+              value="top20"
+              checked={compassRule === "top20"}
+              onChange={(e) => setCompassRule(e.target.value)}
+              style={{ marginRight: 6 }}
+            />
+            上位20%優先（最低3本）
+          </label>
+          <div style={{ color: "#666", fontSize: 12, marginTop: 6 }}>
+            ※ 採用集合の (UMAP1, UMAP2) を評価で加重平均して重心を求め、コンパス画像を重ね表示します。
+          </div>
+        </div>
+
         <div style={{ marginBottom: "20px" }}>
           <button onClick={() => alert("ニックネーム変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
             ニックネーム変更
@@ -1018,10 +1020,7 @@ function MapPage() {
       {/* ♡ お気に入りパネル */}
       <FavoritePanel
         isOpen={isRatingListOpen}
-        onClose={() => {
-          setIsRatingListOpen(false);
-          setShowRatingDates(false);
-        }}
+        onClose={() => { setIsRatingListOpen(false); setShowRatingDates(false); }}
         favorites={favorites}
         data={data}
         onSelectJAN={openProductDrawer}
