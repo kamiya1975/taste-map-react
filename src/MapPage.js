@@ -1,15 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
-import {
-  ScatterplotLayer,
-  ColumnLayer,
-  LineLayer,
-  TextLayer,
-  GridCellLayer,
-  PathLayer,
-  IconLayer,
-} from "@deck.gl/layers";
+import { ScatterplotLayer, ColumnLayer, LineLayer, TextLayer, GridCellLayer, PathLayer, IconLayer } from "@deck.gl/layers";
 const compassLayer = new IconLayer({
   id: "compass",
   data: [{ position: [x, y], icon: "compass" }],
