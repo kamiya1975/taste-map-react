@@ -791,7 +791,7 @@ function MapPage() {
             height: "40px",
             borderRadius: "50%",
             background: "#eee",
-            border: "1px solid "#ccc",
+            border: "1px solid #ccc",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
