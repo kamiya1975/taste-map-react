@@ -562,8 +562,8 @@ function MapPage() {
           ? ORANGE
           : TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other,
       updateTriggers: { getFillColor: [selectedJAN] },
-      radiusUnits: "meters",
-      getRadius: 0.03,
+      radiusUnits: "pixels",
+      getRadius: 3,
       pickable: true,
       onClick: null,
     });
@@ -783,6 +783,18 @@ function MapPage() {
     });
   }, [userPin, is3D, sliderMarkerMode]);
 
+  // デバッグ：原点に見える点（レンダリング確認用）
+  const debugOriginLayer = new ScatterplotLayer({
+    id: "debug-origin",
+    data: [{ x: 0, y: 0 }],
+    getPosition: (d) => [d.x, d.y, 0],
+    radiusUnits: "pixels",
+    getRadius: 4,
+    getFillColor: [255, 140, 0, 240],
+    pickable: false,
+  parameters: { depthTest: false },
+  });
+
   return (
     <div
       style={{
@@ -799,7 +811,7 @@ function MapPage() {
         views={
           is3D
             ? new OrbitView({ near: 0.1, far: 1000 })
-            : new OrthographicView({ near: -1, far: 1 })
+            : new OrthographicView({ near: -1000, far: 1000 })
         }
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => {
@@ -837,6 +849,7 @@ function MapPage() {
         }}
         pickingRadius={8}
         layers={[
+          debugOriginLayer,
           ...ratingCircleLayers,
           !is3D && !highlight2D
             ? new GridCellLayer({
@@ -911,6 +924,7 @@ function MapPage() {
             getWidth: 1,
             widthUnits: "pixels",
             pickable: false,
+            parameters: { depthTest: false },
           }),
           new LineLayer({
             id: "grid-lines-thick",
@@ -921,6 +935,7 @@ function MapPage() {
             getWidth: 1.25,
             widthUnits: "pixels",
             pickable: false,
+            parameters: { depthTest: false },
           }),
 
           // スライダー結果マーカー（コンパス or オレンジ打点）
