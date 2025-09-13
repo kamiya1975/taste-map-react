@@ -1117,7 +1117,14 @@ function MapPage() {
         anchor="bottom"
         open={productDrawerOpen}
         onClose={() => setProductDrawerOpen(false)}
-        PaperProps={{ style: { width: "100%", height: "100vh", borderTopLeftRadius: "12px", borderTopRightRadius: "12px", overflow: "hidden" } }}
+        PaperProps={{ style: { 
+          width: "100%", 
+          height: "500px", 
+          borderTopLeftRadius: "12px", 
+          borderTopRightRadius: "12px", 
+          overflow: "hidden" 
+        } 
+      }}
       >
         <div
           style={{
@@ -1139,7 +1146,8 @@ function MapPage() {
           </button>
         </div>
         {selectedJAN ? (
-          <iframe title={`product-${selectedJAN}`} src={`/products/${selectedJAN}`} style={{ border: "none", width: "100%", height: "calc(100vh - 48px)" }} />
+          <iframe title={`product-${selectedJAN}`} src={`/products/${selectedJAN}`}
+                  style={{ border: "none", width: "100%", height: "calc(100% - 48px)" }} />
         ) : (
           <div style={{ padding: 16 }}>商品を選択してください。</div>
         )}
