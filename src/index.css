@@ -1,23 +1,39 @@
-/* === DeckGL が正しく全画面表示されるための必須指定 === */
+/* src/index.css - full */
+
 html, body, #root {
-  height: 100%;
   width: 100%;
+  height: 100%;
   margin: 0;
   padding: 0;
 }
 
-/* （必要に応じて）ページスクロールを抑止 */
 body {
-  overflow: hidden;
-  margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* 余計なスクロールを防ぐ（DeckGLのドラッグでページが動かないように） */
+  overflow: hidden;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* ルート要素は相対配置にして MapPage の絶対配置を安定させる */
+#root {
+  position: relative;
+}
+
+/* Canvas の余白・スクロールバウンスを避ける */
+canvas {
+  display: block;
+}
+
+/* iOSでのダブルタップ拡大や長押しメニューなどの誤作動を抑える(必要なら) */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ルートで軽いタッチ挙動に（必要に応じて） */
+:root {
+  touch-action: manipulation;
 }
