@@ -755,6 +755,16 @@ function MapPage() {
     });
   }, [userPin, is3D, sliderMarkerMode]);
 
+  const debugLayer = new ScatterplotLayer({
+    id: "debug-point",
+    data: [{x: 0, y: 0}],
+    getPosition: d => [d.x, -d.y, 0],
+    getFillColor: [0, 150, 255, 255],
+    getRadius: 0.2,
+    radiusUnits: "meters",
+    pickable: false
+  });
+
   // ====== レンダリング
   return (
     <div
@@ -775,6 +785,8 @@ function MapPage() {
             : new OrthographicView({ near: -1, far: 1 })
         }
         viewState={viewState}
+        style={{ position: "absolute", inset: 0 }}
+        useDevicePixels
         onViewStateChange={({ viewState: vs }) => {
           const z = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom));
           const limitedTarget = [
@@ -964,16 +976,14 @@ function MapPage() {
           }
         }}
         style={{
-          position: "absolute",
-          top: "10px",
-          right: "10px",
-          zIndex: 10,
-          padding: "8px 12px",
-          fontSize: "14px",
-          background: "#fff",
-          border: "1px solid #ccc",
-          borderRadius: "4px",
-          cursor: "pointer",
+          position: "fixed",
+          inset: 0,             // top:0,right:0,bottom:0,left:0 と同義
+          margin: 0,
+          padding: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 0,            // 背景レイヤとして最背面に固定
+          background: "#fafafa"
         }}
       >
         {is3D ? "2D" : "3D"}
