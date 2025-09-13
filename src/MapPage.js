@@ -1686,3 +1686,4 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
 }
 
 export default MapPage;
+
