@@ -763,6 +763,34 @@ function MapPage() {
 
       {!is3D && (
         <button
+          onClick={() => setIsSliderOpen(true)}
+          title="嗜好スライダーを開く"
+          aria-label="嗜好スライダーを開く"
+          style={{
+            position: "absolute",
+            top: "70px",
+            right: "60px",   // 3D/2Dボタンと重ならないよう少し左へ
+            zIndex: 1,
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: "#eee",
+            border: "1px solid #ccc",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: "bold",
+            fontSize: "18px",
+            lineHeight: 1,
+          }}
+        >
+          ●
+        </button>
+      )}
+
+      {!is3D && (
+        <button
           onClick={() => {
             const next = !showRatingDates;
             setShowRatingDates(next);
@@ -770,7 +798,7 @@ function MapPage() {
           }}
           style={{
             position: "absolute",
-            top: "70px",
+            top: "1200px",
             right: "10px",
             zIndex: 1,
             width: "40px",
