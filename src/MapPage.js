@@ -30,6 +30,32 @@ const centerGradient = (val, base = SLIDER_COLORS.base, active = SLIDER_COLORS.a
   )`;
 };
 
+// 色（薄茶系に統一）
+const ACCENT = "#b08a6a";      // スライダーの着色バー
+const BUTTON_BG = "#e8ddd1";   // 薄い茶色ボタン
+const BUTTON_TEXT = "#000000"; // 文字は黒
+
+// value(0–100)を中央50からの着色に変換した背景（中心→値の間だけACCENT）
+const sliderBackgroundFromCenter = (value) => {
+  const v = Math.max(0, Math.min(100, Number(value) || 50));
+  if (v === 50) {
+    // ど真ん中：着色なし（下地のみ）
+    return `linear-gradient(to right, #e9e9e9 0%, #e9e9e9 100%)`;
+  }
+  // 50→v の区間だけACCENT、それ以外は下地 #e9e9e9
+  const a = Math.min(50, v);
+  const b = Math.max(50, v);
+  return `linear-gradient(
+    to right,
+    #e9e9e9 0%,
+    #e9e9e9 ${a}%,
+    ${ACCENT} ${a}%,
+    ${ACCENT} ${b}%,
+    #e9e9e9 ${b}%,
+    #e9e9e9 100%
+  )`;
+};
+
 function MapPage() {
   const location = useLocation();
   const [data, setData] = useState([]);
@@ -861,6 +887,46 @@ function MapPage() {
           },
         }}
       >
+        <style>{`
+          /* 共通：トラック（バー） */
+          .taste-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;               /* トラックの高さ */
+            border-radius: 5px;
+            background: #e9e9e9;        /* 下地 */
+            outline: none;
+          }
+          /* つまみ（WebKit） */
+          .taste-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #333;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            border: 2px solid #fff;
+            margin-top: -9px; /* ← (thumb高さ-トラック高さ)/2 = (28-10)/2 = 9px を打ち消す */
+            cursor: pointer;
+          }
+          /* つまみ（Firefox） */
+          .taste-slider::-moz-range-thumb {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #333;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            border: 2px solid #fff;
+            cursor: pointer;
+          }
+          /* Firefox のトラック */
+          .taste-slider::-moz-range-track {
+            height: 10px;
+            border-radius: 5px;
+            background: #e9e9e9;
+          }
+        `}</style>
+
         {/* 中心色付けスライダー用 CSS */}
         <style>{`
           .centered-range {
@@ -928,7 +994,10 @@ function MapPage() {
             value={sweetness}
             onChange={(e) => setSweetness(Number(e.target.value))}
             className="centered-range"
-            style={{ width: "100%", background: centerGradient(sweetness) }}
+            style={{
+              background: centerGradient(sweetness),
+              marginTop: "8px",
+            }}
           />
         </div>
 
@@ -945,7 +1014,10 @@ function MapPage() {
             value={body}
             onChange={(e) => setBody(Number(e.target.value))}
             className="centered-range"
-            style={{ width: "100%", background: centerGradient(body) }}
+            style={{
+              background: centerGradient(body),
+              marginTop: "8px",
+             }}
           />
         </div>
 
@@ -985,19 +1057,19 @@ function MapPage() {
             }));
           }}
           style={{
-            background: "#fff",
-            color: "#007bff",
+            background: BUTTON_BG,
+            color: BUTTON_TEXT,
             padding: "14px 30px",
             fontSize: "16px",
             fontWeight: "bold",
-            border: "2px solid #007bff",
-            borderRadius: "6px",
+            border: "2px solid " + BUTTON_BG,
+            borderRadius: "12px",
             cursor: "pointer",
             display: "block",
             margin: "0 auto",
           }}
         >
-          あなたの好みをMapに表示
+          あなたの好みからMAPを生成
         </button>
       </Drawer>
 
