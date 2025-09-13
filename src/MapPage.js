@@ -194,7 +194,7 @@ function MapPage() {
     if (shouldCenter) {
       setViewState((prev) => ({
         ...prev,
-        target: [userPin[0], is3D ? userPin[1] : -userPin[1], 0],
+        target: [userPin[0], (is3D ? userPin[1] : -userPin[1]) - CENTER_Y_OFFSET, 0],
         zoom: prev.zoom ?? INITIAL_ZOOM,
       }));
       try { window.history.replaceState({}, document.title, window.location.pathname); } catch {}
@@ -990,7 +990,7 @@ function MapPage() {
 
             setViewState((prev) => ({
               ...prev,
-              target: [coords[0], coords[1], 0],
+              target: [coords[0], coords[1] - CENTER_Y_OFFSET, 0], // ← 少し上に見せる
               zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)),
             }));
           }}
