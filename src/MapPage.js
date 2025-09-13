@@ -1,5 +1,5 @@
 // src/MapPage.js
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
 import {
@@ -24,38 +24,8 @@ import {
   paperBaseStyle,
 } from "./ui/constants";
 
-/* =======================
-   ▼ モジュールスコープ定数（依存警告を避ける）
-======================= */
+// ここだけ先頭に定義（重複定義しない）
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
-const BUTTON_BG = "#e8ddd1";
-const BUTTON_TEXT = "#000";
-const CENTER_Y_OFFSET = -2.0; // 打点を画面中央より少し上に見せる
-
-// 色
-const TYPE_COLOR_MAP = {
-  White: [150, 150, 150],
-  Red: [150, 150, 150],
-  Rose: [150, 150, 150],
-  Sparkling: [150, 150, 150],
-  Other: [150, 150, 150],
-};
-const ORANGE = [255, 140, 0];
-
-// グリッド・ヒートマップ関連（外出しして依存配列から除外）
-const CELL_SIZE = 0.2;
-const GRID_INTERVAL = CELL_SIZE;
-const EPS = 1e-9;
-const toIndex = (v) => Math.floor((v + EPS) / CELL_SIZE);
-const toCorner = (i) => i * CELL_SIZE;
-const keyOf = (ix, iy) => `${ix},${iy}`;
-
-const HEAT_ALPHA_MIN = 24;
-const HEAT_ALPHA_MAX = 255;
-const HEAT_GAMMA = 0.65;
-const HEAT_CLIP_PCT = [0.0, 0.98];
-const HEAT_COLOR_LOW = [255, 255, 255];
-const HEAT_COLOR_HIGH = [255, 165, 0];
 
 /** ===== スライダー用ユーティリティ（中心から色を付ける） ===== */
 const centerGradient = (val) => {
@@ -68,11 +38,15 @@ const centerGradient = (val) => {
   return `linear-gradient(to right, ${base} 0%, ${base} ${a}%, ${active} ${a}%, ${active} ${b}%, ${base} ${b}%, ${base} 100%)`;
 };
 
+const BUTTON_BG = "#e8ddd1";
+const BUTTON_TEXT = "#000";
+
 function MapPage() {
   const location = useLocation();
   const [data, setData] = useState([]);
   const [is3D, setIs3D] = useState(false);
   const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
+  const CENTER_Y_OFFSET = -2.0; // 打点を画面中央より少し上に見せる
   const INITIAL_ZOOM = 7;
 
   const [viewState, setViewState] = useState({
@@ -201,8 +175,8 @@ function MapPage() {
     };
   }, []);
 
-  // userPin の読み出し（旧形式も救済）— useCallback化して依存を明示
-  const readUserPinFromStorage = useCallback(() => {
+  // userPin の読み出し（旧形式も救済）
+  const readUserPinFromStorage = () => {
     try {
       const raw = localStorage.getItem("userPinCoords");
       if (!raw) return null;
@@ -227,7 +201,7 @@ function MapPage() {
           return umap;
         }
       }
-      // 配列だけの最旧形式（Y反転の判定はクラスター中心で推定）
+      // 配列だけの最旧形式
       if (Array.isArray(val) && val.length >= 2) {
         const ax = Number(val[0]);
         const ay = Number(val[1]);
@@ -248,9 +222,9 @@ function MapPage() {
       console.warn("userPinCoords の解析に失敗:", e);
       return null;
     }
-  }, [umapCentroid]);
+  };
 
-  // userPin 同期（依存は useCallback に束ねる）
+  // userPin 同期
   useEffect(() => {
     const sync = () => setUserPin(readUserPinFromStorage());
     sync();
@@ -264,7 +238,7 @@ function MapPage() {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("storage", onStorage);
     };
-  }, [readUserPinFromStorage]);
+  }, [umapCentroid]);
 
   // 初回センタリング（必要時）
   useEffect(() => {
@@ -364,24 +338,50 @@ function MapPage() {
     return () => window.removeEventListener("message", onMsg);
   }, []);
 
-  // === グリッド線（thin/thick） ===
+  // 色
+  const typeColorMap = {
+    White: [150, 150, 150],
+    Red: [150, 150, 150],
+    Rose: [150, 150, 150],
+    Sparkling: [150, 150, 150],
+    Other: [150, 150, 150],
+  };
+  const ORANGE = [255, 140, 0];
+
+  // === グリッド/セル ===
+  const cellSize = 0.2;
+  const gridInterval = cellSize;
+
+  const EPS = 1e-9;
+  const toIndex = (v) => Math.floor((v + EPS) / cellSize);
+  const toCorner = (i) => i * cellSize;
+  const keyOf = (ix, iy) => `${ix},${iy}`;
+
+  const HEAT_ALPHA_MIN = 24;
+  const HEAT_ALPHA_MAX = 255;
+  const HEAT_GAMMA = 0.65;
+  const HEAT_CLIP_PCT = [0.0, 0.98];
+  const HEAT_COLOR_LOW = [255, 255, 255];
+  const HEAT_COLOR_HIGH = [255, 165, 0];
+
+  // グリッド線
   const { thinLines, thickLines } = useMemo(() => {
     const thin = [],
       thick = [];
     for (let i = -500; i <= 500; i++) {
-      const x = i * GRID_INTERVAL;
+      const x = i * gridInterval;
       (i % 5 === 0 ? thick : thin).push({
         sourcePosition: [x, -100, 0],
         targetPosition: [x, 100, 0],
       });
-      const y = i * GRID_INTERVAL;
+      const y = i * gridInterval;
       (i % 5 === 0 ? thick : thin).push({
         sourcePosition: [-100, y, 0],
         targetPosition: [100, y, 0],
       });
     }
     return { thinLines: thin, thickLines: thick };
-  }, []); // 外部定数のみ参照
+  }, [gridInterval]);
 
   // セル集計
   const cells = useMemo(() => {
@@ -405,7 +405,7 @@ function MapPage() {
       map.get(key).count += 1;
     });
     return Array.from(map.values());
-  }, [data, userRatings, favorites, is3D]);
+  }, [data, userRatings, favorites, is3D, cellSize]);
 
   // 2D: セルごとの平均PC描画配列
   const { heatCells, vMin, vMax, avgHash } = useMemo(() => {
@@ -449,7 +449,7 @@ function MapPage() {
       3
     )}|${highlight2D}`;
     return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
-  }, [data, highlight2D, is3D]);
+  }, [data, highlight2D, is3D, cellSize]);
 
   // PCA(PC1,PC2) -> UMAP(BodyAxis, SweetAxis) kNN回帰
   const pca2umap = useMemo(() => {
@@ -547,7 +547,7 @@ function MapPage() {
         getFillColor: (d) =>
           String(d.JAN) === String(selectedJAN)
             ? ORANGE
-            : TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other,
+            : typeColorMap[d.Type] || typeColorMap.Other,
         updateTriggers: { getFillColor: [selectedJAN] },
         pickable: true,
         onClick: null,
@@ -560,10 +560,10 @@ function MapPage() {
       getFillColor: (d) =>
         String(d.JAN) === String(selectedJAN)
           ? ORANGE
-          : TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other,
+          : typeColorMap[d.Type] || typeColorMap.Other,
       updateTriggers: { getFillColor: [selectedJAN] },
-      radiusUnits: "pixels",
-      getRadius: 3,
+      radiusUnits: "meters",
+      getRadius: 0.03,
       pickable: true,
       onClick: null,
     });
@@ -783,18 +783,6 @@ function MapPage() {
     });
   }, [userPin, is3D, sliderMarkerMode]);
 
-  // デバッグ：原点に見える点（レンダリング確認用）
-  const debugOriginLayer = new ScatterplotLayer({
-    id: "debug-origin",
-    data: [{ x: 0, y: 0 }],
-    getPosition: (d) => [d.x, d.y, 0],
-    radiusUnits: "pixels",
-    getRadius: 4,
-    getFillColor: [255, 140, 0, 240],
-    pickable: false,
-  parameters: { depthTest: false },
-  });
-
   return (
     <div
       style={{
@@ -811,7 +799,7 @@ function MapPage() {
         views={
           is3D
             ? new OrbitView({ near: 0.1, far: 1000 })
-            : new OrthographicView({ near: -1000, far: 1000 })
+            : new OrthographicView({ near: -1, far: 1 })
         }
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => {
@@ -849,13 +837,12 @@ function MapPage() {
         }}
         pickingRadius={8}
         layers={[
-          debugOriginLayer,
           ...ratingCircleLayers,
           !is3D && !highlight2D
             ? new GridCellLayer({
                 id: "grid-cells-base",
                 data: cells,
-                cellSize: CELL_SIZE,
+                cellSize,
                 getPosition: (d) => d.position,
                 getFillColor: (d) =>
                   d.hasFavorite
@@ -873,7 +860,7 @@ function MapPage() {
                   "_"
                 )}-${HEAT_COLOR_HIGH.join("_")}`,
                 data: heatCells,
-                cellSize: CELL_SIZE,
+                cellSize,
                 getPosition: (d) => d.position,
                 getFillColor: (d) => {
                   let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
@@ -924,7 +911,6 @@ function MapPage() {
             getWidth: 1,
             widthUnits: "pixels",
             pickable: false,
-            parameters: { depthTest: false },
           }),
           new LineLayer({
             id: "grid-lines-thick",
@@ -935,7 +921,6 @@ function MapPage() {
             getWidth: 1.25,
             widthUnits: "pixels",
             pickable: false,
-            parameters: { depthTest: false },
           }),
 
           // スライダー結果マーカー（コンパス or オレンジ打点）
