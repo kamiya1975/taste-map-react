@@ -1,10 +1,13 @@
+// MapPage.js
 import React, { useEffect, useState, useMemo } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
 import { ScatterplotLayer, ColumnLayer, LineLayer, TextLayer, GridCellLayer, PathLayer, IconLayer } from "@deck.gl/layers";
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+
+// 共有：Drawerの高さ（商品 & お気に入り）
+const DRAWER_HEIGHT = "60vh";
 
 // ここだけ先頭に定義（重複定義しない）
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
@@ -28,7 +31,7 @@ function MapPage() {
   const [data, setData] = useState([]);
   const [is3D, setIs3D] = useState(false);
   const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
-  const CENTER_Y_OFFSET = -2.0; // 打点を画面中央より少し上に表示するオフセット（もっと上にしたいなら 1.0 や 1.2）
+  const CENTER_Y_OFFSET = -2.0; // 打点を画面中央より少し上に表示
   const INITIAL_ZOOM = 7;
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
@@ -54,7 +57,10 @@ function MapPage() {
   const [sweetness, setSweetness] = useState(50);
   const [body, setBody] = useState(50);
   const [showRatingDates, setShowRatingDates] = useState(false);
-  const [isRatingListOpen, setIsRatingListOpen] = useState(false);
+
+  // 「お気に入り」Drawer の開閉（旧 isRatingListOpen を置き換え）
+  const [favoritesDrawerOpen, setFavoritesDrawerOpen] = useState(false);
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // スライダー結果マーカー: 'orange'（評価しても消えない） / 'compass'（評価が入ると消える）
@@ -531,7 +537,7 @@ function MapPage() {
         return { ...r, x: it.BodyAxis, y: it.SweetAxis };
       })
       .filter(Boolean);
-    if (joined.length === 0) return { point: null, picked: [], rule: compassRule };
+    if (joined.length === 0) return { point: null, picked, rule: compassRule };
 
     joined.sort((a, b) => b.rating - a.rating);
 
@@ -627,12 +633,6 @@ function MapPage() {
           maxZoom: ZOOM_LIMITS.max,
         }}
         onClick={(info) => {
-          if (info?.layer?.id === "slider-mark") {
-            const coord = info?.coordinate;
-            const nearest = findNearestWine(coord);
-            if (nearest?.JAN) openProductDrawer(nearest.JAN);
-            return;
-          }
           const picked = info?.object;
           if (picked?.JAN) { openProductDrawer(picked.JAN); return; }
           const coord = info?.coordinate;
@@ -812,7 +812,7 @@ function MapPage() {
           onClick={() => {
             const next = !showRatingDates;
             setShowRatingDates(next);
-            setIsRatingListOpen(next);
+            setFavoritesDrawerOpen(next); // お気に入りDrawerを開閉
           }}
           style={{
             position: "absolute",
@@ -949,7 +949,7 @@ function MapPage() {
             <span>← もっと軽やかが良い</span>
             <span>濃厚なコクが欲しい →</span>
           </div>
-        <input
+          <input
             type="range"
             min="0"
             max="100"
@@ -991,7 +991,7 @@ function MapPage() {
 
             setViewState((prev) => ({
               ...prev,
-              target: [coords[0], coords[1] - CENTER_Y_OFFSET, 0], // ← 少し上に見せる
+              target: [coords[0], coords[1] - CENTER_Y_OFFSET, 0], // 少し上に見せる
               zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)),
             }));
           }}
@@ -1078,23 +1078,6 @@ function MapPage() {
           </label>
         </div>
 
-        <div style={{ marginBottom: "20px" }}>
-          <button onClick={() => alert("ニックネーム変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
-            ニックネーム変更
-          </button>
-          <button onClick={() => alert("パスワード変更画面へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
-            パスワード変更
-          </button>
-          <button onClick={() => alert("お気に入り店舗設定へ")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
-            お気に入り店舗管理
-          </button>
-          <button onClick={() => alert("利用規約を表示")} style={{ width: "100%", padding: "10px", marginBottom: "10px" }}>
-            利用規約・プライバシーポリシー
-          </button>
-          <button onClick={() => alert("アプリの使い方説明を表示")} style={{ width: "100%", padding: "10px" }}>
-            アプリの使い方
-          </button>
-        </div>
         <button
           onClick={() => setIsSettingsOpen(false)}
           style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer", width: "100%" }}
@@ -1103,14 +1086,79 @@ function MapPage() {
         </button>
       </Drawer>
 
-      {/* ♡ お気に入りパネル */}
-      <FavoritePanel
-        isOpen={isRatingListOpen}
-        onClose={() => { setIsRatingListOpen(false); setShowRatingDates(false); }}
-        favorites={favorites}
-        data={data}
-        onSelectJAN={openProductDrawer}
-      />
+      {/* お気に入りドロワー（高さ・挙動は商品ページと統一） */}
+      <Drawer
+        anchor="bottom"
+        open={favoritesDrawerOpen}
+        onClose={() => { setFavoritesDrawerOpen(false); setShowRatingDates(false); }}
+        PaperProps={{
+          style: {
+            width: "100%",
+            height: DRAWER_HEIGHT,               // ← 共有
+            borderTopLeftRadius: "12px",
+            borderTopRightRadius: "12px",
+            overflow: "hidden",
+            pointerEvents: "auto",               // ← パネル本体は操作できる
+          },
+        }}
+        ModalProps={{
+          keepMounted: true,
+          hideBackdrop: true,                    // ← 背景の半透明カバーを消す
+          slotProps: { root: { style: { pointerEvents: "none" } } }, // ← モーダル外領域は裏のMapにイベント通す
+        }}
+        disableScrollLock                           // ← bodyスクロールロック無効
+      >
+        <div
+          style={{
+            height: "48px",
+            padding: "8px 12px",
+            borderBottom: "1px solid #eee",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "#f9f9f9",
+          }}
+        >
+          <div style={{ fontWeight: 600 }}>お気に入り</div>
+          <button
+            onClick={() => { setFavoritesDrawerOpen(false); setShowRatingDates(false); }}
+            style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}
+          >
+            閉じる
+          </button>
+        </div>
+        <div style={{ height: `calc(${DRAWER_HEIGHT} - 48px)`, overflowY: "auto", padding: "12px 16px", backgroundColor: "#fff" }}>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {Object.entries(favorites || {})
+              .sort((a, b) => new Date((b[1]?.addedAt)||0) - new Date((a[1]?.addedAt)||0))
+              .map(([jan, meta], idx, arr) => {
+                const item = (data || []).find(d => String(d.JAN) === String(jan));
+                if (!item) return null;
+                const displayIndex = arr.length - idx;
+                return (
+                  <li key={jan} onClick={() => openProductDrawer(jan)} style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}>
+                    <div>
+                      <strong style={{ display: "inline-block", color: "rgb(50,50,50)", fontSize: "16px", fontWeight: "bold", marginRight: "4px" }}>
+                        {displayIndex}.
+                      </strong>
+                      <span style={{ fontSize: "15px", color: "#555" }}>
+                        {meta?.addedAt ? new Date(meta.addedAt).toLocaleDateString() : "（日付不明）"}
+                      </span>
+                      <br />
+                      {item.商品名 || "（名称不明）"}
+                    </div>
+                    <small>
+                      Type: {item.Type || "不明"} / 価格: {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
+                      <br />
+                      Body: {item.BodyAxis?.toFixed(2)}, Sweet: {item.SweetAxis?.toFixed(2)}
+                    </small>
+                  </li>
+                );
+              })}
+            {(!favorites || Object.keys(favorites).length === 0) && <li style={{ color: "#666" }}>まだお気に入りはありません。</li>}
+          </ul>
+        </div>
+      </Drawer>
 
       {/* 商品ページドロワー（/products/:JAN） */}
       <Drawer
@@ -1119,24 +1167,20 @@ function MapPage() {
         onClose={() => setProductDrawerOpen(false)}
         PaperProps={{
           style: {
-            width: "100%", 
-            height: "500px", 
-            borderTopLeftRadius: "12px", 
-            borderTopRightRadius: "12px", 
+            width: "100%",
+            height: DRAWER_HEIGHT,               // ← 共有
+            borderTopLeftRadius: "12px",
+            borderTopRightRadius: "12px",
             overflow: "hidden",
-            pointerEvents: "auto",           // ← パネル本体は操作できる
-        } 
-      }}
-      ModalProps={{
-        keepMounted: true,
-        hideBackdrop: true,        // ← 背景の半透明カバーを消す
-        slotProps: {
-          root: {                          // ← モーダルの透明領域は裏へイベント通す
-            style: { pointerEvents: "none" }
-          }
-        }
-      }}
-      disableScrollLock                     // ← bodyスクロールのロックを無効（モバイル安定化）
+            pointerEvents: "auto",               // ← パネル本体は操作できる
+          },
+        }}
+        ModalProps={{
+          keepMounted: true,
+          hideBackdrop: true,                    // ← 背景の半透明カバーを消す
+          slotProps: { root: { style: { pointerEvents: "none" } } }, // ← モーダル外領域は裏のMapにイベント通す
+        }}
+        disableScrollLock                           // ← bodyスクロールロック無効
       >
         <div
           style={{
@@ -1159,121 +1203,19 @@ function MapPage() {
         </div>
         {selectedJAN ? (
           <iframe
-            title={`product-${selectedJAN}`} 
+            title={`product-${selectedJAN}`}
             src={`/products/${selectedJAN}`}
             style={{
-              border: "none", 
-              width: "100%", 
-              height: "calc(500px - 48px)"    // ← Drawer高さに合わせて修正 
-            }} 
+              border: "none",
+              width: "100%",
+              height: `calc(${DRAWER_HEIGHT} - 48px)`, // ← 共有
+            }}
           />
         ) : (
           <div style={{ padding: 16 }}>商品を選択してください。</div>
         )}
       </Drawer>
     </div>
-  );
-} // MapPage end
-
-// === お気に入り一覧パネル ===
-function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
-  const list = React.useMemo(() => {
-    const arr = Object.entries(favorites || {})
-      .map(([jan, meta]) => {
-        const item = (data || []).find((d) => String(d.JAN) === String(jan));
-        if (!item) return null;
-        return { ...item, addedAt: meta?.addedAt ?? null };
-      })
-      .filter(Boolean);
-    arr.sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
-    return arr.map((x, i) => ({ ...x, displayIndex: arr.length - i }));
-  }, [favorites, data]);
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", stiffness: 200, damping: 25 }}
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "500px",
-            backgroundColor: "#fff",
-            boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
-            zIndex: 1000,
-            borderTopLeftRadius: "12px",
-            borderTopRightRadius: "12px",
-            display: "flex",
-            flexDirection: "column",
-            fontFamily:
-              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-          }}
-        >
-          <div
-            style={{
-              padding: "12px 16px",
-              borderBottom: "1px solid #ddd",
-              background: "#f9f9f9",
-              flexShrink: 0,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <h3 style={{ margin: 0 }}>お気に入り</h3>
-            <button
-              onClick={onClose}
-              style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: "4px", cursor: "pointer" }}
-            >
-              閉じる
-            </button>
-          </div>
-
-          <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", backgroundColor: "#fff" }}>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {list.map((item, idx) => (
-                <li
-                  key={idx}
-                  onClick={() => onSelectJAN?.(item.JAN)}
-                  style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}
-                >
-                  <div>
-                    <strong
-                      style={{
-                        display: "inline-block",
-                        color: "rgb(50, 50, 50)",
-                        fontSize: "16px",
-                        fontWeight: "bold",
-                        marginRight: "4px",
-                        fontFamily: '"Helvetica Neue", Arial, sans-serif',
-                      }}
-                    >
-                      {item.displayIndex}.
-                    </strong>
-                    <span style={{ fontSize: "15px", color: "#555" }}>
-                      {item.addedAt ? new Date(item.addedAt).toLocaleDateString() : "（日付不明）"}
-                    </span>
-                    <br />
-                    {item.商品名 || "（名称不明）"}
-                  </div>
-                  <small>
-                    Type: {item.Type || "不明"} / 価格: {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
-                    <br />
-                    Body: {item.BodyAxis?.toFixed(2)}, Sweet: {item.SweetAxis?.toFixed(2)}
-                  </small>
-                </li>
-              ))}
-              {list.length === 0 && <li style={{ color: "#666" }}>まだお気に入りはありません。</li>}
-            </ul>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 }
 
