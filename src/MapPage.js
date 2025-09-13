@@ -28,7 +28,7 @@ function MapPage() {
   const [data, setData] = useState([]);
   const [is3D, setIs3D] = useState(false);
   const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
-  const CENTER_Y_OFFSET = 1.5; // 打点を画面中央より少し上に表示するオフセット（もっと上にしたいなら 1.0 や 1.2）
+  const CENTER_Y_OFFSET = -1.5; // 打点を画面中央より少し上に表示するオフセット（もっと上にしたいなら 1.0 や 1.2）
   const INITIAL_ZOOM = 7;
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
