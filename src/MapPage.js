@@ -1555,7 +1555,7 @@ function MapPage() {
             onClick={() => setProductDrawerOpen(false)}
             style={{
               background: "#eee",
-              border: "1px solid "#ccc",
+              border: "1px solid #ccc",
               padding: "6px 10px",
               borderRadius: "4px",
               cursor: "pointer",
