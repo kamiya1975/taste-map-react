@@ -547,8 +547,14 @@ function MapPage() {
     const lineColor = [255, 0, 0, 255];
     return Object.entries(userRatings).flatMap(([jan, ratingObj]) => {
       const item = data.find((d) => String(d.JAN) === String(jan));
-      if (!item || !item.BodyAxis || !item.SweetAxis) return [];
-      const count = Math.min(ratingObj.rating, 5);
+      if (
+        !item ||
+        !Number.isFinite(item.BodyAxis) ||
+        !Number.isFinite(item.SweetAxis)
+      )
+        return [];
+      const count = Math.min(Number(ratingObj.rating) || 0, 5);
+      if (count <= 0) return [];
       const radiusBase = 0.1;
       return Array.from({ length: count }).map((_, i) => {
         const angleSteps = 40;
@@ -580,7 +586,7 @@ function MapPage() {
   const sortedRatedWineList = useMemo(() => {
     if (!Array.isArray(data)) return [];
     return Object.entries(userRatings)
-      .filter(([_, rating]) => rating.rating != null)
+      .filter(([_, rating]) => rating?.rating != null)
       .map(([jan, rating]) => {
         const matched = data.find((d) => String(d.JAN) === String(jan));
         if (!matched) return null;
@@ -755,14 +761,15 @@ function MapPage() {
     });
   }, [userPin, is3D, sliderMarkerMode]);
 
+  // デバッグ用（未使用だが残置可）
   const debugLayer = new ScatterplotLayer({
     id: "debug-point",
-    data: [{x: 0, y: 0}],
-    getPosition: d => [d.x, -d.y, 0],
+    data: [{ x: 0, y: 0 }],
+    getPosition: (d) => [d.x, -d.y, 0],
     getFillColor: [0, 150, 255, 255],
     getRadius: 0.2,
     radiusUnits: "meters",
-    pickable: false
+    pickable: false,
   });
 
   // ====== レンダリング
@@ -1548,7 +1555,7 @@ function MapPage() {
             onClick={() => setProductDrawerOpen(false)}
             style={{
               background: "#eee",
-              border: "1px solid #ccc",
+              border: "1px solid "#ccc",
               padding: "6px 10px",
               borderRadius: "4px",
               cursor: "pointer",
@@ -1687,8 +1694,8 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
                       ? `¥${item.希望小売価格.toLocaleString()}`
                       : "不明"}
                     <br />
-                    Body: {item.BodyAxis?.toFixed(2)}, Sweet:{" "}
-                    {item.SweetAxis?.toFixed(2)}
+                    Body: {Number.isFinite(item.BodyAxis) ? item.BodyAxis.toFixed(2) : "—"}, Sweet:{" "}
+                    {Number.isFinite(item.SweetAxis) ? item.SweetAxis.toFixed(2) : "—"}
                   </small>
                 </li>
               ))}
