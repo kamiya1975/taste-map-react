@@ -976,14 +976,16 @@ function MapPage() {
           }
         }}
         style={{
-          position: "fixed",
-          inset: 0,             // top:0,right:0,bottom:0,left:0 と同義
-          margin: 0,
-          padding: 0,
-          width: "100vw",
-          height: "100vh",
-          zIndex: 0,            // 背景レイヤとして最背面に固定
-          background: "#fafafa"
+          position: "absolute",
+          top: "10px",
+          right: "10px",
+          zIndex: 10,
+          padding: "8px 12px",
+          fontSize: "14px",
+          background: "#fff",
+          border: "1px solid #ccc",
+          borderRadius: "4px",
+          cursor: "pointer",
         }}
       >
         {is3D ? "2D" : "3D"}
