@@ -1117,18 +1117,26 @@ function MapPage() {
         anchor="bottom"
         open={productDrawerOpen}
         onClose={() => setProductDrawerOpen(false)}
-        PaperProps={{ style: { 
-          width: "100%", 
-          height: "500px", 
-          borderTopLeftRadius: "12px", 
-          borderTopRightRadius: "12px", 
-          overflow: "hidden" 
+        PaperProps={{
+          style: {
+            width: "100%", 
+            height: "500px", 
+            borderTopLeftRadius: "12px", 
+            borderTopRightRadius: "12px", 
+            overflow: "hidden",
+            pointerEvents: "auto",           // ← パネル本体は操作できる
         } 
       }}
       ModalProps={{
         keepMounted: true,
         hideBackdrop: true,        // ← 背景の半透明カバーを消す
+        slotProps: {
+          root: {                          // ← モーダルの透明領域は裏へイベント通す
+            style: { pointerEvents: "none" }
+          }
+        }
       }}
+      disableScrollLock                     // ← bodyスクロールのロックを無効（モバイル安定化）
       >
         <div
           style={{
@@ -1150,8 +1158,15 @@ function MapPage() {
           </button>
         </div>
         {selectedJAN ? (
-          <iframe title={`product-${selectedJAN}`} src={`/products/${selectedJAN}`}
-                  style={{ border: "none", width: "100%", height: "calc(100% - 48px)" }} />
+          <iframe
+            title={`product-${selectedJAN}`} 
+            src={`/products/${selectedJAN}`}
+            style={{
+              border: "none", 
+              width: "100%", 
+              height: "calc(500px - 48px)"    // ← Drawer高さに合わせて修正 
+            }} 
+          />
         ) : (
           <div style={{ padding: 16 }}>商品を選択してください。</div>
         )}
