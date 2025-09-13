@@ -9,6 +9,27 @@ import { motion, AnimatePresence } from "framer-motion";
 // ここだけ先頭に定義しておく（重複定義しない）
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 
+/** ===== スライダー用ユーティリティ（中心から色を付ける） ===== */
+const SLIDER_COLORS = {
+  base: "#eeeeee",   // トラックの薄グレー
+  active: "#b59678", // 画像のバー色に近いブラウン
+  thumb: "#333333",  // ノブ色（濃いグレー）
+};
+// 中心(50%)から現在値までを色付けするグラデーション
+const centerGradient = (val, base = SLIDER_COLORS.base, active = SLIDER_COLORS.active) => {
+  const v = Math.max(0, Math.min(100, Number(val)));
+  const minP = Math.min(50, v);
+  const maxP = Math.max(50, v);
+  return `linear-gradient(to right,
+    ${base} 0%,
+    ${base} ${minP}%,
+    ${active} ${minP}%,
+    ${active} ${maxP}%,
+    ${base} ${maxP}%,
+    ${base} 100%
+  )`;
+};
+
 function MapPage() {
   const location = useLocation();
   const [data, setData] = useState([]);
@@ -566,7 +587,7 @@ function MapPage() {
         anchorY: 155,
       }),
       sizeUnits: "meters",
-      getSize: 0.5, // 見た目は compassLayer と揃えつつ少し小さめでもOK
+      getSize: 0.5,
       billboard: true,
       pickable: false,
       parameters: { depthTest: false },
@@ -811,6 +832,50 @@ function MapPage() {
           },
         }}
       >
+        {/* 中心色付けスライダー用 CSS */}
+        <style>{`
+          .centered-range {
+            appearance: none;
+            -webkit-appearance: none;
+            height: 10px;
+            border-radius: 5px;
+            outline: none;
+            margin-top: 8px;
+            background: transparent; /* 実際の色は inline の linear-gradient で付与 */
+          }
+          .centered-range::-webkit-slider-runnable-track {
+            height: 10px;
+            border-radius: 5px;
+            background: transparent;
+          }
+          .centered-range::-moz-range-track {
+            height: 10px;
+            border-radius: 5px;
+            background: transparent;
+          }
+          .centered-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: ${SLIDER_COLORS.thumb};
+            border: 2px solid #ffffff;
+            box-shadow: 0 1px 2px rgba(0,0,0,.25);
+            cursor: pointer;
+            margin-top: -6px; /* トラック中央に合わせる（高さ10pxの場合） */
+          }
+          .centered-range::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: ${SLIDER_COLORS.thumb};
+            border: none;
+            box-shadow: 0 1px 2px rgba(0,0,0,.25);
+            cursor: pointer;
+          }
+        `}</style>
+
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button
             onClick={() => setIsSliderOpen(false)}
@@ -820,6 +885,8 @@ function MapPage() {
           </button>
         </div>
         <h2 style={{ textAlign: "center", fontSize: "20px", marginBottom: "24px" }}>基準のワインを飲んだ印象は？</h2>
+
+        {/* 甘みスライダー */}
         <div style={{ marginBottom: "32px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: "bold", marginBottom: "6px" }}>
             <span>← こんなに甘みは不要</span>
@@ -831,18 +898,12 @@ function MapPage() {
             max="100"
             value={sweetness}
             onChange={(e) => setSweetness(Number(e.target.value))}
-            style={{
-              width: "100%",
-              appearance: "none",
-              height: "10px",
-              borderRadius: "5px",
-              background: `linear-gradient(to right, #007bff ${sweetness}%, #ddd ${sweetness}%)`,
-              outline: "none",
-              marginTop: "8px",
-              WebkitAppearance: "none",
-            }}
+            className="centered-range"
+            style={{ width: "100%", background: centerGradient(sweetness) }}
           />
         </div>
+
+        {/* ボディ（コク）スライダー */}
         <div style={{ marginBottom: "32px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: "bold", marginBottom: "6px" }}>
             <span>← もっと軽やかが良い</span>
@@ -854,18 +915,11 @@ function MapPage() {
             max="100"
             value={body}
             onChange={(e) => setBody(Number(e.target.value))}
-            style={{
-              width: "100%",
-              appearance: "none",
-              height: "10px",
-              borderRadius: "5px",
-              background: `linear-gradient(to right, #007bff ${body}%, #ddd ${body}%)`,
-              outline: "none",
-              marginTop: "8px",
-              WebkitAppearance: "none",
-            }}
+            className="centered-range"
+            style={{ width: "100%", background: centerGradient(body) }}
           />
         </div>
+
         <button
           onClick={() => {
             if (!data?.length || !pca2umap) return;
