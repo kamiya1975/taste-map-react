@@ -28,6 +28,7 @@ function MapPage() {
   const [data, setData] = useState([]);
   const [is3D, setIs3D] = useState(false);
   const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
+  const CENTER_Y_OFFSET = 0.6;
   const INITIAL_ZOOM = 7;
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
