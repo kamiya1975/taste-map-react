@@ -12,6 +12,7 @@
     "@testing-library/user-event": "^13.5.0",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
+    "framer-motion": "12.23.12",
     "ml-pca": "^4.1.1",
     "plotly.js": "^3.0.1",
     "react": "^19.1.0",
