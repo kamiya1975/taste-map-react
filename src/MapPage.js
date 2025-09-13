@@ -6,34 +6,22 @@ import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
-// ここだけ先頭に定義しておく（重複定義しない）
+// ここだけ先頭に定義（重複定義しない）
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 
 /** ===== スライダー用ユーティリティ（中心から色を付ける） ===== */
-const SLIDER_COLORS = {
-  base: "#e9e9e9",   // トラックの薄グレー
-  active: "#b59678", // 画像のバー色に近いブラウン
-};
-// 中心(50%)から現在値までを色付けするグラデーション
-const centerGradient = (val, base = SLIDER_COLORS.base, active = SLIDER_COLORS.active) => {
+const centerGradient = (val) => {
+  const base = "#e9e9e9";
+  const active = "#b59678";
   const v = Math.max(0, Math.min(100, Number(val)));
+  if (v === 50) return base;
   const a = Math.min(50, v);
   const b = Math.max(50, v);
-  if (v === 50) return `linear-gradient(to right, ${base} 0%, ${base} 100%)`;
-  return `linear-gradient(
-    to right,
-    ${base} 0%,
-    ${base} ${a}%,
-    ${active} ${a}%,
-    ${active} ${b}%,
-    ${base} ${b}%,
-    ${base} 100%
-  )`;
+  return `linear-gradient(to right, ${base} 0%, ${base} ${a}%, ${active} ${a}%, ${active} ${b}%, ${base} ${b}%, ${base} 100%)`;
 };
 
-// ボタン配色
-const BUTTON_BG = "#e8ddd1";   // 薄い茶色
-const BUTTON_TEXT = "#000000"; // 黒
+const BUTTON_BG = "#e8ddd1";
+const BUTTON_TEXT = "#000";
 
 function MapPage() {
   const location = useLocation();
@@ -67,6 +55,9 @@ function MapPage() {
   const [showRatingDates, setShowRatingDates] = useState(false);
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // スライダー結果マーカー: 'orange'（評価しても消えない） / 'compass'（評価が入ると消える）
+  const [sliderMarkerMode, setSliderMarkerMode] = useState("orange");
 
   // 嗜好コンパス：採用集合の決め方（"elbow" | "top20"）
   const [compassRule, setCompassRule] = useState("elbow");
@@ -257,6 +248,7 @@ function MapPage() {
       return next;
     });
   };
+
   // 商品ページ（iframe）からの postMessage
   useEffect(() => {
     const onMsg = (e) => {
@@ -428,7 +420,6 @@ function MapPage() {
       getRadius: 0.03,
       pickable: true,
       onClick: null,
-      parameters: { depthTest: false }, // 2Dは前面固定
     });
   }, [data, is3D, zMetric, selectedJAN]);
 
@@ -576,27 +567,41 @@ function MapPage() {
     });
   }, [compass, is3D]);
 
-  // ユーザー初期ピン：評価が1件でも入ったら非表示＆オレンジ打点→コンパス画像
+  // スライダー結果（コンパス：評価が入ると消える）
   const userPinCompassLayer = useMemo(() => {
-    if (!userPin || hasAnyRating) return null;
+    if (!userPin || sliderMarkerMode !== "compass") return null;
+    if (hasAnyRating) return null;
     return new IconLayer({
       id: "user-pin-compass",
       data: [{ position: [userPin[0], is3D ? userPin[1] : -userPin[1], 0] }],
       getPosition: (d) => d.position,
-      getIcon: () => ({
-        url: COMPASS_URL,
-        width: 310,
-        height: 310,
-        anchorX: 155,
-        anchorY: 155,
-      }),
+      getIcon: () => ({ url: COMPASS_URL, width: 310, height: 310, anchorX: 155, anchorY: 155 }),
       sizeUnits: "meters",
       getSize: 0.5,
       billboard: true,
       pickable: false,
       parameters: { depthTest: false },
     });
-  }, [userPin, hasAnyRating, is3D]);
+  }, [userPin, hasAnyRating, is3D, sliderMarkerMode]);
+
+  // スライダー結果（オレンジ打点：評価しても常に表示）
+  const userPinOrangeLayer = useMemo(() => {
+    if (!userPin || sliderMarkerMode !== "orange") return null;
+    return new ScatterplotLayer({
+      id: "user-pin-orange",
+      data: [{ x: userPin[0], y: userPin[1] }],
+      getPosition: (d) => [d.x, is3D ? d.y : -d.y, 0],
+      radiusUnits: "meters",
+      getRadius: 0.12,
+      getFillColor: [255, 140, 0, 230],
+      stroked: true,
+      getLineWidth: 2,
+      lineWidthUnits: "pixels",
+      getLineColor: [255, 255, 255, 255],
+      pickable: false,
+      parameters: { depthTest: false },
+    });
+  }, [userPin, is3D, sliderMarkerMode]);
 
   return (
     <div style={{ position: "absolute", top: 0, left: 0, margin: 0, padding: 0, width: "100%", height: "100%" }}>
@@ -696,10 +701,17 @@ function MapPage() {
             widthUnits: "pixels",
             pickable: false,
           }),
+
+          // スライダー結果マーカー（コンパス or オレンジ打点）
           userPinCompassLayer,
+          userPinOrangeLayer,
+
+          // 評価インデックス & 嗜好コンパス
           ratingDateLayer,
-          compassLayer, // 嗜好コンパス（個別重心のコンパス画像）
-          mainLayer,    // 最前面
+          compassLayer,
+
+          // ★ワイン打点は最前面
+          mainLayer,
         ]}
       />
 
@@ -865,46 +877,40 @@ function MapPage() {
           },
         }}
       >
-        {/* スライダーCSS：これだけ（統合版） */}
+        {/* スライダーCSS（●がバー中央） */}
         <style>{`
           .taste-slider{
             appearance: none;
             -webkit-appearance: none;
             width: 100%;
-            height: 10px;
-            background: transparent; /* 背景はトラック側 */
+            height: 6px;
+            background: transparent;
             margin-top: 8px;
             outline: none;
-            position: relative;
           }
           .taste-slider::-webkit-slider-runnable-track{
-            height: 10px;
-            border-radius: 5px;
+            height: 6px;
+            border-radius: 9999px;
             background: var(--range, #e9e9e9);
           }
           .taste-slider::-moz-range-track{
-            height: 10px;
-            border-radius: 5px;
+            height: 6px;
+            border-radius: 9999px;
             background: var(--range, #e9e9e9);
           }
+          /* (thumb高さ28px - track高さ6px) / 2 = 11px を打消し → 中央 */
           .taste-slider::-webkit-slider-thumb{
             -webkit-appearance: none;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: #fff;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: #fff; border: 0;
             box-shadow: 0 2px 6px rgba(0,0,0,.25);
-            border: 0;
-            margin-top: -9px; /* (28-10)/2 を打ち消して中央へ */
+            margin-top: -11px;
             cursor: pointer;
           }
           .taste-slider::-moz-range-thumb{
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: #fff;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: #fff; border: 0;
             box-shadow: 0 2px 6px rgba(0,0,0,.25);
-            border: 0;
             cursor: pointer;
           }
         `}</style>
@@ -919,7 +925,7 @@ function MapPage() {
         </div>
         <h2 style={{ textAlign: "center", fontSize: "20px", marginBottom: "24px" }}>基準のワインを飲んだ印象は？</h2>
 
-        {/* 甘みスライダー */}
+        {/* 甘み */}
         <div style={{ marginBottom: "32px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: "bold", marginBottom: "6px" }}>
             <span>← こんなに甘みは不要</span>
@@ -936,13 +942,13 @@ function MapPage() {
           />
         </div>
 
-        {/* ボディ（コク）スライダー */}
+        {/* コク（ボディ） */}
         <div style={{ marginBottom: "32px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: "bold", marginBottom: "6px" }}>
             <span>← もっと軽やかが良い</span>
             <span>濃厚なコクが欲しい →</span>
           </div>
-          <input
+        <input
             type="range"
             min="0"
             max="100"
@@ -1042,6 +1048,33 @@ function MapPage() {
           <div style={{ color: "#666", fontSize: 12, marginTop: 6 }}>
             ※ 採用集合の (UMAP1, UMAP2) を評価で加重平均して重心を求め、コンパス画像を重ね表示します。
           </div>
+        </div>
+
+        {/* スライダー結果マーカー切替 */}
+        <div style={{ margin: "10px 0 20px 0", padding: "10px", border: "1px solid #eee", borderRadius: 6 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>スライダー結果マーカー</div>
+          <label style={{ display: "block", marginBottom: 6 }}>
+            <input
+              type="radio"
+              name="sliderMarkerMode"
+              value="orange"
+              checked={sliderMarkerMode === "orange"}
+              onChange={(e) => setSliderMarkerMode(e.target.value)}
+              style={{ marginRight: 6 }}
+            />
+            オレンジ打点（評価しても常に表示）
+          </label>
+          <label style={{ display: "block" }}>
+            <input
+              type="radio"
+              name="sliderMarkerMode"
+              value="compass"
+              checked={sliderMarkerMode === "compass"}
+              onChange={(e) => setSliderMarkerMode(e.target.value)}
+              style={{ marginRight: 6 }}
+            />
+            コンパス（評価が入ると非表示）
+          </label>
         </div>
 
         <div style={{ marginBottom: "20px" }}>
@@ -1179,7 +1212,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
                 <li
                   key={idx}
                   onClick={() => onSelectJAN?.(item.JAN)}
-                  style={{ padding: "10px 0", borderBottom: "1px solid " + "#eee", cursor: "pointer" }}
+                  style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}
                 >
                   <div>
                     <strong
