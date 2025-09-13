@@ -11,50 +11,29 @@ const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 
 /** ===== スライダー用ユーティリティ（中心から色を付ける） ===== */
 const SLIDER_COLORS = {
-  base: "#eeeeee",   // トラックの薄グレー
+  base: "#e9e9e9",   // トラックの薄グレー
   active: "#b59678", // 画像のバー色に近いブラウン
-  thumb: "#333333",  // ノブ色（濃いグレー）
 };
 // 中心(50%)から現在値までを色付けするグラデーション
 const centerGradient = (val, base = SLIDER_COLORS.base, active = SLIDER_COLORS.active) => {
   const v = Math.max(0, Math.min(100, Number(val)));
-  const minP = Math.min(50, v);
-  const maxP = Math.max(50, v);
-  return `linear-gradient(to right,
+  const a = Math.min(50, v);
+  const b = Math.max(50, v);
+  if (v === 50) return `linear-gradient(to right, ${base} 0%, ${base} 100%)`;
+  return `linear-gradient(
+    to right,
     ${base} 0%,
-    ${base} ${minP}%,
-    ${active} ${minP}%,
-    ${active} ${maxP}%,
-    ${base} ${maxP}%,
+    ${base} ${a}%,
+    ${active} ${a}%,
+    ${active} ${b}%,
+    ${base} ${b}%,
     ${base} 100%
   )`;
 };
 
-// 色（薄茶系に統一）
-const ACCENT = "#b08a6a";      // スライダーの着色バー
-const BUTTON_BG = "#e8ddd1";   // 薄い茶色ボタン
-const BUTTON_TEXT = "#000000"; // 文字は黒
-
-// value(0–100)を中央50からの着色に変換した背景（中心→値の間だけACCENT）
-const sliderBackgroundFromCenter = (value) => {
-  const v = Math.max(0, Math.min(100, Number(value) || 50));
-  if (v === 50) {
-    // ど真ん中：着色なし（下地のみ）
-    return `linear-gradient(to right, #e9e9e9 0%, #e9e9e9 100%)`;
-  }
-  // 50→v の区間だけACCENT、それ以外は下地 #e9e9e9
-  const a = Math.min(50, v);
-  const b = Math.max(50, v);
-  return `linear-gradient(
-    to right,
-    #e9e9e9 0%,
-    #e9e9e9 ${a}%,
-    ${ACCENT} ${a}%,
-    ${ACCENT} ${b}%,
-    #e9e9e9 ${b}%,
-    #e9e9e9 100%
-  )`;
-};
+// ボタン配色
+const BUTTON_BG = "#e8ddd1";   // 薄い茶色
+const BUTTON_TEXT = "#000000"; // 黒
 
 function MapPage() {
   const location = useLocation();
@@ -449,6 +428,7 @@ function MapPage() {
       getRadius: 0.03,
       pickable: true,
       onClick: null,
+      parameters: { depthTest: false }, // 2Dは前面固定
     });
   }, [data, is3D, zMetric, selectedJAN]);
 
@@ -596,11 +576,9 @@ function MapPage() {
     });
   }, [compass, is3D]);
 
-  // ★ 旧 userPinLayer は削除して、この新レイヤーを追加
+  // ユーザー初期ピン：評価が1件でも入ったら非表示＆オレンジ打点→コンパス画像
   const userPinCompassLayer = useMemo(() => {
-    // 評価が1件でも入ったら、初期のスライダー用コンパスは非表示
     if (!userPin || hasAnyRating) return null;
-
     return new IconLayer({
       id: "user-pin-compass",
       data: [{ position: [userPin[0], is3D ? userPin[1] : -userPin[1], 0] }],
@@ -720,8 +698,8 @@ function MapPage() {
           }),
           userPinCompassLayer,
           ratingDateLayer,
-          compassLayer,// 嗜好コンパス（個別重心のコンパス画像）
-          mainLayer,
+          compassLayer, // 嗜好コンパス（個別重心のコンパス画像）
+          mainLayer,    // 最前面
         ]}
       />
 
@@ -887,86 +865,46 @@ function MapPage() {
           },
         }}
       >
+        {/* スライダーCSS：これだけ（統合版） */}
         <style>{`
-          /* 共通：トラック（バー） */
-          .taste-slider {
+          .taste-slider{
+            appearance: none;
             -webkit-appearance: none;
             width: 100%;
-            height: 10px;               /* トラックの高さ */
-            border-radius: 5px;
-            background: #e9e9e9;        /* 下地 */
-            outline: none;
-          }
-          /* つまみ（WebKit） */
-          .taste-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: #333;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-            border: 2px solid #fff;
-            margin-top: -9px; /* ← (thumb高さ-トラック高さ)/2 = (28-10)/2 = 9px を打ち消す */
-            cursor: pointer;
-          }
-          /* つまみ（Firefox） */
-          .taste-slider::-moz-range-thumb {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: #333;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-            border: 2px solid #fff;
-            cursor: pointer;
-          }
-          /* Firefox のトラック */
-          .taste-slider::-moz-range-track {
             height: 10px;
-            border-radius: 5px;
-            background: #e9e9e9;
-          }
-        `}</style>
-
-        {/* 中心色付けスライダー用 CSS */}
-        <style>{`
-          .centered-range {
-            appearance: none;
-            -webkit-appearance: none;
-            height: 10px;
-            border-radius: 5px;
-            outline: none;
+            background: transparent; /* 背景はトラック側 */
             margin-top: 8px;
-            background: transparent; /* 実際の色は inline の linear-gradient で付与 */
+            outline: none;
+            position: relative;
           }
-          .centered-range::-webkit-slider-runnable-track {
+          .taste-slider::-webkit-slider-runnable-track{
             height: 10px;
             border-radius: 5px;
-            background: transparent;
+            background: var(--range, #e9e9e9);
           }
-          .centered-range::-moz-range-track {
+          .taste-slider::-moz-range-track{
             height: 10px;
             border-radius: 5px;
-            background: transparent;
+            background: var(--range, #e9e9e9);
           }
-          .centered-range::-webkit-slider-thumb {
+          .taste-slider::-webkit-slider-thumb{
             -webkit-appearance: none;
-            appearance: none;
-            width: 22px;
-            height: 22px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
-            background: ${SLIDER_COLORS.thumb};
-            border: 2px solid #ffffff;
-            box-shadow: 0 1px 2px rgba(0,0,0,.25);
+            background: #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,.25);
+            border: 0;
+            margin-top: -9px; /* (28-10)/2 を打ち消して中央へ */
             cursor: pointer;
-            margin-top: -6px; /* トラック中央に合わせる（高さ10pxの場合） */
           }
-          .centered-range::-moz-range-thumb {
-            width: 22px;
-            height: 22px;
+          .taste-slider::-moz-range-thumb{
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
-            background: ${SLIDER_COLORS.thumb};
-            border: none;
-            box-shadow: 0 1px 2px rgba(0,0,0,.25);
+            background: #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,.25);
+            border: 0;
             cursor: pointer;
           }
         `}</style>
@@ -993,11 +931,8 @@ function MapPage() {
             max="100"
             value={sweetness}
             onChange={(e) => setSweetness(Number(e.target.value))}
-            className="centered-range"
-            style={{
-              background: centerGradient(sweetness),
-              marginTop: "8px",
-            }}
+            className="taste-slider"
+            style={{ "--range": centerGradient(sweetness) }}
           />
         </div>
 
@@ -1013,11 +948,8 @@ function MapPage() {
             max="100"
             value={body}
             onChange={(e) => setBody(Number(e.target.value))}
-            className="centered-range"
-            style={{
-              background: centerGradient(body),
-              marginTop: "8px",
-             }}
+            className="taste-slider"
+            style={{ "--range": centerGradient(body) }}
           />
         </div>
 
@@ -1247,7 +1179,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
                 <li
                   key={idx}
                   onClick={() => onSelectJAN?.(item.JAN)}
-                  style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}
+                  style={{ padding: "10px 0", borderBottom: "1px solid " + "#eee", cursor: "pointer" }}
                 >
                   <div>
                     <strong
