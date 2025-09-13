@@ -1,5 +1,5 @@
 // src/MapPage.js
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
 import {
@@ -24,8 +24,38 @@ import {
   paperBaseStyle,
 } from "./ui/constants";
 
-// ここだけ先頭に定義（重複定義しない）
+/* =======================
+   ▼ モジュールスコープ定数（依存警告を避ける）
+======================= */
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
+const BUTTON_BG = "#e8ddd1";
+const BUTTON_TEXT = "#000";
+const CENTER_Y_OFFSET = -2.0; // 打点を画面中央より少し上に見せる
+
+// 色
+const TYPE_COLOR_MAP = {
+  White: [150, 150, 150],
+  Red: [150, 150, 150],
+  Rose: [150, 150, 150],
+  Sparkling: [150, 150, 150],
+  Other: [150, 150, 150],
+};
+const ORANGE = [255, 140, 0];
+
+// グリッド・ヒートマップ関連（外出しして依存配列から除外）
+const CELL_SIZE = 0.2;
+const GRID_INTERVAL = CELL_SIZE;
+const EPS = 1e-9;
+const toIndex = (v) => Math.floor((v + EPS) / CELL_SIZE);
+const toCorner = (i) => i * CELL_SIZE;
+const keyOf = (ix, iy) => `${ix},${iy}`;
+
+const HEAT_ALPHA_MIN = 24;
+const HEAT_ALPHA_MAX = 255;
+const HEAT_GAMMA = 0.65;
+const HEAT_CLIP_PCT = [0.0, 0.98];
+const HEAT_COLOR_LOW = [255, 255, 255];
+const HEAT_COLOR_HIGH = [255, 165, 0];
 
 /** ===== スライダー用ユーティリティ（中心から色を付ける） ===== */
 const centerGradient = (val) => {
@@ -38,15 +68,11 @@ const centerGradient = (val) => {
   return `linear-gradient(to right, ${base} 0%, ${base} ${a}%, ${active} ${a}%, ${active} ${b}%, ${base} ${b}%, ${base} 100%)`;
 };
 
-const BUTTON_BG = "#e8ddd1";
-const BUTTON_TEXT = "#000";
-
 function MapPage() {
   const location = useLocation();
   const [data, setData] = useState([]);
   const [is3D, setIs3D] = useState(false);
   const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
-  const CENTER_Y_OFFSET = -2.0; // 打点を画面中央より少し上に見せる
   const INITIAL_ZOOM = 7;
 
   const [viewState, setViewState] = useState({
@@ -175,8 +201,8 @@ function MapPage() {
     };
   }, []);
 
-  // userPin の読み出し（旧形式も救済）
-  const readUserPinFromStorage = () => {
+  // userPin の読み出し（旧形式も救済）— useCallback化して依存を明示
+  const readUserPinFromStorage = useCallback(() => {
     try {
       const raw = localStorage.getItem("userPinCoords");
       if (!raw) return null;
@@ -201,7 +227,7 @@ function MapPage() {
           return umap;
         }
       }
-      // 配列だけの最旧形式
+      // 配列だけの最旧形式（Y反転の判定はクラスター中心で推定）
       if (Array.isArray(val) && val.length >= 2) {
         const ax = Number(val[0]);
         const ay = Number(val[1]);
@@ -222,9 +248,9 @@ function MapPage() {
       console.warn("userPinCoords の解析に失敗:", e);
       return null;
     }
-  };
+  }, [umapCentroid]);
 
-  // userPin 同期
+  // userPin 同期（依存は useCallback に束ねる）
   useEffect(() => {
     const sync = () => setUserPin(readUserPinFromStorage());
     sync();
@@ -238,7 +264,7 @@ function MapPage() {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("storage", onStorage);
     };
-  }, [umapCentroid]);
+  }, [readUserPinFromStorage]);
 
   // 初回センタリング（必要時）
   useEffect(() => {
@@ -338,50 +364,24 @@ function MapPage() {
     return () => window.removeEventListener("message", onMsg);
   }, []);
 
-  // 色
-  const typeColorMap = {
-    White: [150, 150, 150],
-    Red: [150, 150, 150],
-    Rose: [150, 150, 150],
-    Sparkling: [150, 150, 150],
-    Other: [150, 150, 150],
-  };
-  const ORANGE = [255, 140, 0];
-
-  // === グリッド/セル ===
-  const cellSize = 0.2;
-  const gridInterval = cellSize;
-
-  const EPS = 1e-9;
-  const toIndex = (v) => Math.floor((v + EPS) / cellSize);
-  const toCorner = (i) => i * cellSize;
-  const keyOf = (ix, iy) => `${ix},${iy}`;
-
-  const HEAT_ALPHA_MIN = 24;
-  const HEAT_ALPHA_MAX = 255;
-  const HEAT_GAMMA = 0.65;
-  const HEAT_CLIP_PCT = [0.0, 0.98];
-  const HEAT_COLOR_LOW = [255, 255, 255];
-  const HEAT_COLOR_HIGH = [255, 165, 0];
-
-  // グリッド線
+  // === グリッド線（thin/thick） ===
   const { thinLines, thickLines } = useMemo(() => {
     const thin = [],
       thick = [];
     for (let i = -500; i <= 500; i++) {
-      const x = i * gridInterval;
+      const x = i * GRID_INTERVAL;
       (i % 5 === 0 ? thick : thin).push({
         sourcePosition: [x, -100, 0],
         targetPosition: [x, 100, 0],
       });
-      const y = i * gridInterval;
+      const y = i * GRID_INTERVAL;
       (i % 5 === 0 ? thick : thin).push({
         sourcePosition: [-100, y, 0],
         targetPosition: [100, y, 0],
       });
     }
     return { thinLines: thin, thickLines: thick };
-  }, [gridInterval]);
+  }, []); // 外部定数のみ参照
 
   // セル集計
   const cells = useMemo(() => {
@@ -405,7 +405,7 @@ function MapPage() {
       map.get(key).count += 1;
     });
     return Array.from(map.values());
-  }, [data, userRatings, favorites, is3D, cellSize]);
+  }, [data, userRatings, favorites, is3D]);
 
   // 2D: セルごとの平均PC描画配列
   const { heatCells, vMin, vMax, avgHash } = useMemo(() => {
@@ -449,7 +449,7 @@ function MapPage() {
       3
     )}|${highlight2D}`;
     return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
-  }, [data, highlight2D, is3D, cellSize]);
+  }, [data, highlight2D, is3D]);
 
   // PCA(PC1,PC2) -> UMAP(BodyAxis, SweetAxis) kNN回帰
   const pca2umap = useMemo(() => {
@@ -547,7 +547,7 @@ function MapPage() {
         getFillColor: (d) =>
           String(d.JAN) === String(selectedJAN)
             ? ORANGE
-            : typeColorMap[d.Type] || typeColorMap.Other,
+            : TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other,
         updateTriggers: { getFillColor: [selectedJAN] },
         pickable: true,
         onClick: null,
@@ -560,7 +560,7 @@ function MapPage() {
       getFillColor: (d) =>
         String(d.JAN) === String(selectedJAN)
           ? ORANGE
-          : typeColorMap[d.Type] || typeColorMap.Other,
+          : TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other,
       updateTriggers: { getFillColor: [selectedJAN] },
       radiusUnits: "meters",
       getRadius: 0.03,
@@ -842,7 +842,7 @@ function MapPage() {
             ? new GridCellLayer({
                 id: "grid-cells-base",
                 data: cells,
-                cellSize,
+                cellSize: CELL_SIZE,
                 getPosition: (d) => d.position,
                 getFillColor: (d) =>
                   d.hasFavorite
@@ -860,7 +860,7 @@ function MapPage() {
                   "_"
                 )}-${HEAT_COLOR_HIGH.join("_")}`,
                 data: heatCells,
-                cellSize,
+                cellSize: CELL_SIZE,
                 getPosition: (d) => d.position,
                 getFillColor: (d) => {
                   let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
@@ -1686,4 +1686,3 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
 }
 
 export default MapPage;
-
