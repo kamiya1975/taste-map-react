@@ -763,13 +763,15 @@ function MapPage() {
 
       {!is3D && (
         <button
-          onClick={() => setIsSliderOpen(true)}
-          title="嗜好スライダーを開く"
-          aria-label="嗜好スライダーを開く"
+          onClick={() => {
+            setSweetness(50);
+            setBody(50);
+            setIsSliderOpen(true);
+          }}
           style={{
             position: "absolute",
             top: "70px",
-            right: "60px",   // 3D/2Dボタンと重ならないよう少し左へ
+            right: "10px",
             zIndex: 1,
             width: "40px",
             height: "40px",
@@ -781,8 +783,7 @@ function MapPage() {
             alignItems: "center",
             justifyContent: "center",
             fontWeight: "bold",
-            fontSize: "18px",
-            lineHeight: 1,
+            fontSize: "20px",
           }}
         >
           ●
