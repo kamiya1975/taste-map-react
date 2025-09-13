@@ -1125,6 +1125,10 @@ function MapPage() {
           overflow: "hidden" 
         } 
       }}
+      ModalProps={{
+        keepMounted: true,
+        hideBackdrop: true,        // ← 背景の半透明カバーを消す
+      }}
       >
         <div
           style={{
