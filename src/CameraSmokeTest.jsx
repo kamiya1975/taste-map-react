@@ -1,114 +1,104 @@
-<!doctype html>
-<html lang="ja">
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Camera Smoke Test (tiny)</title>
-<style>
-  body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; margin:0; }
-  h1 { text-align:center; margin:20px 0; }
-  #wrap { max-width: 720px; margin: 0 auto; padding: 12px; }
-  #v { width: 100%; aspect-ratio: 4/3; background:#000; display:block; }
-  #log { color: #c00; white-space: pre-wrap; margin-top: 12px; min-height: 1.5em; }
-  .row { margin: 12px 0; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
-  button { padding:10px 16px; border-radius:10px; border:1px solid #ccc; background:#fff; }
-  small { color:#666 }
-</style>
-<div id="wrap">
-  <h1>Camera Smoke Test</h1>
-  <video id="v" playsinline webkit-playsinline autoplay muted></video>
-  <div class="row">
-    <button id="btnStart">Start</button>
-    <button id="btnStop">Stop</button>
-    <button id="btnFrontBack">Face/Back</button>
-  </div>
-  <small id="hud"></small>
-  <div id="log"></div>
-</div>
+import { useEffect, useRef, useState } from "react";
 
-<script>
-(() => {
-  const v = document.getElementById('v');
-  const log = (m) => { document.getElementById('log').textContent = m ?? ''; };
-  const hud = document.getElementById('hud');
+export default function CameraSmokeTiny() {
+  const vRef = useRef(null);
+  const [msg, setMsg] = useState("");
+  const [preferFront, setPreferFront] = useState(true);
+  const [tick, setTick] = useState(0);
+  const [stream, setStream] = useState(null);
 
-  let stream = null;
-  let preferFront = true;
+  useEffect(() => {
+    const id = requestAnimationFrame(function raf(){
+      setTick(t => t + 1);
+      requestAnimationFrame(raf);
+    });
+    return () => cancelAnimationFrame(id);
+  }, []);
 
-  const hudTick = () => {
-    const rs = v.readyState ?? '-';
-    hud.textContent =
-      `rs=${rs} paused=${v.paused} W=${v.videoWidth} H=${v.videoHeight} | ` +
-      `track=${stream?.getVideoTracks?.()[0]?.readyState}/${stream?.getVideoTracks?.()[0]?.enabled ?? '-'}`;
-    requestAnimationFrame(hudTick);
-  };
-  hudTick();
+  const hud =
+    (() => {
+      const v = vRef.current;
+      const rs = v?.readyState ?? "-";
+      const tr = stream?.getVideoTracks?.()[0];
+      return `rs=${rs} paused=${!!v?.paused} W=${v?.videoWidth||0} H=${v?.videoHeight||0} | track=${tr?.readyState||"-"}/${tr?.enabled??"-"}`;
+    })();
 
-  const waitForVideo = (timeout = 8000) => new Promise((res, rej) => {
+  const waitForVideo = (video, timeout = 8000) => new Promise((res, rej) => {
     const deadline = Date.now() + timeout;
     const ok = () => { cleanup(); res(); };
     const err = (e) => { cleanup(); rej(e); };
     const iv = setInterval(() => {
-      if (v.videoWidth > 0 && v.videoHeight > 0 && v.readyState >= 2) ok();
-      else if (Date.now() > deadline) err(new Error('VIDEO_TIMEOUT'));
+      if (video.videoWidth > 0 && video.videoHeight > 0 && video.readyState >= 2) ok();
+      else if (Date.now() > deadline) err(new Error("VIDEO_TIMEOUT"));
     }, 120);
     const cleanup = () => {
       clearInterval(iv);
-      v.removeEventListener('loadedmetadata', ok);
-      v.removeEventListener('canplay', ok);
-      v.removeEventListener('error', err);
+      video.removeEventListener("loadedmetadata", ok);
+      video.removeEventListener("canplay", ok);
+      video.removeEventListener("error", err);
     };
-    v.addEventListener('loadedmetadata', ok, { once:true });
-    v.addEventListener('canplay', ok, { once:true });
-    v.addEventListener('error', err, { once:true });
+    video.addEventListener("loadedmetadata", ok, { once:true });
+    video.addEventListener("canplay", ok, { once:true });
+    video.addEventListener("error", err, { once:true });
   });
-
-  const getStream = async () => {
-    // device を特定できなくてもまずは facingMode だけで
-    return navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: { facingMode: preferFront ? 'user' : 'environment' }
-    });
-  };
 
   const stop = () => {
     try { stream?.getTracks?.().forEach(t => t.stop()); } catch {}
-    try { v.pause(); } catch {}
-    try { v.srcObject = null; } catch {}
-    stream = null;
+    try { const v = vRef.current; v?.pause?.(); if (v) v.srcObject = null; } catch {}
+    setStream(null);
   };
 
   const start = async () => {
-    log('');
+    setMsg("");
     stop();
+    const v = vRef.current;
     try {
-      // iOS Safari: 先に属性とプロパティを両方立てておく
-      v.setAttribute('playsinline', '');
-      v.setAttribute('webkit-playsinline', '');
-      v.setAttribute('autoplay', '');
+      v.setAttribute("playsinline", "");
+      v.setAttribute("webkit-playsinline", "");
+      v.setAttribute("autoplay", "");
       v.muted = true; v.playsInline = true;
 
-      stream = await getStream();
-      v.srcObject = stream;
+      const s = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: preferFront ? "user" : "environment" },
+      });
+      setStream(s);
+      v.srcObject = s;
 
-      await waitForVideo(9000);
-      // iOS で稀に play が例外出すので握りつぶして継続
-      try { await v.play(); } catch (e) { console.warn('play() err:', e); }
-
-      if (!(v.videoWidth > 0 && v.videoHeight > 0)) throw new Error('VIDEO_DIM_ZERO');
+      await waitForVideo(v, 9000);
+      try { await v.play(); } catch (e) { console.warn("play() err:", e); }
+      if (!(v.videoWidth > 0 && v.videoHeight > 0)) throw new Error("VIDEO_DIM_ZERO");
     } catch (e) {
       console.error(e);
-      log(`${e.name ? e.name : 'Error'}: ${e.message || e.toString()}`);
+      setMsg(`${e.name || "Error"}: ${e.message || e.toString()}`);
       stop();
     }
   };
 
-  document.getElementById('btnStart').onclick = start;
-  document.getElementById('btnStop').onclick  = stop;
-  document.getElementById('btnFrontBack').onclick = () => { preferFront = !preferFront; start(); };
+  useEffect(() => () => stop(), []); // unmount で停止
+  useEffect(() => {
+    const onVis = () => { if (document.visibilityState === "hidden") stop(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
-  // ページを離れたら停止（iOSで裏に回るとフレームが来なくなることがある）
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') stop();
-  });
-})();
-</script>
+  return (
+    <div style={{maxWidth:720, margin:"0 auto", padding:12}}>
+      <h1 style={{textAlign:"center"}}>Camera Smoke Test</h1>
+      <video
+        ref={vRef}
+        style={{width:"100%", aspectRatio:"4 / 3", background:"#000", display:"block"}}
+        autoPlay playsInline muted
+      />
+      <div style={{marginTop:8, color:"#666"}}>{hud} | tick={tick}</div>
+      <div style={{display:"flex", gap:8, justifyContent:"center", marginTop:12, flexWrap:"wrap"}}>
+        <button onClick={start}>Start</button>
+        <button onClick={stop}>Stop</button>
+        <button onClick={() => { setPreferFront(p=>!p); start(); }}>
+          カメラ切替（→ {preferFront ? "背面" : "前面"}）
+        </button>
+      </div>
+      <div style={{color:"#c00", marginTop:12, minHeight:"1.5em"}}>{msg}</div>
+    </div>
+  );
+}
