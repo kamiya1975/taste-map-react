@@ -1,4 +1,41 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+
+/** =========================
+ *  ユーティリティ
+ * ========================= */
+const getJANFromURL = () => {
+  try {
+    const url = new URL(window.location.href);
+    // /products/:JAN or ?jan=XXXX どちらにも対応
+    const byPath = window.location.pathname.split("/").filter(Boolean).pop();
+    const byQuery = url.searchParams.get("jan");
+    return String(byQuery || byPath || "").trim();
+  } catch {
+    return "";
+  }
+};
+
+const postToParent = (payload) => {
+  try { window.parent?.postMessage(payload, "*"); } catch {}
+};
+
+const notifyParentClosed = (jan) => {
+  // postMessage
+  postToParent({ type: "PRODUCT_CLOSED", jan, clear: true });
+  // storage 経由の通知（親が storage を監視している場合に効く）
+  try {
+    localStorage.setItem(
+      "product_page_closed",
+      JSON.stringify({ jan, at: Date.now() })
+    );
+  } catch {}
+  // BroadcastChannel（対応ブラウザのみ）
+  try {
+    const bc = new BroadcastChannel("product_bridge");
+    bc.postMessage({ type: "PRODUCT_CLOSED", jan, at: Date.now() });
+    bc.close();
+  } catch {}
+};
 
 /** =========================
  *  ハートボタン（お気に入り）
@@ -35,7 +72,7 @@ function HeartButton({ jan, size = 22 }) {
     localStorage.setItem("favorites", JSON.stringify(favs));
     setFav(!!favs[jan]);
 
-    window.parent?.postMessage({ type: "TOGGLE_FAVORITE", jan }, "*");
+    postToParent({ type: "TOGGLE_FAVORITE", jan });
   };
 
   return (
@@ -110,86 +147,124 @@ const CircleRating = ({ value, currentRating, onClick }) => {
 };
 
 export default function ProductPage() {
+  const jan = useMemo(() => getJANFromURL(), []);
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // /products/:JAN の末尾からJAN
-  const jan = window.location.pathname.split("/").pop();
-
+  // ★ 重要：親に「このJANのページを開いた」「（閉じる時は）JANをクリアしてほしい」を通知
   useEffect(() => {
-    const data = JSON.parse(localStorage.getItem("umapData") || "[]");
-    const found = data.find((d) => String(d.JAN) === String(jan));
-    setProduct(found || null);
+    // マウント時：OPENを通知（親側で state を同期）
+    postToParent({ type: "PRODUCT_OPENED", jan });
+    // beforeunload / アンマウント時に CLOSED を通知（親で selectedJAN を null に）
+    const onBeforeUnload = () => notifyParentClosed(jan);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      notifyParentClosed(jan);
+      window.removeEventListener("beforeunload", onBeforeunload);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jan]);
 
-    const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
-    if (ratings[jan]) setRating(ratings[jan].rating || 0);
+  // /products/:JAN から商品・評価を読込
+  useEffect(() => {
+    try {
+      const data = JSON.parse(localStorage.getItem("umapData") || "[]");
+      const found = data.find((d) => String(d.JAN) === String(jan));
+      setProduct(found || null);
+    } catch {
+      setProduct(null);
+    }
+    try {
+      const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
+      if (ratings[jan]) setRating(ratings[jan].rating ?? 0);
+    } catch {}
   }, [jan]);
 
   const handleCircleClick = async (value) => {
-  const newRating = value === rating ? 0 : value;
-  setRating(newRating);
+    const newRating = value === rating ? 0 : value;
+    setRating(newRating);
 
-  const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
-  let payload = null;
+    const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
+    let payload = null;
 
-  if (newRating === 0) {
-    delete ratings[jan];
-  } else {
-    let weather = {};
-    try {
-      const token = process.env.REACT_APP_IPINFO_TOKEN;
-      const ipRes = await fetch(`https://ipinfo.io/json?token=${token}`);
-      const ipData = await ipRes.json();
-      const [lat, lon] = (ipData.loc || ",").split(",");
+    if (newRating === 0) {
+      delete ratings[jan];
+    } else {
+      let weather = {};
+      try {
+        const token = process.env.REACT_APP_IPINFO_TOKEN;
+        const ipRes = await fetch(`https://ipinfo.io/json?token=${token}`);
+        const ipData = await ipRes.json();
+        const [lat, lon] = (ipData.loc || ",").split(",");
 
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
-      const HH = String(now.getHours()).padStart(2, "0");
-      const dateStr = `${yyyy}-${mm}-${dd}`;
-      const targetTime = `${dateStr}T${HH}:00`;
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        const HH = String(now.getHours()).padStart(2, "0");
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        const targetTime = `${dateStr}T${HH}:00`;
 
-      const meteoUrl =
-        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-        `&start_date=${dateStr}&end_date=${dateStr}` +
-        `&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,surface_pressure,cloudcover,precipitation,wind_speed_10m,weathercode` +
-        `&timezone=Asia%2FTokyo`;
+        const meteoUrl =
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+          `&start_date=${dateStr}&end_date=${dateStr}` +
+          `&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,surface_pressure,cloudcover,precipitation,wind_speed_10m,weathercode` +
+          `&timezone=Asia%2FTokyo`;
 
-      const weatherRes = await fetch(meteoUrl);
-      const weatherData = await weatherRes.json();
-      const hourly = weatherData.hourly || {};
-      const idx = Array.isArray(hourly.time) ? hourly.time.indexOf(targetTime) : -1;
+        const weatherRes = await fetch(meteoUrl);
+        const weatherData = await weatherRes.json();
+        const hourly = weatherData.hourly || {};
+        const idx = Array.isArray(hourly.time) ? hourly.time.indexOf(targetTime) : -1;
 
-      if (idx !== -1) {
-        weather = {
-          temperature: hourly.temperature_2m?.[idx],
-          apparentTemperature: hourly.apparent_temperature?.[idx],
-          humidity: hourly.relative_humidity_2m?.[idx],
-          pressure: hourly.surface_pressure?.[idx],
-          cloudcover: hourly.cloudcover?.[idx],
-          precipitation: hourly.precipitation?.[idx],
-          windSpeed: hourly.wind_speed_10m?.[idx],
-          weatherCode: hourly.weathercode?.[idx],
-        };
+        if (idx !== -1) {
+          weather = {
+            temperature: hourly.temperature_2m?.[idx],
+            apparentTemperature: hourly.apparent_temperature?.[idx],
+            humidity: hourly.relative_humidity_2m?.[idx],
+            pressure: hourly.surface_pressure?.[idx],
+            cloudcover: hourly.cloudcover?.[idx],
+            precipitation: hourly.precipitation?.[idx],
+            windSpeed: hourly.wind_speed_10m?.[idx],
+            weatherCode: hourly.weathercode?.[idx],
+          };
+        }
+      } catch (err) {
+        console.warn("気象情報の取得に失敗しました:", err);
       }
-    } catch (err) {
-      console.warn("気象情報の取得に失敗しました:", err);
+
+      payload = { rating: newRating, date: new Date().toISOString(), weather };
+      ratings[jan] = payload;
     }
 
-    payload = { rating: newRating, date: new Date().toISOString(), weather };
-    ratings[jan] = payload;
+    localStorage.setItem("userRatings", JSON.stringify(ratings));
+
+    // 親（Map等）に即時通知
+    try {
+      postToParent({ type: "RATING_UPDATED", jan, payload });
+    } catch {}
+  };
+
+  // 「閉じる」ボタン → 親に「確実にJANをクリアして閉じてね」と伝える
+  const onCloseClick = () => {
+    notifyParentClosed(jan);      // 親へ閉鎖通知（postMessage / storage / BroadcastChannel）
+    postToParent({ type: "PRODUCT_CLOSE", jan, clear: true }); // 明示的クローズ
+    // もし単独ページ遷移で来ているなら戻す（任意）
+    try { if (window.history.length > 1) window.history.back(); } catch {}
+  };
+
+  if (!product) {
+    return (
+      <div style={{ padding: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <h3 style={{ margin: 0 }}>商品ページ</h3>
+          <button onClick={onCloseClick} style={{ border: "1px solid #ddd", background: "#fff", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}>
+            閉じる
+          </button>
+        </div>
+        商品が見つかりませんでした。
+      </div>
+    );
   }
-
-  localStorage.setItem("userRatings", JSON.stringify(ratings));
-
-  // ★ 追加：親（Map）に即時通知
-  try {
-    window.parent?.postMessage({ type: "RATING_UPDATED", jan, payload }, "*");
-  } catch {}
-};
-
-  if (!product) return <div style={{ padding: 16 }}>商品が見つかりませんでした。</div>;
 
   const price = product.希望小売価格 ?? product.価格 ?? 1800;
 
@@ -204,7 +279,35 @@ export default function ProductPage() {
         position: "relative",
       }}
     >
-      {/* 画面右上に固定の♡（iframe内のビューポート基準） */}
+      {/* ヘッダー（閉じる） */}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 1000,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          paddingBottom: 8,
+          background: "#fff",
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: 18 }}>商品ページ</h3>
+        <button
+          onClick={onCloseClick}
+          style={{
+            border: "1px solid #ddd",
+            background: "#fff",
+            padding: "6px 10px",
+            borderRadius: 8,
+            cursor: "pointer",
+          }}
+        >
+          閉じる
+        </button>
+      </div>
+
+      {/* 左上に固定の♡（iframe内でも見やすい位置） */}
       <div
         style={{
           position: "fixed",
@@ -216,7 +319,7 @@ export default function ProductPage() {
         <HeartButton jan={jan} size={22} />
       </div>
 
-      {/* 商品画像（そのまま） */}
+      {/* 商品画像 */}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
         <img
           src={`/img/${jan}.png`}
@@ -228,12 +331,12 @@ export default function ProductPage() {
         />
       </div>
 
-      {/* 商品名（画像の下に） */}
+      {/* 商品名 */}
       <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 20 }}>
         {product.商品名 || "（名称不明）"}
       </h2>
 
-      {/* タイプマーク＋価格（画像の下に） */}
+      {/* タイプマーク＋価格 */}
       <p style={{ display: "flex", alignItems: "center", margin: "4px 0 12px 0" }}>
         <span
           style={{
