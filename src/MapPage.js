@@ -1489,7 +1489,6 @@ function MapPage() {
       <BarcodeScanner
         open={isScannerOpen}
         ignoreCode={lastScannedJanRef.current} 
-        ignoreForMs={1200}
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
           const jan = String(codeText).replace(/\D/g, "");
