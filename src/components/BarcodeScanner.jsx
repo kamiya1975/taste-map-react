@@ -1,10 +1,13 @@
 // src/components/BarcodeScanner.jsx
-// 依存: npm i @zxing/browser
+// iOS & Android 両対応 / 背面カメラ優先固定 / カメラは最前面レイヤー / 起動直後からスキャン / UIは「キャンセル」のみ
+// 依存: @zxing/browser → 未導入なら `npm i @zxing/browser`
+
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
 const OVERLAY_Z = 2147483647;
 
+// スタイル定義
 const overlayStyle = {
   position: "fixed",
   inset: 0,
@@ -15,7 +18,6 @@ const overlayStyle = {
   zIndex: OVERLAY_Z,
   pointerEvents: "auto",
 };
-
 const panelStyle = {
   width: "100%",
   height: "100%",
@@ -23,14 +25,12 @@ const panelStyle = {
   flexDirection: "column",
   background: "#000",
 };
-
 const videoBoxStyle = {
   flex: 1,
   position: "relative",
   background: "#000",
   overflow: "hidden",
 };
-
 const footerStyle = {
   padding: 16,
   borderTop: "1px solid #222",
@@ -42,8 +42,7 @@ const footerStyle = {
   gap: 12,
   flexWrap: "wrap",
 };
-
-const btn = {
+const btnStyle = {
   background: "#fff",
   color: "#000",
   border: "none",
@@ -54,89 +53,49 @@ const btn = {
   fontWeight: 700,
 };
 
+// video の準備を待つ（iOS Safari の黒画面対策）
+const waitForCanPlay = (video, timeoutMs = 2500) =>
+  new Promise((resolve, reject) => {
+    let done = false;
+    const onOk = () => { if (!done) { done = true; cleanup(); resolve(); } };
+    const onErr = (e) => { if (!done) { done = true; cleanup(); reject(e); } };
+    const cleanup = () => {
+      video.removeEventListener("loadedmetadata", onOk);
+      video.removeEventListener("canplay", onOk);
+      video.removeEventListener("error", onErr);
+    };
+    video.addEventListener("loadedmetadata", onOk, { once: true });
+    video.addEventListener("canplay", onOk, { once: true });
+    video.addEventListener("error", onErr, { once: true });
+    setTimeout(() => onErr(new Error("VIDEO_TIMEOUT")), timeoutMs);
+  });
+
 export default function BarcodeScanner({ open, onClose, onDetected }) {
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
   const readerRef = useRef(null);
+  const stopHandleRef = useRef(null);
   const [errorMsg, setErrorMsg] = useState("");
-  const [needsTapStart, setNeedsTapStart] = useState(false);
 
-  const stopAll = useCallback(() => {
+  // スキャナ停止処理
+  const stopScanner = useCallback(() => {
     try { readerRef.current?.reset?.(); } catch {}
     try {
       const v = videoRef.current;
-      const s = v?.srcObject || streamRef.current;
-      if (s) s.getTracks?.().forEach(t => t.stop());
-      if (v) v.srcObject = null;
+      const s = v?.srcObject;
+      if (s) {
+        s.getTracks?.().forEach((t) => t.stop());
+        v.srcObject = null;
+      }
     } catch {}
-    streamRef.current = null;
-    setNeedsTapStart(false);
+    try { stopHandleRef.current?.stop?.(); } catch {}
+    stopHandleRef.current = null;
   }, []);
 
-  const pickBackDeviceId = async () => {
-    try {
-      const devs = await navigator.mediaDevices.enumerateDevices();
-      const cams = devs.filter(d => d.kind === "videoinput");
-      if (!cams.length) return undefined;
-      const l = cams.map(d => ({ id: d.deviceId, label: (d.label || "").toLowerCase() }));
-      const back = l.find(d => /back|rear|environment|外側|環境/.test(d.label));
-      return back?.id || cams[cams.length - 1]?.deviceId;
-    } catch {
-      return undefined;
-    }
-  };
-
-  const getBackStream = async () => {
-    // 1) deviceId exact（背面“のみ”）→ 2) facingMode exact → 3) facingMode ideal
-    // 端末差異を吸収しつつ、できるだけ背面固定に近づける
-    // ▼ まず permission を確実に得る（ラベル取得のため）
-    try { 
-      const tmp = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      tmp.getTracks().forEach(t => t.stop());
-    } catch (e) {
-      if (e?.name === "NotAllowedError")
-        throw new Error("PERM_DENIED");
-      if (e?.name === "NotFoundError")
-        throw new Error("NO_CAMERA");
-      // 続行（次の取得でリトライ）
-    }
-
-    // deviceId exact
-    const backId = await pickBackDeviceId();
-    if (backId) {
-      try {
-        return await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: { deviceId: { exact: backId } },
-        });
-      } catch { /* 次へ */ }
-    }
-
-    // facingMode exact
-    try {
-      return await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { facingMode: { exact: "environment" } },
-      });
-    } catch { /* 次へ */ }
-
-    // facingMode ideal
-    try {
-      return await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { facingMode: { ideal: "environment" } },
-      });
-    } catch (e) {
-      if (e?.name === "NotAllowedError") throw new Error("PERM_DENIED");
-      if (e?.name === "NotFoundError") throw new Error("NO_CAMERA");
-      throw e;
-    }
-  };
-
+  // スキャナ開始処理
   const startScanner = useCallback(async () => {
     setErrorMsg("");
 
-    // HTTPSチェック（localhost はOK）
+    // HTTPS チェック
     if (typeof window !== "undefined") {
       const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
       if (window.location.protocol !== "https:" && !isLocal) {
@@ -148,88 +107,88 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     const video = videoRef.current;
     if (!video) return;
 
-    // 自動再生対策（iOS）
+    // iOS Safari の自動再生対策
     video.setAttribute("playsinline", "true");
     video.setAttribute("webkit-playsinline", "true");
-    video.muted = true;     // 無音のみ自動再生可
+    video.muted = true;
     video.autoplay = true;
 
     if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
     else readerRef.current.reset();
 
+    // ZXing 用制約（背面カメラ優先）
+    const constraints = {
+      audio: false,
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    };
+
     try {
-      // ① 背面ストリームをこちらで取得して video に直張り
-      const stream = await getBackStream();
-      streamRef.current = stream;
-      video.srcObject = stream;
-
-      // ② 明示 play（iOSで重要）
-      try {
-        await video.play();
-      } catch {
-        // “user gesture 必須”な環境用：タップで開始
-        setNeedsTapStart(true);
-        return;
-      }
-
-      // ③ ZXing を videoElement に対して開始（連続デコード）
-      await readerRef.current.decodeFromVideoElement(video, (result, err) => {
-        if (result) {
-          const text = result.getText();
-          stopAll();
-          onDetected?.(text);
+      // ZXing: constraints 指定で decode
+      const controls = await readerRef.current.decodeFromConstraints(
+        constraints,
+        video,
+        (result) => {
+          if (result) {
+            const text = result.getText();
+            stopScanner();
+            onDetected?.(text);
+          }
         }
-        // err はフレームごとの失敗。握りつぶしでOK。
-      });
+      );
+      stopHandleRef.current = controls;
+
+      // canplay を待ってから再生
+      try { await waitForCanPlay(video, 2500); } catch {}
+      try { await video.play(); } catch {}
+
+      // video が 0px のままなら再フォールバック
+      if (!video.videoWidth || !video.videoHeight) {
+        throw new Error("VIDEO_TIMEOUT");
+      }
     } catch (e) {
       console.error("camera start error:", e);
-      if (e?.message === "PERM_DENIED") {
-        setErrorMsg("カメラの使用が拒否されています。端末設定で本サイトのカメラを許可してください。");
-      } else if (e?.message === "NO_CAMERA") {
-        setErrorMsg("カメラが見つかりません。別の端末でお試しください。");
-      } else if (e?.name === "OverconstrainedError") {
-        setErrorMsg("カメラ条件を満たせませんでした。別のブラウザ/端末でお試しください。");
-      } else {
-        setErrorMsg("カメラの起動に失敗しました。ブラウザの権限設定をご確認ください。");
-      }
-      stopAll();
+      let msg = "カメラの起動に失敗しました。";
+      if (e?.name === "NotAllowedError") msg = "カメラの使用が拒否されています。端末の設定をご確認ください。";
+      else if (e?.name === "NotFoundError") msg = "カメラが見つかりません。";
+      else if (e?.name === "OverconstrainedError") msg = "カメラ条件を満たせませんでした。";
+      else if (e?.message === "VIDEO_TIMEOUT") msg = "カメラ映像が表示されませんでした。いったん閉じて再度お試しください。";
+      setErrorMsg(msg);
+      stopScanner();
     }
-  }, [onDetected, stopAll]);
+  }, [onDetected, stopScanner]);
 
-  // 開閉に応じて起動/停止
+  // open の切り替えに応じて開始/停止
   useEffect(() => {
     if (!open) {
-      stopAll();
+      stopScanner();
       return;
     }
     let cancelled = false;
     (async () => { if (!cancelled) await startScanner(); })();
-    return () => { cancelled = true; stopAll(); };
-  }, [open, startScanner, stopAll]);
+    return () => { cancelled = true; stopScanner(); };
+  }, [open, startScanner, stopScanner]);
 
   // タブ非表示/復帰で停止/再起動
   useEffect(() => {
     const onVis = async () => {
       if (!open) return;
       if (document.visibilityState === "hidden") {
-        stopAll();
+        stopScanner();
       } else if (document.visibilityState === "visible") {
         await startScanner();
       }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [open, startScanner, stopAll]);
+  }, [open, startScanner, stopScanner]);
 
   const handleCancel = () => {
-    stopAll();
+    stopScanner();
     onClose?.();
-  };
-
-  const handleTapStart = async () => {
-    // iOS の「ユーザー操作が必要」ケースを解除
-    try { await videoRef.current?.play(); } catch {}
-    setNeedsTapStart(false);
   };
 
   if (!open) return null;
@@ -258,19 +217,6 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
               pointerEvents: "none",
             }}
           />
-          {/* タップ開始フォールバック（必要時のみ表示） */}
-          {needsTapStart && (
-            <div style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(0,0,0,0.35)"
-            }}>
-              <button style={btn} onClick={handleTapStart}>カメラを開始</button>
-            </div>
-          )}
         </div>
         <div style={footerStyle}>
           {errorMsg ? (
@@ -278,7 +224,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
           ) : (
             <span>バーコードにかざすと自動で読み取ります（読み取り後は自動で閉じます）。</span>
           )}
-          <button onClick={handleCancel} style={btn}>キャンセル</button>
+          <button onClick={handleCancel} style={btnStyle}>キャンセル</button>
         </div>
       </div>
     </div>
