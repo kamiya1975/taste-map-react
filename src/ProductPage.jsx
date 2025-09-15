@@ -15,32 +15,49 @@ const getJANFromURL = () => {
   }
 };
 
+// 親への postMessage（安全ラッパ）
 const postToParent = (payload) => {
   try { window.parent?.postMessage(payload, "*"); } catch {}
 };
 
-const notifyParentClosed = (jan) => {
-  // postMessage
-  postToParent({ type: "PRODUCT_CLOSED", jan, clear: true });
-  // storage 経由の通知（親が storage を監視している場合に効く）
+// スキャン系の“自動再オープン”原因になりがちなキーを掃除
+const clearScanHints = (jan) => {
+  const keys = [
+    "selectedJAN",
+    "lastScannedJAN",
+    "scan_last_jan",
+    "scanTriggerJAN",
+    "scanner_selected_jan",
+  ];
+  try {
+    keys.forEach((k) => {
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    });
+  } catch {}
+  // ついでに「このJANを起点に開いている」という印も更新
   try {
     localStorage.setItem(
       "product_page_closed",
       JSON.stringify({ jan, at: Date.now() })
     );
   } catch {}
-  // BroadcastChannel（対応ブラウザのみ）
+};
+
+// 親へ「閉じたよ。JANはクリアしてね」を多経路で通知
+const notifyParentClosed = (jan) => {
+  postToParent({ type: "PRODUCT_CLOSED", jan, clear: true });
+  clearScanHints(jan);
+  // BroadcastChannel（対応ブラウザ）
   try {
     const bc = new BroadcastChannel("product_bridge");
-    bc.postMessage({ type: "PRODUCT_CLOSED", jan, at: Date.now() });
+    bc.postMessage({ type: "PRODUCT_CLOSED", jan, clear: true, at: Date.now() });
     bc.close();
   } catch {}
 };
 
 /** =========================
  *  ハートボタン（お気に入り）
- *  - localStorage.favorites を更新
- *  - 親（地図ページ）へ postMessage で通知
  * ========================= */
 function HeartButton({ jan, size = 22 }) {
   const [fav, setFav] = useState(false);
@@ -151,22 +168,23 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // ★ 重要：親に「このJANのページを開いた」「（閉じる時は）JANをクリアしてほしい」を通知
-  useEffect(() => {
-    // マウント時：OPENを通知（親側で state を同期）
-    postToParent({ type: "PRODUCT_OPENED", jan });
+  // 親が外枠（Drawer/iframe等）を持つ＝埋め込みなら、ProductPage内の「閉じる」は出さない
+  const EMBEDDED = useMemo(() => {
+    try { return window.parent && window.parent !== window; } catch { return false; }
+  }, []);
 
-    // beforeunload / アンマウント時に CLOSED を通知（親で selectedJAN を null に）
+  // マウント時：OPEN通知、アンマウント時：CLOSED通知（親で selectedJAN を確実に null 化してもらう）
+  useEffect(() => {
+    postToParent({ type: "PRODUCT_OPENED", jan });
     const onBeforeUnload = () => notifyParentClosed(jan);
     window.addEventListener("beforeunload", onBeforeUnload);
-
     return () => {
       notifyParentClosed(jan);
-      window.removeEventListener("beforeunload", onBeforeUnload); // ← ここを修正
+      window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [jan]);
 
-  // /products/:JAN から商品・評価を読込
+  // 商品・評価のロード（お気に入り店舗の在庫から読み取り前提：データは既存の umapData を参照）
   useEffect(() => {
     try {
       const data = JSON.parse(localStorage.getItem("umapData") || "[]");
@@ -238,30 +256,27 @@ export default function ProductPage() {
     }
 
     localStorage.setItem("userRatings", JSON.stringify(ratings));
-
-    // 親（Map等）に即時通知
-    try {
-      postToParent({ type: "RATING_UPDATED", jan, payload });
-    } catch {}
+    postToParent({ type: "RATING_UPDATED", jan, payload });
   };
 
-  // 「閉じる」ボタン → 親に「確実にJANをクリアして閉じてね」と伝える
+  // 「閉じる」ボタン（ProductPage 側）はナビゲーションをしない：親にだけ閉鎖とクリアを要求
   const onCloseClick = () => {
-    notifyParentClosed(jan);      // 親へ閉鎖通知（postMessage / storage / BroadcastChannel）
-    postToParent({ type: "PRODUCT_CLOSE", jan, clear: true }); // 明示的クローズ
-    // もし単独ページ遷移で来ているなら戻す（任意）
-    try { if (window.history.length > 1) window.history.back(); } catch {}
+    notifyParentClosed(jan);                         // 親に「JANクリアして閉じて」
+    postToParent({ type: "PRODUCT_CLOSE", jan, clear: true });
+    // ★ ここで history.back() や location を操作しない（＝「近くの店舗から探す」に飛ぶ問題を回避）
   };
 
   if (!product) {
     return (
       <div style={{ padding: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <h3 style={{ margin: 0 }}>商品ページ</h3>
-          <button onClick={onCloseClick} style={{ border: "1px solid #ddd", background: "#fff", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}>
-            閉じる
-          </button>
-        </div>
+        {/* 埋め込み時はこの「閉じる」を出さない */}
+        {!EMBEDDED && (
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+            <button onClick={onCloseClick} style={{ border: "1px solid #ddd", background: "#fff", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}>
+              閉じる
+            </button>
+          </div>
+        )}
         商品が見つかりませんでした。
       </div>
     );
@@ -280,33 +295,35 @@ export default function ProductPage() {
         position: "relative",
       }}
     >
-      {/* ヘッダー（閉じる） */}
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 1000,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingBottom: 8,
-          background: "#fff",
-        }}
-      >
-        <h3 style={{ margin: 0, fontSize: 18 }}>商品ページ</h3>
-        <button
-          onClick={onCloseClick}
+      {/* ヘッダー（閉じる）…埋め込み時は非表示 → 親側の閉じるだけにする */}
+      {!EMBEDDED && (
+        <div
           style={{
-            border: "1px solid #ddd",
+            position: "sticky",
+            top: 0,
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingBottom: 8,
             background: "#fff",
-            padding: "6px 10px",
-            borderRadius: 8,
-            cursor: "pointer",
           }}
         >
-          閉じる
-        </button>
-      </div>
+          <h3 style={{ margin: 0, fontSize: 18 }}>商品ページ</h3>
+          <button
+            onClick={onCloseClick}
+            style={{
+              border: "1px solid #ddd",
+              background: "#fff",
+              padding: "6px 10px",
+              borderRadius: 8,
+              cursor: "pointer",
+            }}
+          >
+            閉じる
+          </button>
+        </div>
+      )}
 
       {/* 左上に固定の♡（iframe内でも見やすい位置） */}
       <div
@@ -413,15 +430,6 @@ export default function ProductPage() {
 
       {/* 説明ダミー */}
       <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
         昨今では、世界標準の飲み物と言えるまでになっています。
