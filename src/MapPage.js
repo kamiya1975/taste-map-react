@@ -69,8 +69,9 @@ const centerGradient = (val) => {
 };
 
 function MapPage() {
-  const lastScannedJanRef = useRef(null);
-  const location = useLocation();
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const location = useLocation(); // （抜粋に無い場合は追加）
+  };
 
   // ====== ビュー制御
   const [is3D, setIs3D] = useState(false);
@@ -96,9 +97,7 @@ function MapPage() {
 
   // 検索・スキャン
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
-  const [scanSession, setScanSession] = useState(0);
 
   // UI
   const [isSliderOpen, setIsSliderOpen] = useState(false);
@@ -1488,17 +1487,13 @@ function MapPage() {
 
       {/* バーコードスキャナ */}
       <BarcodeScanner
-        key={scanSession}
         open={isScannerOpen}
-        ignoreCode={lastScannedJanRef.current} 
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
           const jan = String(codeText).replace(/\D/g, "");
-          lastScannedJanRef.current = jan;
           const hit = data.find((d) => String(d.JAN) === jan);
+          setIsScannerOpen(false);
           if (hit) {
-            setScanSession(s => s + 1);
-            setIsScannerOpen(true);
             const tx = hit.BodyAxis;
             const ty = is3D ? hit.SweetAxis : -hit.SweetAxis;
             setViewState((prev) => ({
