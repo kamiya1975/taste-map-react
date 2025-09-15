@@ -1,5 +1,5 @@
 // src/MapPage.js
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
 import {
@@ -69,6 +69,7 @@ const centerGradient = (val) => {
 };
 
 function MapPage() {
+  const lastScannedJanRef = useRef(null);
   const location = useLocation();
 
   // ====== ビュー制御
@@ -1494,7 +1495,7 @@ function MapPage() {
       {/* バーコードスキャナ */}
       <BarcodeScanner
         open={isScannerOpen}
-        ignoreCode={lastScannedJanRef.current}
+        ignoreCode={lastScannedJanRef.current} 
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
           const jan = String(codeText).replace(/\D/g, "");
