@@ -1494,9 +1494,11 @@ function MapPage() {
       {/* バーコードスキャナ */}
       <BarcodeScanner
         open={isScannerOpen}
+        ignoreCode={lastScannedJanRef.current}
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
           const jan = String(codeText).replace(/\D/g, "");
+          lastScannedJanRef.current = jan;
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
             setIsScannerOpen(false);
@@ -1535,7 +1537,7 @@ function MapPage() {
       <Drawer
         anchor="bottom"
         open={productDrawerOpen}
-        onClose={() => setProductDrawerOpen(false)}
+        onClose={() => { setProductDrawerOpen(false); setSelectedJAN(null); }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: paperBaseStyle }}
       >
