@@ -1,5 +1,6 @@
 // src/components/BarcodeScanner.jsx
 // 強化版: 自動終了(検出後) / 二重発火防止 / 背面固定 / ピンチズーム / ROI最適化
+// 変更点: 起動直後に ignoreCode と一致する検出を ignoreForMs ms 無視
 // UI簡素化: 「AF自動」「ライトON」等の操作UIは撤去（そのまま読める前提）
 // 依存: npm i @zxing/browser
 import React, { useEffect, useRef, useCallback, useState } from "react";
@@ -107,7 +108,15 @@ async function nudgeNearThenContinuous(track) {
   }
 }
 
-export default function BarcodeScanner({ open, onClose, onDetected }) {
+export default function BarcodeScanner({
+  open,
+  onClose,
+  onDetected,
+  /** 起動直後にこのJANを無視（“前回のJANの自動再オープン”防止） */
+  ignoreCode,
+  /** ignoreCode を無視する時間（ms） */
+  ignoreForMs = 1200,
+}) {
   const videoRef   = useRef(null);
   const canvasRef  = useRef(null); // ROI用
   const streamRef  = useRef(null);
@@ -115,7 +124,8 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
   const readerRef  = useRef(null);
   const rafIdRef   = useRef(0);
   const keepAFRef  = useRef(0);
-  const detectedRef= useRef(false); // ← 二重発火防止
+  const detectedRef= useRef(false); // 二重発火防止
+  const startAtRef = useRef(0);     // 起動時間
 
   const [errorMsg, setErrorMsg] = useState("");
   const [caps, setCaps] = useState(null);
@@ -124,6 +134,14 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
   const [deviceId, setDeviceId] = useState(null);
   const [hud, setHud] = useState("-");
   const [usingDetector, setUsingDetector] = useState(false);
+
+  // 起動直後の抑制判定
+  const shouldSuppress = useCallback((val) => {
+    if (!ignoreCode) return false;
+    const now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    const elapsed = now - (startAtRef.current || now);
+    return String(val) === String(ignoreCode) && elapsed < ignoreForMs;
+  }, [ignoreCode, ignoreForMs]);
 
   // ピンチズーム
   const pinchState = useRef({ a: null, b: null, baseZoom: null, baseDist: null });
@@ -167,7 +185,8 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
   const start = useCallback(async (explicitId) => {
     setErrorMsg("");
     setHud("-");
-    detectedRef.current = false; // 起動毎に解除
+    detectedRef.current = false;
+    startAtRef.current = (typeof performance !== "undefined" ? performance.now() : Date.now());
     assertHTTPS();
 
     try { setDevices(await enumerateBackCameras()); } catch {}
@@ -229,11 +248,16 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
           try {
             const barcodes = await detector.detect(canvasRef.current);
             if (!detectedRef.current && barcodes && barcodes[0]) {
-              detectedRef.current = true;
               const val = barcodes[0].rawValue || barcodes[0].rawText || "";
+              // ★ 起動直後の同一JANを抑制
+              if (shouldSuppress(val)) {
+                rafIdRef.current = requestAnimationFrame(loop);
+                return;
+              }
+              detectedRef.current = true;
               stopAll();
               onDetected?.(val);
-              onClose?.(); // ← 検出後にスキャナを自動で閉じる
+              onClose?.(); // 検出後にスキャナを自動で閉じる
               return;
             }
           } catch {}
@@ -246,13 +270,16 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
       else try { readerRef.current.reset(); } catch {}
       await readerRef.current.decodeFromStream(stream, video, (result) => {
         if (!result || detectedRef.current) return;
+        const val = result.getText();
+        // ★ 起動直後の同一JANを抑制
+        if (shouldSuppress(val)) return;
         detectedRef.current = true;
         stopAll();
-        onDetected?.(result.getText());
-        onClose?.(); // ← 検出後にスキャナを自動で閉じる
+        onDetected?.(val);
+        onClose?.(); // 検出後にスキャナを自動で閉じる
       });
     }
-  }, [applyZoom, deviceId, onClose, onDetected, setAutoAFOn, stopAll]);
+  }, [applyZoom, deviceId, onClose, onDetected, setAutoAFOn, shouldSuppress, stopAll]);
 
   // open → 自動起動
   useEffect(() => {
