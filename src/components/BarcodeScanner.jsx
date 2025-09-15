@@ -1,5 +1,5 @@
 // src/components/BarcodeScanner.jsx
-// iOS/Android/Mac Safari 安定版（手動 getUserMedia → decodeFromStream）
+// iOS/Android/Mac Safari 安定版（手動 getUserMedia → video.srcObject → decodeFromStream）
 // 依存: npm i @zxing/browser
 // 使い方: <BarcodeScanner open={open} onClose={()=>setOpen(false)} onDetected={(text)=>...} />
 
@@ -63,34 +63,45 @@ const btnGhost = {
   border: "1px solid #fff",
 };
 
-// ---- video が再生可能になるのを待つ（Safari 黒画面対策）
-const waitForCanPlay = (video, timeoutMs = 8000) =>
-  new Promise((resolve, reject) => {
+// --- Safari黒画面対策：メタデータ＋実解像度が立つまで待つ
+async function waitForVideoReady(video, timeoutMs = 10000) {
+  const start = Date.now();
+
+  // イベントとポーリングの併用
+  await new Promise((resolve, reject) => {
     let settled = false;
+
     const done = (ok = true, err) => {
       if (settled) return;
       settled = true;
+      cleanup();
+      ok ? resolve() : reject(err);
+    };
+
+    const onOK = () => done(true);
+    const onErr = (e) => done(false, e);
+    const cleanup = () => {
       video.removeEventListener("loadedmetadata", onOK);
       video.removeEventListener("canplay", onOK);
       video.removeEventListener("error", onErr);
-      clearTimeout(to);
       clearInterval(iv);
-      ok ? resolve() : reject(err);
     };
-    const onOK = () => done(true);
-    const onErr = (e) => done(false, e);
-    // 仕様上 loadedmetadata/canplay が来なくても videoWidth が立つケースがある
+
     const iv = setInterval(() => {
-      if (video.videoWidth > 0 && video.videoHeight > 0) done(true);
-    }, 250);
-    const to = setTimeout(() => done(false, new Error("VIDEO_TIMEOUT")), timeoutMs);
+      if (video.videoWidth > 0 && video.videoHeight > 0 && video.readyState >= 2) {
+        done(true);
+      } else if (Date.now() - start > timeoutMs) {
+        done(false, new Error("VIDEO_TIMEOUT"));
+      }
+    }, 200);
 
     video.addEventListener("loadedmetadata", onOK, { once: true });
     video.addEventListener("canplay", onOK, { once: true });
     video.addEventListener("error", onErr, { once: true });
   });
+}
 
-// ---- 背面っぽい deviceId を推定
+// --- カメラ列挙から背面候補を推定
 async function pickBackDeviceId() {
   try {
     const devs = await navigator.mediaDevices.enumerateDevices();
@@ -104,31 +115,28 @@ async function pickBackDeviceId() {
   }
 }
 
-// ---- 明示的に getUserMedia でストリームを取る（段階フォールバック）
+// --- ストリーム取得（背面優先／正面フォールバック）
 async function getStream({ preferFront = false } = {}) {
-  // 低め解像度＋fps で安定度を上げる（発熱/電池消費も抑える）
   const base = {
     audio: false,
     video: {
+      // 無理がない値から始めると安定しやすい
       width: { ideal: 1280 },
       height: { ideal: 720 },
       frameRate: { ideal: 24, max: 30 },
-      // iOS Safari で黒画面になる個体対策として aspectRatio を緩く
-      aspectRatio: { ideal: 1.777, max: 3 },
+      aspectRatio: { ideal: 16 / 9, max: 3 },
     },
   };
-
-  // 向きの優先（通常は背面、トラブったら正面に切替）
   const wantEnv = !preferFront;
 
-  // 1) deviceId exact（背面推定できた場合）
+  // 1) deviceId exact（背面が分かる場合）
   if (wantEnv) {
-    const backId = await pickBackDeviceId();
-    if (backId) {
+    const id = await pickBackDeviceId();
+    if (id) {
       try {
         return await navigator.mediaDevices.getUserMedia({
           ...base,
-          video: { ...base.video, deviceId: { exact: backId } },
+          video: { ...base.video, deviceId: { exact: id } },
         });
       } catch { /* 次へ */ }
     }
@@ -149,7 +157,6 @@ async function getStream({ preferFront = false } = {}) {
   });
 }
 
-// ---- HTTPS 必須（localhost 例外）
 function assertHTTPS() {
   const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
   if (window.location.protocol !== "https:" && !isLocal) throw new Error("NEED_HTTPS");
@@ -161,8 +168,8 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
   const readerRef = useRef(null);
 
   const [errorMsg, setErrorMsg] = useState("");
-  const [needsTapStart, setNeedsTapStart] = useState(true); // 初回は必ずタップ
-  const [preferFront, setPreferFront] = useState(false); // フロント/背面 切替
+  const [needsTapStart, setNeedsTapStart] = useState(true);
+  const [preferFront, setPreferFront] = useState(false); // 正面/背面トグル
 
   const stopAll = useCallback(() => {
     try { readerRef.current?.reset?.(); } catch {}
@@ -170,44 +177,55 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
       const v = videoRef.current;
       const s = v?.srcObject || streamRef.current;
       if (s) s.getTracks?.().forEach((t) => t.stop());
-      if (v) v.srcObject = null;
+      if (v) {
+        v.pause?.();
+        v.srcObject = null;
+        v.removeAttribute("src"); // iOSで稀に効く
+        v.load?.();
+      }
     } catch {}
     streamRef.current = null;
   }, []);
 
-  const startCameraAndDecode = useCallback(async () => {
+  const start = useCallback(async () => {
     setErrorMsg("");
     assertHTTPS();
 
     const video = videoRef.current;
     if (!video) throw new Error("NO_VIDEO");
 
-    // Safari 自動再生条件
+    // Safari 条件（小文字属性が実体）
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
     video.muted = true;
     video.autoplay = true;
 
-    // ① 自前で getUserMedia
+    // ① getUserMedia
     const stream = await getStream({ preferFront });
     streamRef.current = stream;
+
+    // ② video に貼る → load → metadata 待ち → play（順序厳守）
     video.srcObject = stream;
+    video.load(); // ← iOSで重要
+    await waitForVideoReady(video, 10000);
+    try { await video.play(); } catch { /* gesture 済みなら通る想定 */ }
 
-    // ② 映像が来るのを待ってから play
-    await waitForCanPlay(video, 9000);
-    try { await video.play(); } catch {} // この時点では user gesture 済み
+    // 念のため再チェック（0x0なら即フォールバック）
+    if (!(video.videoWidth > 0 && video.videoHeight > 0)) {
+      throw new Error("VIDEO_DIM_ZERO");
+    }
 
+    // ③ ZXing 連続読取：自前 stream/video を渡す
     if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
     else try { readerRef.current.reset(); } catch {}
 
-    // ③ ZXing 連続読取（自前 video/stream を渡す）
     await readerRef.current.decodeFromStream(stream, video, (result, err) => {
       if (result) {
         const text = result.getText();
         stopAll();
         onDetected?.(text);
       }
-      // err は読み取り過程で通常発生するため無視
+      // err はスキャン中の通常エラーのため握りつぶし
     });
 
     setNeedsTapStart(false);
@@ -215,7 +233,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
 
   const handleTapStart = useCallback(async () => {
     try {
-      await startCameraAndDecode();
+      await start();
     } catch (e) {
       console.error("[camera start error]", e);
       const name = e?.name || "Error";
@@ -223,22 +241,22 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
       if (name === "NotAllowedError" || name === "SecurityError") {
         setErrorMsg("カメラが『拒否』になっています。iOSの「設定 > Safari > カメラ」を『許可』にしてください。");
       } else if (name === "NotFoundError" || name === "OverconstrainedError") {
-        setErrorMsg("指定のカメラが見つかりません。『別カメラで試す』を押して正面/背面を切り替えてください。");
+        setErrorMsg("指定のカメラが見つかりません。『別カメラで試す』で正面/背面を切り替えてください。");
       } else if (name === "NotReadableError") {
         setErrorMsg("他のアプリがカメラを使用中の可能性があります。全て終了してから再試行してください。");
       } else if (name === "AbortError") {
         setErrorMsg("カメラ初期化が中断されました。もう一度お試しください。");
       } else if (name === "NEED_HTTPS") {
         setErrorMsg("セキュアコンテキスト(HTTPS)が必須です。https でアクセスしてください。");
-      } else if (name === "Error" && e?.message === "VIDEO_TIMEOUT") {
-        setErrorMsg("映像の初期化に時間がかかっています。再度『カメラを開始』を押してください。");
+      } else if (name === "VIDEO_TIMEOUT" || name === "VIDEO_DIM_ZERO") {
+        setErrorMsg("映像の初期化に時間がかかっています。『再試行』または『別カメラで試す』を押してください。");
       } else {
-        setErrorMsg(`カメラの起動に失敗しました（${name}${msg}）。権限設定をご確認ください。`);
+        setErrorMsg(`カメラの起動に失敗しました（${name}${msg}）。`);
       }
       stopAll();
       setNeedsTapStart(true);
     }
-  }, [startCameraAndDecode, stopAll]);
+  }, [start, stopAll]);
 
   // open のオン/オフで開始/停止
   useEffect(() => {
@@ -269,7 +287,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     onClose?.();
   };
 
-  // デバッグHUD（映像が来てるか即確認できる）
+  // HUD
   const v = videoRef.current;
   const hud = v
     ? `state=${v.readyState} ${v.videoWidth}x${v.videoHeight}`
@@ -289,13 +307,12 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
               objectFit: "cover",
               backgroundColor: "black",
             }}
-            // これらの属性は Safari で重要
+            autoPlay
             playsInline
             muted
-            autoPlay
           />
 
-          {/* 画面中央のガイド枠 */}
+          {/* ガイド枠 */}
           <div
             style={{
               position: "absolute",
@@ -328,7 +345,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
                 <button
                   style={btnGhost}
                   onClick={() => {
-                    setPreferFront((p) => !p);
+                    setPreferFront((p) => !p); // 正面/背面トグル
                     setTimeout(() => handleTapStart(), 0);
                   }}
                 >
@@ -339,7 +356,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
             </div>
           )}
 
-          {/* 右上デバッグHUD（小さく表示） */}
+          {/* 右上デバッグHUD */}
           <div
             style={{
               position: "absolute",
