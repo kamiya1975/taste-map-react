@@ -762,17 +762,6 @@ function MapPage() {
     });
   }, [userPin, is3D, sliderMarkerMode]);
 
-  // デバッグ用（未使用だが残置可）
-  const debugLayer = new ScatterplotLayer({
-    id: "debug-point",
-    data: [{ x: 0, y: 0 }],
-    getPosition: (d) => [d.x, -d.y, 0],
-    getFillColor: [0, 150, 255, 255],
-    getRadius: 0.2,
-    radiusUnits: "meters",
-    pickable: false,
-  });
-
   // ====== レンダリング
   return (
     <div
@@ -1489,13 +1478,18 @@ function MapPage() {
           setProductDrawerOpen(true);
           setIsSearchOpen(false);
         }}
-        onScanClick={() => setIsScannerOpen(true)}
+        onScanClick={() => {
+          setProductDrawerOpen(false);
+          setSelectedJAN(null);
+          setIsScannerOpen(true);
+        }}
       />
 
       {/* バーコードスキャナ */}
       <BarcodeScanner
         open={isScannerOpen}
         ignoreCode={lastScannedJanRef.current} 
+        ignoreForMs={1200}
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
           const jan = String(codeText).replace(/\D/g, "");
