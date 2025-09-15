@@ -1,9 +1,9 @@
 // src/components/BarcodeScanner.jsx
-// 改訂版: 「前回JANの再採用防止」をセッション内で強制
-// - props.ignoreCode … 直前に表示していたJAN（MapPage から渡す）
-// - BarcodeDetector では「空フレームが N 回続いたら解除」もサポート
-// - ZXing フォールバックでは“このセッションは常に禁止”で確実に再表示を防止
-// 依存: npm i @zxing/browser
+// 改訂版: 「起動直後の空フレームで“前回JANの禁止”が解除されてしまう」問題を修正
+// - 起動直後は blankFrames のカウントダウンを開始しない（未武装: -1）
+// - このセッションで一度でも「前回JAN」を実際に検出してからのみ、空フレームをカウント
+// - ZXing フォールバックでは従来どおり「セッション中は常に禁止」
+
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
@@ -114,22 +114,23 @@ export default function BarcodeScanner({
   open,
   onClose,
   onDetected,
-  ignoreCode,                 // ← 直前のJAN（MapPage から）
-  liftOnBlankFrames = 10,     // ← Detector時: 何フレーム「検出ゼロ」が続いたら禁止解除するか
+  ignoreCode,                 // ← 直前のJAN（親から）
+  liftOnBlankFrames = 10,     // ← Detector時: 何フレーム「検出ゼロ」が連続したら禁止解除するか
 }) {
-  const videoRef   = useRef(null);
-  const canvasRef  = useRef(null); // ROI 用
-  const streamRef  = useRef(null);
-  const trackRef   = useRef(null);
-  const readerRef  = useRef(null);
-  const rafIdRef   = useRef(0);
-  const keepAFRef  = useRef(0);
-  const detectedRef= useRef(false);
+  const videoRef    = useRef(null);
+  const canvasRef   = useRef(null); // ROI 用
+  const streamRef   = useRef(null);
+  const trackRef    = useRef(null);
+  const readerRef   = useRef(null);
+  const rafIdRef    = useRef(0);
+  const keepAFRef   = useRef(0);
+  const detectedRef = useRef(false);
 
   // 「前回JANを採用しない」ための禁止状態
   const bannedRef        = useRef("");   // 直前JAN(正規化)
   const banLiftedRef     = useRef(false); // 解除済み？
-  const blankFramesLeft  = useRef(0);     // 「検出ゼロ」を何フレーム見たか
+  const blankFramesLeft  = useRef(-1);    // 「検出ゼロ」を何フレーム見たら解除するか（-1 = 未武装）
+  const seenBannedRef    = useRef(false); // このセッションで一度でも“前回JAN”を検出したか
 
   const [errorMsg, setErrorMsg] = useState("");
   const [caps, setCaps] = useState(null);
@@ -182,9 +183,10 @@ export default function BarcodeScanner({
     assertHTTPS();
 
     // 直前JANの禁止を初期化
-    bannedRef.current    = norm(ignoreCode);
-    banLiftedRef.current = !bannedRef.current; // 直前JANが無ければ最初から解除扱い
-    blankFramesLeft.current = bannedRef.current ? liftOnBlankFrames : 0;
+    bannedRef.current        = norm(ignoreCode);
+    banLiftedRef.current     = !bannedRef.current; // 直前JANが無ければ最初から解除扱い
+    blankFramesLeft.current  = -1;                 // 起動直後の空フレームを無視するため未武装に
+    seenBannedRef.current    = false;
 
     try { setDevices(await enumerateBackCameras()); } catch {}
 
@@ -253,8 +255,12 @@ export default function BarcodeScanner({
 
               // 直前JANの禁止：解除前は採用しない
               if (bannedRef.current && !banLiftedRef.current && val === bannedRef.current) {
-                // 画面から一度消えるまで待つ（blankFramesLeft をリセット）
-                blankFramesLeft.current = liftOnBlankFrames;
+                // このセッションで“前回JAN”を実際に検出した
+                seenBannedRef.current = true;
+                // 以後、検出ゼロが一定回「連続」したら解除。連続性を担保するため、同一JANを見ている間は毎フレームリセット
+                blankFramesLeft.current = blankFramesLeft.current < 0 ? liftOnBlankFrames : liftOnBlankFrames;
+
+                // 採用しない（禁止中）
               } else {
                 // 別のコード or 既に解除済み → 採用
                 detectedRef.current = true;
@@ -267,12 +273,13 @@ export default function BarcodeScanner({
           } catch {}
         }
 
-        // 「検出なし」フレームをカウントし、一定回数で禁止解除
+        // 「検出なし」フレームの処理
         if (!gotCodeThisFrame) {
-          if (blankFramesLeft.current > 0) {
+          // “前回JANを一度でも実際に見てから”でないと減らさない（起動直後の空フレーム対策）
+          if (seenBannedRef.current && blankFramesLeft.current > 0) {
             blankFramesLeft.current -= 1;
             if (blankFramesLeft.current <= 0) {
-              banLiftedRef.current = true; // もう同じJANも採用可（次から）
+              banLiftedRef.current = true; // ここでようやく解除
             }
           }
         }
@@ -396,7 +403,22 @@ export default function BarcodeScanner({
               ? <span style={{ color: "#ffb3b3" }}>{errorMsg}</span>
               : <span>中央の枠にバーコードを合わせてください。</span>}
           </div>
-          <button onClick={() => { stopAll(); onClose?.(); }} style={btn}>キャンセル</button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {devicesState.ready && (
+              <select
+                onChange={onChangeDevice}
+                value={deviceId || ""}
+                style={{ background: "#111", color: "#eee", border: "1px solid #333", borderRadius: 8, padding: "8px" }}
+                aria-label="カメラ切替"
+              >
+                <option value="">自動</option>
+                {devices.map((d) => (
+                  <option key={d.id} value={d.id}>{d.label}</option>
+                ))}
+              </select>
+            )}
+            <button onClick={() => { stopAll(); onClose?.(); }} style={btn}>キャンセル</button>
+          </div>
         </div>
       </div>
     </div>

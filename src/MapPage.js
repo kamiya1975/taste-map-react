@@ -98,6 +98,7 @@ function MapPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
+  const [scanSession, setScanSession] = useState(0);
 
   // UI
   const [isSliderOpen, setIsSliderOpen] = useState(false);
@@ -1487,6 +1488,7 @@ function MapPage() {
 
       {/* バーコードスキャナ */}
       <BarcodeScanner
+        key={scanSession}
         open={isScannerOpen}
         ignoreCode={lastScannedJanRef.current} 
         onClose={() => setIsScannerOpen(false)}
@@ -1495,8 +1497,8 @@ function MapPage() {
           lastScannedJanRef.current = jan;
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
-            setIsScannerOpen(false);
-            setSelectedJANFromSearch(hit.JAN);
+            setScanSession(s => s + 1);
+            setIsScannerOpen(true);
             const tx = hit.BodyAxis;
             const ty = is3D ? hit.SweetAxis : -hit.SweetAxis;
             setViewState((prev) => ({
