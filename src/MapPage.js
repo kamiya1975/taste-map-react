@@ -1492,7 +1492,6 @@ function MapPage() {
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
           const jan = String(codeText).replace(/\D/g, "");
-           // 都度読み：まず閉じる
           setIsScannerOpen(false);
 
           const hit = data.find((d) => String(d.JAN) === jan);
