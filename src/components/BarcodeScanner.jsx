@@ -1,9 +1,8 @@
 // src/components/BarcodeScanner.jsx
-// 禁止JANなし版：起動直後の“最後のフレーム”を材料にした誤検出を防ぐ
-// ポイント：requestVideoFrameCallback で「新フレームが十分に到着」するまで待ってから検出開始
-// - rVFC が無い環境は時間フォールバック（例：300ms）
-// - ROI を描く前に canvas を clearRect
-// - Detector 優先、未対応端末は ZXing にフォールバック
+// 禁止JANは使わず、再起動直後の“残像フレーム”対策として
+// 1) ウォームアップ（新鮮なフレームが来るまで待つ）
+// 2) フレーム差分ゲート（ROI内容が前回とほぼ同じなら検出スキップ）
+// を実装。Detector優先、ZXingをフォールバックに利用。
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
@@ -16,9 +15,7 @@ const footerStyle  = { padding: 12, borderTop: "1px solid #222", color: "#ddd", 
 const btn          = { background: "#fff", color: "#000", border: "none", padding: "10px 16px", fontSize: 16, borderRadius: 10, cursor: "pointer", fontWeight: 700 };
 
 const hasBarcodeDetector = () => typeof window !== "undefined" && "BarcodeDetector" in window;
-const norm = (s) => String(s ?? "").replace(/\D/g, ""); // 数字だけ
-
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const norm = (s) => String(s ?? "").replace(/\D/g, ""); // 数字だけに正規化
 
 function assertHTTPS() {
   const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
@@ -60,24 +57,27 @@ async function waitForVideoReady(video, timeoutMs = 9000) {
   });
 }
 
-// ★ 新しいフレームが十分に到着するまで待つ（rVFC優先）
-async function waitForFreshFrames(video, { minFrames = 4, minElapsedMs = 320 } = {}) {
+// “新鮮なフレーム”が一定数・一定時間くるまで待つ
+async function waitForFreshFrames(video, { minFrames = 8, minElapsedMs = 600 } = {}) {
   const start = performance.now();
-  if (typeof video.requestVideoFrameCallback === "function") {
+  // rVFC が使える場合はフレーム単位で数える
+  if ("requestVideoFrameCallback" in HTMLVideoElement.prototype) {
+    let count = 0;
     return new Promise((resolve) => {
-      let base = null;
-      const step = (_now, meta) => {
-        if (base == null) base = meta.presentedFrames;
-        const frames = meta.presentedFrames - base;
+      const cb = (_now, _meta) => {
+        count += 1;
         const elapsed = performance.now() - start;
-        if (frames >= minFrames && elapsed >= minElapsedMs) resolve();
-        else video.requestVideoFrameCallback(step);
+        if (count >= minFrames && elapsed >= minElapsedMs) {
+          resolve();
+        } else {
+          video.requestVideoFrameCallback(cb);
+        }
       };
-      video.requestVideoFrameCallback(step);
+      video.requestVideoFrameCallback(cb);
     });
   }
-  // フォールバック（rVFCが無い環境）
-  await wait(minElapsedMs);
+  // 使えない場合は時間のみで待つ（保守的）
+  await new Promise((r) => setTimeout(r, minElapsedMs));
 }
 
 async function getStreamById(deviceId) {
@@ -142,6 +142,8 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
   const rafIdRef    = useRef(0);
   const keepAFRef   = useRef(0);
   const detectedRef = useRef(false);
+  const prevHashRef = useRef(null);   // フレーム差分ゲート用
+  const zxingReadyAtRef = useRef(0);  // ZXingの“受け付け開始時刻”
 
   const [errorMsg, setErrorMsg] = useState("");
   const [caps, setCaps] = useState(null);
@@ -191,6 +193,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     setErrorMsg("");
     setHud("-");
     detectedRef.current = false;
+    prevHashRef.current = null;
     assertHTTPS();
 
     try { setDevices(await enumerateBackCameras()); } catch {}
@@ -222,15 +225,17 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
       await applyZoom(init);
     }
 
-    // ★ 4) 新しいフレームが到着するまで待つ（最後の古いフレーム対策の肝）
-    await waitForFreshFrames(video, { minFrames: 4, minElapsedMs: 320 });
+    // 3.5) ウォームアップ（新鮮フレーム待ち）
+    await waitForFreshFrames(video, { minFrames: 8, minElapsedMs: 600 });
+    zxingReadyAtRef.current = Date.now(); // ZXing でも直後から受け付けOK（十分ウォームアップ済み）
 
-    // 5) スキャナ起動（Detector優先 → ZXing）
+    // 4) スキャナ起動（Detector優先 → ZXing）
     const canUseDetector = hasBarcodeDetector();
     setUsingDetector(!!canUseDetector);
 
     if (canUseDetector) {
       const detector = new window.BarcodeDetector({ formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code"] });
+
       const loop = async () => {
         if (detectedRef.current) return;
         const v = videoRef.current;
@@ -252,21 +257,42 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
           const rw = Math.floor(rh * 3);
           const sx = Math.floor((vw - rw) / 2);
           const sy = Math.floor(vh * 0.45 - rh / 2);
-
-          // ★ 起動直後の画素残りを防ぐ：毎回クリア
-          ctx.clearRect(0, 0, cw, ch);
           ctx.drawImage(v, sx, sy, rw, rh, 0, 0, cw, ch);
+
+          // --- フレーム差分ゲート：前回のROIとほぼ同じ内容ならこのフレームはスキップ ---
+          try {
+            const img = ctx.getImageData(0, 0, cw, ch).data;
+            let sum = 0, step = 32; // 軽いサンプリング
+            for (let i = 0; i < img.length; i += 4 * step) {
+              // 輝度近似（NTSC係数）
+              sum += img[i] * 0.299 + img[i + 1] * 0.587 + img[i + 2] * 0.114;
+            }
+            const prev = prevHashRef.current;
+            prevHashRef.current = sum;
+            if (prev != null) {
+              const diffRatio = Math.abs(sum - prev) / (prev + 1e-6);
+              if (diffRatio < 0.003) {
+                // 0.3% 未満 → ほぼ同一フレーム（直前残像の可能性）としてスキップ
+                rafIdRef.current = requestAnimationFrame(loop);
+                return;
+              }
+            }
+          } catch {
+            // getImageData が失敗しても検出は続行
+          }
 
           try {
             const barcodes = await detector.detect(canvasRef.current);
             if (barcodes && barcodes[0]) {
               const raw = barcodes[0].rawValue || barcodes[0].rawText || "";
               const val = norm(raw);
-              detectedRef.current = true;
-              stopAll();
-              onDetected?.(val);
-              onClose?.();
-              return;
+              if (val) {
+                detectedRef.current = true;
+                stopAll();
+                onDetected?.(val);
+                onClose?.();
+                return;
+              }
             }
           } catch {}
         }
@@ -275,17 +301,22 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
       };
       rafIdRef.current = requestAnimationFrame(loop);
     } else {
-      // ZXing
+      // ZXing: ウォームアップ後に開始。受け付け開始時刻で万一の早すぎコールを防止
       if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
       else try { readerRef.current.reset(); } catch {}
 
-      await readerRef.current.decodeFromStream(stream, video, (result) => {
+      // decodeFromStream は内部でループするので await しない
+      readerRef.current.decodeFromStream(stream, video, (result) => {
         if (!result || detectedRef.current) return;
+        if (Date.now() < zxingReadyAtRef.current) return; // 念のための保険
         const val = norm(result.getText());
+        if (!val) return;
         detectedRef.current = true;
         stopAll();
         onDetected?.(val);
         onClose?.();
+      }).catch(() => {
+        // 失敗時は何もしない（上位で再起動される）
       });
     }
   }, [applyZoom, deviceId, onClose, onDetected, setAutoAFOn, stopAll]);
@@ -348,7 +379,6 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     const id = e.target.value || null;
     setDeviceId(id);
     stopAll();
-    // 切替時も rVFC 待機が効くように、通常の start を再実行
     start(id).catch(() => {});
   };
 
