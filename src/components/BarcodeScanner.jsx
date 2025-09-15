@@ -1,6 +1,6 @@
 // src/components/BarcodeScanner.jsx
-// 強化版: マルチスキャナ(BarcodeDetector→ZXing) / 背面固定 / 自動起動
-// ピンチでズーム / トーチ / タップで再AF / 手動AF(対応端末のみ) / レンズ切替
+// 強化版: 自動終了(検出後) / 二重発火防止 / 背面固定 / ピンチズーム / ROI最適化
+// UI簡素化: 「AF自動」「ライトON」等の操作UIは撤去（そのまま読める前提）
 // 依存: npm i @zxing/browser
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
@@ -12,7 +12,6 @@ const videoBoxStyle= { flex: 1, position: "relative", background: "#000", overfl
 const footerStyle  = { padding: 12, borderTop: "1px solid #222", color: "#ddd", display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: 8 };
 const btn          = { background: "#fff", color: "#000", border: "none", padding: "10px 16px", fontSize: 16, borderRadius: 10, cursor: "pointer", fontWeight: 700 };
 
-const isIOS = () => /iP(hone|od|ad)/.test(navigator.platform) || /iOS|iPadOS/.test(navigator.userAgent);
 const hasBarcodeDetector = () => typeof window !== "undefined" && "BarcodeDetector" in window;
 
 function assertHTTPS() {
@@ -23,7 +22,6 @@ function assertHTTPS() {
 async function enumerateBackCameras() {
   const devs = await navigator.mediaDevices.enumerateDevices();
   const cams = devs.filter((d) => d.kind === "videoinput");
-  // back/environment を優先。ラベルに ultra/tele/macro が含まれるものを先頭に。
   const rows = cams.map((d, i) => ({
     id: d.deviceId,
     label: d.label || `Camera ${i + 1}`,
@@ -73,7 +71,7 @@ async function getStreamById(deviceId) {
   return await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: "environment" }, ...base } });
 }
 
-// タップAF（対応端末のみ pointsOfInterest を使い、無ければ focusMode を continuous 再適用）
+// タップAF（pointsOfInterest対応端末は座標指定、無ければ continuous を再適用）
 async function tapToFocus(track, el, evt) {
   if (!track?.getCapabilities) return;
   const caps = track.getCapabilities();
@@ -92,14 +90,13 @@ async function tapToFocus(track, el, evt) {
   }
 }
 
-// 近距離を狙う “揺さぶり”
+// 近距離寄せ→continuous（対応端末のみ）
 async function nudgeNearThenContinuous(track) {
   if (!track?.getCapabilities) return;
   const caps = track.getCapabilities();
-  const adv = [];
-  if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) adv.push({ focusMode: "continuous" });
-  try { if (adv.length) await track.applyConstraints({ advanced: adv }); } catch {}
-  // manual → continuous の小刻み切替（対応端末のみ）
+  if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) {
+    try { await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }); } catch {}
+  }
   if (caps.focusDistance && Array.isArray(caps.focusMode) && caps.focusMode.includes("manual")) {
     const near = caps.focusDistance.max;
     try {
@@ -118,19 +115,18 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
   const readerRef  = useRef(null);
   const rafIdRef   = useRef(0);
   const keepAFRef  = useRef(0);
+  const detectedRef= useRef(false); // ← 二重発火防止
 
   const [errorMsg, setErrorMsg] = useState("");
   const [caps, setCaps] = useState(null);
-  const [autoAF, setAutoAF] = useState(true);
   const [zoomVal, setZoomVal] = useState(null);
-  const [torchOn, setTorchOn] = useState(false);
   const [devices, setDevices] = useState([]);
   const [deviceId, setDeviceId] = useState(null);
   const [hud, setHud] = useState("-");
   const [usingDetector, setUsingDetector] = useState(false);
 
   // ピンチズーム
-  const pinchState = useRef({ a: null, b: null, baseZoom: null });
+  const pinchState = useRef({ a: null, b: null, baseZoom: null, baseDist: null });
 
   const stopAll = useCallback(() => {
     try { readerRef.current?.reset?.(); } catch {}
@@ -157,47 +153,32 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     } catch {}
   }, []);
 
-  const toggleTorch = useCallback(async () => {
-    const track = trackRef.current;
-    const c = track?.getCapabilities?.();
-    if (!track || !track.applyConstraints || !c?.torch) return;
-    const next = !torchOn;
-    try {
-      await track.applyConstraints({ advanced: [{ torch: next }] });
-      setTorchOn(next);
-    } catch {}
-  }, [torchOn]);
-
-  const setAutoAFOn = useCallback(async (next) => {
+  const setAutoAFOn = useCallback(async () => {
     const track = trackRef.current;
     if (!track?.applyConstraints) return;
-    setAutoAF(next);
-    if (next) {
-      try { await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }); } catch {}
-      if (!keepAFRef.current) {
-        keepAFRef.current = setInterval(() => {
-          track.applyConstraints?.({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
-        }, 1500);
-      }
-    } else {
-      if (keepAFRef.current) { clearInterval(keepAFRef.current); keepAFRef.current = 0; }
+    try { await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }); } catch {}
+    if (!keepAFRef.current) {
+      keepAFRef.current = setInterval(() => {
+        track.applyConstraints?.({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+      }, 1500);
     }
   }, []);
 
   const start = useCallback(async (explicitId) => {
     setErrorMsg("");
     setHud("-");
+    detectedRef.current = false; // 起動毎に解除
     assertHTTPS();
 
-    // 事前にカメラ一覧（PWAでは許可後でないとラベルが空）
     try { setDevices(await enumerateBackCameras()); } catch {}
 
-    // 1) ストリーム取得
+    // 1) ストリーム
     const stream = await getStreamById(explicitId || deviceId);
     streamRef.current = stream;
     const track = stream.getVideoTracks?.()[0];
     trackRef.current = track;
 
+    // 2) ビデオ要素
     const video = videoRef.current;
     video.playsInline = true;
     video.setAttribute("playsinline", "");
@@ -205,39 +186,36 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     video.muted = true;
     video.autoplay = true;
     video.srcObject = stream;
-    await waitForVideoReady(video, 9000).catch((e) => { throw e; });
+    await waitForVideoReady(video, 9000);
     try { await video.play(); } catch {}
 
-    // 2) 能力収集
+    // 3) 能力・AF・ズーム初期化
     const c = track?.getCapabilities?.() || {};
     setCaps(c);
-
-    // 3) 近距離寄せ＋連続AF維持
     await nudgeNearThenContinuous(track);
-    await setAutoAFOn(true);
-
-    // 4) ズーム初期化（最小+少し寄せ）
+    await setAutoAFOn();
     if (c.zoom) {
       const init = Math.max(c.zoom.min ?? 1, Math.min(c.zoom.max ?? 1, (c.zoom.min ?? 1) + ((c.zoom.max ?? 1) - (c.zoom.min ?? 1)) * 0.15));
       await applyZoom(init);
     }
 
-    // 5) スキャナ起動
-    const canUseDetector = hasBarcodeDetector() && !isIOS(); // iOSは無効が既定
+    // 4) スキャナ起動（Detector優先 → ZXing）
+    const canUseDetector = hasBarcodeDetector();
     setUsingDetector(!!canUseDetector);
 
     if (canUseDetector) {
-      // BarcodeDetector パス（Android/Chrome 等）
       const detector = new window.BarcodeDetector({ formats: ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code"] });
       const loop = async () => {
+        if (detectedRef.current) return;
         const v = videoRef.current;
         if (!v) return;
-        // ROI を 3:1 ガイドから切り出し
+
+        // ROI：ガイド枠 3:1 を切り出し
         let cw = canvasRef.current?.width || 0;
         let ch = canvasRef.current?.height || 0;
         if (!cw || !ch) {
           const canvas = (canvasRef.current = document.createElement("canvas"));
-          cw = canvas.width = 960; // 軽量解像度に固定
+          cw = canvas.width = 960;
           ch = canvas.height = 320;
         }
         const ctx = canvasRef.current.getContext("2d");
@@ -250,9 +228,12 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
           ctx.drawImage(v, sx, sy, rw, rh, 0, 0, cw, ch);
           try {
             const barcodes = await detector.detect(canvasRef.current);
-            if (barcodes && barcodes[0]) {
+            if (!detectedRef.current && barcodes && barcodes[0]) {
+              detectedRef.current = true;
+              const val = barcodes[0].rawValue || barcodes[0].rawText || "";
               stopAll();
-              onDetected?.(barcodes[0].rawValue || barcodes[0].rawText || "");
+              onDetected?.(val);
+              onClose?.(); // ← 検出後にスキャナを自動で閉じる
               return;
             }
           } catch {}
@@ -261,17 +242,17 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
       };
       rafIdRef.current = requestAnimationFrame(loop);
     } else {
-      // ZXing パス（iOS/Safari 等）
       if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
       else try { readerRef.current.reset(); } catch {}
       await readerRef.current.decodeFromStream(stream, video, (result) => {
-        if (result) {
-          stopAll();
-          onDetected?.(result.getText());
-        }
+        if (!result || detectedRef.current) return;
+        detectedRef.current = true;
+        stopAll();
+        onDetected?.(result.getText());
+        onClose?.(); // ← 検出後にスキャナを自動で閉じる
       });
     }
-  }, [applyZoom, deviceId, onDetected, setAutoAFOn, stopAll]);
+  }, [applyZoom, deviceId, onClose, onDetected, setAutoAFOn, stopAll]);
 
   // open → 自動起動
   useEffect(() => {
@@ -297,7 +278,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     return () => { cancelled = true; stopAll(); };
   }, [open, start, stopAll]);
 
-  // 可視不可視で再起動（iOS対策）
+  // 可視不可視で再起動（PWA対策）
   useEffect(() => {
     const onVis = () => {
       if (!open) return;
@@ -318,19 +299,13 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     return () => clearInterval(i);
   }, [zoomVal]);
 
-  // タップで再AF
+  // タップで再AF（UIは出さないが挙動は維持）
   const onTap = useCallback((e) => {
     const track = trackRef.current;
     tapToFocus(track, e.currentTarget, e);
-    // タップ時は少しズームを+α
-    const c = track?.getCapabilities?.();
-    if (c?.zoom) {
-      const next = Math.min((zoomVal ?? c.zoom.min ?? 1) + ((c.zoom.max ?? 1) - (c.zoom.min ?? 1)) * 0.08, c.zoom.max ?? 1);
-      applyZoom(next);
-    }
-  }, [applyZoom, zoomVal]);
+  }, []);
 
-  // ピンチでズーム
+  // ピンチズーム
   const onPointerDown = useCallback(async (e) => {
     if (e.pointerType !== "touch") return;
     if (!pinchState.current.a) pinchState.current.a = e;
@@ -368,9 +343,9 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     }
   }, []);
 
-  const handleCancel = () => { stopAll(); onClose?.(); };
-
   // レンズ切替
+  const [devicesState, setDevicesState] = useState({ ready: false });
+  useEffect(() => { if (devices.length) setDevicesState({ ready: true }); }, [devices]);
   const onChangeDevice = async (e) => {
     const id = e.target.value || null;
     setDeviceId(id);
@@ -379,8 +354,6 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
   };
 
   if (!open) return null;
-
-  const fmt = (n) => (typeof n === "number" ? Math.round(n * 100) / 100 : "");
 
   return (
     <div style={overlayStyle}>
@@ -414,83 +387,27 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
             {usingDetector ? "Detector" : "ZXing"} | {hud}
           </div>
 
-          {/* 手動フォーカス（対応端末のみ） */}
-          {caps?.focusDistance && (
-            <div
-              style={{
-                position: "absolute", left: 0, right: 0, bottom: 72,
-                padding: "8px 12px",
-                background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0.8) 100%)",
-                color: "#fff", fontSize: 12
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <input type="checkbox" checked={autoAF} onChange={(e) => setAutoAFOn(e.target.checked)} />
-                  AF自動
-                </label>
-                <button
-                  onClick={() => nudgeNearThenContinuous(trackRef.current)}
-                  style={{ background:"#333", color:"#fff", border:"1px solid #666", padding:"6px 10px", borderRadius:8 }}
-                >
-                  近距離へ寄せて再AF
-                </button>
-                <div style={{ opacity: 0.8 }}>（タップでも再AF）</div>
-              </div>
+          {/* ズームスライダー（対応端末のみ表示） */}
+          {caps?.zoom && (
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: 10, background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.9) 100%)", color: "#fff" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 56px", gap: 8, alignItems: "center" }}>
                 <input
                   type="range"
-                  min={caps.focusDistance.min ?? 0}
-                  max={caps.focusDistance.max ?? 100}
-                  step={caps.focusDistance.step ?? 1}
-                  onChange={(e) => {
-                    const v = parseFloat(e.target.value);
-                    trackRef.current?.applyConstraints?.({ advanced: [{ focusMode: "manual", focusDistance: v }] }).catch(()=>{});
-                  }}
-                  disabled={autoAF}
+                  min={caps.zoom.min ?? 1} max={caps.zoom.max ?? 1} step={caps.zoom.step ?? 0.1}
+                  value={zoomVal ?? caps.zoom.min ?? 1}
+                  onChange={(e) => applyZoom(parseFloat(e.target.value))}
                 />
-                <div style={{ textAlign: "right" }}>{fmt(caps.focusDistance.min)}–{fmt(caps.focusDistance.max)}</div>
+                <div style={{ textAlign: "right" }}>{typeof zoomVal === "number" ? Math.round(zoomVal * 100) / 100 : ""}</div>
               </div>
-            </div>
-          )}
-
-          {/* ズーム（対応端末のみ表示）＋ トーチ */}
-          {(caps?.zoom || caps?.torch) && (
-            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: 10, background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.9) 100%)", color: "#fff" }}>
-              {caps?.zoom && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 56px", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                  <input
-                    type="range"
-                    min={caps.zoom.min ?? 1} max={caps.zoom.max ?? 1} step={caps.zoom.step ?? 0.1}
-                    value={zoomVal ?? caps.zoom.min ?? 1}
-                    onChange={(e) => applyZoom(parseFloat(e.target.value))}
-                  />
-                  <div style={{ textAlign: "right" }}>{fmt(zoomVal)}</div>
-                </div>
-              )}
-              {caps?.torch && (
-                <button onClick={toggleTorch} style={{ background:"#333", color:"#fff", border:"1px solid #666", padding:"8px 12px", borderRadius:8 }}>
-                  {torchOn ? "ライトOFF" : "ライトON"}
-                </button>
-              )}
             </div>
           )}
         </div>
 
         <div style={footerStyle}>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:8, alignItems:"center" }}>
-            <div style={{ minHeight: 18 }}>
-              {errorMsg
-                ? <span style={{ color: "#ffb3b3" }}>{errorMsg}</span>
-                : <span>中央の枠にバーコードを合わせてください。ピンチで拡大、タップで再AF、必要に応じライトON。</span>}
-            </div>
-            {/* レンズ切替（許可後にラベルが出る） */}
-            {devices?.length > 1 && (
-              <select value={deviceId || ""} onChange={onChangeDevice} style={{ background:"#111", color:"#fff", border:"1px solid #444", padding:"6px 8px", borderRadius:8 }}>
-                <option value="">自動選択（背面）</option>
-                {devices.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
-              </select>
-            )}
+          <div style={{ minHeight: 18 }}>
+            {errorMsg
+              ? <span style={{ color: "#ffb3b3" }}>{errorMsg}</span>
+              : <span>中央の枠にバーコードを合わせてください。ピンチで拡大、タップで再AFできます。</span>}
           </div>
           <button onClick={() => { stopAll(); onClose?.(); }} style={btn}>キャンセル</button>
         </div>
