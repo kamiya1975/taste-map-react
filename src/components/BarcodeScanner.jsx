@@ -1,13 +1,19 @@
 // src/components/BarcodeScanner.jsx
-// 依存: npm i @zxing/browser
-import React, { useEffect, useRef, useState, useCallback } from "react";
+// iOS & Android 双方対応 / 常に最前面レイヤー / 即スキャン開始 / UIは「キャンセル」のみ
+// 依存: @zxing/browser  →  未導入なら:  npm i @zxing/browser
+// 既存の BarcodeScanner をこのファイルで“完全置き換え”してください。
+
+import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
-const OVERLAY_Z = 2147483647; // どのUIよりも最前面
+// ────────────────────────────────────────────────────────────────
+// 最前面に固定（親の transform 等の影響を受けにくい超高 z-index）
+// ────────────────────────────────────────────────────────────────
+const OVERLAY_Z = 2147483647;
 const overlayStyle = {
   position: "fixed",
   inset: 0,
-  background: "rgba(0,0,0,0.55)",
+  background: "rgba(0,0,0,0.7)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -16,167 +22,217 @@ const overlayStyle = {
 };
 
 const panelStyle = {
-  width: "min(720px, 94vw)",
-  background: "#111",
-  color: "#fff",
-  borderRadius: 12,
-  overflow: "hidden",
-  boxShadow: "0 16px 36px rgba(0,0,0,.65)",
+  width: "100%",
+  height: "100%",
   display: "flex",
   flexDirection: "column",
-};
-
-const headerStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: "10px 12px",
-  borderBottom: "1px solid #222",
+  background: "#000",
 };
 
 const videoBoxStyle = {
+  flex: 1,
   position: "relative",
   background: "#000",
-  width: "100%",
-  aspectRatio: "16 / 10",
   overflow: "hidden",
 };
 
 const footerStyle = {
-  display: "flex",
-  gap: 8,
-  padding: 12,
+  padding: 16,
   borderTop: "1px solid #222",
-  flexWrap: "wrap",
+  textAlign: "center",
+  color: "#ddd",
+  display: "flex",
   alignItems: "center",
+  justifyContent: "center",
+  gap: 12,
+  flexWrap: "wrap",
 };
 
 const btnStyle = {
-  background: "#222",
-  color: "#fff",
-  border: "1px solid #333",
+  background: "#fff",
+  color: "#000",
+  border: "none",
+  padding: "12px 24px",
+  fontSize: "16px",
   borderRadius: 10,
-  padding: "10px 16px",
   cursor: "pointer",
-  fontWeight: 600,
+  fontWeight: 700,
 };
 
 export default function BarcodeScanner({ open, onClose, onDetected }) {
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const codeReaderRef = useRef(null);
+  const readerRef = useRef(null);
+  const stopHandleRef = useRef(null); // ZXing 側の stop 参照
   const [errorMsg, setErrorMsg] = useState("");
 
-  const stopAll = useCallback(() => {
+  const stopScanner = useCallback(() => {
+    try { readerRef.current?.reset?.(); } catch {}
     try {
-      codeReaderRef.current?.reset();
+      const v = videoRef.current;
+      const s = v?.srcObject;
+      if (s) {
+        s.getTracks?.().forEach((t) => t.stop());
+        v.srcObject = null;
+      }
     } catch {}
-    try {
-      const s = streamRef.current;
-      if (s) s.getTracks().forEach((t) => t.stop());
-    } catch {}
-    streamRef.current = null;
+    try { stopHandleRef.current?.stop?.(); } catch {}
+    stopHandleRef.current = null;
   }, []);
+
+  // 主要因と思われるポイント：
+  // 1) HTTPS でないとモバイルは getUserMedia が拒否される（localhost はOK）
+  // 2) iOS Safari は user-gesture 後でも自動再生まわりで不安定 → playsInline/muted/autoplay/明示的 play()
+  // 3) デバイス列挙の前に権限が必要な環境がある → constraints 指定で decodeFromConstraints を優先
+  // 4) OverconstrainedError などは制約を緩めて再試行
+  // 5) 最後の手段として decodeFromVideoDevice(null, …) でブラウザ任せ
 
   const startScanner = useCallback(async () => {
     setErrorMsg("");
 
+    // (1) HTTPS チェック
+    if (typeof window !== "undefined") {
+      const isLocalhost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+      if (window.location.protocol !== "https:" && !isLocalhost) {
+        setErrorMsg("セキュアコンテキスト(HTTPS)が必須です。httpsでアクセスしてください。");
+        return;
+      }
+    }
+
     const video = videoRef.current;
     if (!video) return;
 
-    // iOS/Android 共通の自動再生対策
+    // (2) iOS/Android 自動再生対策
     video.setAttribute("playsinline", "true");
     video.setAttribute("webkit-playsinline", "true");
-    video.muted = true; // モバイルは無音のみ自動再生可
+    video.muted = true;
     video.autoplay = true;
 
-    // ZXing 準備
-    if (!codeReaderRef.current) codeReaderRef.current = new BrowserMultiFormatReader();
-    else codeReaderRef.current.reset();
+    if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
+    else readerRef.current.reset();
+
+    // 先に getUserMedia で権限を確実に取りに行く（iOS 安定化）
+    // 背面カメラをなるべく選ぶ
+    const constraintsPref = {
+      audio: false,
+      video: {
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    };
 
     try {
-      // 背面カメラを優先するヒント（Chrome/Android, iOS Safari）
-      // decodeFromVideoDevice(null, ...) にするとZXing側に委譲できるが、
-      // 確率を上げるため ideal: environment の MediaTrackConstraints を付与する。
-      // ZXing APIでは直接constraintsを渡せないため、先に手動でgetUserMediaしてから video.srcObject に流し込む。
-      const constraints = {
-        audio: false,
-        video: {
-          facingMode: { ideal: "environment" }, // 背面優先（iOS/Android）
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      };
+      // ① まず一度だけストリームを取得して permission を確立
+      const preStream = await navigator.mediaDevices.getUserMedia(constraintsPref);
+      // 即座に停止（以降は ZXing に任せる）
+      preStream.getTracks().forEach((t) => t.stop());
+    } catch (e) {
+      console.error("pre-permission getUserMedia error:", e);
+      if (e?.name === "NotAllowedError") {
+        setErrorMsg("カメラの使用が拒否されています。端末の設定で本サイトのカメラを許可してください（Safari: 設定 > Safari > カメラ）。");
+        return;
+      }
+      if (e?.name === "NotFoundError") {
+        setErrorMsg("カメラが見つかりません。別の端末でお試しください。");
+        return;
+      }
+      // それ以外は後段の ZXing 側で再挑戦
+    }
 
-      // まずストリームを確保
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      video.srcObject = stream;
-
-      // 再生を明示的に試行（iOSで稀に必要）
-      try { await video.play(); } catch {}
-
-      // ZXingのデコードループを開始（デバイスID不要で videoElement 経由）
-      // decodeFromVideoDevice を使うと内部で getUserMedia を取り直すので、
-      // ここでは decodeFromVideoElement を使って今の stream をそのまま読ませる。
-      await codeReaderRef.current.decodeFromVideoElement(
+    // ② ZXing: constraints を直接渡す（最も安定）
+    try {
+      const controls = await readerRef.current.decodeFromConstraints(
+        constraintsPref,
         video,
         (result, err) => {
           if (result) {
             const text = result.getText();
-            stopAll();                 // 重複読み取り防止
+            stopScanner();
             onDetected?.(text);
           }
-          // err はデコード失敗（毎フレーム起こり得る）なので握りつぶす
         }
       );
-    } catch (e) {
-      console.error("Scanner start error:", e);
-      let msg = "カメラの起動に失敗しました。";
-      if (e?.name === "NotAllowedError") {
-        msg = "カメラの使用が許可されていません。端末の設定で本サイトのカメラ許可を有効にしてください。";
-      } else if (e?.name === "NotFoundError" || e?.message?.includes("Requested device not found")) {
-        msg = "カメラが見つかりません。別の端末でお試しください。";
-      } else if (e?.name === "OverconstrainedError") {
-        msg = "指定のカメラ設定を満たせませんでした。別のブラウザ/端末でお試しください。";
+      stopHandleRef.current = controls;
+      try { await video.play(); } catch {}
+      return; // 成功
+    } catch (e1) {
+      console.warn("decodeFromConstraints(ideal) failed:", e1);
+      if (e1?.name === "OverconstrainedError") {
+        // 画素制約を緩めて再試行
+        const relaxed = { audio: false, video: { facingMode: { ideal: "environment" } } };
+        try {
+          const controls2 = await readerRef.current.decodeFromConstraints(
+            relaxed,
+            video,
+            (result) => {
+              if (result) {
+                const text = result.getText();
+                stopScanner();
+                onDetected?.(text);
+              }
+            }
+          );
+          stopHandleRef.current = controls2;
+          try { await video.play(); } catch {}
+          return;
+        } catch (e2) {
+          console.warn("decodeFromConstraints(relaxed) failed:", e2);
+        }
       }
-      setErrorMsg(msg);
-      stopAll();
     }
-  }, [onDetected, stopAll]);
 
-  // 開閉に応じて起動/停止
+    // ③ 最後の手段：デバイスIDなしでブラウザ任せ
+    try {
+      const controls3 = await readerRef.current.decodeFromVideoDevice(
+        undefined,
+        video,
+        (result) => {
+          if (result) {
+            const text = result.getText();
+            stopScanner();
+            onDetected?.(text);
+          }
+        }
+      );
+      stopHandleRef.current = controls3;
+      try { await video.play(); } catch {}
+    } catch (e3) {
+      console.error("decodeFromVideoDevice fallback failed:", e3);
+      let msg = "カメラの起動に失敗しました。";
+      if (e3?.name === "NotAllowedError") msg = "カメラの使用が許可されていません。端末の設定で本サイトのカメラを許可してください。";
+      else if (e3?.name === "NotFoundError") msg = "カメラが見つかりません。別の端末でお試しください。";
+      else if (e3?.name === "OverconstrainedError") msg = "指定のカメラ設定を満たせませんでした。別のブラウザ/端末でお試しください。";
+      setErrorMsg(msg);
+      stopScanner();
+    }
+  }, [onDetected, stopScanner]);
+
   useEffect(() => {
     if (!open) {
-      stopAll();
+      stopScanner();
       return;
     }
     let cancelled = false;
-    (async () => {
-      if (!cancelled) await startScanner();
-    })();
-    return () => {
-      cancelled = true;
-      stopAll();
-    };
-  }, [open, startScanner, stopAll]);
+    (async () => { if (!cancelled) await startScanner(); })();
+    return () => { cancelled = true; stopScanner(); };
+  }, [open, startScanner, stopScanner]);
 
   // タブ非表示/復帰で停止/再起動（iOS/Androidの安定化）
   useEffect(() => {
     const onVis = async () => {
       if (!open) return;
       if (document.visibilityState === "hidden") {
-        stopAll();
+        stopScanner();
       } else if (document.visibilityState === "visible") {
         await startScanner();
       }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [open, startScanner, stopAll]);
+  }, [open, startScanner, stopScanner]);
 
   const handleCancel = () => {
-    stopAll();
+    stopScanner();
     onClose?.();
   };
 
@@ -185,12 +241,6 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
   return (
     <div style={overlayStyle}>
       <div style={panelStyle}>
-        <div style={headerStyle}>
-          <div style={{ fontWeight: 700 }}>バーコードをスキャン</div>
-          {/* 要望に合わせ「キャンセル」のみ */}
-          <button onClick={handleCancel} style={btnStyle}>キャンセル</button>
-        </div>
-
         <div style={videoBoxStyle}>
           <video
             ref={videoRef}
@@ -199,24 +249,27 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
             muted
             autoPlay
           />
-          {/* ガイド枠（中央を少し明るく） */}
+          {/* ガイド枠 */}
           <div
             style={{
               position: "absolute",
-              inset: 0,
+              top: "18%",
+              left: "10%",
+              width: "80%",
+              height: "64%",
+              border: "3px solid rgba(255,255,255,0.8)",
+              borderRadius: 12,
               pointerEvents: "none",
-              boxShadow: "inset 0 0 0 3px rgba(255,255,255,.28)",
             }}
           />
         </div>
-
         <div style={footerStyle}>
-          <div style={{ fontSize: 13, color: "#aaa" }}>
-            カメラをバーコードに向けると自動で読み取ります。読み取り後は自動で閉じます。
-          </div>
-          {errorMsg && (
-            <div style={{ color: "#ffb3b3", fontSize: 13 }}>{errorMsg}</div>
+          {errorMsg ? (
+            <span style={{ color: "#ffb3b3" }}>{errorMsg}</span>
+          ) : (
+            <span>バーコードにかざすと自動で読み取ります（読み取り後は自動で閉じます）。</span>
           )}
+          <button onClick={handleCancel} style={btnStyle}>キャンセル</button>
         </div>
       </div>
     </div>
