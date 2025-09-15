@@ -1,57 +1,20 @@
 // src/components/BarcodeScanner.jsx
-// 安定版: 自前 getUserMedia → <video>.srcObject → @zxing/browser
-// 依存: npm i @zxing/browser
-
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
 const OVERLAY_Z = 2147483647;
 
-const overlayStyle = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.85)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: OVERLAY_Z,
-};
+const overlayStyle = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: OVERLAY_Z };
+const panelStyle   = { width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#000" };
+const videoBoxStyle= { flex: 1, position: "relative", background: "#000", overflow: "hidden" };
+const footerStyle  = { padding: 16, borderTop: "1px solid #222", textAlign: "center", color: "#ddd", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" };
 
-const panelStyle = {
-  width: "100%",
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-  background: "#000",
-};
-
-const videoBoxStyle = {
-  flex: 1,
-  position: "relative",
-  background: "#000",
-  overflow: "hidden",
-};
-
-const footerStyle = {
-  padding: 16,
-  borderTop: "1px solid #222",
-  textAlign: "center",
-  color: "#ddd",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  flexWrap: "wrap",
-};
-
-/* ========== ユーティリティ ========== */
-
-// video が再生可能になるのを待つ（loadedmetadata 来ない個体対策でポーリング）
+// ---- helpers
 async function waitForVideoReady(video, timeoutMs = 9000) {
   const deadline = Date.now() + timeoutMs;
   return new Promise((resolve, reject) => {
     let done = false;
-    const ok = () => { if (!done) { done = true; cleanup(); resolve(); } };
+    const ok  = () => { if (!done) { done = true; cleanup(); resolve(); } };
     const err = (e) => { if (!done) { done = true; cleanup(); reject(e); } };
     const cleanup = () => {
       video.removeEventListener("loadedmetadata", ok);
@@ -69,23 +32,20 @@ async function waitForVideoReady(video, timeoutMs = 9000) {
   });
 }
 
-// 背面デバイス推定（ラベルに back/外側 等があればそれを採用）
 async function pickBackDeviceId() {
   try {
     const devs = await navigator.mediaDevices.enumerateDevices();
     const cams = devs.filter((d) => d.kind === "videoinput");
     if (!cams.length) return undefined;
     const lower = cams.map((d) => ({ id: d.deviceId, label: (d.label || "").toLowerCase() }));
-    const back = lower.find((d) => /back|rear|environment|外側|環境/.test(d.label));
-    return back?.id || cams[cams.length - 1]?.deviceId;
-  } catch {
-    return undefined;
-  }
+    // ultrawide/macro っぽいラベルがあれば優先
+    const prefer = lower.find((d) => /ultra|macro|tele|wide/.test(d.label) && /back|rear|environment|外側|環境/.test(d.label));
+    const back   = lower.find((d) => /back|rear|environment|外側|環境/.test(d.label));
+    return prefer?.id || back?.id || cams[cams.length - 1]?.deviceId;
+  } catch { return undefined; }
 }
 
-// ストリーム取得（背面固定・横長優先）
 async function getBackStream() {
-  // 1) deviceId exact（一番確実）
   const id = await pickBackDeviceId();
   if (id) {
     try {
@@ -93,71 +53,104 @@ async function getBackStream() {
         audio: false,
         video: {
           deviceId: { exact: id },
-          // 横長に寄せるヒント（無視されてもOK）
-          aspectRatio: { ideal: 16 / 9 },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          width: { ideal: 1280 }, height: { ideal: 720 }, aspectRatio: { ideal: 16 / 9 },
+          // ヒント（対応端末のみ）
+          focusMode: "continuous"
         },
       });
-    } catch { /* fallthrough */ }
+    } catch {}
   }
-  // 2) facingMode exact → 3) ideal
   try {
     return await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: {
         facingMode: { exact: "environment" },
-        aspectRatio: { ideal: 16 / 9 },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        width: { ideal: 1280 }, height: { ideal: 720 }, aspectRatio: { ideal: 16 / 9 },
+        focusMode: "continuous"
       },
     });
-  } catch { /* fallthrough */ }
+  } catch {}
   return await navigator.mediaDevices.getUserMedia({
     audio: false,
     video: {
       facingMode: { ideal: "environment" },
-      aspectRatio: { ideal: 16 / 9 },
-      width: { ideal: 1280 },
-      height: { ideal: 720 },
+      width: { ideal: 1280 }, height: { ideal: 720 }, aspectRatio: { ideal: 16 / 9 },
+      focusMode: "continuous"
     },
   });
 }
 
-// HTTPS 必須（localhost は例外）
 function assertHTTPS() {
   const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
   if (window.location.protocol !== "https:" && !isLocal) throw new Error("NEED_HTTPS");
 }
 
-// 可能なら AF/AE/WB を連続に（未対応は握り潰す）
-async function tuneTrack(track) {
-  try {
-    const caps = track.getCapabilities?.() || {};
-    const advanced = [];
-    if (caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) {
-      advanced.push({ focusMode: "continuous" });
-    }
-    if (caps.exposureMode && Array.isArray(caps.exposureMode) && caps.exposureMode.includes("continuous")) {
-      advanced.push({ exposureMode: "continuous" });
-    }
-    if (caps.whiteBalanceMode && Array.isArray(caps.whiteBalanceMode) && caps.whiteBalanceMode.includes("continuous")) {
-      advanced.push({ whiteBalanceMode: "continuous" });
-    }
-    // 端末によっては zoom を少し入れるとピントが合いやすいことがある
-    // if (caps.zoom) advanced.push({ zoom: Math.min(caps.zoom.max, Math.max(caps.zoom.min, (caps.zoom.min + caps.zoom.max) / 2)) });
-    if (advanced.length) await track.applyConstraints({ advanced });
-  } catch {
-    /* ignore */
+// ---- フォーカス強化：可能なら連続AF/AE/WB + 近距離側に寄せる + 少しズーム
+async function tuneForMacro(track, tapPoint /* 0..1 */ = { x: 0.5, y: 0.5 }, preferZoom = 1.5) {
+  if (!track?.getCapabilities) return;
+  const caps = track.getCapabilities();
+
+  const adv = [];
+
+  // 連続AF/AE/WB
+  if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous"))       adv.push({ focusMode: "continuous" });
+  if (Array.isArray(caps.exposureMode) && caps.exposureMode.includes("continuous")) adv.push({ exposureMode: "continuous" });
+  if (Array.isArray(caps.whiteBalanceMode) && caps.whiteBalanceMode.includes("continuous")) adv.push({ whiteBalanceMode: "continuous" });
+
+  // タップ位置（初期は中央）にAF/AEのポイントを寄せる
+  if (caps.pointsOfInterest) adv.push({ pointsOfInterest: [tapPoint] });
+
+  // まず連続系を適用
+  if (adv.length) { try { await track.applyConstraints({ advanced: adv }); } catch {} }
+
+  // 端末が manual フォーカス距離を持っていたら「近距離側」へ一旦寄せてから continuous へ戻す
+  // focusDistance は “0が無限遠、値が大きいほど近距離” の実装が多い
+  if (caps.focusDistance && typeof caps.focusDistance.max === "number" && Array.isArray(caps.focusMode) && caps.focusMode.includes("manual")) {
+    const near = caps.focusDistance.max; // 近距離側
+    try {
+      await track.applyConstraints({ advanced: [{ focusMode: "manual", focusDistance: near }] });
+      // ほんの少し待ってから continuous に戻す（ピント位置を起点に追従させる狙い）
+      setTimeout(async () => {
+        try { await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }); } catch {}
+      }, 120);
+    } catch {}
+  }
+
+  // 近接は少しズームを入れると読み取りが安定することが多い（デジタルでもOK）
+  if (caps.zoom) {
+    const midZoom = Math.min(caps.zoom.max, Math.max(caps.zoom.min || 1, preferZoom));
+    try { await track.applyConstraints({ advanced: [{ zoom: midZoom }] }); } catch {}
   }
 }
 
-/* ========== コンポーネント本体 ========== */
+// 画面タップで再フォーカス（非対応端末は無視）
+async function tapToFocus(track, el, evt) {
+  if (!track?.getCapabilities || !el) return;
+  const caps = track.getCapabilities();
+  const rect = el.getBoundingClientRect();
+  const x = (evt.clientX - rect.left) / rect.width;
+  const y = (evt.clientY - rect.top) / rect.height;
+  const adv = [];
 
+  if (caps.pointsOfInterest) adv.push({ pointsOfInterest: [{ x: Math.min(Math.max(x, 0), 1), y: Math.min(Math.max(y, 0), 1) }] });
+  if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) adv.push({ focusMode: "continuous" });
+  if (adv.length) { try { await track.applyConstraints({ advanced: adv }); } catch {} }
+
+  // manual があれば近距離側へ軽く寄せ → continuous (端末依存)
+  if (caps.focusDistance && Array.isArray(caps.focusMode) && caps.focusMode.includes("manual")) {
+    try {
+      await track.applyConstraints({ advanced: [{ focusMode: "manual", focusDistance: caps.focusDistance.max }] });
+      setTimeout(async () => { try { await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }); } catch {}; }, 100);
+    } catch {}
+  }
+}
+
+/* ========= Component ========= */
 export default function BarcodeScanner({ open, onClose, onDetected }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const readerRef = useRef(null);
+  const keepAFRef = useRef(null);
 
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -170,6 +163,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
       if (v) { v.pause?.(); v.srcObject = null; }
     } catch {}
     streamRef.current = null;
+    if (keepAFRef.current) { clearInterval(keepAFRef.current); keepAFRef.current = null; }
   }, []);
 
   const start = useCallback(async () => {
@@ -179,35 +173,33 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     const video = videoRef.current;
     if (!video) throw new Error("NO_VIDEO");
 
-    // Safari 必須プロパティ
     video.playsInline = true;
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
-    video.muted = true; // モバイルの自動再生対策
+    video.muted = true;
     video.autoplay = true;
 
-    // ① 背面カメラ取得（横長ヒント付き）
     const stream = await getBackStream();
     streamRef.current = stream;
-
-    // ② srcObject セット（load() は呼ばない）
     video.srcObject = stream;
 
-    // ③ メタデータ待ち → play
     await waitForVideoReady(video, 9000);
     try { await video.play(); } catch {}
 
-    // ④ 可能なら AF/AE/WB を連続に
     const track = stream.getVideoTracks?.()[0];
-    if (track) await tuneTrack(track);
+    await tuneForMacro(track);
 
-    if (!(video.videoWidth > 0 && video.videoHeight > 0)) {
-      throw new Error("VIDEO_DIM_ZERO");
-    }
+    if (!(video.videoWidth > 0 && video.videoHeight > 0)) throw new Error("VIDEO_DIM_ZERO");
 
-    // ⑤ ZXing 連続読取
     if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
     else try { readerRef.current.reset(); } catch {}
+
+    // AF維持のため、定期的に continuous を再適用（端末依存）
+    if (track?.getCapabilities) {
+      keepAFRef.current = setInterval(() => {
+        track.applyConstraints?.({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+      }, 1500);
+    }
 
     await readerRef.current.decodeFromStream(stream, video, (result) => {
       if (result) {
@@ -218,14 +210,13 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     });
   }, [onDetected, stopAll]);
 
-  // open のオン/オフで開始/停止（→ 開いたら即起動）
+  // open で自動起動
   useEffect(() => {
     if (!open) { stopAll(); return; }
     let cancelled = false;
     (async () => {
-      try {
-        await start();
-      } catch (e) {
+      try { await start(); }
+      catch (e) {
         if (cancelled) return;
         console.error("[camera start error]", e);
         const name = e?.name || "Error";
@@ -251,15 +242,12 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     return () => { cancelled = true; stopAll(); };
   }, [open, start, stopAll]);
 
-  // タブ非表示で止める（復帰時は再起動）
+  // 非表示→表示で再起動
   useEffect(() => {
     const onVis = () => {
       if (!open) return;
       if (document.visibilityState === "hidden") { stopAll(); }
-      if (document.visibilityState === "visible") {
-        // 復帰したら再起動（エラーは上のハンドラで表示）
-        start().catch(() => {});
-      }
+      if (document.visibilityState === "visible") { start().catch(() => {}); }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
@@ -275,20 +263,21 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
   return (
     <div style={overlayStyle}>
       <div style={panelStyle}>
-        <div style={videoBoxStyle}>
+        <div
+          style={videoBoxStyle}
+          onPointerDown={(e) => {
+            const track = streamRef.current?.getVideoTracks?.()[0];
+            tapToFocus(track, e.currentTarget, e);
+          }}
+        >
           <video
             ref={videoRef}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",       // 画面いっぱい
-              backgroundColor: "black",
-            }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", backgroundColor: "black" }}
             autoPlay
             playsInline
             muted
           />
-          {/* 横長ガイド枠（バーコード向け 3:1） */}
+          {/* 横長ガイド（3:1） */}
           <div
             style={{
               position: "absolute",
@@ -296,35 +285,23 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
               top: "45%",
               transform: "translate(-50%, -50%)",
               width: "88%",
-              aspectRatio: "3 / 1",     // 横長
+              aspectRatio: "3 / 1",
               border: "3px solid rgba(255,255,255,0.9)",
               borderRadius: 10,
               pointerEvents: "none",
-              boxShadow: "0 0 0 200vmax rgba(0,0,0,0.25) inset", // 周囲をうっすら暗く
+              boxShadow: "0 0 0 200vmax rgba(0,0,0,0.25) inset",
             }}
           />
           {/* HUD */}
-          <div style={{ position: "absolute", right: 8, top: 8, background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 12, padding: "4px 8px", borderRadius: 8 }}>
-            {hud}
-          </div>
+          <div style={{ position: "absolute", right: 8, top: 8, background: "rgba(0,0,0,0.5)", color: "#fff", fontSize: 12, padding: "4px 8px", borderRadius: 8 }}>{hud}</div>
         </div>
-
         <div style={footerStyle}>
           <span style={{ color: errorMsg ? "#ffb3b3" : "#ddd" }}>
-            {errorMsg || "バーコードにかざすと自動で読み取ります（読み取り後は自動で閉じます）。"}
+            {errorMsg || "バーコードにかざすと自動で読み取ります。ピントが外れたら画面をタップしてください。"}
           </span>
           <button
             onClick={handleCancel}
-            style={{
-              background: "#fff",
-              color: "#000",
-              border: "none",
-              padding: "12px 24px",
-              fontSize: "16px",
-              borderRadius: 10,
-              cursor: "pointer",
-              fontWeight: 700,
-            }}
+            style={{ background: "#fff", color: "#000", border: "none", padding: "12px 24px", fontSize: "16px", borderRadius: 10, cursor: "pointer", fontWeight: 700 }}
           >
             キャンセル
           </button>
