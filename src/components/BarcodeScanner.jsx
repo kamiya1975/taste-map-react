@@ -1,36 +1,27 @@
 // src/components/BarcodeScanner.jsx
-// 完全コピペで置き換え/新規追加してください。
-// 依存: @zxing/browser
-//   インストール未済なら: npm i @zxing/browser
-//
-// 主な改善点:
-// - iOS Safari 対応 (playsInline, muted, user-gesture 再生対策)
-// - 背面カメラ優先選択 + カメラ切替
-// - トーチ(ライト)ON/OFF (対応端末のみ)
-// - 画面非表示/タブ切替時に一時停止、戻ったら再開
-// - 閉じる時は MediaStream/ZXing を必ず停止・解放
-// - エラーハンドリングとユーザ向け案内
-
+// 依存: npm i @zxing/browser
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
+const OVERLAY_Z = 2147483647; // どのUIよりも最前面
 const overlayStyle = {
   position: "fixed",
   inset: 0,
-  background: "rgba(0,0,0,0.5)",
+  background: "rgba(0,0,0,0.55)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  zIndex: 1000,
+  zIndex: OVERLAY_Z,
+  pointerEvents: "auto",
 };
 
 const panelStyle = {
-  width: "min(680px, 92vw)",
+  width: "min(720px, 94vw)",
   background: "#111",
   color: "#fff",
   borderRadius: 12,
   overflow: "hidden",
-  boxShadow: "0 12px 28px rgba(0,0,0,.5)",
+  boxShadow: "0 16px 36px rgba(0,0,0,.65)",
   display: "flex",
   flexDirection: "column",
 };
@@ -57,172 +48,136 @@ const footerStyle = {
   padding: 12,
   borderTop: "1px solid #222",
   flexWrap: "wrap",
+  alignItems: "center",
+};
+
+const btnStyle = {
+  background: "#222",
+  color: "#fff",
+  border: "1px solid #333",
+  borderRadius: 10,
+  padding: "10px 16px",
+  cursor: "pointer",
+  fontWeight: 600,
 };
 
 export default function BarcodeScanner({ open, onClose, onDetected }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const codeReaderRef = useRef(null);
-  const [devices, setDevices] = useState([]);
-  const [deviceId, setDeviceId] = useState(null);
-  const [torchOn, setTorchOn] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const stopStream = useCallback(() => {
+  const stopAll = useCallback(() => {
     try {
-      if (codeReaderRef.current) {
-        codeReaderRef.current.reset();
-      }
+      codeReaderRef.current?.reset();
     } catch {}
     try {
       const s = streamRef.current;
-      if (s) {
-        s.getTracks().forEach((t) => t.stop());
-      }
+      if (s) s.getTracks().forEach((t) => t.stop());
     } catch {}
     streamRef.current = null;
   }, []);
 
-  const pickBackCamera = useCallback((list) => {
-    if (!Array.isArray(list) || list.length === 0) return null;
-    // "back", "rear" などを優先。なければ最後(背面であることが多い)
-    const lower = list.map((d) => ({
-      id: d.deviceId,
-      label: (d.label || "").toLowerCase(),
-    }));
-    const back = lower.find((d) => /back|rear|環境|外側/.test(d.label));
-    return back?.id || list[list.length - 1].deviceId;
-  }, []);
-
-  const applyTorch = useCallback(async (on) => {
-    try {
-      const s = streamRef.current;
-      if (!s) return false;
-      const track = s.getVideoTracks?.()[0];
-      if (!track) return false;
-      const caps = track.getCapabilities?.();
-      if (!caps || !caps.torch) return false;
-      await track.applyConstraints({ advanced: [{ torch: !!on }] });
-      setTorchOn(!!on);
-      return true;
-    } catch {
-      return false;
-    }
-  }, []);
-
-  const startScanner = useCallback(async (targetDeviceId = null) => {
+  const startScanner = useCallback(async () => {
     setErrorMsg("");
 
-    // iOS Safari 再生対策
     const video = videoRef.current;
     if (!video) return;
+
+    // iOS/Android 共通の自動再生対策
     video.setAttribute("playsinline", "true");
     video.setAttribute("webkit-playsinline", "true");
-    video.muted = true;
+    video.muted = true; // モバイルは無音のみ自動再生可
     video.autoplay = true;
 
     // ZXing 準備
-    if (!codeReaderRef.current) {
-      codeReaderRef.current = new BrowserMultiFormatReader();
-    } else {
-      codeReaderRef.current.reset();
-    }
+    if (!codeReaderRef.current) codeReaderRef.current = new BrowserMultiFormatReader();
+    else codeReaderRef.current.reset();
 
     try {
-      // デバイス列挙
-      const cams = await BrowserMultiFormatReader.listVideoInputDevices();
-      setDevices(cams);
-      const chosen = targetDeviceId || pickBackCamera(cams) || cams[0]?.deviceId;
-      setDeviceId(chosen || null);
+      // 背面カメラを優先するヒント（Chrome/Android, iOS Safari）
+      // decodeFromVideoDevice(null, ...) にするとZXing側に委譲できるが、
+      // 確率を上げるため ideal: environment の MediaTrackConstraints を付与する。
+      // ZXing APIでは直接constraintsを渡せないため、先に手動でgetUserMediaしてから video.srcObject に流し込む。
+      const constraints = {
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" }, // 背面優先（iOS/Android）
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      };
 
-      // ZXing の decodeFromVideoDevice は内部で getUserMedia を呼ぶ
-      const controls = await codeReaderRef.current.decodeFromVideoDevice(
-        chosen,
+      // まずストリームを確保
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      video.srcObject = stream;
+
+      // 再生を明示的に試行（iOSで稀に必要）
+      try { await video.play(); } catch {}
+
+      // ZXingのデコードループを開始（デバイスID不要で videoElement 経由）
+      // decodeFromVideoDevice を使うと内部で getUserMedia を取り直すので、
+      // ここでは decodeFromVideoElement を使って今の stream をそのまま読ませる。
+      await codeReaderRef.current.decodeFromVideoElement(
         video,
         (result, err) => {
           if (result) {
             const text = result.getText();
-            // 重複読み取り抑制: 即時停止
-            stopStream();
+            stopAll();                 // 重複読み取り防止
             onDetected?.(text);
           }
+          // err はデコード失敗（毎フレーム起こり得る）なので握りつぶす
         }
       );
-
-      // decodeFromVideoDevice の戻り値から MediaStream を取得できないため、
-      // video.srcObject から参照を保持しておく
-      const s = video.srcObject;
-      if (s instanceof MediaStream) {
-        streamRef.current = s;
-      }
-
-      // iOS で稀に play が同期されないことがあるので明示的に呼ぶ
-      try { await video.play(); } catch {}
-
-      return () => {
-        try { controls?.stop(); } catch {}
-      };
     } catch (e) {
       console.error("Scanner start error:", e);
       let msg = "カメラの起動に失敗しました。";
-      if (e && e.name === "NotAllowedError") {
-        msg = "カメラの使用が許可されていません。設定で本サイトのカメラ許可を有効にしてください。";
-      } else if (e && e.name === "NotFoundError") {
+      if (e?.name === "NotAllowedError") {
+        msg = "カメラの使用が許可されていません。端末の設定で本サイトのカメラ許可を有効にしてください。";
+      } else if (e?.name === "NotFoundError" || e?.message?.includes("Requested device not found")) {
         msg = "カメラが見つかりません。別の端末でお試しください。";
+      } else if (e?.name === "OverconstrainedError") {
+        msg = "指定のカメラ設定を満たせませんでした。別のブラウザ/端末でお試しください。";
       }
       setErrorMsg(msg);
-      stopStream();
+      stopAll();
     }
-  }, [onDetected, pickBackCamera, stopStream]);
+  }, [onDetected, stopAll]);
 
   // 開閉に応じて起動/停止
   useEffect(() => {
     if (!open) {
-      stopStream();
+      stopAll();
       return;
     }
-    let cleanup = null;
+    let cancelled = false;
     (async () => {
-      cleanup = await startScanner();
+      if (!cancelled) await startScanner();
     })();
     return () => {
-      try { cleanup?.(); } catch {}
-      stopStream();
+      cancelled = true;
+      stopAll();
     };
-  }, [open, startScanner, stopStream]);
+  }, [open, startScanner, stopAll]);
 
-  // タブ非表示/復帰で停止/再開 (iOSのバックグラウンド挙動対策)
+  // タブ非表示/復帰で停止/再起動（iOS/Androidの安定化）
   useEffect(() => {
     const onVis = async () => {
       if (!open) return;
       if (document.visibilityState === "hidden") {
-        stopStream();
+        stopAll();
       } else if (document.visibilityState === "visible") {
-        await startScanner(deviceId);
+        await startScanner();
       }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [open, deviceId, startScanner, stopStream]);
+  }, [open, startScanner, stopAll]);
 
-  const handleClose = () => {
-    stopStream();
+  const handleCancel = () => {
+    stopAll();
     onClose?.();
-  };
-
-  const handleSwitchCamera = async () => {
-    if (!devices.length) return;
-    const idx = devices.findIndex((d) => d.deviceId === deviceId);
-    const next = devices[(idx + 1) % devices.length]?.deviceId;
-    setDeviceId(next);
-    await startScanner(next);
-  };
-
-  const handleTorchToggle = async () => {
-    const ok = await applyTorch(!torchOn);
-    if (!ok) {
-      alert("この端末/ブラウザはライト制御に対応していません。");
-    }
   };
 
   if (!open) return null;
@@ -232,12 +187,10 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
       <div style={panelStyle}>
         <div style={headerStyle}>
           <div style={{ fontWeight: 700 }}>バーコードをスキャン</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={handleSwitchCamera} style={btnStyle}>カメラ切替</button>
-            <button onClick={handleTorchToggle} style={btnStyle}>{torchOn ? "ライトOFF" : "ライトON"}</button>
-            <button onClick={handleClose} style={btnStyle}>閉じる</button>
-          </div>
+          {/* 要望に合わせ「キャンセル」のみ */}
+          <button onClick={handleCancel} style={btnStyle}>キャンセル</button>
         </div>
+
         <div style={videoBoxStyle}>
           <video
             ref={videoRef}
@@ -246,17 +199,20 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
             muted
             autoPlay
           />
-          {/* 簡易ガイド枠 */}
-          <div style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            boxShadow: "inset 0 0 0 3px rgba(255,255,255,.25)",
-          }}/>
+          {/* ガイド枠（中央を少し明るく） */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              boxShadow: "inset 0 0 0 3px rgba(255,255,255,.28)",
+            }}
+          />
         </div>
+
         <div style={footerStyle}>
           <div style={{ fontSize: 13, color: "#aaa" }}>
-            JANコードが読み取れない場合は、照明を明るくし、枠内でバーコードを水平に合わせてください。
+            カメラをバーコードに向けると自動で読み取ります。読み取り後は自動で閉じます。
           </div>
           {errorMsg && (
             <div style={{ color: "#ffb3b3", fontSize: 13 }}>{errorMsg}</div>
@@ -266,12 +222,3 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     </div>
   );
 }
-
-const btnStyle = {
-  background: "#222",
-  color: "#fff",
-  border: "1px solid #333",
-  borderRadius: 8,
-  padding: "6px 10px",
-  cursor: "pointer",
-};
