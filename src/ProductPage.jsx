@@ -15,7 +15,6 @@ const getJANFromURL = () => {
   }
 };
 
-// 親への postMessage（安全ラッパ）
 const postToParent = (payload) => {
   try { window.parent?.postMessage(payload, "*"); } catch {}
 };
@@ -35,7 +34,6 @@ const clearScanHints = (jan) => {
       sessionStorage.removeItem(k);
     });
   } catch {}
-  // ついでに「このJANを起点に開いている」という印も更新
   try {
     localStorage.setItem(
       "product_page_closed",
@@ -44,11 +42,10 @@ const clearScanHints = (jan) => {
   } catch {}
 };
 
-// 親へ「閉じたよ。JANはクリアしてね」を多経路で通知
+// 親へ「閉じたよ。JANはクリアしてね」を多経路で通知（アンマウント時）
 const notifyParentClosed = (jan) => {
   postToParent({ type: "PRODUCT_CLOSED", jan, clear: true });
   clearScanHints(jan);
-  // BroadcastChannel（対応ブラウザ）
   try {
     const bc = new BroadcastChannel("product_bridge");
     bc.postMessage({ type: "PRODUCT_CLOSED", jan, clear: true, at: Date.now() });
@@ -57,7 +54,7 @@ const notifyParentClosed = (jan) => {
 };
 
 /** =========================
- *  ハートボタン（お気に入り）
+ *  お気に入りハート
  * ========================= */
 function HeartButton({ jan, size = 22 }) {
   const [fav, setFav] = useState(false);
@@ -118,7 +115,7 @@ function HeartButton({ jan, size = 22 }) {
 }
 
 /** =========================
- *  評価コンポーネント（◎）
+ *  評価（◎）
  * ========================= */
 const CircleRating = ({ value, currentRating, onClick }) => {
   const outerSize = 40;
@@ -168,12 +165,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // 親が外枠（Drawer/iframe等）を持つ＝埋め込みなら、ProductPage内の「閉じる」は出さない
-  const EMBEDDED = useMemo(() => {
-    try { return window.parent && window.parent !== window; } catch { return false; }
-  }, []);
-
-  // マウント時：OPEN通知、アンマウント時：CLOSED通知（親で selectedJAN を確実に null 化してもらう）
+  // マウント→OPEN通知、アンマウント→CLOSED通知（親で selectedJAN を null に）
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan });
     const onBeforeUnload = () => notifyParentClosed(jan);
@@ -184,7 +176,7 @@ export default function ProductPage() {
     };
   }, [jan]);
 
-  // 商品・評価のロード（お気に入り店舗の在庫から読み取り前提：データは既存の umapData を参照）
+  // 商品・評価ロード（お気に入り店舗の在庫から読み取り前提：umapData 参照）
   useEffect(() => {
     try {
       const data = JSON.parse(localStorage.getItem("umapData") || "[]");
@@ -259,24 +251,10 @@ export default function ProductPage() {
     postToParent({ type: "RATING_UPDATED", jan, payload });
   };
 
-  // 「閉じる」ボタン（ProductPage 側）はナビゲーションをしない：親にだけ閉鎖とクリアを要求
-  const onCloseClick = () => {
-    notifyParentClosed(jan);                         // 親に「JANクリアして閉じて」
-    postToParent({ type: "PRODUCT_CLOSE", jan, clear: true });
-    // ★ ここで history.back() や location を操作しない（＝「近くの店舗から探す」に飛ぶ問題を回避）
-  };
-
   if (!product) {
     return (
       <div style={{ padding: 16 }}>
-        {/* 埋め込み時はこの「閉じる」を出さない */}
-        {!EMBEDDED && (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-            <button onClick={onCloseClick} style={{ border: "1px solid #ddd", background: "#fff", padding: "6px 10px", borderRadius: 8, cursor: "pointer" }}>
-              閉じる
-            </button>
-          </div>
-        )}
+        {/* 内蔵の「閉じる」UIは置かない（親が外枠で閉じる） */}
         商品が見つかりませんでした。
       </div>
     );
@@ -295,37 +273,9 @@ export default function ProductPage() {
         position: "relative",
       }}
     >
-      {/* ヘッダー（閉じる）…埋め込み時は非表示 → 親側の閉じるだけにする */}
-      {!EMBEDDED && (
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingBottom: 8,
-            background: "#fff",
-          }}
-        >
-          <h3 style={{ margin: 0, fontSize: 18 }}>商品ページ</h3>
-          <button
-            onClick={onCloseClick}
-            style={{
-              border: "1px solid #ddd",
-              background: "#fff",
-              padding: "6px 10px",
-              borderRadius: 8,
-              cursor: "pointer",
-            }}
-          >
-            閉じる
-          </button>
-        </div>
-      )}
+      {/* 内蔵の「閉じる」UIは出さない（＝重複を根絶） */}
 
-      {/* 左上に固定の♡（iframe内でも見やすい位置） */}
+      {/* 左上に固定の♡ */}
       <div
         style={{
           position: "fixed",
