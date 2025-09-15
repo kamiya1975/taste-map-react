@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 /** =========================
  *  ユーティリティ
@@ -155,14 +155,15 @@ export default function ProductPage() {
   useEffect(() => {
     // マウント時：OPENを通知（親側で state を同期）
     postToParent({ type: "PRODUCT_OPENED", jan });
+
     // beforeunload / アンマウント時に CLOSED を通知（親で selectedJAN を null に）
     const onBeforeUnload = () => notifyParentClosed(jan);
     window.addEventListener("beforeunload", onBeforeUnload);
+
     return () => {
       notifyParentClosed(jan);
-      window.removeEventListener("beforeunload", onBeforeunload);
+      window.removeEventListener("beforeunload", onBeforeUnload); // ← ここを修正
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jan]);
 
   // /products/:JAN から商品・評価を読込
@@ -412,6 +413,15 @@ export default function ProductPage() {
 
       {/* 説明ダミー */}
       <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
         昨今では、世界標準の飲み物と言えるまでになっています。
