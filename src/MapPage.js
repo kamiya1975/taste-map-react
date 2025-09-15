@@ -69,9 +69,10 @@ const centerGradient = (val) => {
 };
 
 function MapPage() {
+  const location = useLocation();
+
+  // スキャナの開閉（都度起動・都度破棄）
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const location = useLocation(); // （抜粋に無い場合は追加）
-  };
 
   // ====== ビュー制御
   const [is3D, setIs3D] = useState(false);
@@ -1491,8 +1492,10 @@ function MapPage() {
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
           const jan = String(codeText).replace(/\D/g, "");
-          const hit = data.find((d) => String(d.JAN) === jan);
+           // 都度読み：まず閉じる
           setIsScannerOpen(false);
+
+          const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
             const tx = hit.BodyAxis;
             const ty = is3D ? hit.SweetAxis : -hit.SweetAxis;
