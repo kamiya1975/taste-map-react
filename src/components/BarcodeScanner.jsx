@@ -1,13 +1,12 @@
 // src/components/BarcodeScanner.jsx
-// 安定ベース版：Detector か ZXing のどちらか一方のみを使用（同時併用しない）
-// 見た目は枠ガイド＋中央テキスト＋「再読込み」ボタンを維持
-// 変更点は最小限：stopAll のクリーンアップ強化のみ（スマホカメラを確実に停止）
-// ※ 2回目起動問題の疑わしい要因（多重エンジン、visibility系の外部イベント、videoノード入替）は撤去
+// Safari専用：カメラ解放の強制ワークアラウンドを追加
+// PWAでは従来どおり、Safari(ブラウザ)のみ強化クリーンアップを適用
+// UIは現行そのまま（枠・中央テキスト・再読込みボタン）
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
-const REREAD_LS_KEY = "tm_reread_until"; // 再読込みウィンドウ(ms)を sessionStorage に
+const REREAD_LS_KEY = "tm_reread_until";
 const OVERLAY_Z = 2147483647;
 const overlayStyle = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: OVERLAY_Z };
 const panelStyle   = { width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#000" };
@@ -19,8 +18,20 @@ const hasBD = () => typeof window !== "undefined" && "BarcodeDetector" in window
 const norm  = (s) => String(s ?? "").replace(/\D/g, "");
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-/* ===== 抑止：過去JANの勝手な再出現を防止 ===== */
-const GLOBAL_SUPPRESS = new Map(); // code -> { at, kind }
+/* ===== Safari 判定 ===== */
+const isSafari = () => {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  const vendor = navigator.vendor || "";
+  // iOS Safari / macOS Safari（Chrome/Firefoxは除外）
+  const isIOS = /iP(hone|od|ad)/.test(ua) || /iOS/.test(ua);
+  const isSafariUA = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS|Edg|OPR/.test(ua);
+  const isAppleVendor = /Apple/i.test(vendor);
+  return isSafariUA && isAppleVendor || isIOS && isSafariUA;
+};
+
+/* ===== 抑止 ===== */
+const GLOBAL_SUPPRESS = new Map();
 const LS_KEY = "tastemap_barcode_suppress";
 function readLS()  { try { return JSON.parse(sessionStorage.getItem(LS_KEY) || "{}"); } catch { return {}; } }
 function writeLS(o){ try { sessionStorage.setItem(LS_KEY, JSON.stringify(o)); } catch {} }
@@ -82,7 +93,7 @@ async function getStream() {
   return await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ ideal:"environment" }, ...base } });
 }
 
-/* ===== ROI（簡易ハッシュ：二段確認用に動き量を測る） ===== */
+/* ===== ROI（簡易ハッシュ） ===== */
 function ensureCanvas(ref) {
   if (!ref.current) { const c = document.createElement("canvas"); c.width = 960; c.height = 320; ref.current = c; }
   return ref.current.getContext("2d");
@@ -100,11 +111,60 @@ function sampleROI(video, canvasRef) {
   return { hash: sum };
 }
 
+/* ===== Safari用・強制クリーンアップ ===== */
+async function safariHardStop(videoEl, stream, extraTracks = []) {
+  // 1) すべてのトラックを確実に停止
+  try {
+    const stopTrack = (t) => { try { t.enabled = false; } catch{} try { t.stop(); } catch{} };
+    (stream?.getTracks?.() || []).forEach(stopTrack);
+    extraTracks.forEach(stopTrack);
+    (videoEl?.srcObject?.getTracks?.() || []).forEach(stopTrack);
+  } catch {}
+
+  // 2) video を空の MediaStream に差し替え → load → null → load
+  try {
+    if (videoEl) {
+      try { videoEl.pause?.(); } catch {}
+      try { videoEl.srcObject = new MediaStream(); } catch {}
+      try { videoEl.load?.(); } catch {}
+      await sleep(50);
+      try { videoEl.srcObject = null; } catch {}
+      try { videoEl.removeAttribute?.("srcObject"); } catch {}
+      try { videoEl.removeAttribute?.("src"); } catch {}
+      try { videoEl.src = ""; } catch {}
+      try { videoEl.load?.(); } catch {}
+    }
+  } catch {}
+
+  // 3) readyState=ended を最大400msまで待つ（残留回避）
+  const deadline = Date.now() + 400;
+  while (Date.now() < deadline) {
+    const anyAlive =
+      (stream?.getTracks?.() || []).some(t => t.readyState !== "ended") ||
+      (videoEl?.srcObject?.getTracks?.() || []).some(t => t.readyState !== "ended") ||
+      extraTracks.some(t => t.readyState !== "ended");
+    if (!anyAlive) break;
+    await sleep(40);
+  }
+
+  // 4) 念押し：もう一度完全解放
+  try {
+    if (videoEl) {
+      try { videoEl.pause?.(); } catch {}
+      try { videoEl.srcObject = null; } catch {}
+      try { videoEl.removeAttribute?.("srcObject"); } catch {}
+      try { videoEl.removeAttribute?.("src"); } catch {}
+      try { videoEl.src = ""; } catch {}
+      try { videoEl.load?.(); } catch {}
+    }
+  } catch {}
+}
+
 /* ========================================================= */
 export default function BarcodeScanner({
   open,
   onClose,
-  onDetected,                    // (val) => boolean | {ok:boolean} | Promise<boolean|{ok:boolean}>
+  onDetected,
   // 二段確認
   confirmMs = 650,
   minRoiDiff = 0.0022,
@@ -132,65 +192,74 @@ export default function BarcodeScanner({
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const trackRef  = useRef(null);
-  const readerRef = useRef(null);   // ZXing（Detector非対応端末のみ使用）
+  const readerRef = useRef(null);   // ZXing（Detector非対応端末のみ）
 
   const rafRef    = useRef(0);
   const prevHashRef = useRef(null);
-  const motionBufRef = useRef([]);         // 直近ROI差分
-  const lastCommitHashRef = useRef(null);  // 直近コミット時のROIハッシュ
+  const motionBufRef = useRef([]);
+  const lastCommitHashRef = useRef(null);
   const sessionAtRef = useRef(0);
   const prevSessionFirstRef = useRef({ code: null });
   const lastHitRef = useRef({ code: null, at: 0 });
-  const notifiedRef = useRef(new Map());   // 未採用抑止
+  const notifiedRef = useRef(new Map());
 
-  const candRef = useRef(null); // { code, t0, hash0 }
+  const candRef = useRef(null);
   const committingRef = useRef(false);
   const pausedScanRef = useRef(false);
   const aliveRef      = useRef(false);
 
-  // 再読込み（同JAN再確定を一時許可）
   const rereadUntilRef = useRef(0);
   const isRereadActive = () => Date.now() < rereadUntilRef.current;
 
   const [errorMsg, setErrorMsg] = useState("");
   const [rereadPressed, setRereadPressed] = useState(false);
 
-  /* ==== 超重要：クリーンアップ（最小限・確実） ==== */
-  const stopAll = useCallback(() => {
+  /* ==== クリーンアップ ==== */
+  const stopAll = useCallback(async () => {
     aliveRef.current = false;
+    // ZXingは先に完全停止
     try { readerRef.current?.reset?.(); } catch {}
     readerRef.current = null;
 
     try { cancelAnimationFrame(rafRef.current || 0); } catch {}
     rafRef.current = 0;
 
-    // すべてのトラックを停止（スマホ側のカメラを確実に閉じる）
-    try { (videoRef.current?.srcObject || streamRef.current)?.getTracks?.().forEach(t => { try { t.enabled = false; } catch {}; try { t.stop(); } catch {} }); } catch {}
-    try { trackRef.current?.stop?.(); } catch {}
-
-    // video 要素から流れを完全に外す
     const v = videoRef.current;
-    if (v) {
-      try { v.pause?.(); } catch {}
-      try { v.srcObject = null; } catch {}
-      try { v.removeAttribute("srcObject"); } catch {}
-      try { v.removeAttribute("src"); } catch {}
-      try { v.src = ""; } catch {}
-      try { v.load?.(); } catch {}
+    const s = v?.srcObject || streamRef.current;
+    const extra = trackRef.current ? [trackRef.current] : [];
+
+    // Safari は専用ルートで厳重に解放
+    if (isSafari()) {
+      await safariHardStop(v, s, extra);
+    } else {
+      try { (s?.getTracks?.() || []).forEach(t => { try { t.enabled=false; } catch{} try { t.stop(); } catch{} }); } catch {}
+      try { trackRef.current?.stop?.(); } catch {}
+      if (v) {
+        try { v.pause?.(); } catch {}
+        try { v.srcObject = null; } catch {}
+        try { v.removeAttribute("srcObject"); } catch {}
+        try { v.removeAttribute("src"); } catch {}
+        try { v.src = ""; } catch {}
+        try { v.load?.(); } catch {}
+      }
     }
 
-    streamRef.current=null; trackRef.current=null;
-    prevHashRef.current=null; candRef.current=null;
-    committingRef.current=false; pausedScanRef.current=false;
+    streamRef.current=null;
+    trackRef.current=null;
+    prevHashRef.current=null;
+    candRef.current=null;
+    committingRef.current=false;
+    pausedScanRef.current=false;
     motionBufRef.current = [];
+    await sleep(60); // ほんの少し待機（再起動安定化）
   }, []);
 
   const start = useCallback(async () => {
     setErrorMsg("");
     assertHTTPS();
 
-    // 以前のセッション残りを念のため止める（重複起動防止のため軽く呼ぶ）
-    stopAll();
+    // 念のため前回の残りを落とす
+    await stopAll();
 
     const stream = await getStream();
     streamRef.current = stream;
@@ -211,7 +280,6 @@ export default function BarcodeScanner({
     motionBufRef.current = [];
     aliveRef.current = true;
 
-    // === 単一エンジン運用：Detector があればそれだけ使う ===
     const detector = hasBD() ? new window.BarcodeDetector({
       formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code"]
     }) : null;
@@ -222,22 +290,18 @@ export default function BarcodeScanner({
       const now = Date.now();
       if (!aliveRef.current) return false;
 
-      // 起動直後は前セッション先頭JANを採用しない
       if (prevSessionFirstRef.current.code &&
           now - sessionAtRef.current < firstIgnorePrevMs &&
           val === prevSessionFirstRef.current.code) return false;
 
-      // デバウンス
       if (ignoreCode && val === String(ignoreCode)) {
         if (now - (lastHitRef.current.at||0) < effectiveIgnoreMs()) return false;
       }
       if (val === lastHitRef.current.code && now - lastHitRef.current.at < effectiveIgnoreMs()) return false;
 
-      // 抑止
       if (!isRereadActive() && isSuppressed(val, suppressAcceptedMs)) return false;
       if (isSuppressed(val, suppressUnknownMs)) return false;
 
-      // 親へ通知
       committingRef.current = true;
       pausedScanRef.current = true;
 
@@ -256,7 +320,7 @@ export default function BarcodeScanner({
       if (accepted) {
         markSuppress(val, "ok");
         lastCommitHashRef.current = prevHashRef.current;
-        stopAll();            // 採用時は即停止
+        await stopAll();     // 採用時は即停止（Safariでも確実に消灯）
         onClose?.();
         return true;
       } else {
@@ -278,17 +342,16 @@ export default function BarcodeScanner({
       const lastN = notifiedRef.current.get(val) || 0;
       if (now - lastN < suppressUnknownMs) return false;
 
-      // 動きゲート（再読込み中は緩める）
       const diffs = motionBufRef.current;
       const ma = diffs.length ? diffs.reduce((a,b)=>a+b,0)/diffs.length : 0;
       const lastCommittedHash = lastCommitHashRef.current;
       const movedSinceCommit = lastCommittedHash == null ? true :
         (Math.abs((hashNow ?? 0) - lastCommittedHash) / (Math.abs(lastCommittedHash) + 1e-6)) >= moveAfterCommitDiff;
+
       if (!isRereadActive() && val === lastHitRef.current.code) {
         if (ma < moveMAThreshold || !movedSinceCommit) return false;
       }
 
-      // 二段確認
       const cand = candRef.current;
       if (!cand || cand.code !== val || (now - cand.t0) > confirmMs) {
         candRef.current = { code: val, t0: now, hash0: hashNow };
@@ -303,11 +366,8 @@ export default function BarcodeScanner({
       return false;
     };
 
-    // ROIハッシュ（動き量）
     const latestHashRef = { current: null };
 
-    // Detector ループ（ある場合のみ）
-    let detectorActive = false;
     const loop = async () => {
       if (!aliveRef.current) return;
       const video = videoRef.current; if (!video) return;
@@ -317,7 +377,6 @@ export default function BarcodeScanner({
       const { hash } = sampleROI(video, canvasRef);
       latestHashRef.current = hash;
 
-      // 動き量を更新
       const prev = prevHashRef.current; prevHashRef.current = hash;
       if (prev != null) {
         const d = Math.abs(hash - prev) / (Math.abs(prev) + 1e-6);
@@ -327,7 +386,6 @@ export default function BarcodeScanner({
 
       if (detector) {
         try {
-          detectorActive = true;
           const res1 = await detector.detect(canvasRef.current);
           const cand = (res1 && res1.length) ? res1 : (fullFrameProbe ? await detector.detect(video) : []);
           if (cand && cand[0]) {
@@ -339,16 +397,13 @@ export default function BarcodeScanner({
               if (committed) return;
             }
           }
-        } catch {
-          // Detectorが一時的に失敗しても放置（次フレームへ）
-        }
+        } catch {}
       }
 
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
 
-    // ZXing：Detector がない場合だけ起動（同時併用しない）
     if (!detector) {
       if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
       else try { readerRef.current.reset(); } catch {}
@@ -361,9 +416,7 @@ export default function BarcodeScanner({
           const hashNow = latestHashRef.current ?? 0;
           await seenNow(val, hashNow);
         }).catch(()=>{});
-      } catch {
-        // ZXing初期化に失敗しても、Detectorのループ（または次のセッション）で拾える
-      }
+      } catch {}
     }
   }, [
     confirmMs, minRoiDiff, skipSameFrameDiff, ignoreCode, ignoreForMs, firstIgnorePrevMs,
@@ -371,22 +424,19 @@ export default function BarcodeScanner({
     fullFrameProbe, rereadMinDebounceMs, onDetected, onClose, stopAll
   ]);
 
-  // 再読込み（“同JAN再確定の一時許可＆デバウンス短縮”）
   const activateReread = useCallback(() => {
     const until = Date.now() + rereadWindowMs;
     rereadUntilRef.current = until;
     try { sessionStorage.setItem(REREAD_LS_KEY, String(until)); } catch {}
     setRereadPressed(true);
     setTimeout(() => setRereadPressed(false), 140);
-    // “直前JANのデバウンス短縮”：直前ヒット時刻だけ 0 にして即再確定OK
     lastHitRef.current = { code: lastHitRef.current.code, at: 0 };
   }, [rereadWindowMs]);
 
-  /* ===== open 制御（最小限：open→start / 非open→stopAll） ===== */
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!open) { stopAll(); return; }
+      if (!open) { await stopAll(); return; }
       try { await start(); }
       catch (e) {
         if (cancelled) return;
@@ -401,7 +451,7 @@ export default function BarcodeScanner({
           name==="VIDEO_TIMEOUT" ? "初期化に時間がかかっています。ページ再読込を試してください。" :
           `カメラ起動失敗（${name}${msg}）`
         );
-        stopAll();
+        await stopAll();
       }
     })();
     return () => { cancelled = true; stopAll(); };
@@ -409,7 +459,6 @@ export default function BarcodeScanner({
 
   if (!open) return null;
 
-  // === UI（枠・説明・再読込み） ===
   const rereadActive = isRereadActive();
   const rereadBtnStyle = {
     position: "absolute",
@@ -483,7 +532,7 @@ export default function BarcodeScanner({
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
             <button
-              onClick={() => { stopAll(); onClose?.(); }}
+              onClick={async () => { await stopAll(); onClose?.(); }}
               style={{ ...btnBase, background:"#fff" }}
             >
               キャンセル
