@@ -100,6 +100,42 @@ function MapPage() {
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
 
+  // === ★ 追加: 排他オープンのためのユーティリティ ===
+  const PANEL_ANIM_MS = 320; // 閉じアニメ後に次を開く待ち時間（Search/Favorite双方に十分な値）
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  const openSearchExclusive = async () => {
+    // すでに検索が開いていれば閉じる（=トグル動作）
+    if (isSearchOpen) {
+      setIsSearchOpen(false);
+      return;
+    }
+    // お気に入りが開いていれば一旦閉じてから検索を開く
+    if (isRatingListOpen) {
+      setIsRatingListOpen(false);
+      setShowRatingDates(false);
+      await wait(PANEL_ANIM_MS);
+    }
+    setIsSearchOpen(true);
+  };
+
+  const openFavoriteExclusive = async () => {
+    // すでにお気に入りが開いていれば閉じる（=トグル動作）
+    if (isRatingListOpen) {
+      setIsRatingListOpen(false);
+      setShowRatingDates(false);
+      return;
+    }
+    // 検索が開いていれば一旦閉じてからお気に入りを開く
+    if (isSearchOpen) {
+      setIsSearchOpen(false);
+      await wait(PANEL_ANIM_MS);
+    }
+    setShowRatingDates(true);
+    setIsRatingListOpen(true);
+  };
+
   // 検索・スキャン
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
@@ -1070,11 +1106,7 @@ function MapPage() {
 
       {!is3D && (
         <button
-          onClick={() => {
-            const next = !showRatingDates;
-            setShowRatingDates(next);
-            setIsRatingListOpen(next);
-          }}
+          onClick={() => { openFavoriteExclusive(); }}
           style={{
             position: "absolute",
             top: "120px",
@@ -1100,7 +1132,7 @@ function MapPage() {
 
       {!is3D && (
         <button
-          onClick={() => setIsSearchOpen(true)}
+          onClick={() => { openSearchExclusive(); }}
           style={{
             position: "absolute",
             top: "170px",
