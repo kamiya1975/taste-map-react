@@ -110,11 +110,11 @@ export default function BarcodeScanner({
   onClose,
   onDetected,
   // “確認パラメータ”：ここを少し弄るだけでバランス調整できます
-  confirmMs = 500,         // 初回検出からこの時間内に再検出できたら確定
-  minRoiDiff = 0.0020,     // 再検出時に ROI ハッシュがこれ以上変化していること
+  confirmMs = 700,         // 初回検出からこの時間内に再検出できたら確定
+  minRoiDiff = 0.0015,     // 再検出時に ROI ハッシュがこれ以上変化していること
   skipSameFrameDiff = 0.0015, // 直前とほぼ同じフレームはスキップ（軽く）
   ignoreCode = null,       // 同一JANの短時間デバウンス（禁止JANではない）
-  ignoreForMs = 900,
+  ignoreForMs = 1500,
   firstIgnorePrevMs = 1000 // 起動直後のみ、前セッション最初JANを採用しない
 }) {
   const videoRef  = useRef(null);
