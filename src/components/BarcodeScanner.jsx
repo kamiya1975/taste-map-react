@@ -1,4 +1,6 @@
 // src/components/BarcodeScanner.jsx
+// Detector優先 / ZXingフォールバック
+// 機能: AF補助・フレーム差分・ウォームアップ・再読込み・EAN13チェックサム
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
@@ -46,10 +48,13 @@ const btnBase = {
 const btnCancel = { ...btnBase, background: "#fff", color: "#000" };
 const btnReload = { ...btnBase, background: "#ff0", color: "#000" };
 
+// 定数
+const REREAD_LS_KEY = "tm_reread_until";
+
+// ===== ユーティリティ =====
 const hasBarcodeDetector = () =>
   typeof window !== "undefined" && "BarcodeDetector" in window;
 const norm = (s) => String(s ?? "").replace(/\D/g, "");
-
 function assertHTTPS() {
   const isLocal = ["localhost", "127.0.0.1", "::1"].includes(
     window.location.hostname
@@ -58,7 +63,7 @@ function assertHTTPS() {
     throw new Error("NEED_HTTPS");
 }
 
-// UPC-Aを0埋めしてEAN13に変換、チェックサム確認
+// EAN13チェック
 function isValidEan13(ean) {
   if (!/^\d{13}$/.test(ean)) return false;
   let sum = 0;
@@ -71,12 +76,52 @@ function isValidEan13(ean) {
 }
 function toEan13(raw) {
   let s = norm(raw);
-  if (s.length === 12) s = "0" + s;
+  if (s.length === 12) s = "0" + s; // UPC-A
   if (s.length !== 13) return null;
   return isValidEan13(s) ? s : null;
 }
 
-const REREAD_LS_KEY = "tm_reread_until";
+// ウォームアップ: 新鮮なフレームが一定数流れるまで待つ
+async function waitForFreshFrames(video, { minFrames = 8, minElapsedMs = 600 }) {
+  const start = performance.now();
+  if ("requestVideoFrameCallback" in HTMLVideoElement.prototype) {
+    let count = 0;
+    return new Promise((resolve) => {
+      const cb = () => {
+        count += 1;
+        const elapsed = performance.now() - start;
+        if (count >= minFrames && elapsed >= minElapsedMs) {
+          resolve();
+        } else {
+          video.requestVideoFrameCallback(cb);
+        }
+      };
+      video.requestVideoFrameCallback(cb);
+    });
+  }
+  await new Promise((r) => setTimeout(r, minElapsedMs));
+}
+
+// 軽いAF: タップで再AF
+async function tapToFocus(track, el, evt) {
+  if (!track?.getCapabilities) return;
+  const caps = track.getCapabilities();
+  const adv = [];
+  if (caps.pointsOfInterest) {
+    const r = el.getBoundingClientRect();
+    const x = Math.min(Math.max((evt.clientX - r.left) / r.width, 0), 1);
+    const y = Math.min(Math.max((evt.clientY - r.top) / r.height, 0), 1);
+    adv.push({ pointsOfInterest: [{ x, y }] });
+  }
+  if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) {
+    adv.push({ focusMode: "continuous" });
+  }
+  if (adv.length) {
+    try {
+      await track.applyConstraints({ advanced: adv });
+    } catch {}
+  }
+}
 
 export default function BarcodeScanner({ open, onClose, onDetected }) {
   const videoRef = useRef(null);
@@ -86,12 +131,14 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
   const readerRef = useRef(null);
   const rafIdRef = useRef(0);
   const detectedRef = useRef(false);
+  const prevHashRef = useRef(null);
   const rereadUntilRef = useRef(0);
 
   const [errorMsg, setErrorMsg] = useState("");
   const [usingDetector, setUsingDetector] = useState(false);
   const [rereadPressed, setRereadPressed] = useState(false);
 
+  // 停止処理
   const stopAll = useCallback(() => {
     try {
       readerRef.current?.reset?.();
@@ -107,8 +154,9 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     trackRef.current = null;
   }, []);
 
+  // 再読込みボタン
   const activateReread = useCallback(() => {
-    const until = Date.now() + 5000; // 5秒間再読込み許可
+    const until = Date.now() + 5000;
     rereadUntilRef.current = until;
     try {
       sessionStorage.setItem(REREAD_LS_KEY, String(until));
@@ -117,12 +165,13 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     setTimeout(() => setRereadPressed(false), 180);
   }, []);
 
+  // スキャン開始
   const start = useCallback(async () => {
     setErrorMsg("");
     detectedRef.current = false;
+    prevHashRef.current = null;
     assertHTTPS();
 
-    // カメラ起動
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: { facingMode: { ideal: "environment" }, width: 1280, height: 720 },
@@ -136,13 +185,13 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
     video.setAttribute("playsinline", "");
     await video.play();
 
+    await waitForFreshFrames(video);
+
     const canUseDetector = hasBarcodeDetector();
     setUsingDetector(!!canUseDetector);
 
     if (canUseDetector) {
-      const detector = new window.BarcodeDetector({
-        formats: ["ean_13", "upc_a"],
-      });
+      const detector = new window.BarcodeDetector({ formats: ["ean_13", "upc_a"] });
       const loop = async () => {
         if (detectedRef.current) return;
         const v = videoRef.current;
@@ -166,6 +215,26 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
           cw,
           ch
         );
+
+        // フレーム差分ゲート
+        try {
+          const img = ctx.getImageData(0, 0, cw, ch).data;
+          let sum = 0,
+            step = 32;
+          for (let i = 0; i < img.length; i += 4 * step) {
+            sum += img[i] * 0.299 + img[i + 1] * 0.587 + img[i + 2] * 0.114;
+          }
+          const prev = prevHashRef.current;
+          prevHashRef.current = sum;
+          if (prev != null) {
+            const diffRatio = Math.abs(sum - prev) / (prev + 1e-6);
+            if (diffRatio < 0.003) {
+              rafIdRef.current = requestAnimationFrame(loop);
+              return;
+            }
+          }
+        } catch {}
+
         try {
           const barcodes = await detector.detect(canvasRef.current);
           if (barcodes && barcodes[0]) {
@@ -227,7 +296,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
   return (
     <div style={overlayStyle}>
       <div style={panelStyle}>
-        <div style={videoBoxStyle}>
+        <div style={videoBoxStyle} onClick={(e) => tapToFocus(trackRef.current, e.currentTarget, e)}>
           <video
             ref={videoRef}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -256,7 +325,7 @@ export default function BarcodeScanner({ open, onClose, onDetected }) {
           ) : (
             <span>
               中央の枠にバーコードを合わせてください。
-              読み取りができない場合は下の「再読込み」ボタンを押してください。
+              読み取りができない場合は「再読込み」を押してください。
             </span>
           )}
           <button
