@@ -1,8 +1,8 @@
 // src/components/BarcodeScanner.jsx
-// 目的：
-//  - 読み取り精度の体感改善（Detectorの再生成をやめる・スキップ閾値調整・二段確認は維持）
-//  - 「再読込み」ボタン：押下時に一瞬色が変わるフィードバック、枠の中央下に配置
-//  - 放置で過去JANが勝手に出ないガードは維持（親側ガードと併用推奨）
+// - 枠ガイド＆中央テキストを添付の見た目に寄せる
+// - 「再読込み」ボタン：枠の中央下に固定、押下で色＆縮小、再読込み中は文言/色を変化
+// - 再読込みは“同一JANの再確定を一時許可”＋デバウンス短縮（体感を上げる）
+// - 読み取り精度は Detector を使い回し + 二段確認で維持
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
@@ -12,13 +12,13 @@ const overlayStyle = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85
 const panelStyle   = { width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#000" };
 const videoBoxStyle= { flex: 1, position: "relative", background: "#000", overflow: "hidden", touchAction: "none" };
 const footerStyle  = { padding: 12, borderTop: "1px solid #222", color: "#ddd", display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", gap: 8 };
-const btn          = { background: "#fff", color: "#000", border: "none", padding: "10px 16px", fontSize: 16, borderRadius: 10, cursor: "pointer", fontWeight: 700 };
+const btnBase      = { background: "#fff", color: "#000", border: "none", padding: "12px 18px", fontSize: 16, borderRadius: 10, cursor: "pointer", fontWeight: 700 };
 
 const hasBD = () => typeof window !== "undefined" && "BarcodeDetector" in window;
 const norm  = (s) => String(s ?? "").replace(/\D/g, "");
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-// ---- グローバル + sessionStorage 抑止 ----
+// ---- 抑止（過去JANの勝手な再出現を防止）
 const GLOBAL_SUPPRESS = new Map(); // code -> { at, kind }
 const LS_KEY = "tastemap_barcode_suppress";
 function readLS() { try { return JSON.parse(sessionStorage.getItem(LS_KEY) || "{}"); } catch { return {}; } }
@@ -36,7 +36,6 @@ function markSuppress(code, kind) {
   const m = readLS(); m[code] = { at: now, kind }; writeLS(m);
 }
 
-// ---- utils ----
 function assertHTTPS() {
   const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
   if (window.location.protocol !== "https:" && !isLocal) throw new Error("NEED_HTTPS");
@@ -61,7 +60,6 @@ async function waitVideoReady(video, timeoutMs = 9000) {
     video.addEventListener("error", err, { once:true });
   });
 }
-// rVFC ウォームアップ
 async function warmupMediaTime(video, { uniq=6, sumSec=0.35, timeoutMs=3000 } = {}) {
   if (!("requestVideoFrameCallback" in HTMLVideoElement.prototype)) { await sleep(450); return; }
   const t0 = performance.now();
@@ -110,28 +108,28 @@ export default function BarcodeScanner({
   open,
   onClose,
   onDetected,                    // (val) => boolean | {ok:boolean} | Promise<boolean|{ok:boolean}>
-  // 二段確認（残像対策：維持）
-  confirmMs = 650,              // やや短縮して反応性↑
-  minRoiDiff = 0.0022,          // 以前より緩め（取りやすく）
-  // 抑止ウィンドウ
+  // 二段確認（取りこぼし少なく）
+  confirmMs = 650,
+  minRoiDiff = 0.0022,
+  // 抑止
   suppressUnknownMs = 12000,
   suppressAcceptedMs = 60000,
-  // 直前フレームスキップ
-  skipSameFrameDiff = 0.0009,   // 少し緩めて検出機会↑
+  // スキップ
+  skipSameFrameDiff = 0.0009,
   // デバウンス
   ignoreCode = null,
-  ignoreForMs = 900,            // 少し短縮
+  ignoreForMs = 900,
   firstIgnorePrevMs = 1200,
-  // 動きゲート（放置で再出現防止）
+  // 動きゲート
   moveMAWindow = 10,
-  moveMAThreshold = 0.0022,     // やや緩め
-  moveAfterCommitDiff = 0.010,  // 以前と同等
+  moveMAThreshold = 0.0022,
+  moveAfterCommitDiff = 0.010,
   // 精度
   fullFrameProbe = true,
-  // 「再読込み」ボタン
+  // 再読込み（押した感＋一時緩和）
   enableRereadButton = true,
   rereadWindowMs = 6000,
-  rereadMinDebounceMs = 280,    // 許可ウィンドウ中はさらに素早く
+  rereadMinDebounceMs = 260,
 }) {
   const videoRef  = useRef(null);
   const canvasRef = useRef(null);
@@ -149,22 +147,17 @@ export default function BarcodeScanner({
   const zxingReadyAtRef = useRef(0);
   const notifiedRef = useRef(new Map());   // 未採用抑止
 
-  // 候補→確認→確定
   const candRef = useRef(null); // { code, t0, hash0 }
-
-  // ライフサイクル制御
   const committingRef = useRef(false);
   const pausedScanRef = useRef(false);
   const aliveRef      = useRef(false);
 
-  // 再読込みモード（採用OK抑止のみ緩和）
+  // 再読込み（“同JAN再確定の一時許可＆デバウンス短縮”）
   const rereadUntilRef = useRef(0);
   const isRereadActive = () => Date.now() < rereadUntilRef.current;
 
-  // 押下フィードバック用
-  const [rereadPressed, setRereadPressed] = useState(false);
-
   const [errorMsg, setErrorMsg] = useState("");
+  const [rereadPressed, setRereadPressed] = useState(false);
 
   const stopAll = useCallback(() => {
     aliveRef.current = false;
@@ -208,7 +201,7 @@ export default function BarcodeScanner({
     motionBufRef.current = [];
     aliveRef.current = true;
 
-    // ★ Detector は一度だけ生成（安定性↑）
+    // Detector を使い回し
     const detector = hasBD() ? new window.BarcodeDetector({
       formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code"]
     }) : null;
@@ -219,7 +212,7 @@ export default function BarcodeScanner({
       const now = Date.now();
       if (!aliveRef.current) return false;
 
-      // 起動直後：前セッション先頭JANは無視
+      // 起動直後は前セッション先頭JANを採用しない
       if (prevSessionFirstRef.current.code &&
           now - sessionAtRef.current < firstIgnorePrevMs &&
           val === prevSessionFirstRef.current.code) return false;
@@ -230,11 +223,11 @@ export default function BarcodeScanner({
       }
       if (val === lastHitRef.current.code && now - lastHitRef.current.at < effectiveIgnoreMs()) return false;
 
-      // 抑止：未登録NGは常に抑止、採用OKの抑止は再読込み中のみ緩める
+      // 抑止：未登録NGは常に、採用OKは再読込み中のみ緩める
       if (!isRereadActive() && isSuppressed(val, suppressAcceptedMs)) return false;
       if (isSuppressed(val, suppressUnknownMs)) return false;
 
-      // ---- 親へ通知（確定） ----
+      // 親へ通知
       committingRef.current = true;
       pausedScanRef.current = true;
 
@@ -247,9 +240,7 @@ export default function BarcodeScanner({
         const r = ret instanceof Promise ? await ret : ret;
         if (typeof r === "boolean") accepted = r;
         else if (r && typeof r === "object" && "ok" in r) accepted = !!r.ok;
-      } catch {
-        accepted = false;
-      }
+      } catch { accepted = false; }
       if (!aliveRef.current) return false;
 
       if (accepted) {
@@ -272,15 +263,13 @@ export default function BarcodeScanner({
       if (!aliveRef.current) return false;
       const now = Date.now();
 
-      // 抑止（採用OKは再読込み中のみ緩める／NGは常に）
       if (!isRereadActive() && isSuppressed(val, suppressAcceptedMs)) return false;
       if (isSuppressed(val, suppressUnknownMs)) return false;
 
-      // ローカル未採用抑止
       const lastN = notifiedRef.current.get(val) || 0;
       if (now - lastN < suppressUnknownMs) return false;
 
-      // 放置対策：同一JANは“動き”必須（やや緩め）
+      // 動きゲート（再読込み中は同一JANでも緩和）
       const diffs = motionBufRef.current;
       const ma = diffs.length ? diffs.reduce((a,b)=>a+b,0)/diffs.length : 0;
       const lastCommittedHash = lastCommitHashRef.current;
@@ -291,7 +280,7 @@ export default function BarcodeScanner({
         if (ma < moveMAThreshold || !movedSinceCommit) return false;
       }
 
-      // 二段確認（別フレーム判定）
+      // 二段確認
       const cand = candRef.current;
       const nowT = now;
       if (!cand || cand.code !== val || (nowT - cand.t0) > confirmMs) {
@@ -303,9 +292,8 @@ export default function BarcodeScanner({
         const ok = await tryCommit(val);
         if (!ok && aliveRef.current) candRef.current = null;
         return ok;
-      } else {
-        return false;
       }
+      return false;
     };
 
     // ZXing 用：最新ROIハッシュ
@@ -371,11 +359,13 @@ export default function BarcodeScanner({
     }
   }, [confirmMs, minRoiDiff, skipSameFrameDiff, ignoreCode, ignoreForMs, firstIgnorePrevMs, suppressUnknownMs, suppressAcceptedMs, moveMAWindow, moveMAThreshold, moveAfterCommitDiff, fullFrameProbe, rereadMinDebounceMs, onDetected, onClose, stopAll]);
 
-  // 「再読込み」：採用OK抑止のみ短時間緩和 + 押下フィードバック
+  // 再読込み：ウィンドウを開き、押した感を出す。直後のデバウンスも短縮される
   const activateReread = useCallback(() => {
     rereadUntilRef.current = Date.now() + rereadWindowMs;
+    // 体感を上げるため、直前のヒット時刻だけはリセット（同一JANの即時再読みに効く）
+    lastHitRef.current = { code: lastHitRef.current.code, at: 0 };
     setRereadPressed(true);
-    setTimeout(() => setRereadPressed(false), 160); // 押した感（160msだけ色替え）
+    setTimeout(() => setRereadPressed(false), 140);
   }, [rereadWindowMs]);
 
   // open 制御
@@ -405,23 +395,22 @@ export default function BarcodeScanner({
 
   if (!open) return null;
 
-  // 再読込みボタンのスタイル（中央下・押下時色変更）
+  // === 見た目：添付のスクショに寄せたオーバーレイ ===
+  const rereadActive = isRereadActive();
   const rereadBtnStyle = {
     position: "absolute",
     left: "50%",
-    transform: "translateX(-50%)",
-    // 枠（中心: top 45%, 縦比 3:1 → 高さは画面高さの約30%）
-    // 厳密計算はせず、実機で見やすい 12% 余白を置いた下側に配置
-    bottom: "12%",
-    background: rereadPressed ? "#f7c600" : "#ffd83d",
-    color: "#000",
+    transform: `translateX(-50%) ${rereadPressed ? "scale(0.98)" : "scale(1)"}`,
+    bottom: "14%", // 枠の少し下にくる位置
+    background: rereadActive ? "#ffb020" : (rereadPressed ? "#f6c400" : "#ffd83d"),
+    color: "#111",
     border: "none",
-    padding: "10px 16px",
+    padding: "12px 18px",
     fontSize: 16,
     borderRadius: 999,
     cursor: "pointer",
     fontWeight: 800,
-    boxShadow: "0 4px 12px rgba(0,0,0,0.35)",
+    boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
     userSelect: "none",
     touchAction: "manipulation",
     transition: "background 80ms linear, transform 80ms ease",
@@ -436,15 +425,28 @@ export default function BarcodeScanner({
             style={{ width:"100%", height:"100%", objectFit:"cover", backgroundColor:"black" }}
             autoPlay playsInline muted
           />
-          {/* 枠ガイド */}
+          {/* 白枠（3:1） */}
           <div
             style={{
               position:"absolute", left:"50%", top:"45%", transform:"translate(-50%, -50%)",
-              width:"88%", aspectRatio:"3 / 1",
-              border:"3px solid rgba(255,255,255,0.9)", borderRadius:10, pointerEvents:"none",
+              width:"88%", aspectRatio: "3 / 1",
+              border:"3px solid rgba(255,255,255,0.9)", borderRadius: 12, pointerEvents:"none",
               boxShadow:"0 0 0 200vmax rgba(0,0,0,0.25) inset"
             }}
           />
+          {/* 中央の説明テキスト（添付のレイアウト風） */}
+          <div
+            style={{
+              position:"absolute", left:"50%", top:"62%", transform:"translateX(-50%)",
+              width:"86%", maxWidth: 520, textAlign:"center",
+              color:"#fff", lineHeight: 1.5, fontSize: 16,
+              textShadow: "0 2px 6px rgba(0,0,0,0.6)"
+            }}
+          >
+            中央の枠にバーコードを合わせてください。<br/>
+            読み取りができない場合は下の「再読込み」ボタンを押してください。
+          </div>
+
           {/* 再読込み（枠の中央下） */}
           {enableRereadButton && (
             <button
@@ -455,16 +457,18 @@ export default function BarcodeScanner({
               style={rereadBtnStyle}
               aria-label="再読込み（同一JANの再確定を一時的に許可）"
             >
-              再読込み
+              {rereadActive ? "再読込み中…" : "再読込み"}
             </button>
           )}
         </div>
-        <div style={footerStyle}>
+
+        {/* 下部バー（黒地＋キャンセル） */}
+        <div style={{ ...footerStyle, background:"#000" }}>
           <div style={{ minHeight: 18 }}>
-            {errorMsg ? <span style={{ color:"#ffb3b3" }}>{errorMsg}</span> : <span>中央の枠にバーコードを合わせてください。</span>}
+            {errorMsg ? <span style={{ color:"#ffb3b3" }}>{errorMsg}</span> : <span>&nbsp;</span>}
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <button onClick={() => { stopAll(); onClose?.(); }} style={btn}>キャンセル</button>
+            <button onClick={() => { stopAll(); onClose?.(); }} style={{ ...btnBase, background:"#fff" }}>キャンセル</button>
           </div>
         </div>
       </div>
