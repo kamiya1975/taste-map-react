@@ -102,9 +102,7 @@ function MapPage() {
 
   // === ★ 追加: 排他オープンのためのユーティリティ ===
   const PANEL_ANIM_MS = 320; // 閉じアニメ後に次を開く待ち時間（Search/Favorite双方に十分な値）
-
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
   const openSearchExclusive = async () => {
     // すでに検索が開いていれば閉じる（=トグル動作）
     if (isSearchOpen) {
