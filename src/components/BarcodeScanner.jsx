@@ -1,15 +1,13 @@
 // src/components/BarcodeScanner.jsx
-// - 枠ガイド＆中央テキストを添付の見た目に寄せる
-// - 「再読込み」ボタン：枠の中央下に固定、押下で色＆縮小、再読込み中は文言/色を変化
-// - 再読込みは“同一JANの再確定を一時許可”＋デバウンス短縮（体感を上げる）
-// - 読み取り精度は Detector を使い回し + 二段確認で維持
-// - ★重要★ クローズ時に**必ず**スマホカメラも停止するようクリーンアップを強化
-// - ★iOS安定化★ video要素を毎回新規マウント / getUserMedia リトライ / stop→待機→start / 二重起動防止 / 自動再試行
+// 安定ベース版：Detector か ZXing のどちらか一方のみを使用（同時併用しない）
+// 見た目は枠ガイド＋中央テキスト＋「再読込み」ボタンを維持
+// 変更点は最小限：stopAll のクリーンアップ強化のみ（スマホカメラを確実に停止）
+// ※ 2回目起動問題の疑わしい要因（多重エンジン、visibility系の外部イベント、videoノード入替）は撤去
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
-const REREAD_LS_KEY = "tm_reread_until";
+const REREAD_LS_KEY = "tm_reread_until"; // 再読込みウィンドウ(ms)を sessionStorage に
 const OVERLAY_Z = 2147483647;
 const overlayStyle = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: OVERLAY_Z };
 const panelStyle   = { width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#000" };
@@ -20,15 +18,12 @@ const btnBase      = { background: "#fff", color: "#000", border: "none", paddin
 const hasBD = () => typeof window !== "undefined" && "BarcodeDetector" in window;
 const norm  = (s) => String(s ?? "").replace(/\D/g, "");
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const isiOS = () =>
-  typeof navigator !== "undefined" &&
-  (/iP(hone|od|ad)/.test(navigator.platform || "") || /iPhone|iPad/.test(navigator.userAgent || ""));
 
-// 抑止
-const GLOBAL_SUPPRESS = new Map();
+/* ===== 抑止：過去JANの勝手な再出現を防止 ===== */
+const GLOBAL_SUPPRESS = new Map(); // code -> { at, kind }
 const LS_KEY = "tastemap_barcode_suppress";
-function readLS() { try { return JSON.parse(sessionStorage.getItem(LS_KEY) || "{}"); } catch { return {}; } }
-function writeLS(obj) { try { sessionStorage.setItem(LS_KEY, JSON.stringify(obj)); } catch {} }
+function readLS()  { try { return JSON.parse(sessionStorage.getItem(LS_KEY) || "{}"); } catch { return {}; } }
+function writeLS(o){ try { sessionStorage.setItem(LS_KEY, JSON.stringify(o)); } catch {} }
 function isSuppressed(code, windowMs) {
   const now = Date.now();
   const g = GLOBAL_SUPPRESS.get(code);
@@ -41,24 +36,24 @@ function markSuppress(code, kind) {
   GLOBAL_SUPPRESS.set(code, { at: now, kind });
   const m = readLS(); m[code] = { at: now, kind }; writeLS(m);
 }
+
+/* ===== EAN-13 ===== */
 function isValidEan13(ean) {
   if (!/^\d{13}$/.test(ean)) return false;
-  let sum = 0;
-  for (let i = 0; i < 12; i++) {
-    const d = ean.charCodeAt(i) - 48;
-    sum += (i % 2 === 0) ? d : d * 3;
-  }
+  let sum = 0; for (let i=0;i<12;i++){ const d = ean.charCodeAt(i)-48; sum += (i%2===0)? d : d*3; }
   const check = (10 - (sum % 10)) % 10;
   return check === (ean.charCodeAt(12) - 48);
 }
 function toEan13(raw) {
   let s = norm(raw);
-  if (s.length === 12) s = "0" + s;
+  if (s.length === 12) s = "0" + s;     // UPC-A -> EAN-13
   if (s.length !== 13) return null;
   return isValidEan13(s) ? s : null;
 }
+
+/* ===== 起動補助 ===== */
 function assertHTTPS() {
-  const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  const isLocal = ["localhost","127.0.0.1","::1"].includes(window.location.hostname);
   if (window.location.protocol !== "https:" && !isLocal) throw new Error("NEED_HTTPS");
 }
 async function waitVideoReady(video, timeoutMs = 9000) {
@@ -81,53 +76,13 @@ async function waitVideoReady(video, timeoutMs = 9000) {
     video.addEventListener("error", err, { once:true });
   });
 }
-async function warmupMediaTime(video, { uniq=6, sumSec=0.35, timeoutMs=3000 } = {}) {
-  if (!("requestVideoFrameCallback" in HTMLVideoElement.prototype)) { await sleep(450); return; }
-  const t0 = performance.now();
-  await new Promise((resolve) => {
-    const seen = new Set(); let last=0, acc=0;
-    const cb = (_ts, meta) => {
-      const mt = meta?.mediaTime ?? 0;
-      if (!seen.has(mt)) { if (last>0 && mt>last) acc += (mt-last); seen.add(mt); last = mt; }
-      if (seen.size>=uniq && acc>=sumSec) return resolve();
-      if (performance.now()-t0 > timeoutMs) return resolve();
-      video.requestVideoFrameCallback(cb);
-    };
-    video.requestVideoFrameCallback(cb);
-  });
-}
-
-// カメラ列挙＋GUMリトライ
-async function listCameras() {
-  try {
-    const devs = await navigator.mediaDevices.enumerateDevices();
-    return devs.filter(d => d.kind === "videoinput");
-  } catch { return []; }
-}
-async function getStreamWithRetry() {
+async function getStream() {
   const base = { aspectRatio: { ideal: 16/9 }, frameRate: { ideal: 30, max: 60 }, width: { ideal: 1280 }, height: { ideal: 720 } };
-  const waits = [0, 140, 320, 800];
-  const cams = await listCameras();
-  const back = cams.find(c => /back|rear|wide/i.test(c.label || ""));
-  const trySets = [
-    back ? { audio:false, video:{ deviceId:{ exact: back.deviceId }, ...base } } : null,
-    { audio:false, video:{ facingMode:{ exact:"environment" }, ...base } },
-    { audio:false, video:{ facingMode:{ ideal:"environment" }, ...base } },
-    { audio:false, video: base },
-  ].filter(Boolean);
-
-  let lastErr;
-  for (const w of waits) {
-    if (w) await sleep(w);
-    for (const c of trySets) {
-      try { return await navigator.mediaDevices.getUserMedia(c); }
-      catch (e) { lastErr = e; }
-    }
-  }
-  throw lastErr || new Error("GUM_FAILED");
+  try { return await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ exact:"environment" }, ...base } }); } catch {}
+  return await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ ideal:"environment" }, ...base } });
 }
 
-// ROI 簡易ハッシュ
+/* ===== ROI（簡易ハッシュ：二段確認用に動き量を測る） ===== */
 function ensureCanvas(ref) {
   if (!ref.current) { const c = document.createElement("canvas"); c.width = 960; c.height = 320; ref.current = c; }
   return ref.current.getContext("2d");
@@ -145,24 +100,7 @@ function sampleROI(video, canvasRef) {
   return { hash: sum };
 }
 
-// video解放
-function reallyStopStream(stream) {
-  try {
-    if (!stream) return;
-    const tracks = stream.getTracks?.() || [];
-    tracks.forEach((t) => { try { t.enabled = false; } catch {} try { t.stop(); } catch {} });
-  } catch {}
-}
-function hardReleaseVideo(v) {
-  if (!v) return;
-  try { v.pause?.(); } catch {}
-  try { v.srcObject = null; } catch {}
-  try { v.removeAttribute?.("srcObject"); } catch {}
-  try { v.removeAttribute?.("src"); } catch {}
-  try { v.src = ""; } catch {}
-  try { v.load?.(); } catch {}
-}
-
+/* ========================================================= */
 export default function BarcodeScanner({
   open,
   onClose,
@@ -190,21 +128,19 @@ export default function BarcodeScanner({
   rereadWindowMs = 6000,
   rereadMinDebounceMs = 260,
 }) {
-  const [videoKey, setVideoKey] = useState(0); // ← 毎回 video を新規に
   const videoRef  = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const trackRef  = useRef(null);
-  const readerRef = useRef(null);   // ZXing
+  const readerRef = useRef(null);   // ZXing（Detector非対応端末のみ使用）
 
   const rafRef    = useRef(0);
   const prevHashRef = useRef(null);
-  const motionBufRef = useRef([]);         // 直近のROI差分
+  const motionBufRef = useRef([]);         // 直近ROI差分
   const lastCommitHashRef = useRef(null);  // 直近コミット時のROIハッシュ
   const sessionAtRef = useRef(0);
   const prevSessionFirstRef = useRef({ code: null });
   const lastHitRef = useRef({ code: null, at: 0 });
-  const zxingReadyAtRef = useRef(0);
   const notifiedRef = useRef(new Map());   // 未採用抑止
 
   const candRef = useRef(null); // { code, t0, hash0 }
@@ -212,71 +148,51 @@ export default function BarcodeScanner({
   const pausedScanRef = useRef(false);
   const aliveRef      = useRef(false);
 
-  // iOS Safari 安定化
-  const startingRef = useRef(false);
-  const sessionIdRef = useRef(0);
-
-  // 再読込み
+  // 再読込み（同JAN再確定を一時許可）
   const rereadUntilRef = useRef(0);
   const isRereadActive = () => Date.now() < rereadUntilRef.current;
 
   const [errorMsg, setErrorMsg] = useState("");
   const [rereadPressed, setRereadPressed] = useState(false);
 
-  // ZXing停止
-  const stopZxing = () => {
+  /* ==== 超重要：クリーンアップ（最小限・確実） ==== */
+  const stopAll = useCallback(() => {
+    aliveRef.current = false;
     try { readerRef.current?.reset?.(); } catch {}
     readerRef.current = null;
-  };
-
-  const stopAll = useCallback(async () => {
-    aliveRef.current = false;
-    stopZxing();
 
     try { cancelAnimationFrame(rafRef.current || 0); } catch {}
     rafRef.current = 0;
 
-    try { reallyStopStream(videoRef.current?.srcObject); } catch {}
-    try { reallyStopStream(streamRef.current); } catch {}
-    try { reallyStopStream({ getTracks: () => (trackRef.current ? [trackRef.current] : []) }); } catch {}
+    // すべてのトラックを停止（スマホ側のカメラを確実に閉じる）
+    try { (videoRef.current?.srcObject || streamRef.current)?.getTracks?.().forEach(t => { try { t.enabled = false; } catch {}; try { t.stop(); } catch {} }); } catch {}
+    try { trackRef.current?.stop?.(); } catch {}
 
-    try { hardReleaseVideo(videoRef.current); } catch {}
+    // video 要素から流れを完全に外す
+    const v = videoRef.current;
+    if (v) {
+      try { v.pause?.(); } catch {}
+      try { v.srcObject = null; } catch {}
+      try { v.removeAttribute("srcObject"); } catch {}
+      try { v.removeAttribute("src"); } catch {}
+      try { v.src = ""; } catch {}
+      try { v.load?.(); } catch {}
+    }
 
-    streamRef.current = null;
-    trackRef.current  = null;
-    prevHashRef.current = null;
-    candRef.current = null;
-    committingRef.current = false;
-    pausedScanRef.current = false;
+    streamRef.current=null; trackRef.current=null;
+    prevHashRef.current=null; candRef.current=null;
+    committingRef.current=false; pausedScanRef.current=false;
     motionBufRef.current = [];
-
-    // iOS: stop直後は再取得が不安定なので待機延長
-    await sleep(240);
-    try { hardReleaseVideo(videoRef.current); } catch {}
-    try { reallyStopStream(videoRef.current?.srcObject); } catch {}
   }, []);
 
-  // 再起動用：videoを確実に新規作成
-  const bumpVideo = () => setVideoKey(k => (k + 1) % 1_000_000);
-
   const start = useCallback(async () => {
-    if (startingRef.current) return;
-    startingRef.current = true;
     setErrorMsg("");
     assertHTTPS();
 
-    if (isiOS()) await sleep(120); // 直前 stop の残留回避
+    // 以前のセッション残りを念のため止める（重複起動防止のため軽く呼ぶ）
+    stopAll();
 
-    const sid = ++sessionIdRef.current;
-
-    let stream;
-    try {
-      stream = await getStreamWithRetry();
-    } catch (e) {
-      startingRef.current = false;
-      throw e;
-    }
-
+    const stream = await getStream();
     streamRef.current = stream;
     const track = stream.getVideoTracks?.()[0];
     trackRef.current = track;
@@ -288,17 +204,6 @@ export default function BarcodeScanner({
     await waitVideoReady(v, 9000);
     try { await v.play(); } catch {}
 
-    await warmupMediaTime(v);
-    try {
-      if (track?.getCapabilities) {
-        const caps = track.getCapabilities();
-        if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) {
-          try { await track.applyConstraints({ advanced:[{ focusMode:"continuous" }] }); } catch {}
-        }
-      }
-    } catch {}
-
-    zxingReadyAtRef.current = Date.now();
     sessionAtRef.current = Date.now();
     candRef.current = null;
     notifiedRef.current.clear();
@@ -306,23 +211,7 @@ export default function BarcodeScanner({
     motionBufRef.current = [];
     aliveRef.current = true;
 
-    startingRef.current = false;
-    if (sid !== sessionIdRef.current) { await stopAll(); return; }
-
-    // ***** ここがポイント：readyState が動かない（=黒画面）時は自動で再試行 *****
-    setTimeout(async () => {
-      const vo = videoRef.current;
-      if (!aliveRef.current || !vo) return;
-      if ((vo.readyState || 0) < 2 || vo.videoWidth === 0 || vo.videoHeight === 0) {
-        // 再初期化（video を新規にしてから start）
-        await stopAll();
-        bumpVideo();
-        if (isiOS()) await sleep(200);
-        try { await start(); } catch {}
-      }
-    }, 700);
-
-    // Detector 使い回し
+    // === 単一エンジン運用：Detector があればそれだけ使う ===
     const detector = hasBD() ? new window.BarcodeDetector({
       formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code"]
     }) : null;
@@ -333,18 +222,22 @@ export default function BarcodeScanner({
       const now = Date.now();
       if (!aliveRef.current) return false;
 
+      // 起動直後は前セッション先頭JANを採用しない
       if (prevSessionFirstRef.current.code &&
           now - sessionAtRef.current < firstIgnorePrevMs &&
           val === prevSessionFirstRef.current.code) return false;
 
+      // デバウンス
       if (ignoreCode && val === String(ignoreCode)) {
         if (now - (lastHitRef.current.at||0) < effectiveIgnoreMs()) return false;
       }
       if (val === lastHitRef.current.code && now - lastHitRef.current.at < effectiveIgnoreMs()) return false;
 
+      // 抑止
       if (!isRereadActive() && isSuppressed(val, suppressAcceptedMs)) return false;
       if (isSuppressed(val, suppressUnknownMs)) return false;
 
+      // 親へ通知
       committingRef.current = true;
       pausedScanRef.current = true;
 
@@ -363,7 +256,7 @@ export default function BarcodeScanner({
       if (accepted) {
         markSuppress(val, "ok");
         lastCommitHashRef.current = prevHashRef.current;
-        await stopAll();        // 採用時は即停止（カメラLED消灯）
+        stopAll();            // 採用時は即停止
         onClose?.();
         return true;
       } else {
@@ -385,20 +278,20 @@ export default function BarcodeScanner({
       const lastN = notifiedRef.current.get(val) || 0;
       if (now - lastN < suppressUnknownMs) return false;
 
+      // 動きゲート（再読込み中は緩める）
       const diffs = motionBufRef.current;
       const ma = diffs.length ? diffs.reduce((a,b)=>a+b,0)/diffs.length : 0;
       const lastCommittedHash = lastCommitHashRef.current;
       const movedSinceCommit = lastCommittedHash == null ? true :
         (Math.abs((hashNow ?? 0) - lastCommittedHash) / (Math.abs(lastCommittedHash) + 1e-6)) >= moveAfterCommitDiff;
-
       if (!isRereadActive() && val === lastHitRef.current.code) {
         if (ma < moveMAThreshold || !movedSinceCommit) return false;
       }
 
+      // 二段確認
       const cand = candRef.current;
-      const nowT = now;
-      if (!cand || cand.code !== val || (nowT - cand.t0) > confirmMs) {
-        candRef.current = { code: val, t0: nowT, hash0: hashNow };
+      if (!cand || cand.code !== val || (now - cand.t0) > confirmMs) {
+        candRef.current = { code: val, t0: now, hash0: hashNow };
         return false;
       }
       const diff = Math.abs(hashNow - cand.hash0) / (Math.abs(cand.hash0) + 1e-6);
@@ -410,22 +303,21 @@ export default function BarcodeScanner({
       return false;
     };
 
-    // ZXing 用：最新ROIハッシュ
+    // ROIハッシュ（動き量）
     const latestHashRef = { current: null };
 
+    // Detector ループ（ある場合のみ）
+    let detectorActive = false;
     const loop = async () => {
       if (!aliveRef.current) return;
-      const video = videoRef.current;
-      if (!video) return;
+      const video = videoRef.current; if (!video) return;
 
-      if (pausedScanRef.current || committingRef.current) {
-        rafRef.current = requestAnimationFrame(loop);
-        return;
-      }
+      if (pausedScanRef.current || committingRef.current) { rafRef.current = requestAnimationFrame(loop); return; }
 
       const { hash } = sampleROI(video, canvasRef);
       latestHashRef.current = hash;
 
+      // 動き量を更新
       const prev = prevHashRef.current; prevHashRef.current = hash;
       if (prev != null) {
         const d = Math.abs(hash - prev) / (Math.abs(prev) + 1e-6);
@@ -433,13 +325,13 @@ export default function BarcodeScanner({
         if (d < skipSameFrameDiff) { rafRef.current = requestAnimationFrame(loop); return; }
       }
 
-      // Detector：ROI → 空振りなら fullFrame
       if (detector) {
         try {
+          detectorActive = true;
           const res1 = await detector.detect(canvasRef.current);
-          const candidate = (res1 && res1.length) ? res1 : (fullFrameProbe ? await detector.detect(video) : []);
-          if (candidate && candidate[0]) {
-            const pick = candidate.find(b => /^(EAN_|UPC_)/i.test(String(b.format||""))) || candidate[0];
+          const cand = (res1 && res1.length) ? res1 : (fullFrameProbe ? await detector.detect(video) : []);
+          if (cand && cand[0]) {
+            const pick = cand.find(b => /^(EAN_|UPC_)/i.test(String(b.format||""))) || cand[0];
             const raw = pick.rawValue || pick.rawText || "";
             const val = toEan13(raw);
             if (val) {
@@ -447,54 +339,54 @@ export default function BarcodeScanner({
               if (committed) return;
             }
           }
-        } catch {}
+        } catch {
+          // Detectorが一時的に失敗しても放置（次フレームへ）
+        }
       }
 
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
 
-    // ZXing（Detectorなし端末）
+    // ZXing：Detector がない場合だけ起動（同時併用しない）
     if (!detector) {
       if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
       else try { readerRef.current.reset(); } catch {}
       try {
-        readerRef.current._started = true;
         readerRef.current.decodeFromStream(stream, v, async (result) => {
-          if (!aliveRef.current) return;
-          if (pausedScanRef.current || committingRef.current) return;
+          if (!aliveRef.current || pausedScanRef.current || committingRef.current) return;
           if (!result) return;
-          if (Date.now() < zxingReadyAtRef.current) return;
           const val = toEan13(result.getText());
           if (!val) return;
           const hashNow = latestHashRef.current ?? 0;
           await seenNow(val, hashNow);
         }).catch(()=>{});
-      } catch (e) {
-        console.warn("[ZXing init warn]", e);
+      } catch {
+        // ZXing初期化に失敗しても、Detectorのループ（または次のセッション）で拾える
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [confirmMs, minRoiDiff, skipSameFrameDiff, ignoreCode, ignoreForMs, firstIgnorePrevMs, suppressUnknownMs, suppressAcceptedMs, moveMAWindow, moveMAThreshold, moveAfterCommitDiff, fullFrameProbe, rereadMinDebounceMs, onDetected, onClose, stopAll]);
+  }, [
+    confirmMs, minRoiDiff, skipSameFrameDiff, ignoreCode, ignoreForMs, firstIgnorePrevMs,
+    suppressUnknownMs, suppressAcceptedMs, moveMAWindow, moveMAThreshold, moveAfterCommitDiff,
+    fullFrameProbe, rereadMinDebounceMs, onDetected, onClose, stopAll
+  ]);
 
-  // 再読込み
+  // 再読込み（“同JAN再確定の一時許可＆デバウンス短縮”）
   const activateReread = useCallback(() => {
     const until = Date.now() + rereadWindowMs;
     rereadUntilRef.current = until;
     try { sessionStorage.setItem(REREAD_LS_KEY, String(until)); } catch {}
     setRereadPressed(true);
     setTimeout(() => setRereadPressed(false), 140);
+    // “直前JANのデバウンス短縮”：直前ヒット時刻だけ 0 にして即再確定OK
     lastHitRef.current = { code: lastHitRef.current.code, at: 0 };
   }, [rereadWindowMs]);
 
-  // open 制御（毎回：停止→少し待って→video再生成→start）
+  /* ===== open 制御（最小限：open→start / 非open→stopAll） ===== */
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!open) { await stopAll(); return; }
-      await stopAll();                  // ← 念のため前回を完全停止
-      bumpVideo();                      // ← videoノードを新規に
-      if (isiOS()) await sleep(160);    // ← stop直後のGUM不安定回避
+      if (!open) { stopAll(); return; }
       try { await start(); }
       catch (e) {
         if (cancelled) return;
@@ -504,34 +396,20 @@ export default function BarcodeScanner({
           name==="NotAllowedError"||name==="SecurityError" ? "カメラが『拒否』です。設定でこのサイトのカメラを『許可』にしてください。" :
           name==="NotFoundError"||name==="OverconstrainedError" ? "背面カメラが見つかりません。端末再起動または別ブラウザをお試しください。" :
           name==="NotReadableError" ? "他アプリがカメラ使用中の可能性。全て終了後に再試行してください。" :
-          name==="AbortError" ? "カメラ初期化が一時的に失敗しました。数秒後に再度お試しください。" :
+          name==="AbortError" ? "カメラ初期化が中断されました。再試行してください。" :
           name==="NEED_HTTPS" ? "HTTPS が必須です。https でアクセスしてください。" :
           name==="VIDEO_TIMEOUT" ? "初期化に時間がかかっています。ページ再読込を試してください。" :
           `カメラ起動失敗（${name}${msg}）`
         );
-        await stopAll();
+        stopAll();
       }
     })();
-
-    const onHidden = async () => { await stopAll(); };
-    const onPageHide = async () => { await stopAll(); };
-    const onBeforeUnload = async () => { await stopAll(); };
-
-    document.addEventListener("visibilitychange", onHidden, { passive:true });
-    window.addEventListener("pagehide", onPageHide, { passive:true });
-    window.addEventListener("beforeunload", onBeforeUnload, { passive:true });
-
-    return () => {
-      cancelled = true;
-      document.removeEventListener("visibilitychange", onHidden);
-      window.removeEventListener("pagehide", onPageHide);
-      window.removeEventListener("beforeunload", onBeforeUnload);
-      stopAll();
-    };
+    return () => { cancelled = true; stopAll(); };
   }, [open, start, stopAll]);
 
   if (!open) return null;
 
+  // === UI（枠・説明・再読込み） ===
   const rereadActive = isRereadActive();
   const rereadBtnStyle = {
     position: "absolute",
@@ -557,7 +435,6 @@ export default function BarcodeScanner({
       <div style={panelStyle}>
         <div style={videoBoxStyle}>
           <video
-            key={videoKey}           // ← 新規マウントで内部ハンドルを確実にリセット
             ref={videoRef}
             style={{ width:"100%", height:"100%", objectFit:"cover", backgroundColor:"black" }}
             autoPlay playsInline muted
@@ -606,7 +483,7 @@ export default function BarcodeScanner({
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
             <button
-              onClick={async () => { await stopAll(); onClose?.(); }}
+              onClick={() => { stopAll(); onClose?.(); }}
               style={{ ...btnBase, background:"#fff" }}
             >
               キャンセル
