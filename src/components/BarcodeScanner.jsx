@@ -4,6 +4,7 @@
 // - 再読込みは“同一JANの再確定を一時許可”＋デバウンス短縮（体感を上げる）
 // - 読み取り精度は Detector を使い回し + 二段確認で維持
 // - ★重要★ クローズ時に**必ず**スマホカメラも停止するようクリーンアップを強化
+// - ★iOS安定化★ video要素の置換 / getUserMedia リトライ / stop→待機→start / 二重起動防止
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
@@ -19,6 +20,9 @@ const btnBase      = { background: "#fff", color: "#000", border: "none", paddin
 const hasBD = () => typeof window !== "undefined" && "BarcodeDetector" in window;
 const norm  = (s) => String(s ?? "").replace(/\D/g, "");
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const isiOS = () =>
+  typeof navigator !== "undefined" &&
+  (/iP(hone|od|ad)/.test(navigator.platform || "") || /iPhone|iPad/.test(navigator.userAgent || ""));
 
 // ---- 抑止（過去JANの勝手な再出現を防止）
 const GLOBAL_SUPPRESS = new Map(); // code -> { at, kind }
@@ -92,18 +96,38 @@ async function warmupMediaTime(video, { uniq=6, sumSec=0.35, timeoutMs=3000 } = 
     video.requestVideoFrameCallback(cb);
   });
 }
-async function getStream() {
-  const base = { aspectRatio: { ideal: 16/9 }, frameRate: { ideal: 30, max: 60 }, width: { ideal: 1280 }, height: { ideal: 720 } };
-  try { return await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ exact:"environment" }, ...base } }); } catch {}
-  return await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ ideal:"environment" }, ...base } });
+
+// ---- デバイス選択 + getUserMedia リトライ（iOS対策）
+async function listCameras() {
+  try {
+    const devs = await navigator.mediaDevices.enumerateDevices();
+    return devs.filter(d => d.kind === "videoinput");
+  } catch { return []; }
 }
-async function setAF(track) {
-  if (!track?.getCapabilities) return;
-  const caps = track.getCapabilities();
-  try { if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) await track.applyConstraints({ advanced:[{ focusMode:"continuous" }] }); } catch {}
+async function getStreamWithRetry() {
+  const base = { aspectRatio: { ideal: 16/9 }, frameRate: { ideal: 30, max: 60 }, width: { ideal: 1280 }, height: { ideal: 720 } };
+  const waits = [0, 140, 320, 800]; // WebKit の“直後再取得”対策バックオフ
+  const cams = await listCameras();
+  const back = cams.find(c => /back|rear|wide/i.test(c.label || ""));
+  const trySets = [
+    back ? { audio:false, video:{ deviceId:{ exact: back.deviceId }, ...base } } : null,
+    { audio:false, video:{ facingMode:{ exact:"environment" }, ...base } },
+    { audio:false, video:{ facingMode:{ ideal:"environment" }, ...base } },
+    { audio:false, video: base },
+  ].filter(Boolean);
+
+  let lastErr;
+  for (const w of waits) {
+    if (w) await sleep(w);
+    for (const c of trySets) {
+      try { return await navigator.mediaDevices.getUserMedia(c); }
+      catch (e) { lastErr = e; }
+    }
+  }
+  throw lastErr || new Error("GUM_FAILED");
 }
 
-// ROI（簡易ハッシュ）
+// ---- ROI（簡易ハッシュ）
 function ensureCanvas(ref) {
   if (!ref.current) { const c = document.createElement("canvas"); c.width = 960; c.height = 320; ref.current = c; }
   return ref.current.getContext("2d");
@@ -119,6 +143,33 @@ function sampleROI(video, canvasRef) {
   const data = ctx.getImageData(0,0,cw,ch).data; let sum=0, step=32;
   for (let i=0;i<data.length;i+=4*step) sum += 0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
   return { hash: sum };
+}
+
+// ---- video の徹底解放補助
+function reallyStopStream(stream) {
+  try {
+    if (!stream) return;
+    const tracks = stream.getTracks?.() || [];
+    tracks.forEach((t) => { try { t.enabled = false; } catch {} try { t.stop(); } catch {} });
+  } catch {}
+}
+function hardReleaseVideo(v) {
+  if (!v) return;
+  try { v.pause?.(); } catch {}
+  try { v.srcObject = null; } catch {}
+  try { v.removeAttribute?.("srcObject"); } catch {}
+  try { v.removeAttribute?.("src"); } catch {}
+  try { v.src = ""; } catch {}
+  try { v.load?.(); } catch {}
+}
+// まれに video ノード自体が握りを残すため、要素ごと置換
+function replaceVideoElement(videoRef) {
+  const v = videoRef.current;
+  if (!v || !v.parentNode) return;
+  const clone = v.cloneNode(true);
+  try { clone.removeAttribute?.("src"); clone.removeAttribute?.("srcObject"); clone.srcObject = null; } catch {}
+  v.parentNode.replaceChild(clone, v);
+  videoRef.current = clone;
 }
 
 export default function BarcodeScanner({
@@ -169,6 +220,10 @@ export default function BarcodeScanner({
   const pausedScanRef = useRef(false);
   const aliveRef      = useRef(false);
 
+  // iOS Safari 安定化
+  const startingRef = useRef(false); // 二重 start 防止
+  const sessionIdRef = useRef(0);    // セッション識別（レース防止）
+
   // 再読込み（“同JAN再確定の一時許可＆デバウンス短縮”）
   const rereadUntilRef = useRef(0);
   const isRereadActive = () => Date.now() < rereadUntilRef.current;
@@ -176,56 +231,30 @@ export default function BarcodeScanner({
   const [errorMsg, setErrorMsg] = useState("");
   const [rereadPressed, setRereadPressed] = useState(false);
 
-  // ---- ここが超重要：徹底クリーンアップ ----
-  const reallyStopStream = (stream) => {
-    try {
-      if (!stream) return;
-      const tracks = stream.getTracks?.() || [];
-      tracks.forEach((t) => {
-        try { t.enabled = false; } catch {}
-        try { t.stop(); } catch {}
-      });
-    } catch {}
-  };
-
-  const hardReleaseVideo = (v) => {
-    if (!v) return;
-    try { v.pause?.(); } catch {}
-    try { v.srcObject = null; } catch {}
-    try { v.removeAttribute("srcObject"); } catch {}
-    try { v.removeAttribute("src"); } catch {}
-    try { v.src = ""; } catch {}
-    try { v.load?.(); } catch {}
-  };
-
   const stopZxing = () => {
     try { readerRef.current?.reset?.(); } catch {}
     if (readerRef.current) {
       try { readerRef.current._started = false; } catch {}
-      // 参照切り離し（GC促進）
       readerRef.current = null;
     }
   };
 
   const stopAll = useCallback(async () => {
     aliveRef.current = false;
-
-    // ZXing を先に止める（内部で動画参照が残らないように）
     stopZxing();
 
-    // rAF 停止
     try { cancelAnimationFrame(rafRef.current || 0); } catch {}
     rafRef.current = 0;
 
-    // トラック停止
+    // video の握りを先に剥がす
+    try { replaceVideoElement(videoRef); } catch {}
+
     try { reallyStopStream(videoRef.current?.srcObject); } catch {}
     try { reallyStopStream(streamRef.current); } catch {}
     try { reallyStopStream({ getTracks: () => (trackRef.current ? [trackRef.current] : []) }); } catch {}
 
-    // Video 要素の解放（WebKitは srcObject=null → src="" → load() が効く）
     try { hardReleaseVideo(videoRef.current); } catch {}
 
-    // 参照クリア
     streamRef.current = null;
     trackRef.current  = null;
     prevHashRef.current = null;
@@ -234,18 +263,30 @@ export default function BarcodeScanner({
     pausedScanRef.current = false;
     motionBufRef.current = [];
 
-    // 取りこぼし対策：少し待ってからもう一度止める（iOSで稀に残る）
-    await sleep(50);
+    // iOS: stop直後は GUM 失敗しやすいので少し待つ
+    await sleep(160);
     try { hardReleaseVideo(videoRef.current); } catch {}
     try { reallyStopStream(videoRef.current?.srcObject); } catch {}
-
   }, []);
 
   const start = useCallback(async () => {
+    if (startingRef.current) return;
+    startingRef.current = true;
     setErrorMsg("");
     assertHTTPS();
 
-    const stream = await getStream();
+    if (isiOS()) await sleep(120); // 直前 stop の残留回避
+
+    const sid = ++sessionIdRef.current;
+
+    let stream;
+    try {
+      stream = await getStreamWithRetry();
+    } catch (e) {
+      startingRef.current = false;
+      throw e;
+    }
+
     streamRef.current = stream;
     const track = stream.getVideoTracks?.()[0];
     trackRef.current = track;
@@ -253,11 +294,20 @@ export default function BarcodeScanner({
     const v = videoRef.current;
     v.playsInline = true; v.setAttribute("playsinline",""); v.setAttribute("webkit-playsinline","");
     v.muted = true; v.autoplay = true; v.srcObject = stream;
+
     await waitVideoReady(v, 9000);
     try { await v.play(); } catch {}
-    await setAF(track);
-
     await warmupMediaTime(v);
+    try {
+      // AF連続（対応端末）
+      if (track?.getCapabilities) {
+        const caps = track.getCapabilities();
+        if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) {
+          try { await track.applyConstraints({ advanced:[{ focusMode:"continuous" }] }); } catch {}
+        }
+      }
+    } catch {}
+
     zxingReadyAtRef.current = Date.now();
     sessionAtRef.current = Date.now();
     candRef.current = null;
@@ -265,6 +315,9 @@ export default function BarcodeScanner({
     committingRef.current=false; pausedScanRef.current=false;
     motionBufRef.current = [];
     aliveRef.current = true;
+
+    startingRef.current = false;
+    if (sid !== sessionIdRef.current) { await stopAll(); return; } // レース防止
 
     // Detector を使い回し
     const detector = hasBD() ? new window.BarcodeDetector({
@@ -311,9 +364,7 @@ export default function BarcodeScanner({
       if (accepted) {
         markSuppress(val, "ok");
         lastCommitHashRef.current = prevHashRef.current;
-
-        // ★採用時は即座に停止（カメラランプも消す）
-        await stopAll();
+        await stopAll();        // ★採用時は即座に停止（緑ランプ消灯）
         onClose?.();
         return true;
       } else {
@@ -439,7 +490,7 @@ export default function BarcodeScanner({
     // 体感フィードバック
     setRereadPressed(true);
     setTimeout(() => setRereadPressed(false), 140);
-    // “直前JANのデバウンス短縮”：直前ヒット時刻だけは0にして即再確定OK
+    // “直前JANのデバウンス短縮”
     lastHitRef.current = { code: lastHitRef.current.code, at: 0 };
   }, [rereadWindowMs]);
 
@@ -448,6 +499,7 @@ export default function BarcodeScanner({
     let cancelled = false;
     (async () => {
       if (!open) { await stopAll(); return; }
+      if (isiOS()) await sleep(120); // 直前 stop の残留を回避してから start
       try { await start(); }
       catch (e) {
         if (cancelled) return;
@@ -457,7 +509,7 @@ export default function BarcodeScanner({
           name==="NotAllowedError"||name==="SecurityError" ? "カメラが『拒否』です。設定でこのサイトのカメラを『許可』にしてください。" :
           name==="NotFoundError"||name==="OverconstrainedError" ? "背面カメラが見つかりません。端末再起動または別ブラウザをお試しください。" :
           name==="NotReadableError" ? "他アプリがカメラ使用中の可能性。全て終了後に再試行してください。" :
-          name==="AbortError" ? "カメラ初期化が中断されました。再試行してください。" :
+          name==="AbortError" ? "カメラ初期化が一時的に失敗しました。数秒後に再度お試しください。" :
           name==="NEED_HTTPS" ? "HTTPS が必須です。https でアクセスしてください。" :
           name==="VIDEO_TIMEOUT" ? "初期化に時間がかかっています。ページ再読込を試してください。" :
           `カメラ起動失敗（${name}${msg}）`
@@ -524,7 +576,7 @@ export default function BarcodeScanner({
               boxShadow:"0 0 0 200vmax rgba(0,0,0,0.25) inset"
             }}
           />
-          {/* 中央の説明テキスト */}
+          {/* 中央の説明テキスト（添付のレイアウト風） */}
           <div
             style={{
               position:"absolute", left:"50%", top:"62%", transform:"translateX(-50%)",
