@@ -1,8 +1,10 @@
 // src/components/BarcodeScanner.jsx
-// 目的：
-// 1) 「パシャッ（候補検出）」後に確定できなければカメラ継続で自動再試行
-// 2) 登録なしJANのエラー通知は 1 回だけ（同JANの再通知を一定時間抑止）
-// 3) 読み取り率↑ + 残像は“確定側”の二段確認で抑止
+// 読み取り率↑ ＆ 残像は“確定側”で防ぐ（候補→確認→確定）
+// 追加要件対応：
+//  - 「パシャッ」で未確定/未登録ならカメラ継続で自動再試行
+//  - 登録なしJANのエラー表示は1回だけ（同JANは一定時間抑止）
+//  - 採用OK後はグローバル抑止＆確定中ロックで商品ページの連続表示を防止
+// 依存: npm i @zxing/browser
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
@@ -18,6 +20,18 @@ const hasBD = () => typeof window !== "undefined" && "BarcodeDetector" in window
 const norm  = (s) => String(s ?? "").replace(/\D/g, "");
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+// ---- グローバル抑止（セッション跨ぎ）: 採用OK/NGのJANを一定時間は再確定/再通知しない ----
+const GLOBAL_SUPPRESS = new Map(); // code -> { at: number, kind: 'ok'|'ng' }
+function isGloballySuppressed(code, windowMs) {
+  const rec = GLOBAL_SUPPRESS.get(code);
+  if (!rec) return false;
+  return (Date.now() - rec.at) < windowMs;
+}
+function markGlobalSuppress(code, kind) {
+  GLOBAL_SUPPRESS.set(code, { at: Date.now(), kind });
+}
+
+// ---- utils ----
 function assertHTTPS() {
   const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
   if (window.location.protocol !== "https:" && !isLocal) throw new Error("NEED_HTTPS");
@@ -55,6 +69,7 @@ async function waitVideoReady(video, timeoutMs = 9000) {
   });
 }
 
+// rVFC ウォームアップ（軽）
 async function warmupMediaTime(video, { uniq=6, sumSec=0.3, timeoutMs=2500 } = {}) {
   if (!("requestVideoFrameCallback" in HTMLVideoElement.prototype)) { await sleep(400); return; }
   const t0 = performance.now();
@@ -105,18 +120,19 @@ function sampleROI(video, canvasRef) {
 export default function BarcodeScanner({
   open,
   onClose,
-  onDetected,            // (val) => boolean | { ok: boolean } | Promise<boolean|{ok:boolean}>
+  onDetected,                 // (val) => boolean | {ok:boolean} | Promise<boolean|{ok:boolean}>
   // 二段確認（確定側で残像を弾く）
-  confirmMs = 550,       // 初回検出からこの時間内に再検出できたら確定
-  minRoiDiff = 0.0020,   // 再検出時のROI差分（これ以上で“別フレーム”扱い）
+  confirmMs = 550,           // 初回検出からこの時間内に再検出できたら確定
+  minRoiDiff = 0.0020,       // 再検出時のROI差分（これ以上で“別フレーム”扱い）
   // エラー抑止
-  suppressUnknownMs = 10000, // 親が“登録なし”で未採用にした JAN を再通知しない時間
+  suppressUnknownMs = 10000, // 登録なし（NG）の再通知抑止時間
+  suppressAcceptedMs = 7000, // 採用OK後の再確定抑止時間（商品ページの連続出現対策）
   // 軽いスキップ
   skipSameFrameDiff = 0.0012, // 直前とほぼ同じフレームは軽くスキップ
   // デバウンス
-  ignoreCode = null,     // 任意：同一JANの短時間デバウンス
+  ignoreCode = null,         // 任意：同一JANの短時間デバウンス（禁止JANではない）
   ignoreForMs = 900,
-  firstIgnorePrevMs = 800, // 起動直後、直前セッション最初JANは採用しない
+  firstIgnorePrevMs = 1200,  // 起動直後、直前セッション最初JANは採用しない
   // フラッシュ演出
   flashMs = 140,
 }) {
@@ -137,6 +153,10 @@ export default function BarcodeScanner({
   // 候補→確認→確定
   const candRef = useRef(null); // { code, t0, hash0 }
 
+  // 確定処理ロック＆スキャン一時停止
+  const committingRef = useRef(false);
+  const pausedScanRef = useRef(false);
+
   const [hud, setHud] = useState("-");
   const [errorMsg, setErrorMsg] = useState("");
   const [devices, setDevices] = useState([]);
@@ -156,6 +176,7 @@ export default function BarcodeScanner({
     } catch {}
     streamRef.current=null; trackRef.current=null;
     prevHashRef.current=null; candRef.current=null;
+    committingRef.current=false; pausedScanRef.current=false;
     setFlash(false);
   }, []);
 
@@ -182,6 +203,7 @@ export default function BarcodeScanner({
     candRef.current = null;
     setFlash(false);
     notifiedRef.current.clear(); // セッション開始で抑止リセット
+    committingRef.current=false; pausedScanRef.current=false;
 
     const detector = hasBD() ? new window.BarcodeDetector({ formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","qr_code"] }) : null;
     setUsingDetector(!!detector);
@@ -194,13 +216,20 @@ export default function BarcodeScanner({
           now - sessionAtRef.current < firstIgnorePrevMs &&
           val === prevSessionFirstRef.current.code) return false;
 
-      // デバウンス
+      // ローカル・デバウンス
       if (ignoreCode && val === String(ignoreCode)) {
         if (now - (lastHitRef.current.at||0) < ignoreForMs) return false;
       }
       if (val === lastHitRef.current.code && now - lastHitRef.current.at < ignoreForMs) return false;
 
-      // ---- 親ハンドラ呼び出し ----
+      // グローバル抑止（採用OK抑止）
+      if (isGloballySuppressed(val, suppressAcceptedMs)) return false;
+
+      // ---- 親へ通知（確定） ----
+      // 確定処理中ロックを立て、スキャンを一時停止
+      committingRef.current = true;
+      pausedScanRef.current = true;
+
       lastHitRef.current = { code: val, at: now };
       prevSessionFirstRef.current.code = val;
 
@@ -211,19 +240,22 @@ export default function BarcodeScanner({
         if (typeof r === "boolean") accepted = r;
         else if (r && typeof r === "object" && "ok" in r) accepted = !!r.ok;
       } catch {
-        // 例外は未採用扱いに倒す
+        // 例外は未採用扱い
         accepted = false;
       }
 
       if (accepted) {
-        // 採用：停止＆クローズ
+        // 採用OK → グローバル抑止に記録してから停止
+        markGlobalSuppress(val, "ok");
         stopAll();
         onClose?.();
         return true;
       } else {
-        // 未採用（例：登録なし）→ 同じJANの再通知を抑止
+        // 未採用（未登録など）：通知は1回だけ。抑止して再試行継続
         notifiedRef.current.set(val, now);
-        // カメラは継続（再試行）
+        markGlobalSuppress(val, "ng");
+        committingRef.current = false;
+        pausedScanRef.current = false; // すぐ再開
         return false;
       }
     };
@@ -231,14 +263,19 @@ export default function BarcodeScanner({
     const seenNow = async (val, hashNow) => {
       const now = Date.now();
 
-      // 未採用抑止：同じJANを一定時間は再通知しない
+      // グローバル抑止（OK/NG 共通）
+      if (isGloballySuppressed(val, suppressAcceptedMs) || isGloballySuppressed(val, suppressUnknownMs)) {
+        return false;
+      }
+
+      // 未採用抑止（ローカル）
       const lastN = notifiedRef.current.get(val) || 0;
       if (now - lastN < suppressUnknownMs) return false;
 
       // 二段確認（確定側で残像を弾く）
       const cand = candRef.current;
       if (!cand || cand.code !== val || (now - cand.t0) > confirmMs) {
-        // 候補をセット＆フラッシュ演出（パシャッ）
+        // 候補をセット＆フラッシュ演出（パシャッ）。失敗してもカメラ継続
         candRef.current = { code: val, t0: now, hash0: hashNow };
         setFlash(true);
         setTimeout(() => setFlash(false), flashMs);
@@ -248,10 +285,8 @@ export default function BarcodeScanner({
       // 同一コードが確認ウィンドウ内にもう一度来た：ROIが別フレームか？
       const diff = Math.abs(hashNow - cand.hash0) / (Math.abs(cand.hash0) + 1e-6);
       if (diff >= minRoiDiff) {
-        // 確定を試みる（ここで採用/未採用の分岐）
         const ok = await tryCommit(val);
-        // 採用できなかった場合もカメラ継続（＝自動で再試行）
-        if (!ok) candRef.current = null; // 候補は捨ててリトライ
+        if (!ok) candRef.current = null; // 未採用なら候補捨てて再試行
         return ok;
       } else {
         // 同一フレームに近い → 未確定のまま
@@ -265,6 +300,12 @@ export default function BarcodeScanner({
     const loop = async () => {
       const video = videoRef.current;
       if (!video) return;
+
+      // 確定処理中はスキャンを完全停止（ループは回すが検出しない）
+      if (pausedScanRef.current || committingRef.current) {
+        rafRef.current = requestAnimationFrame(loop);
+        return;
+      }
 
       const { hash } = sampleROI(video, canvasRef);
       latestHashRef.current = hash;
@@ -299,6 +340,8 @@ export default function BarcodeScanner({
       if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
       else try { readerRef.current.reset(); } catch {}
       readerRef.current.decodeFromStream(stream, v, async (result) => {
+        // 確定処理中は無視
+        if (pausedScanRef.current || committingRef.current) return;
         if (!result) return;
         if (Date.now() < zxingReadyAtRef.current) return;
         const val = norm(result.getText());
@@ -307,7 +350,7 @@ export default function BarcodeScanner({
         await seenNow(val, hashNow);
       }).catch(()=>{});
     }
-  }, [deviceId, confirmMs, minRoiDiff, skipSameFrameDiff, ignoreCode, ignoreForMs, firstIgnorePrevMs, suppressUnknownMs, flashMs, onDetected, onClose, stopAll]);
+  }, [deviceId, confirmMs, minRoiDiff, skipSameFrameDiff, ignoreCode, ignoreForMs, firstIgnorePrevMs, suppressUnknownMs, suppressAcceptedMs, flashMs, onDetected, onClose, stopAll]);
 
   // open 制御
   useEffect(() => {
@@ -384,9 +427,7 @@ export default function BarcodeScanner({
               animation:"flashAnim 180ms ease", pointerEvents:"none"
             }}/>
           )}
-          <style>
-            {`@keyframes flashAnim { from { opacity: 0.9; } to { opacity: 0; } }`}
-          </style>
+          <style>{`@keyframes flashAnim { from { opacity: 0.9; } to { opacity: 0; } }`}</style>
           {/* HUD */}
           <div style={{ position:"absolute", right:8, top:8, background:"rgba(0,0,0,0.5)", color:"#fff", fontSize:12, padding:"4px 8px", borderRadius:8 }}>
             {hasBD() ? "Detector" : "ZXing"} | {hud}
