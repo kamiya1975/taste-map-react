@@ -24,6 +24,8 @@ import {
   paperBaseStyle,
 } from "./ui/constants";
 
+const REREAD_LS_KEY = "tm_reread_until";
+
 /* =======================
    定数
 ======================= */
@@ -1498,7 +1500,7 @@ function MapPage() {
         open={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
-          const jan = String(codeText).replace(/\D/g, "");
+          // --- EAN-13 検証（親側の最終ゲート）---
           const isValidEan13 = (ean) => {
             if (!/^\d{13}$/.test(ean)) return false;
             let sum = 0;
@@ -1507,38 +1509,37 @@ function MapPage() {
               sum += (i % 2 === 0) ? d : d * 3;
             }
             const check = (10 - (sum % 10)) % 10;
-            return check === (jan.charCodeAt(12) - 48);
+            return check === (ean.charCodeAt(12) - 48);
           };
-          if (jan.length === 12) { // UPC-A を 0 埋め
-            jan = "0" + jan;
-          }
+
+          let jan = String(codeText).replace(/\D/g, "");
+          if (jan.length === 12) jan = "0" + jan;       // UPC-A → EAN-13
           if (jan.length !== 13 || !isValidEan13(jan)) {
             alert(`JAN: ${jan} は無効なバーコードです。`);
             return false; // スキャナ継続
           }
 
-           const now = Date.now();
-          // 再読込みウィンドウ判定
+          const now = Date.now();
+          // --- 「再読込み」ウィンドウ中は60sガードを一時解除 ---
           let bypassThrottle = false;
           try {
             const until = Number(sessionStorage.getItem(REREAD_LS_KEY) || 0);
             bypassThrottle = until > 0 && now < until;
           } catch {}
 
-          // 1) 直近60秒以内の同一JANは無視（勝手に商品ページが再出現するのを防ぐ）
+          // 直近60秒の同一JANは通常スキップ（再読込み中は通す）
           if (!bypassThrottle) {
             if (
               jan === lastCommittedRef.current.code &&
               now - lastCommittedRef.current.at < 60000
             ) {
-              return false; // 継続
+              return false; // スキャナ継続
             }
           }
 
-          // 2) データに存在するか判定
+          // データヒット判定
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
-            // 商品ページへ遷移
             const tx = hit.BodyAxis;
             const ty = is3D ? hit.SweetAxis : -hit.SweetAxis;
             setViewState((prev) => ({
@@ -1548,19 +1549,18 @@ function MapPage() {
             }));
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
-
-            // 採用を記録（以降60秒は同一JANを親側でブロック）
+            // 採用記録（勝手な再出現を防ぐ）
             lastCommittedRef.current = { code: jan, at: now };
-            return true;  // ← スキャナ側にも「採用OK」を通知（スキャナが自動停止＆クローズ）
+            return true; // 採用→スキャナ側停止
           }
 
-          // 3) 未登録JAN：アラートは“同JAN”に対して12秒間に1回だけ
+          // 未登録JAN：ワンショット警告（12s抑制は既存の unknownWarnedRef を利用）
           const lastWarn = unknownWarnedRef.current.get(jan) || 0;
           if (now - lastWarn > 12000) {
             alert(`JAN: ${jan} は見つかりませんでした。`);
             unknownWarnedRef.current.set(jan, now);
           }
-          return false;   // ← 未登録なので採用せず、スキャナ継続
+          return false; // スキャナ継続
         }}
       />
 
