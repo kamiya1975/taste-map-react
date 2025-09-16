@@ -1,10 +1,8 @@
 // src/components/BarcodeScanner.jsx
-// 連続スキャン 調整版：読み取り率を戻しつつ“残像”は弾く
-// - ARMED: mediaTimeウォームアップ + ROI差分の移動平均 + 動的エントロピー（軽め）
-// - 初回一致: 2連続一致 & ROIが微変化（同一フレームはNG）
-// - フェイルセーフ: 起動1.2sで最低条件満たせば ARMED
-// - 前セッション最初JANの一時無効化（禁止JANではなく時間限定）
-// 依存: npm i @zxing/browser
+// 読み取り率優先＋残像は“検出後に確認で止める”最小ガード版
+// ・Detector優先、ZXingフォールバック
+// ・前処理ガードは最小（軽いウォームアップ＆ごく緩いROI差分スキップのみ）
+// ・確定は「同一コードを別フレームでもう一度検出」かつROI微変化あり
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
@@ -57,18 +55,16 @@ async function waitVideoReady(video, timeoutMs = 9000) {
   });
 }
 
-// rVFC ウォームアップ（軽め）
-async function warmupMediaTime(video, { uniq=10, sumSec=0.5, timeoutMs=4000 } = {}) {
-  if (!("requestVideoFrameCallback" in HTMLVideoElement.prototype)) {
-    await sleep(700); return;
-  }
+// rVFC ウォームアップ（超軽）
+async function warmupMediaTime(video, { uniq=6, sumSec=0.3, timeoutMs=2500 } = {}) {
+  if (!("requestVideoFrameCallback" in HTMLVideoElement.prototype)) { await sleep(400); return; }
   const t0 = performance.now();
   await new Promise((resolve) => {
-    const seen = new Set(); let last=0, accum=0;
+    const seen = new Set(); let last=0, acc=0;
     const cb = (_ts, meta) => {
       const mt = meta?.mediaTime ?? 0;
-      if (!seen.has(mt)) { if (last>0 && mt>last) accum += (mt-last); seen.add(mt); last = mt; }
-      if (seen.size>=uniq && accum>=sumSec) return resolve();
+      if (!seen.has(mt)) { if (last>0 && mt>last) acc += (mt-last); seen.add(mt); last = mt; }
+      if (seen.size>=uniq && acc>=sumSec) return resolve();
       if (performance.now()-t0 > timeoutMs) return resolve();
       video.requestVideoFrameCallback(cb);
     };
@@ -78,64 +74,48 @@ async function warmupMediaTime(video, { uniq=10, sumSec=0.5, timeoutMs=4000 } = 
 
 async function getStream(deviceId) {
   const base = { aspectRatio: { ideal: 16/9 }, frameRate: { ideal: 30, max: 60 }, width: { ideal: 1280 }, height: { ideal: 720 } };
-  try {
-    if (deviceId) return await navigator.mediaDevices.getUserMedia({ audio:false, video:{ deviceId:{ exact: deviceId }, ...base } });
-  } catch {}
-  try {
-    return await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ exact:"environment" }, ...base } });
-  } catch {}
+  try { if (deviceId) return await navigator.mediaDevices.getUserMedia({ audio:false, video:{ deviceId:{ exact: deviceId }, ...base } }); } catch {}
+  try { return await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ exact:"environment" }, ...base } }); } catch {}
   return await navigator.mediaDevices.getUserMedia({ audio:false, video:{ facingMode:{ ideal:"environment" }, ...base } });
 }
 
-// AF 維持（軽）
+// AF（軽）
 async function setAF(track) {
   if (!track?.getCapabilities) return;
   const caps = track.getCapabilities();
-  try {
-    if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) {
-      await track.applyConstraints({ advanced:[{ focusMode:"continuous" }] });
-    }
-  } catch {}
+  try { if (Array.isArray(caps.focusMode) && caps.focusMode.includes("continuous")) await track.applyConstraints({ advanced:[{ focusMode:"continuous" }] }); } catch {}
 }
 
-// ROI 処理
+// ROI
 function ensureCanvas(ref) {
-  if (!ref.current) {
-    const c = document.createElement("canvas");
-    c.width = 960; c.height = 320;
-    ref.current = c;
-  }
+  if (!ref.current) { const c = document.createElement("canvas"); c.width = 960; c.height = 320; ref.current = c; }
   return ref.current.getContext("2d");
 }
 function sampleROI(video, canvasRef) {
   const ctx = ensureCanvas(canvasRef);
   const c = canvasRef.current; const cw = c.width, ch = c.height;
   const vw = video.videoWidth, vh = video.videoHeight;
-  if (!vw || !vh) return { hash: Math.random(), H: 0 };
+  if (!vw || !vh) return { hash: Math.random() };
   const rh = Math.floor(vh * 0.30), rw = Math.floor(rh * 3);
   const sx = Math.floor((vw - rw)/2), sy = Math.floor(vh * 0.45 - rh/2);
   ctx.drawImage(video, sx, sy, rw, rh, 0, 0, cw, ch);
   // hash（軽量輝度サマリ）
   const data = ctx.getImageData(0,0,cw,ch).data; let sum=0, step=32;
   for (let i=0;i<data.length;i+=4*step) sum += 0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
-  // 16-bin エントロピー
-  const bins = new Array(16).fill(0); let total=0;
-  for (let i=0;i<data.length;i+=4*8) { // 以前より粗く
-    const y = 0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
-    bins[Math.max(0,Math.min(15,(y|0)>>4))]++; total++;
-  }
-  let H=0; for (let k=0;k<16;k++) if (bins[k]) { const p=bins[k]/total; H -= p*Math.log2(p); }
-  return { hash: sum, H };
+  return { hash: sum };
 }
 
 export default function BarcodeScanner({
   open,
   onClose,
   onDetected,
-  ignoreCode = null,     // 同一JANの短時間デバウンス（禁止JANではない）
-  ignoreForMs = 1200,
-  firstIgnorePrevMs = 1500, // 前セッション最初JANの一時無効化
-  armedFailSafeMs = 1200,   // ARMED フェイルセーフ
+  // “確認パラメータ”：ここを少し弄るだけでバランス調整できます
+  confirmMs = 500,         // 初回検出からこの時間内に再検出できたら確定
+  minRoiDiff = 0.0020,     // 再検出時に ROI ハッシュがこれ以上変化していること
+  skipSameFrameDiff = 0.0015, // 直前とほぼ同じフレームはスキップ（軽く）
+  ignoreCode = null,       // 同一JANの短時間デバウンス（禁止JANではない）
+  ignoreForMs = 900,
+  firstIgnorePrevMs = 1000 // 起動直後のみ、前セッション最初JANを採用しない
 }) {
   const videoRef  = useRef(null);
   const canvasRef = useRef(null);
@@ -145,16 +125,13 @@ export default function BarcodeScanner({
 
   const rafRef    = useRef(0);
   const prevHashRef = useRef(null);
-  const hashMARef = useRef([]); // ROI差分の移動平均用
-  const baseEntropyRef = useRef(null);
-
-  const armedRef  = useRef(false);
   const sessionAtRef = useRef(0);
   const prevSessionFirstRef = useRef({ code: null });
   const lastHitRef = useRef({ code: null, at: 0 });
   const zxingReadyAtRef = useRef(0);
 
-  const firstMatchRef = useRef({ val:"", hash: null, ok:false }); // 2連続一致
+  // “候補→確認→確定”の状態
+  const candRef = useRef(null); // { code, t0, hash0 }
 
   const [hud, setHud] = useState("-");
   const [errorMsg, setErrorMsg] = useState("");
@@ -173,15 +150,14 @@ export default function BarcodeScanner({
       if (v) { try{v.pause?.();}catch{} v.srcObject=null; v.removeAttribute("src"); v.load?.(); }
     } catch {}
     streamRef.current=null; trackRef.current=null;
-    prevHashRef.current=null; hashMARef.current=[];
-    baseEntropyRef.current=null; armedRef.current=false;
-    firstMatchRef.current={ val:"", hash:null, ok:false };
+    prevHashRef.current=null; candRef.current=null;
   }, []);
 
   const start = useCallback(async (explicitId) => {
     setErrorMsg("");
     assertHTTPS();
     try { setDevices(await enumerateBackCameras()); } catch {}
+
     const stream = await getStream(explicitId || deviceId);
     streamRef.current = stream;
     const track = stream.getVideoTracks?.()[0];
@@ -194,106 +170,103 @@ export default function BarcodeScanner({
     try { await v.play(); } catch {}
     await setAF(track);
 
-    // ウォームアップ（軽）
-    await warmupMediaTime(v, { uniq:10, sumSec:0.5, timeoutMs:4000 });
+    // 軽いウォームアップ
+    await warmupMediaTime(v);
     zxingReadyAtRef.current = Date.now();
     sessionAtRef.current = Date.now();
+    candRef.current = null;
 
-    setUsingDetector(hasBD());
-
-    // ループ
     const detector = hasBD() ? new window.BarcodeDetector({ formats:["ean_13","ean_8","code_128","code_39","upc_a","upc_e","qr_code"] }) : null;
+    setUsingDetector(!!detector);
 
-    const handleHit = (raw, roiHash) => {
-      const val = norm(raw);
-      if (!val) return false;
-
-      // 起動直後のみ、前セッション最初JANを採用しない（時間限定）
+    const tryCommit = (val, hashNow) => {
+      const now = Date.now();
+      // 起動直後：直前セッションの最初JANは一時無効（禁止ではない）
       if (prevSessionFirstRef.current.code &&
-          Date.now()-sessionAtRef.current < firstIgnorePrevMs &&
+          now - sessionAtRef.current < firstIgnorePrevMs &&
           val === prevSessionFirstRef.current.code) return false;
 
-      // 初回一致（2連続 + ROIが微変化）
-      const fm = firstMatchRef.current;
-      if (!fm.ok) {
-        if (fm.val === val && fm.hash !== roiHash) {
-          fm.ok = true; // 2連続一致かつハッシュ微変化
-        } else {
-          fm.val = val; fm.hash = roiHash;
-          return false; // まだ確定しない
-        }
-      }
-
-      // 同一JANの短時間デバウンス
+      // デバウンス
       if (ignoreCode && val === String(ignoreCode)) {
-        if (Date.now() - (lastHitRef.current.at||0) < ignoreForMs) return false;
+        if (now - (lastHitRef.current.at||0) < ignoreForMs) return false;
       }
-      if (val === lastHitRef.current.code && Date.now()-lastHitRef.current.at < 900) return false;
+      if (val === lastHitRef.current.code && now - lastHitRef.current.at < ignoreForMs) return false;
 
-      lastHitRef.current = { code: val, at: Date.now() };
+      lastHitRef.current = { code: val, at: now };
       prevSessionFirstRef.current.code = val;
       onDetected?.(val);
       onClose?.();
       return true;
     };
 
-    const tick = async () => {
+    const seenNow = (val, hashNow) => {
+      const now = Date.now();
+      const cand = candRef.current;
+
+      if (!cand || cand.code !== val || (now - cand.t0) > confirmMs) {
+        // 候補を張り直す（まだ確定しない）
+        candRef.current = { code: val, t0: now, hash0: hashNow };
+        return false;
+      }
+      // 同一コードが確認ウィンドウ内にもう一度来た：ROIが“同一フレーム”でないことを確認
+      const diff = Math.abs(hashNow - cand.hash0) / (Math.abs(cand.hash0) + 1e-6);
+      if (diff >= minRoiDiff) {
+        // 確定
+        return tryCommit(val, hashNow);
+      } else {
+        // 同一フレームっぽいので未確定のまま
+        return false;
+      }
+    };
+
+    // ZXing のために常に最新の ROI ハッシュを更新しておく
+    const latestHashRef = { current: null };
+
+    const loop = async () => {
       const video = videoRef.current;
       if (!video) return;
 
-      const { hash, H } = sampleROI(video, canvasRef);
-      if (baseEntropyRef.current == null) baseEntropyRef.current = H;
+      const { hash } = sampleROI(video, canvasRef);
+      latestHashRef.current = hash;
 
-      // ROI差分ゲート（直前とほぼ同じはスキップ） しきい値はやや緩め
+      // 直前とほぼ同じフレームは軽くスキップ（残像の連続ヒットを避ける）
       const prev = prevHashRef.current; prevHashRef.current = hash;
       if (prev != null) {
-        const diff = Math.abs(hash - prev) / (Math.abs(prev)+1e-6);
-        // 移動平均に積む
-        const arr = hashMARef.current; arr.push(diff); if (arr.length > 8) arr.shift();
-        const ma = arr.reduce((a,b)=>a+b,0) / (arr.length || 1);
-
-        // ARMED 判定（軽め & フェイルセーフ）
-        const entOK = H >= Math.max(1.5, baseEntropyRef.current + 0.15); // 動的＋下限1.5
-        const maOK  = ma >= 0.004; // 平均的に0.4%以上は変化している
-        const age   = Date.now() - sessionAtRef.current;
-        const failSafeOK = (age >= armedFailSafeMs) && (H >= 1.6) && (arr.length >= 5);
-
-        if (!armedRef.current && ( (entOK && maOK && arr.length>=5) || failSafeOK )) {
-          armedRef.current = true;
-        }
-
-        if (diff < 0.003) { // 0.3% 未満：残像っぽい
-          rafRef.current = requestAnimationFrame(tick);
-          return;
-        }
+        const diff = Math.abs(hash - prev) / (Math.abs(prev) + 1e-6);
+        if (diff < skipSameFrameDiff) { rafRef.current = requestAnimationFrame(loop); return; }
       }
 
-      if (armedRef.current) {
-        if (detector) {
-          try {
-            const res = await detector.detect(canvasRef.current);
-            if (res && res[0]) {
-              const raw = res[0].rawValue || res[0].rawText || "";
-              if (handleHit(raw, hash)) return;
+      if (detector) {
+        try {
+          const res = await detector.detect(canvasRef.current);
+          if (res && res[0]) {
+            const raw = res[0].rawValue || res[0].rawText || "";
+            const val = norm(raw);
+            if (val) {
+              if (seenNow(val, hash)) return; // 確定したら終了（onClose内でstop）
             }
-          } catch {}
-        } else {
-          if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
-          if (!readerRef.current._started) {
-            readerRef.current._started = true;
-            readerRef.current.decodeFromStream(stream, video, (result) => {
-              if (!result) return;
-              if (Date.now() < zxingReadyAtRef.current) return;
-              handleHit(result.getText(), hash);
-            }).catch(()=>{});
           }
-        }
+        } catch {}
       }
 
-      rafRef.current = requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(loop);
     };
-    rafRef.current = requestAnimationFrame(tick);
-  }, [deviceId, firstIgnorePrevMs, ignoreCode, ignoreForMs, armedFailSafeMs, onClose, onDetected]);
+    rafRef.current = requestAnimationFrame(loop);
+
+    // ZXing も並走（Detectorが無い場合 or 補助）
+    if (!detector) {
+      if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
+      else try { readerRef.current.reset(); } catch {}
+      readerRef.current.decodeFromStream(stream, v, (result) => {
+        if (!result) return;
+        if (Date.now() < zxingReadyAtRef.current) return;
+        const val = norm(result.getText());
+        if (!val) return;
+        const hashNow = latestHashRef.current ?? 0;
+        if (seenNow(val, hashNow)) return;
+      }).catch(()=>{});
+    }
+  }, [deviceId, confirmMs, minRoiDiff, skipSameFrameDiff, ignoreCode, ignoreForMs, firstIgnorePrevMs, onClose, onDetected]);
 
   // open 制御
   useEffect(() => {
@@ -323,9 +296,10 @@ export default function BarcodeScanner({
   // HUD
   useEffect(() => {
     const i = setInterval(() => {
-      const v = videoRef.current; const s = trackRef.current?.getSettings?.() || {};
-      const ma = hashMARef.current; const maVal = (ma.reduce?.((a,b)=>a+b,0)/(ma.length||1) || 0);
-      setHud(`${v?.readyState ?? "-"} ${v?.videoWidth ?? 0}x${v?.videoHeight ?? 0} armed:${armedRef.current?1:0} ma:${maVal.toFixed(4)}`);
+      const v = videoRef.current;
+      const s = trackRef.current?.getSettings?.() || {};
+      const cand = candRef.current;
+      setHud(`${v?.readyState ?? "-"} ${v?.videoWidth ?? 0}x${v?.videoHeight ?? 0} cand:${cand?cand.code:"-"} zoom:${s.zoom ?? "-"}`);
     }, 500);
     return () => clearInterval(i);
   }, []);
@@ -352,7 +326,7 @@ export default function BarcodeScanner({
             style={{ width:"100%", height:"100%", objectFit:"cover", backgroundColor:"black" }}
             autoPlay playsInline muted
           />
-          {/* 横長ガイド（3:1） */}
+          {/* ガイド */}
           <div
             style={{
               position:"absolute", left:"50%", top:"45%", transform:"translate(-50%, -50%)",
