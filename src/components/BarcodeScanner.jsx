@@ -1,7 +1,8 @@
 // src/components/BarcodeScanner.jsx
-// Safari専用：カメラ解放の強制ワークアラウンドを追加
-// PWAでは従来どおり、Safari(ブラウザ)のみ強化クリーンアップを適用
-// UIは現行そのまま（枠・中央テキスト・再読込みボタン）
+// 目的：PWA には安定ルートのみ、Safari(ブラウザ)にだけ穏やかな追加解放を適用
+// - PWA 判定: display-mode: standalone / navigator.standalone
+// - Safari(ブラウザ)のみ stop→srcObject=null→load の簡潔な解放 + 120ms 待機
+// - エンジンは単独(BarcodeDetector 優先、なければ ZXing)
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
@@ -18,17 +19,27 @@ const hasBD = () => typeof window !== "undefined" && "BarcodeDetector" in window
 const norm  = (s) => String(s ?? "").replace(/\D/g, "");
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-/* ===== Safari 判定 ===== */
-const isSafari = () => {
+/* ===== PWA/Safari 判定を厳密化 ===== */
+const isStandalonePWA = () => {
+  try {
+    // iOS: navigator.standalone、他: display-mode
+    if (typeof window !== "undefined" && window.matchMedia) {
+      if (window.matchMedia("(display-mode: standalone)").matches) return true;
+    }
+    if (typeof navigator !== "undefined" && "standalone" in navigator) return !!navigator.standalone;
+  } catch {}
+  return false;
+};
+const isSafariUA = () => {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent || "";
   const vendor = navigator.vendor || "";
-  // iOS Safari / macOS Safari（Chrome/Firefoxは除外）
-  const isIOS = /iP(hone|od|ad)/.test(ua) || /iOS/.test(ua);
-  const isSafariUA = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS|Edg|OPR/.test(ua);
   const isAppleVendor = /Apple/i.test(vendor);
-  return isSafariUA && isAppleVendor || isIOS && isSafariUA;
+  const isSafariLike = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|Edg|EdgiOS|OPR/.test(ua);
+  return isAppleVendor && isSafariLike;
 };
+// Safari(ブラウザ)のみ true。PWA なら false にする
+const isSafariBrowserOnly = () => isSafariUA() && !isStandalonePWA();
 
 /* ===== 抑止 ===== */
 const GLOBAL_SUPPRESS = new Map();
@@ -111,60 +122,11 @@ function sampleROI(video, canvasRef) {
   return { hash: sum };
 }
 
-/* ===== Safari用・強制クリーンアップ ===== */
-async function safariHardStop(videoEl, stream, extraTracks = []) {
-  // 1) すべてのトラックを確実に停止
-  try {
-    const stopTrack = (t) => { try { t.enabled = false; } catch{} try { t.stop(); } catch{} };
-    (stream?.getTracks?.() || []).forEach(stopTrack);
-    extraTracks.forEach(stopTrack);
-    (videoEl?.srcObject?.getTracks?.() || []).forEach(stopTrack);
-  } catch {}
-
-  // 2) video を空の MediaStream に差し替え → load → null → load
-  try {
-    if (videoEl) {
-      try { videoEl.pause?.(); } catch {}
-      try { videoEl.srcObject = new MediaStream(); } catch {}
-      try { videoEl.load?.(); } catch {}
-      await sleep(50);
-      try { videoEl.srcObject = null; } catch {}
-      try { videoEl.removeAttribute?.("srcObject"); } catch {}
-      try { videoEl.removeAttribute?.("src"); } catch {}
-      try { videoEl.src = ""; } catch {}
-      try { videoEl.load?.(); } catch {}
-    }
-  } catch {}
-
-  // 3) readyState=ended を最大400msまで待つ（残留回避）
-  const deadline = Date.now() + 400;
-  while (Date.now() < deadline) {
-    const anyAlive =
-      (stream?.getTracks?.() || []).some(t => t.readyState !== "ended") ||
-      (videoEl?.srcObject?.getTracks?.() || []).some(t => t.readyState !== "ended") ||
-      extraTracks.some(t => t.readyState !== "ended");
-    if (!anyAlive) break;
-    await sleep(40);
-  }
-
-  // 4) 念押し：もう一度完全解放
-  try {
-    if (videoEl) {
-      try { videoEl.pause?.(); } catch {}
-      try { videoEl.srcObject = null; } catch {}
-      try { videoEl.removeAttribute?.("srcObject"); } catch {}
-      try { videoEl.removeAttribute?.("src"); } catch {}
-      try { videoEl.src = ""; } catch {}
-      try { videoEl.load?.(); } catch {}
-    }
-  } catch {}
-}
-
 /* ========================================================= */
 export default function BarcodeScanner({
   open,
   onClose,
-  onDetected,
+  onDetected,                    // (val) => boolean | {ok:boolean} | Promise<boolean|{ok:boolean}>
   // 二段確認
   confirmMs = 650,
   minRoiDiff = 0.0022,
@@ -214,10 +176,11 @@ export default function BarcodeScanner({
   const [errorMsg, setErrorMsg] = useState("");
   const [rereadPressed, setRereadPressed] = useState(false);
 
-  /* ==== クリーンアップ ==== */
+  /* ==== クリーンアップ（PWAは従来、Safariブラウザのみ追加ワーク） ==== */
   const stopAll = useCallback(async () => {
     aliveRef.current = false;
-    // ZXingは先に完全停止
+
+    // ZXing は先に停止・破棄
     try { readerRef.current?.reset?.(); } catch {}
     readerRef.current = null;
 
@@ -226,24 +189,25 @@ export default function BarcodeScanner({
 
     const v = videoRef.current;
     const s = v?.srcObject || streamRef.current;
-    const extra = trackRef.current ? [trackRef.current] : [];
 
-    // Safari は専用ルートで厳重に解放
-    if (isSafari()) {
-      await safariHardStop(v, s, extra);
-    } else {
-      try { (s?.getTracks?.() || []).forEach(t => { try { t.enabled=false; } catch{} try { t.stop(); } catch{} }); } catch {}
-      try { trackRef.current?.stop?.(); } catch {}
-      if (v) {
-        try { v.pause?.(); } catch {}
-        try { v.srcObject = null; } catch {}
-        try { v.removeAttribute("srcObject"); } catch {}
+    // 1) まず全トラック停止（共通）
+    try { (s?.getTracks?.() || []).forEach(t => { try { t.enabled=false; } catch{} try { t.stop(); } catch{} }); } catch {}
+    try { trackRef.current?.stop?.(); } catch {}
+
+    // 2) 参照を外す
+    if (v) {
+      try { v.pause?.(); } catch {}
+      try { v.srcObject = null; } catch {}
+      try { v.removeAttribute("srcObject"); } catch {}
+      // Safari ブラウザのみ、load() を挟んで安静化（PWAは触らない）
+      if (isSafariBrowserOnly()) {
         try { v.removeAttribute("src"); } catch {}
         try { v.src = ""; } catch {}
         try { v.load?.(); } catch {}
       }
     }
 
+    // 3) 参照クリア
     streamRef.current=null;
     trackRef.current=null;
     prevHashRef.current=null;
@@ -251,20 +215,21 @@ export default function BarcodeScanner({
     committingRef.current=false;
     pausedScanRef.current=false;
     motionBufRef.current = [];
-    await sleep(60); // ほんの少し待機（再起動安定化）
+
+    // 4) Safari(ブラウザ)のみ、次回 GUM の前に少し待つ
+    if (isSafariBrowserOnly()) await sleep(120);
   }, []);
 
   const start = useCallback(async () => {
     setErrorMsg("");
     assertHTTPS();
 
-    // 念のため前回の残りを落とす
+    // 念のため残りを落とす（Safariブラウザは stopAll 内で 120ms 待つ）
     await stopAll();
 
     const stream = await getStream();
     streamRef.current = stream;
-    const track = stream.getVideoTracks?.()[0];
-    trackRef.current = track;
+    trackRef.current  = stream.getVideoTracks?.()[0] || null;
 
     const v = videoRef.current;
     v.playsInline = true; v.setAttribute("playsinline",""); v.setAttribute("webkit-playsinline","");
@@ -280,11 +245,13 @@ export default function BarcodeScanner({
     motionBufRef.current = [];
     aliveRef.current = true;
 
+    // 単独エンジン運用
     const detector = hasBD() ? new window.BarcodeDetector({
       formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code"]
     }) : null;
 
-    const effectiveIgnoreMs = () => (isRereadActive() ? Math.min(ignoreForMs, rereadMinDebounceMs) : ignoreForMs);
+    const effectiveIgnoreMs = () =>
+      (isRereadActive() ? Math.min(ignoreForMs, rereadMinDebounceMs) : ignoreForMs);
 
     const tryCommit = async (val) => {
       const now = Date.now();
@@ -320,7 +287,7 @@ export default function BarcodeScanner({
       if (accepted) {
         markSuppress(val, "ok");
         lastCommitHashRef.current = prevHashRef.current;
-        await stopAll();     // 採用時は即停止（Safariでも確実に消灯）
+        await stopAll();     // 採用時は即停止
         onClose?.();
         return true;
       } else {
