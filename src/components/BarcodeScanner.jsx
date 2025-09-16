@@ -1,9 +1,9 @@
 // src/components/BarcodeScanner.jsx
 // 目的：
-//  - 読み取り精度を上げる（DetectorをROI→videoの順で試行、2フレーム確認、軽い動きゲート）
-//  - パシャ演出を削除
-//  - 画面上の "ZXing..." / 下部の「自動」などのUIを削除（HUD/デバイス選択なし）
-//  - 放置中に“以前のJAN”が勝手に再出現しない（長め抑止 + 動き必須 + staleガード）
+//  - 読み取り精度↑（ROI→fullframe、二段確認、軽いモーションゲート）
+//  - パシャ演出なし、HUD/デバイスUIなし
+//  - 放置で過去JANが勝手に出ない（60s抑止 + 動き必須）
+//  - 「再読込み」ボタン：押した直後から短時間だけ“同一JANの再確定”を許可（安全なバイパス）
 //
 // 依存: npm i @zxing/browser
 
@@ -37,6 +37,12 @@ function markSuppress(code, kind) {
   const now = Date.now();
   GLOBAL_SUPPRESS.set(code, { at: now, kind });
   const m = readLS(); m[code] = { at: now, kind }; writeLS(m);
+}
+function clearSuppressFor(code) {
+  try {
+    GLOBAL_SUPPRESS.delete(code);
+    const m = readLS(); if (m[code]) { delete m[code]; writeLS(m); }
+  } catch {}
 }
 
 // ---- utils ----
@@ -74,7 +80,7 @@ async function waitVideoReady(video, timeoutMs = 9000) {
     video.addEventListener("error", err, { once:true });
   });
 }
-// rVFC ウォームアップ（軽）
+// rVFC ウォームアップ
 async function warmupMediaTime(video, { uniq=6, sumSec=0.35, timeoutMs=3000 } = {}) {
   if (!("requestVideoFrameCallback" in HTMLVideoElement.prototype)) { await sleep(450); return; }
   const t0 = performance.now();
@@ -125,23 +131,27 @@ export default function BarcodeScanner({
   onClose,
   onDetected,                    // (val) => boolean | {ok:boolean} | Promise<boolean|{ok:boolean}>
   // 二段確認（確定側で残像を弾く）
-  confirmMs = 700,              // 少し長め：精度↑
-  minRoiDiff = 0.0018,          // 少し緩め：精度↑（同一フレームは防止）
+  confirmMs = 700,
+  minRoiDiff = 0.0018,
   // 抑止ウィンドウ
-  suppressUnknownMs = 12000,    // 未登録（NG）の再通知抑止
-  suppressAcceptedMs = 60000,   // 採用OK後の再確定抑止（周期再出現対策）
+  suppressUnknownMs = 12000,
+  suppressAcceptedMs = 60000,
   // 軽いスキップ
-  skipSameFrameDiff = 0.0012,   // 直前とほぼ同じフレームは軽くスキップ
+  skipSameFrameDiff = 0.0012,
   // デバウンス
   ignoreCode = null,
   ignoreForMs = 1100,
   firstIgnorePrevMs = 1500,
-  // 動きゲート（“放置で勝手に再出現”の防止）
-  moveMAWindow = 10,            // 直近Nフレームの平均変化量
-  moveMAThreshold = 0.0025,     // これ以上の平均変化が無ければ“同じJANの再確定”を禁止
-  moveAfterCommitDiff = 0.010,  // コミット直後とROIハッシュが1%以上変わってからでないと同じJANを許可しない
-  // 精度向上：ROIで空振りしたら video 全体も検査
+  // 動きゲート（放置で再出現防止）
+  moveMAWindow = 10,
+  moveMAThreshold = 0.0025,
+  moveAfterCommitDiff = 0.010,
+  // 精度
   fullFrameProbe = true,
+  // ★「再読込み」ボタンの挙動
+  enableRereadButton = true,
+  rereadWindowMs = 6000,        // 再読込みを押してからの許可ウィンドウ
+  rereadMinDebounceMs = 300,    // 許可ウィンドウ中の最小デバウンス
 }) {
   const videoRef  = useRef(null);
   const canvasRef = useRef(null);
@@ -151,7 +161,7 @@ export default function BarcodeScanner({
 
   const rafRef    = useRef(0);
   const prevHashRef = useRef(null);
-  const motionBufRef = useRef([]);         // 直近のROI差分（動き量）
+  const motionBufRef = useRef([]);         // 直近のROI差分
   const lastCommitHashRef = useRef(null);  // 直近コミット時のROIハッシュ
   const sessionAtRef = useRef(0);
   const prevSessionFirstRef = useRef({ code: null });
@@ -166,6 +176,10 @@ export default function BarcodeScanner({
   const committingRef = useRef(false);
   const pausedScanRef = useRef(false);
   const aliveRef      = useRef(false);
+
+  // ★ 再読込みモード（短時間だけ同一JANの再確定を許可）
+  const rereadUntilRef = useRef(0);
+  const isRereadActive = () => Date.now() < rereadUntilRef.current;
 
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -216,6 +230,9 @@ export default function BarcodeScanner({
       formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","qr_code"]
     }) : null;
 
+    // 許可ウィンドウ中の実効デバウンス
+    const effectiveIgnoreMs = () => (isRereadActive() ? Math.min(ignoreForMs, rereadMinDebounceMs) : ignoreForMs);
+
     const tryCommit = async (val) => {
       const now = Date.now();
       if (!aliveRef.current) return false;
@@ -227,12 +244,13 @@ export default function BarcodeScanner({
 
       // ローカル・デバウンス
       if (ignoreCode && val === String(ignoreCode)) {
-        if (now - (lastHitRef.current.at||0) < ignoreForMs) return false;
+        if (now - (lastHitRef.current.at||0) < effectiveIgnoreMs()) return false;
       }
-      if (val === lastHitRef.current.code && now - lastHitRef.current.at < ignoreForMs) return false;
+      if (val === lastHitRef.current.code && now - lastHitRef.current.at < effectiveIgnoreMs()) return false;
 
-      // グローバル抑止（OK/NG 共通）
-      if (isSuppressed(val, suppressAcceptedMs) || isSuppressed(val, suppressUnknownMs)) return false;
+      // 抑止：未登録NGは常に抑止、採用OKの抑止は再読込み中だけ緩める
+      if (!isRereadActive() && isSuppressed(val, suppressAcceptedMs)) return false;
+      if (isSuppressed(val, suppressUnknownMs)) return false;
 
       // ---- 親へ通知（確定） ----
       committingRef.current = true;
@@ -254,7 +272,7 @@ export default function BarcodeScanner({
 
       if (accepted) {
         markSuppress(val, "ok");
-        lastCommitHashRef.current = prevHashRef.current; // 直近コミット時の画を記録
+        lastCommitHashRef.current = prevHashRef.current; // 直近コミット画を記録
         aliveRef.current = false;
         stopAll();
         onClose?.();
@@ -273,26 +291,26 @@ export default function BarcodeScanner({
       if (!aliveRef.current) return false;
       const now = Date.now();
 
-      // グローバル抑止
-      if (isSuppressed(val, suppressAcceptedMs) || isSuppressed(val, suppressUnknownMs)) return false;
+      // グローバル抑止：未登録NGは常に、採用OKは再読込み中のみ緩める
+      if (!isRereadActive() && isSuppressed(val, suppressAcceptedMs)) return false;
+      if (isSuppressed(val, suppressUnknownMs)) return false;
 
       // ローカル未採用抑止
       const lastN = notifiedRef.current.get(val) || 0;
       if (now - lastN < suppressUnknownMs) return false;
 
-      // “放置で勝手に再出現”対策：同じJANを採用するには十分な動きが必要
+      // 放置対策：同一JANは“動き”が必要（ただし再読込み中はバイパス）
       const diffs = motionBufRef.current;
       const ma = diffs.length ? diffs.reduce((a,b)=>a+b,0)/diffs.length : 0;
       const lastCommittedHash = lastCommitHashRef.current;
       const movedSinceCommit = lastCommittedHash == null ? true :
         (Math.abs((hashNow ?? 0) - lastCommittedHash) / (Math.abs(lastCommittedHash) + 1e-6)) >= moveAfterCommitDiff;
 
-      if (val === lastHitRef.current.code) {
-        // 同一JANは動きが乏しければ候補化しない
+      if (!isRereadActive() && val === lastHitRef.current.code) {
         if (ma < moveMAThreshold || !movedSinceCommit) return false;
       }
 
-      // 二段確認（短時間に“別フレーム”で同一コード）
+      // 二段確認
       const cand = candRef.current;
       if (!cand || cand.code !== val || (now - cand.t0) > confirmMs) {
         candRef.current = { code: val, t0: now, hash0: hashNow };
@@ -333,26 +351,22 @@ export default function BarcodeScanner({
       }
 
       // Detector：まずROI(canvas)、空振り時はvideo全体（精度↑）
-      let detected = false;
       if (detector) {
         try {
           const res1 = await detector.detect(canvasRef.current);
           const candidate = (res1 && res1.length) ? res1 : (fullFrameProbe ? await detector.detect(video) : []);
           if (candidate && candidate[0]) {
-            // できるだけJAN系を優先
             const pick = candidate.find(b => /^(EAN_|UPC_)/i.test(String(b.format||""))) || candidate[0];
             const raw = pick.rawValue || pick.rawText || "";
             const val = norm(raw);
             if (val) {
-              detected = true;
               const committed = await seenNow(val, hash);
-              if (committed) return; // 採用時は stopAll→onClose
+              if (committed) return;
             }
           }
         } catch {}
       }
 
-      // Detectorが無い／外した場合はこの後ZXingが拾う
       rafRef.current = requestAnimationFrame(loop);
     };
     rafRef.current = requestAnimationFrame(loop);
@@ -373,7 +387,20 @@ export default function BarcodeScanner({
         await seenNow(val, hashNow);
       }).catch(()=>{});
     }
-  }, [confirmMs, minRoiDiff, skipSameFrameDiff, ignoreCode, ignoreForMs, firstIgnorePrevMs, suppressUnknownMs, suppressAcceptedMs, moveMAWindow, moveMAThreshold, moveAfterCommitDiff, fullFrameProbe, onDetected, onClose, stopAll]);
+  }, [confirmMs, minRoiDiff, skipSameFrameDiff, ignoreCode, ignoreForMs, firstIgnorePrevMs, suppressUnknownMs, suppressAcceptedMs, moveMAWindow, moveMAThreshold, moveAfterCommitDiff, fullFrameProbe, rereadMinDebounceMs, onDetected, onClose, stopAll]);
+
+  // 「再読込み」：次の1回だけ同一JAN再確定を許可
+  const activateReread = useCallback(() => {
+    const lastCode = lastHitRef.current.code;
+    const now = Date.now();
+    // ウィンドウを開く
+    rereadUntilRef.current = now + rereadWindowMs;
+    // 直前の採用済み抑止を一度だけ解除（そのJANをすぐ読めるように）
+    if (lastCode) {
+      clearSuppressFor(lastCode);
+      notifiedRef.current.delete(lastCode); // 未登録抑止は消さないのが基本だが、直前がOKだったケースを想定
+    }
+  }, [rereadWindowMs]);
 
   // open 制御
   useEffect(() => {
@@ -411,7 +438,7 @@ export default function BarcodeScanner({
             style={{ width:"100%", height:"100%", objectFit:"cover", backgroundColor:"black" }}
             autoPlay playsInline muted
           />
-          {/* 枠ガイド（UIのみ。パシャ演出/HUD/デバイス選択は無し） */}
+          {/* 枠ガイド（UIのみ） */}
           <div
             style={{
               position:"absolute", left:"50%", top:"45%", transform:"translate(-50%, -50%)",
@@ -426,6 +453,11 @@ export default function BarcodeScanner({
             {errorMsg ? <span style={{ color:"#ffb3b3" }}>{errorMsg}</span> : <span>中央の枠にバーコードを合わせてください。</span>}
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            {enableRereadButton && (
+              <button onClick={activateReread} style={{ ...btn, background:"#ffd83d" }}>
+                再読込み
+              </button>
+            )}
             <button onClick={() => { stopAll(); onClose?.(); }} style={btn}>キャンセル</button>
           </div>
         </div>
