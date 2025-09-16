@@ -7,8 +7,8 @@ import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../ui/constants
 export default function SearchPanel({
   open, onClose,
   data = [],
-  onPick,         // (item) => void  選択時
-  onScanClick     // () => void      バーコードボタン押下
+  onPick,         // (item) => void
+  onScanClick     // () => void
 }) {
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
@@ -29,44 +29,30 @@ export default function SearchPanel({
       ModalProps={drawerModalProps}
       PaperProps={{ style: paperBaseStyle }}
     >
-      {/* ヘッダ：左は空き、右に「閉じる」。見出し「検索」はカット */}
+      {/* ヘッダ：左に検索枠、右に「閉じる」 */}
       <div
         style={{
-          height: "48px",
+          height: "60px",
           padding: "8px 12px",
           borderBottom: "1px solid #eee",
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
           background: "#f9f9f9",
           gap: 8,
         }}
       >
-        <div style={{ flex: 1 }} />{/* 左側スペーサー（空き） */}
-        <button
-          onClick={onClose}
-          style={{
-            background:"#eee",
-            border:"1px solid #ccc",
-            padding:"6px 10px",
-            borderRadius:4
-          }}
-        >
-          閉じる
-        </button>
-      </div>
-
-      {/* 入力行（デザインは現状のまま、右端“内側”にスキャンボタン内包） */}
-      <div style={{ padding: 12 }}>
+        {/* 検索枠（現状デザインのまま） */}
         <div
           style={{
-            position: "relative",
+            flex: 1,
+            border: "1px solid #ccc",
+            borderRadius: 8,
+            padding: "8px 10px",
             display: "flex",
             alignItems: "center",
-            border:"1px solid #ccc",
-            borderRadius:8,
-            padding:"8px 10px",
-            background:"#fff",
+            background: "#fff",
+            position: "relative",
           }}
         >
           <input
@@ -75,11 +61,11 @@ export default function SearchPanel({
             onKeyDown={(e)=>{ if (e.key === "Enter") pick(0); }}
             placeholder="キーワード"
             style={{
-              border:"none",
-              outline:"none",
-              width:"100%",
-              fontSize:16,
-              paddingRight: 52,      // 右端内包ボタンぶんの余白
+              border: "none",
+              outline: "none",
+              width: "100%",
+              fontSize: 16,
+              paddingRight: 52,
               boxSizing: "border-box",
             }}
           />
@@ -104,7 +90,6 @@ export default function SearchPanel({
               cursor: "pointer",
             }}
           >
-            {/* 軽量なバーコード風アイコン */}
             <div style={{ display: "flex", gap: 2, height: 16, alignItems: "stretch" }}>
               {[3,1,2,1,2,1].map((w, i) => (
                 <span key={i} style={{ width: w, background: "#444", borderRadius: 1 }} />
@@ -112,12 +97,26 @@ export default function SearchPanel({
             </div>
           </button>
         </div>
+
+        {/* 閉じるボタン */}
+        <button
+          onClick={onClose}
+          style={{
+            background:"#eee",
+            border:"1px solid #ccc",
+            padding:"6px 10px",
+            borderRadius:4,
+            whiteSpace: "nowrap"
+          }}
+        >
+          閉じる
+        </button>
       </div>
 
-      {/* リスト（高さ計算は従来どおり） */}
+      {/* リスト */}
       <div
         style={{
-          height: `calc(${DRAWER_HEIGHT} - 48px - 68px)`,
+          height: `calc(${DRAWER_HEIGHT} - 60px)`,
           overflowY: "auto",
           padding: "0 12px 12px",
         }}
