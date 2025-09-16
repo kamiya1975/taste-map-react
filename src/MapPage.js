@@ -1499,14 +1499,40 @@ function MapPage() {
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
           const jan = String(codeText).replace(/\D/g, "");
-          const now = Date.now();
+          const isValidEan13 = (ean) => {
+            if (!/^\d{13}$/.test(ean)) return false;
+            let sum = 0;
+            for (let i = 0; i < 12; i++) {
+              const d = ean.charCodeAt(i) - 48;
+              sum += (i % 2 === 0) ? d : d * 3;
+            }
+            const check = (10 - (sum % 10)) % 10;
+            return check === (jan.charCodeAt(12) - 48);
+          };
+          if (jan.length === 12) { // UPC-A を 0 埋め
+            jan = "0" + jan;
+          }
+          if (jan.length !== 13 || !isValidEan13(jan)) {
+            alert(`JAN: ${jan} は無効なバーコードです。`);
+            return false; // スキャナ継続
+          }
+
+           const now = Date.now();
+          // 再読込みウィンドウ判定
+          let bypassThrottle = false;
+          try {
+            const until = Number(sessionStorage.getItem(REREAD_LS_KEY) || 0);
+            bypassThrottle = until > 0 && now < until;
+          } catch {}
 
           // 1) 直近60秒以内の同一JANは無視（勝手に商品ページが再出現するのを防ぐ）
-          if (
-            jan === lastCommittedRef.current.code &&
-            now - lastCommittedRef.current.at < 60000
-          ) {
-            return false; // スキャナは継続
+          if (!bypassThrottle) {
+            if (
+              jan === lastCommittedRef.current.code &&
+              now - lastCommittedRef.current.at < 60000
+            ) {
+              return false; // 継続
+            }
           }
 
           // 2) データに存在するか判定
