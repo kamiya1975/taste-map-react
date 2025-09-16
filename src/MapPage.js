@@ -73,6 +73,8 @@ function MapPage() {
 
   // スキャナの開閉（都度起動・都度破棄）
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const lastCommittedRef = useRef({ code: "", at: 0 });   // 直近採用JAN（60秒ガード）
+  const unknownWarnedRef = useRef(new Map());             // 未登録JANの警告デバウンス
 
   // ====== ビュー制御
   const [is3D, setIs3D] = useState(false);
@@ -177,6 +179,11 @@ function MapPage() {
         console.error("UMAP_PCA_coordinates.json の取得に失敗:", err)
       );
   }, []);
+
+  // スキャナを開くたびに「未登録JANの警告」をリセット（警告は各スキャンセッションで1回だけに）
+  useEffect(() => {
+    if (isScannerOpen) unknownWarnedRef.current.clear();
+  }, [isScannerOpen]);
 
   // ====== ローカルストレージ同期
   useEffect(() => {
@@ -1492,9 +1499,20 @@ function MapPage() {
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
           const jan = String(codeText).replace(/\D/g, "");
+          const now = Date.now();
 
+          // 1) 直近60秒以内の同一JANは無視（勝手に商品ページが再出現するのを防ぐ）
+          if (
+            jan === lastCommittedRef.current.code &&
+            now - lastCommittedRef.current.at < 60000
+          ) {
+            return false; // スキャナは継続
+          }
+
+          // 2) データに存在するか判定
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
+            // 商品ページへ遷移
             const tx = hit.BodyAxis;
             const ty = is3D ? hit.SweetAxis : -hit.SweetAxis;
             setViewState((prev) => ({
@@ -1504,9 +1522,19 @@ function MapPage() {
             }));
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
-          } else {
-            alert(`JAN: ${jan} は見つかりませんでした。`);
+
+            // 採用を記録（以降60秒は同一JANを親側でブロック）
+            lastCommittedRef.current = { code: jan, at: now };
+            return true;  // ← スキャナ側にも「採用OK」を通知（スキャナが自動停止＆クローズ）
           }
+
+          // 3) 未登録JAN：アラートは“同JAN”に対して12秒間に1回だけ
+          const lastWarn = unknownWarnedRef.current.get(jan) || 0;
+          if (now - lastWarn > 12000) {
+            alert(`JAN: ${jan} は見つかりませんでした。`);
+            unknownWarnedRef.current.set(jan, now);
+          }
+          return false;   // ← 未登録なので採用せず、スキャナ継続
         }}
       />
 
