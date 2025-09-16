@@ -29,7 +29,7 @@ export default function SearchPanel({
       ModalProps={drawerModalProps}
       PaperProps={{ style: paperBaseStyle }}
     >
-      {/* ヘッダ */}
+      {/* ヘッダ：左は空き、右に「閉じる」。見出し「検索」はカット */}
       <div
         style={{
           height: "48px",
@@ -37,30 +37,36 @@ export default function SearchPanel({
           borderBottom: "1px solid #eee",
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           background: "#f9f9f9",
+          gap: 8,
         }}
       >
-        <div style={{ fontWeight: 600 }}>検索</div>
+        <div style={{ flex: 1 }} />{/* 左側スペーサー（空き） */}
         <button
           onClick={onClose}
-          style={{ background:"#eee", border:"1px solid #ccc", padding:"6px 10px", borderRadius:4 }}
+          style={{
+            background:"#eee",
+            border:"1px solid #ccc",
+            padding:"6px 10px",
+            borderRadius:4
+          }}
         >
           閉じる
         </button>
       </div>
 
-      {/* 入力行（右端“内側”にスキャンボタンを内包） */}
+      {/* 入力行（デザインは現状のまま、右端“内側”にスキャンボタン内包） */}
       <div style={{ padding: 12 }}>
         <div
           style={{
             position: "relative",
             display: "flex",
             alignItems: "center",
-            border: "1px solid #ccc",
-            borderRadius: 8,
-            padding: "8px 10px",
-            background: "#fff",
+            border:"1px solid #ccc",
+            borderRadius:8,
+            padding:"8px 10px",
+            background:"#fff",
           }}
         >
           <input
@@ -69,16 +75,14 @@ export default function SearchPanel({
             onKeyDown={(e)=>{ if (e.key === "Enter") pick(0); }}
             placeholder="キーワード"
             style={{
-              border: "none",
-              outline: "none",
-              width: "100%",
-              fontSize: 16,
-              // 右端ボタンの分だけ余白を確保
-              paddingRight: 52,
+              border:"none",
+              outline:"none",
+              width:"100%",
+              fontSize:16,
+              paddingRight: 52,      // 右端内包ボタンぶんの余白
               boxSizing: "border-box",
             }}
           />
-
           {/* 内包バーコードボタン */}
           <button
             onClick={onScanClick}
@@ -110,7 +114,7 @@ export default function SearchPanel({
         </div>
       </div>
 
-      {/* リスト（高さ計算は従来のまま） */}
+      {/* リスト（高さ計算は従来どおり） */}
       <div
         style={{
           height: `calc(${DRAWER_HEIGHT} - 48px - 68px)`,
