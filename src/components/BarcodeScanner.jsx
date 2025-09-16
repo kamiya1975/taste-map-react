@@ -3,6 +3,7 @@
 // - 「再読込み」ボタン：枠の中央下に固定、押下で色＆縮小、再読込み中は文言/色を変化
 // - 再読込みは“同一JANの再確定を一時許可”＋デバウンス短縮（体感を上げる）
 // - 読み取り精度は Detector を使い回し + 二段確認で維持
+// - ★重要★ クローズ時に**必ず**スマホカメラも停止するようクリーンアップを強化
 
 import React, { useEffect, useRef, useCallback, useState } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
@@ -151,7 +152,7 @@ export default function BarcodeScanner({
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const trackRef  = useRef(null);
-  const readerRef = useRef(null);
+  const readerRef = useRef(null);   // ZXing
 
   const rafRef    = useRef(0);
   const prevHashRef = useRef(null);
@@ -175,21 +176,69 @@ export default function BarcodeScanner({
   const [errorMsg, setErrorMsg] = useState("");
   const [rereadPressed, setRereadPressed] = useState(false);
 
-  const stopAll = useCallback(() => {
-    aliveRef.current = false;
-    try { readerRef.current?.reset?.(); } catch {}
-    if (readerRef.current) readerRef.current._started = false;
-    cancelAnimationFrame(rafRef.current||0); rafRef.current = 0;
+  // ---- ここが超重要：徹底クリーンアップ ----
+  const reallyStopStream = (stream) => {
     try {
-      const v = videoRef.current;
-      const s = v?.srcObject || streamRef.current;
-      s?.getTracks?.().forEach(t=>t.stop());
-      if (v) { try{v.pause?.();}catch{} v.srcObject=null; v.removeAttribute("src"); v.load?.(); }
+      if (!stream) return;
+      const tracks = stream.getTracks?.() || [];
+      tracks.forEach((t) => {
+        try { t.enabled = false; } catch {}
+        try { t.stop(); } catch {}
+      });
     } catch {}
-    streamRef.current=null; trackRef.current=null;
-    prevHashRef.current=null; candRef.current=null;
-    committingRef.current=false; pausedScanRef.current=false;
+  };
+
+  const hardReleaseVideo = (v) => {
+    if (!v) return;
+    try { v.pause?.(); } catch {}
+    try { v.srcObject = null; } catch {}
+    try { v.removeAttribute("srcObject"); } catch {}
+    try { v.removeAttribute("src"); } catch {}
+    try { v.src = ""; } catch {}
+    try { v.load?.(); } catch {}
+  };
+
+  const stopZxing = () => {
+    try { readerRef.current?.reset?.(); } catch {}
+    if (readerRef.current) {
+      try { readerRef.current._started = false; } catch {}
+      // 参照切り離し（GC促進）
+      readerRef.current = null;
+    }
+  };
+
+  const stopAll = useCallback(async () => {
+    aliveRef.current = false;
+
+    // ZXing を先に止める（内部で動画参照が残らないように）
+    stopZxing();
+
+    // rAF 停止
+    try { cancelAnimationFrame(rafRef.current || 0); } catch {}
+    rafRef.current = 0;
+
+    // トラック停止
+    try { reallyStopStream(videoRef.current?.srcObject); } catch {}
+    try { reallyStopStream(streamRef.current); } catch {}
+    try { reallyStopStream({ getTracks: () => (trackRef.current ? [trackRef.current] : []) }); } catch {}
+
+    // Video 要素の解放（WebKitは srcObject=null → src="" → load() が効く）
+    try { hardReleaseVideo(videoRef.current); } catch {}
+
+    // 参照クリア
+    streamRef.current = null;
+    trackRef.current  = null;
+    prevHashRef.current = null;
+    candRef.current = null;
+    committingRef.current = false;
+    pausedScanRef.current = false;
     motionBufRef.current = [];
+
+    // 取りこぼし対策：少し待ってからもう一度止める（iOSで稀に残る）
+    await sleep(50);
+    try { hardReleaseVideo(videoRef.current); } catch {}
+    try { reallyStopStream(videoRef.current?.srcObject); } catch {}
+
   }, []);
 
   const start = useCallback(async () => {
@@ -262,8 +311,9 @@ export default function BarcodeScanner({
       if (accepted) {
         markSuppress(val, "ok");
         lastCommitHashRef.current = prevHashRef.current;
-        aliveRef.current = false;
-        stopAll();
+
+        // ★採用時は即座に停止（カメラランプも消す）
+        await stopAll();
         onClose?.();
         return true;
       } else {
@@ -361,18 +411,24 @@ export default function BarcodeScanner({
     if (!detector) {
       if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
       else try { readerRef.current.reset(); } catch {}
-      readerRef.current._started = true;
-      readerRef.current.decodeFromStream(stream, v, async (result) => {
-        if (!aliveRef.current) return;
-        if (pausedScanRef.current || committingRef.current) return;
-        if (!result) return;
-        if (Date.now() < zxingReadyAtRef.current) return;
-        const val = toEan13(result.getText());
-        if (!val) return;
-        const hashNow = latestHashRef.current ?? 0;
-        await seenNow(val, hashNow);
-      }).catch(()=>{});
+      try {
+        readerRef.current._started = true;
+        readerRef.current.decodeFromStream(stream, v, async (result) => {
+          if (!aliveRef.current) return;
+          if (pausedScanRef.current || committingRef.current) return;
+          if (!result) return;
+          if (Date.now() < zxingReadyAtRef.current) return;
+          const val = toEan13(result.getText());
+          if (!val) return;
+          const hashNow = latestHashRef.current ?? 0;
+          await seenNow(val, hashNow);
+        }).catch(()=>{});
+      } catch (e) {
+        // ZXing初期化に失敗しても Detector ループは走っているので無視
+        console.warn("[ZXing init warn]", e);
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmMs, minRoiDiff, skipSameFrameDiff, ignoreCode, ignoreForMs, firstIgnorePrevMs, suppressUnknownMs, suppressAcceptedMs, moveMAWindow, moveMAThreshold, moveAfterCommitDiff, fullFrameProbe, rereadMinDebounceMs, onDetected, onClose, stopAll]);
 
   // 再読込み：ウィンドウを開き、押した感を出す。直後のデバウンスも短縮される
@@ -387,11 +443,11 @@ export default function BarcodeScanner({
     lastHitRef.current = { code: lastHitRef.current.code, at: 0 };
   }, [rereadWindowMs]);
 
-  // open 制御
+  // ====== open 制御 + 強制クリーンナップ（可視性/遷移）
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!open) { stopAll(); return; }
+      if (!open) { await stopAll(); return; }
       try { await start(); }
       catch (e) {
         if (cancelled) return;
@@ -406,10 +462,25 @@ export default function BarcodeScanner({
           name==="VIDEO_TIMEOUT" ? "初期化に時間がかかっています。ページ再読込を試してください。" :
           `カメラ起動失敗（${name}${msg}）`
         );
-        stopAll();
+        await stopAll();
       }
     })();
-    return () => { cancelled = true; stopAll(); };
+
+    const onHidden = async () => { await stopAll(); };
+    const onPageHide = async () => { await stopAll(); };
+    const onBeforeUnload = async () => { await stopAll(); };
+
+    document.addEventListener("visibilitychange", onHidden, { passive:true });
+    window.addEventListener("pagehide", onPageHide, { passive:true });
+    window.addEventListener("beforeunload", onBeforeUnload, { passive:true });
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onHidden);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      stopAll();
+    };
   }, [open, start, stopAll]);
 
   if (!open) return null;
@@ -453,7 +524,7 @@ export default function BarcodeScanner({
               boxShadow:"0 0 0 200vmax rgba(0,0,0,0.25) inset"
             }}
           />
-          {/* 中央の説明テキスト（添付のレイアウト風） */}
+          {/* 中央の説明テキスト */}
           <div
             style={{
               position:"absolute", left:"50%", top:"62%", transform:"translateX(-50%)",
@@ -487,7 +558,12 @@ export default function BarcodeScanner({
             {errorMsg ? <span style={{ color:"#ffb3b3" }}>{errorMsg}</span> : <span>&nbsp;</span>}
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <button onClick={() => { stopAll(); onClose?.(); }} style={{ ...btnBase, background:"#fff" }}>キャンセル</button>
+            <button
+              onClick={async () => { await stopAll(); onClose?.(); }}
+              style={{ ...btnBase, background:"#fff" }}
+            >
+              キャンセル
+            </button>
           </div>
         </div>
       </div>
