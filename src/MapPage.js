@@ -32,7 +32,7 @@ const REREAD_LS_KEY = "tm_reread_until";
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 const BUTTON_BG = "#e8ddd1";
 const BUTTON_TEXT = "#000";
-const CENTER_Y_OFFSET = -2.0; // 打点を画面中央より少し上に見せる
+const CENTER_Y_OFFSET = -3.5; // 打点を画面中央より少し上に見せる
 
 // プロット色
 const typeColorMap = {
@@ -81,7 +81,7 @@ function MapPage() {
   // ====== ビュー制御
   const [is3D, setIs3D] = useState(false);
   const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
-  const INITIAL_ZOOM = 7;
+  const INITIAL_ZOOM = 6;
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
     rotationX: 0,
