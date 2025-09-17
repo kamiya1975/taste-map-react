@@ -1249,6 +1249,21 @@ function MapPage() {
         data={data}
         onSelectJAN={(jan) => {
           setSelectedJAN(jan);
+
+          // 地図をその商品の位置へセンタリング（スライダーと同じ Y オフセット）
+          const item = data.find((d) => String(d.JAN) === String(jan));
+          if (item) {
+            const tx = item.BodyAxis;
+            const ty = is3D ? item.SweetAxis : -item.SweetAxis;
+            setViewState((prev) => ({
+              ...prev,
+              target: [tx, ty - CENTER_Y_OFFSET, 0],
+              // 検索と同じ見やすいズームへ
+              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, 8.5)),
+            }));
+          }
+
+          // 商品詳細ドロワーを開く
           setProductDrawerOpen(true);
         }}
       />
