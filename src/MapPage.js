@@ -81,7 +81,7 @@ function MapPage() {
   // ====== ビュー制御
   const [is3D, setIs3D] = useState(false);
   const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
-  const INITIAL_ZOOM = 8;
+  const INITIAL_ZOOM = 6;
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
     rotationX: 0,
