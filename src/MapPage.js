@@ -6,7 +6,6 @@ import {
   ScatterplotLayer,
   ColumnLayer,
   LineLayer,
-  TextLayer,
   GridCellLayer,
   PathLayer,
   IconLayer,
@@ -108,7 +107,6 @@ function MapPage() {
   const [isSliderOpen, setIsSliderOpen] = useState(false);
   const [sweetness, setSweetness] = useState(50);
   const [body, setBody] = useState(50);
-  const [showRatingDates, setShowRatingDates] = useState(false);
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -132,7 +130,6 @@ function MapPage() {
     }
     if (isRatingListOpen) {
       setIsRatingListOpen(false);
-      setShowRatingDates(false);
       await wait(PANEL_ANIM_MS);
     }
     if (isSliderOpen) {
@@ -146,7 +143,6 @@ function MapPage() {
   const openFavoriteExclusive = async () => {
     if (isRatingListOpen) {
       setIsRatingListOpen(false);
-      setShowRatingDates(false);
       return;
     }
     if (isSearchOpen) {
@@ -157,7 +153,6 @@ function MapPage() {
       setIsSliderOpen(false);
       await wait(PANEL_ANIM_MS);
     }
-    setShowRatingDates(true);
     setIsRatingListOpen(true);
   };
 
@@ -654,57 +649,6 @@ function MapPage() {
     });
   }, [data, userRatings, is3D]);
 
-  // 評価順インデックスのラベル
-  const sortedRatedWineList = useMemo(() => {
-    if (!Array.isArray(data)) return [];
-    return Object.entries(userRatings)
-      .filter(([_, rating]) => rating?.rating != null)
-      .map(([jan, rating]) => {
-        const matched = data.find((d) => String(d.JAN) === String(jan));
-        if (!matched) return null;
-        return { ...matched, date: rating.date, rating: rating.rating };
-      })
-      .filter(Boolean)
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [userRatings, data]);
-
-  const displayIndexMap = useMemo(() => {
-    const map = {};
-    const total = sortedRatedWineList.length;
-    sortedRatedWineList.forEach((item, idx) => {
-      map[item.JAN] = total - idx;
-    });
-    return map;
-  }, [sortedRatedWineList]);
-
-  const ratingDateLayer =
-    showRatingDates && sortedRatedWineList.length > 0
-      ? new TextLayer({
-          id: "rating-index-labels",
-          data: sortedRatedWineList.map((item) => {
-            const y = is3D ? item.SweetAxis : -item.SweetAxis;
-            const z = is3D ? (Number(item[zMetric]) || 0) + 0.1 : 0;
-            return {
-              position: [item.BodyAxis, y, z],
-              text: String(displayIndexMap[item.JAN] ?? "?"),
-            };
-          }),
-          getPosition: (d) => d.position,
-          getText: (d) => d.text,
-          getSize: 0.4,
-          sizeUnits: "meters",
-          sizeMinPixels: 12,
-          sizeMaxPixels: 64,
-          billboard: true,
-          getColor: [50, 50, 50, 200],
-          getTextAnchor: "middle",
-          getAlignmentBaseline: "center",
-          fontFamily: '"Helvetica Neue", Arial, sans-serif',
-          characterSet: "0123456789",
-          parameters: { depthTest: false },
-        })
-      : null;
-
   // ===== 嗜好コンパス
   const detectElbowIndex = (valsDesc) => {
     const n = valsDesc.length;
@@ -1010,7 +954,6 @@ function MapPage() {
               })
             : null,
           // インデックス & コンパス
-          ratingDateLayer,
           compassLayer,
           // 最前面：ワイン打点
           mainLayer,
@@ -1302,7 +1245,6 @@ function MapPage() {
         isOpen={isRatingListOpen}
         onClose={() => {
           setIsRatingListOpen(false);
-          setShowRatingDates(false);
         }}
         favorites={favorites}
         data={data}
