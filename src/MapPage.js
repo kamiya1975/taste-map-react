@@ -32,7 +32,7 @@ const REREAD_LS_KEY = "tm_reread_until";
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 const BUTTON_BG = "#e8ddd1";
 const BUTTON_TEXT = "#000";
-const CENTER_Y_OFFSET = -3.5; // 打点を画面中央より少し上に見せる
+const CENTER_Y_OFFSET = -2.0; // 打点を画面中央より少し上に見せる
 
 // プロット色
 const typeColorMap = {
@@ -81,7 +81,7 @@ function MapPage() {
   // ====== ビュー制御
   const [is3D, setIs3D] = useState(false);
   const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
-  const INITIAL_ZOOM = 6;
+  const INITIAL_ZOOM = 7;
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
     rotationX: 0,
@@ -99,40 +99,6 @@ function MapPage() {
   const [highlight2D, setHighlight2D] = useState("");
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
-
-  // === ★ 追加: 排他オープンのためのユーティリティ ===
-  const PANEL_ANIM_MS = 320; // 閉じアニメ後に次を開く待ち時間（Search/Favorite双方に十分な値）
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const openSearchExclusive = async () => {
-    // すでに検索が開いていれば閉じる（=トグル動作）
-    if (isSearchOpen) {
-      setIsSearchOpen(false);
-      return;
-    }
-    // お気に入りが開いていれば一旦閉じてから検索を開く
-    if (isRatingListOpen) {
-      setIsRatingListOpen(false);
-      setShowRatingDates(false);
-      await wait(PANEL_ANIM_MS);
-    }
-    setIsSearchOpen(true);
-  };
-
-  const openFavoriteExclusive = async () => {
-    // すでにお気に入りが開いていれば閉じる（=トグル動作）
-    if (isRatingListOpen) {
-      setIsRatingListOpen(false);
-      setShowRatingDates(false);
-      return;
-    }
-    // 検索が開いていれば一旦閉じてからお気に入りを開く
-    if (isSearchOpen) {
-      setIsSearchOpen(false);
-      await wait(PANEL_ANIM_MS);
-    }
-    setShowRatingDates(true);
-    setIsRatingListOpen(true);
-  };
 
   // 検索・スキャン
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -153,6 +119,67 @@ function MapPage() {
   useEffect(() => {
     if (location.state?.autoOpenSlider) setIsSliderOpen(true);
   }, [location.state]);
+
+  // === ★ 追加/修正: 排他オープンのためのユーティリティ ===
+  const PANEL_ANIM_MS = 320; // 閉じアニメ後に次を開く待ち時間
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // 検索（🔍）
+  const openSearchExclusive = async () => {
+    if (isSearchOpen) {
+      setIsSearchOpen(false);
+      return;
+    }
+    if (isRatingListOpen) {
+      setIsRatingListOpen(false);
+      setShowRatingDates(false);
+      await wait(PANEL_ANIM_MS);
+    }
+    if (isSliderOpen) {
+      setIsSliderOpen(false);
+      await wait(PANEL_ANIM_MS);
+    }
+    setIsSearchOpen(true);
+  };
+
+  // お気に入り（♡）
+  const openFavoriteExclusive = async () => {
+    if (isRatingListOpen) {
+      setIsRatingListOpen(false);
+      setShowRatingDates(false);
+      return;
+    }
+    if (isSearchOpen) {
+      setIsSearchOpen(false);
+      await wait(PANEL_ANIM_MS);
+    }
+    if (isSliderOpen) {
+      setIsSliderOpen(false);
+      await wait(PANEL_ANIM_MS);
+    }
+    setShowRatingDates(true);
+    setIsRatingListOpen(true);
+  };
+
+  // スライダー（●）
+  const openSliderExclusive = async () => {
+    if (isSliderOpen) {
+      setIsSliderOpen(false);
+      return;
+    }
+    if (isSearchOpen) {
+      setIsSearchOpen(false);
+      await wait(PANEL_ANIM_MS);
+    }
+    if (isRatingListOpen) {
+      setIsRatingListOpen(false);
+      setShowRatingDates(false);
+      await wait(PANEL_ANIM_MS);
+    }
+    setSweetness(50);
+    setBody(50);
+    setIsSliderOpen(true);
+  };
 
   // ====== パン境界（現在データに基づく）
   const panBounds = useMemo(() => {
@@ -1074,11 +1101,7 @@ function MapPage() {
       {/* 右サイドの丸ボタン群 */}
       {!is3D && (
         <button
-          onClick={() => {
-            setSweetness(50);
-            setBody(50);
-            setIsSliderOpen(true);
-          }}
+          onClick={() => { openSliderExclusive(); }}
           style={{
             position: "absolute",
             top: "70px",
@@ -1179,326 +1202,6 @@ function MapPage() {
         ⚙
       </button>
 
-      {/* ====== 嗜好スライダー（ボトムドロワー） */}
-      <Drawer
-        anchor="bottom"
-        open={isSliderOpen}
-        onClose={() => setIsSliderOpen(false)}
-        PaperProps={{
-          style: {
-            width: "100%",
-            height: "800px",
-            padding: "24px",
-            boxSizing: "border-box",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-start",
-            alignItems: "stretch",
-            fontFamily: "sans-serif",
-          },
-        }}
-      >
-        {/* スライダーCSS（●がバー中央） */}
-        <style>{`
-          .taste-slider{
-            appearance: none;
-            -webkit-appearance: none;
-            width: 100%;
-            height: 6px;
-            background: transparent;
-            margin-top: 8px;
-            outline: none;
-          }
-          .taste-slider::-webkit-slider-runnable-track{
-            height: 6px;
-            border-radius: 9999px;
-            background: var(--range, #e9e9e9);
-          }
-          .taste-slider::-moz-range-track{
-            height: 6px;
-            border-radius: 9999px;
-            background: var(--range, #e9e9e9);
-          }
-          /* (thumb高さ28px - track高さ6px) / 2 = 11px → 中央揃え */
-          .taste-slider::-webkit-slider-thumb{
-            -webkit-appearance: none;
-            width: 28px; height: 28px; border-radius: 50%;
-            background: #fff; border: 0;
-            box-shadow: 0 2px 6px rgba(0,0,0,.25);
-            margin-top: -11px;
-            cursor: pointer;
-          }
-          .taste-slider::-moz-range-thumb{
-            width: 28px; height: 28px; border-radius: 50%;
-            background: #fff; border: 0;
-            box-shadow: 0 2px 6px rgba(0,0,0,.25);
-            cursor: pointer;
-          }
-        `}</style>
-
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button
-            onClick={() => setIsSliderOpen(false)}
-            style={{
-              background: "#eee",
-              border: "1px solid #ccc",
-              padding: "6px 10px",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            閉じる
-          </button>
-        </div>
-        <h2 style={{ textAlign: "center", fontSize: "20px", marginBottom: "24px" }}>
-          基準のワインを飲んだ印象は？
-        </h2>
-
-        {/* 甘み */}
-        <div style={{ marginBottom: "32px" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: "14px",
-              fontWeight: "bold",
-              marginBottom: "6px",
-            }}
-          >
-            <span>← こんなに甘みは不要</span>
-            <span>もっと甘みが欲しい →</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={sweetness}
-            onChange={(e) => setSweetness(Number(e.target.value))}
-            className="taste-slider"
-            style={{ "--range": centerGradient(sweetness) }}
-          />
-        </div>
-
-        {/* コク（ボディ） */}
-        <div style={{ marginBottom: "32px" }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: "14px",
-              fontWeight: "bold",
-              marginBottom: "6px",
-            }}
-          >
-            <span>← もっと軽やかが良い</span>
-            <span>濃厚なコクが欲しい →</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={body}
-            onChange={(e) => setBody(Number(e.target.value))}
-            className="taste-slider"
-            style={{ "--range": centerGradient(body) }}
-          />
-        </div>
-
-        <button
-          onClick={() => {
-            if (!data?.length || !pca2umap) return;
-            const blendF = data.find((d) => d.JAN === "blendF");
-            if (!blendF) return;
-
-            const pc1s = data.map((d) => d.PC1).filter(Number.isFinite);
-            const pc2s = data.map((d) => d.PC2).filter(Number.isFinite);
-            const minPC1 = Math.min(...pc1s),
-              maxPC1 = Math.max(...pc1s);
-            const minPC2 = Math.min(...pc2s),
-              maxPC2 = Math.max(...pc2s);
-
-            const basePC1 = Number(blendF.PC1);
-            const basePC2 = Number(blendF.PC2);
-
-            const pc1Value =
-              body <= 50
-                ? basePC1 - ((50 - body) / 50) * (basePC1 - minPC1)
-                : basePC1 + ((body - 50) / 50) * (maxPC1 - basePC1);
-
-            const pc2Value =
-              sweetness <= 50
-                ? basePC2 - ((50 - sweetness) / 50) * (basePC2 - minPC2)
-                : basePC2 + ((sweetness - 50) / 50) * (maxPC2 - basePC2);
-
-            const [umapX, umapY] = pca2umap(pc1Value, pc2Value);
-            const coords = [umapX, -umapY];
-
-            setIsSliderOpen(false);
-            setUserPin([umapX, umapY]);
-            localStorage.setItem(
-              "userPinCoords",
-              JSON.stringify({ coordsUMAP: [umapX, umapY] })
-            );
-
-            setViewState((prev) => ({
-              ...prev,
-              target: [coords[0], coords[1] - CENTER_Y_OFFSET, 0], // 少し上に見せる
-              zoom: Math.max(
-                ZOOM_LIMITS.min,
-                Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)
-              ),
-            }));
-          }}
-          style={{
-            background: BUTTON_BG,
-            color: BUTTON_TEXT,
-            padding: "14px 30px",
-            fontSize: "16px",
-            fontWeight: "bold",
-            border: `2px solid ${BUTTON_BG}`,
-            borderRadius: "12px",
-            cursor: "pointer",
-            display: "block",
-            margin: "0 auto",
-          }}
-        >
-          あなたの好みからMAPを生成
-        </button>
-      </Drawer>
-
-      {/* ====== 設定ドロワー */}
-      <Drawer
-        anchor="left"
-        open={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        PaperProps={{
-          style: { width: "300px", padding: "20px", boxSizing: "border-box" },
-        }}
-      >
-        <h3 style={{ marginTop: 0 }}>ユーザー設定</h3>
-
-        {/* 嗜好コンパス設定 */}
-        <div
-          style={{
-            margin: "10px 0 20px 0",
-            padding: "10px",
-            border: "1px solid #eee",
-            borderRadius: 6,
-          }}
-        >
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>
-            嗜好コンパス（採用集合の決め方）
-          </div>
-          <label style={{ display: "block", marginBottom: 6 }}>
-            <input
-              type="radio"
-              name="compassRule"
-              value="elbow"
-              checked={compassRule === "elbow"}
-              onChange={(e) => setCompassRule(e.target.value)}
-              style={{ marginRight: 6 }}
-            />
-            エルボー優先（折れ点まで採用）
-          </label>
-          <label style={{ display: "block" }}>
-            <input
-              type="radio"
-              name="compassRule"
-              value="top20"
-              checked={compassRule === "top20"}
-              onChange={(e) => setCompassRule(e.target.value)}
-              style={{ marginRight: 6 }}
-            />
-            上位20%優先（最低3本）
-          </label>
-          <div style={{ color: "#666", fontSize: 12, marginTop: 6 }}>
-            ※ 採用集合の (UMAP1, UMAP2) を評価で加重平均して重心を求め、コンパス画像を重ね表示します。
-          </div>
-        </div>
-
-        {/* スライダー結果マーカー切替 */}
-        <div
-          style={{
-            margin: "10px 0 20px 0",
-            padding: "10px",
-            border: "1px solid #eee",
-            borderRadius: 6,
-          }}
-        >
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>
-            スライダー結果マーカー
-          </div>
-          <label style={{ display: "block", marginBottom: 6 }}>
-            <input
-              type="radio"
-              name="sliderMarkerMode"
-              value="orange"
-              checked={sliderMarkerMode === "orange"}
-              onChange={(e) => setSliderMarkerMode(e.target.value)}
-              style={{ marginRight: 6 }}
-            />
-            オレンジ打点（評価しても常に表示）
-          </label>
-          <label style={{ display: "block" }}>
-            <input
-              type="radio"
-              name="sliderMarkerMode"
-              value="compass"
-              checked={sliderMarkerMode === "compass"}
-              onChange={(e) => setSliderMarkerMode(e.target.value)}
-              style={{ marginRight: 6 }}
-            />
-            コンパス（評価が入ると非表示）
-          </label>
-        </div>
-
-        <div style={{ marginBottom: "20px" }}>
-          <button
-            onClick={() => alert("ニックネーム変更画面へ")}
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          >
-            ニックネーム変更
-          </button>
-          <button
-            onClick={() => alert("パスワード変更画面へ")}
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          >
-            パスワード変更
-          </button>
-          <button
-            onClick={() => alert("お気に入り店舗設定へ")}
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          >
-            お気に入り店舗管理
-          </button>
-          <button
-            onClick={() => alert("利用規約を表示")}
-            style={{ width: "100%", padding: "10px", marginBottom: "10px" }}
-          >
-            利用規約・プライバシーポリシー
-          </button>
-          <button
-            onClick={() => alert("アプリの使い方説明を表示")}
-            style={{ width: "100%", padding: "10px" }}
-          >
-            アプリの使い方
-          </button>
-        </div>
-        <button
-          onClick={() => setIsSettingsOpen(false)}
-          style={{
-            background: "#eee",
-            border: "1px solid #ccc",
-            padding: "6px 10px",
-            borderRadius: "4px",
-            cursor: "pointer",
-            width: "100%",
-          }}
-        >
-          閉じる
-        </button>
-      </Drawer>
-
       {/* ====== 検索パネル（背面Map操作可） */}
       <SearchPanel
         open={isSearchOpen}
@@ -1584,7 +1287,7 @@ function MapPage() {
             return true; // 採用→スキャナ側停止
           }
 
-          // 未登録JAN：ワンショット警告（12s抑制は既存の unknownWarnedRef を利用）
+          // 未登録JAN：ワンショット警告（12s抑制）
           const lastWarn = unknownWarnedRef.current.get(jan) || 0;
           if (now - lastWarn > 12000) {
             alert(`JAN: ${jan} は見つかりませんでした。`);
@@ -1607,6 +1310,24 @@ function MapPage() {
           setSelectedJAN(jan);
           setProductDrawerOpen(true);
         }}
+      />
+
+      {/* スライダーパネル（●） */}
+      <SliderPanel
+        isOpen={isSliderOpen}
+        onClose={() => setIsSliderOpen(false)}
+        sweetness={sweetness}
+        setSweetness={setSweetness}
+        body={body}
+        setBody={setBody}
+        centerGradient={centerGradient}
+        data={data}
+        pca2umap={pca2umap}
+        setUserPin={setUserPin}
+        setViewState={setViewState}
+        ZOOM_LIMITS={ZOOM_LIMITS}
+        INITIAL_ZOOM={INITIAL_ZOOM}
+        CENTER_Y_OFFSET={CENTER_Y_OFFSET}
       />
 
       {/* 商品ページドロワー */}
@@ -1781,6 +1502,214 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
                 <li style={{ color: "#666" }}>まだお気に入りはありません。</li>
               )}
             </ul>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// === スライダーパネル（●） ===
+function SliderPanel({
+  isOpen, onClose,
+  sweetness, setSweetness,
+  body, setBody,
+  centerGradient,
+  data, pca2umap,
+  setUserPin, setViewState,
+  ZOOM_LIMITS, INITIAL_ZOOM,
+  CENTER_Y_OFFSET,
+  BUTTON_BG = "#e8ddd1",
+  BUTTON_TEXT = "#000",
+}) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", stiffness: 200, damping: 25 }}
+          style={{
+            position: "absolute",
+            bottom: 0, left: 0, right: 0,
+            height: DRAWER_HEIGHT, // ♡と同じ高さ
+            backgroundColor: "#fff",
+            boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
+            zIndex: 20,
+            borderTopLeftRadius: "12px",
+            borderTopRightRadius: "12px",
+            display: "flex",
+            flexDirection: "column",
+            fontFamily:
+              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            pointerEvents: "auto",
+          }}
+        >
+          {/* ヘッダー */}
+          <div
+            style={{
+              padding: "12px 16px",
+              borderBottom: "1px solid #ddd",
+              background: "#f9f9f9",
+              flexShrink: 0,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h3 style={{ margin: 0 }}>嗜好スライダー</h3>
+            <button
+              onClick={onClose}
+              style={{
+                background: "#eee",
+                border: "1px solid #ccc",
+                padding: "6px 10px",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              閉じる
+            </button>
+          </div>
+
+          {/* コンテンツ */}
+          <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+            {/* スライダーCSS（●がバー中央） */}
+            <style>{`
+              .taste-slider{
+                appearance: none;
+                -webkit-appearance: none;
+                width: 100%;
+                height: 6px;
+                background: transparent;
+                margin-top: 8px;
+                outline: none;
+              }
+              .taste-slider::-webkit-slider-runnable-track{
+                height: 6px;
+                border-radius: 9999px;
+                background: var(--range, #e9e9e9);
+              }
+              .taste-slider::-moz-range-track{
+                height: 6px;
+                border-radius: 9999px;
+                background: var(--range, #e9e9e9);
+              }
+              .taste-slider::-webkit-slider-thumb{
+                -webkit-appearance: none;
+                width: 28px; height: 28px; border-radius: 50%;
+                background: #fff; border: 0;
+                box-shadow: 0 2px 6px rgba(0,0,0,.25);
+                margin-top: -11px;
+                cursor: pointer;
+              }
+              .taste-slider::-moz-range-thumb{
+                width: 28px; height: 28px; border-radius: 50%;
+                background: #fff; border: 0;
+                box-shadow: 0 2px 6px rgba(0,0,0,.25);
+                cursor: pointer;
+              }
+            `}</style>
+
+            <h4 style={{ margin: "12px 0 18px" }}>基準のワインを飲んだ印象は？</h4>
+
+            {/* 甘み */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
+                <span>← こんなに甘みは不要</span>
+                <span>もっと甘みが欲しい →</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={sweetness}
+                onChange={(e) => setSweetness(Number(e.target.value))}
+                className="taste-slider"
+                style={{ "--range": centerGradient(sweetness) }}
+              />
+            </div>
+
+            {/* コク */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
+                <span>← もっと軽やかが良い</span>
+                <span>濃厚なコクが欲しい →</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={body}
+                onChange={(e) => setBody(Number(e.target.value))}
+                className="taste-slider"
+                style={{ "--range": centerGradient(body) }}
+              />
+            </div>
+
+            {/* 生成ボタン（既存と同ロジック） */}
+            <div style={{ marginTop: 12 }}>
+              <button
+                onClick={() => {
+                  if (!data?.length || !pca2umap) return;
+                  const blendF = data.find((d) => d.JAN === "blendF");
+                  if (!blendF) return;
+
+                  const pc1s = data.map((d) => d.PC1).filter(Number.isFinite);
+                  const pc2s = data.map((d) => d.PC2).filter(Number.isFinite);
+                  const minPC1 = Math.min(...pc1s), maxPC1 = Math.max(...pc1s);
+                  const minPC2 = Math.min(...pc2s), maxPC2 = Math.max(...pc2s);
+
+                  const basePC1 = Number(blendF.PC1);
+                  const basePC2 = Number(blendF.PC2);
+
+                  const pc1Value =
+                    body <= 50
+                      ? basePC1 - ((50 - body) / 50) * (basePC1 - minPC1)
+                      : basePC1 + ((body - 50) / 50) * (maxPC1 - basePC1);
+
+                  const pc2Value =
+                    sweetness <= 50
+                      ? basePC2 - ((50 - sweetness) / 50) * (basePC2 - minPC2)
+                      : basePC2 + ((sweetness - 50) / 50) * (maxPC2 - basePC2);
+
+                  const [umapX, umapY] = pca2umap(pc1Value, pc2Value);
+                  const coords = [umapX, -umapY];
+
+                  setUserPin([umapX, umapY]);
+                  localStorage.setItem(
+                    "userPinCoords",
+                    JSON.stringify({ coordsUMAP: [umapX, umapY] })
+                  );
+
+                  setViewState((prev) => ({
+                    ...prev,
+                    target: [coords[0], coords[1] - CENTER_Y_OFFSET, 0],
+                    zoom: Math.max(
+                      ZOOM_LIMITS.min,
+                      Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)
+                    ),
+                  }));
+
+                  onClose();
+                }}
+                style={{
+                  background: BUTTON_BG,
+                  color: BUTTON_TEXT,
+                  padding: "12px 20px",
+                  fontSize: 16,
+                  fontWeight: "bold",
+                  border: `2px solid ${BUTTON_BG}`,
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  display: "block",
+                  margin: "0 auto",
+                }}
+              >
+                あなたの好みからMAPを生成
+              </button>
+            </div>
           </div>
         </motion.div>
       )}
