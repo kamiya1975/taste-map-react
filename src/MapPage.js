@@ -32,7 +32,7 @@ const REREAD_LS_KEY = "tm_reread_until";
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 const BUTTON_BG = "#e8ddd1";
 const BUTTON_TEXT = "#000";
-const CENTER_Y_OFFSET = -2.5; // 打点を画面中央より少し上に見せる
+const CENTER_Y_OFFSET = -1.5; // 打点を画面中央より少し上に見せる
 
 // プロット色
 const typeColorMap = {
