@@ -168,7 +168,6 @@ function MapPage() {
     }
     if (isRatingListOpen) {
       setIsRatingListOpen(false);
-      setShowRatingDates(false);
       await wait(PANEL_ANIM_MS);
     }
     setSweetness(50);
@@ -953,7 +952,7 @@ function MapPage() {
                 parameters: { depthTest: false },
               })
             : null,
-          // インデックス & コンパス
+          // コンパス
           compassLayer,
           // 最前面：ワイン打点
           mainLayer,
@@ -1106,7 +1105,7 @@ function MapPage() {
             height: "40px",
             borderRadius: "50%",
             background: "#eee",
-            border: "1px solid #ccc",
+            border: "1px solid "#ccc",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -1270,6 +1269,8 @@ function MapPage() {
         ZOOM_LIMITS={ZOOM_LIMITS}
         INITIAL_ZOOM={INITIAL_ZOOM}
         CENTER_Y_OFFSET={CENTER_Y_OFFSET}
+        BUTTON_BG={BUTTON_BG}
+        BUTTON_TEXT={BUTTON_TEXT}
       />
 
       {/* 商品ページドロワー */}
@@ -1461,8 +1462,8 @@ function SliderPanel({
   setUserPin, setViewState,
   ZOOM_LIMITS, INITIAL_ZOOM,
   CENTER_Y_OFFSET,
-  BUTTON_BG = "#e8ddd1",
-  BUTTON_TEXT = "#000",
+  BUTTON_BG,
+  BUTTON_TEXT,
 }) {
   return (
     <AnimatePresence>
