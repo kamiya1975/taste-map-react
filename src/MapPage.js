@@ -1,7 +1,7 @@
 // src/MapPage.js
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import DeckGL from "@deck.gl/react";
-import { OrbitView, OrthographicView, FlyToInterpolator } from "@deck.gl/core";
+import { OrbitView, OrthographicView } from "@deck.gl/core";
 import {
   ScatterplotLayer,
   ColumnLayer,
@@ -98,20 +98,6 @@ function MapPage() {
   const [highlight2D, setHighlight2D] = useState("");
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
-
-  const FLY_MS = 900; // 移動アニメ時間(ms)
-  const centerOnWine = (item, zoomHint = 8.5) => {
-    if (!item) return;
-    const tx = item.BodyAxis;
-    const ty = is3D ? item.SweetAxis : -item.SweetAxis;
-    setViewState((prev) => ({
-      ...prev,
-      target: [tx, ty - CENTER_Y_OFFSET, 0], // スライダーと同じYオフセット
-      zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, zoomHint)),
-      transitionDuration: FLY_MS,
-      transitionInterpolator: new FlyToInterpolator(),
-    }));
-  };
 
   // 検索・スキャン
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -1166,7 +1152,13 @@ function MapPage() {
         onPick={(item) => {
           if (!item) return;
           setSelectedJANFromSearch(item.JAN);
-          centerOnWine(item);
+          const tx = item.BodyAxis;
+          const ty = is3D ? item.SweetAxis : -item.SweetAxis;
+          setViewState((prev) => ({
+            ...prev,
+            target: [tx, ty - CENTER_Y_OFFSET, 0],
+            zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, 8.5)),
+          }));
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
           setIsSearchOpen(false);
@@ -1223,7 +1215,13 @@ function MapPage() {
           // データヒット判定
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
-            centerOnWine(hit);
+            const tx = hit.BodyAxis;
+            const ty = is3D ? hit.SweetAxis : -hit.SweetAxis;
+            setViewState((prev) => ({
+              ...prev,
+              target: [tx, ty - CENTER_Y_OFFSET, 0],
+              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, 8.5)),
+            }));
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
             // 採用記録（勝手な再出現を防ぐ）
@@ -1251,11 +1249,22 @@ function MapPage() {
         data={data}
         onSelectJAN={(jan) => {
           setSelectedJAN(jan);
-          // パネルは閉じてから（見た目スッキリ）
-          setIsRatingListOpen(false);
+
+          // 地図をその商品の位置へセンタリング（スライダーと同じ Y オフセット）
           const item = data.find((d) => String(d.JAN) === String(jan));
-          centerOnWine(item);            // ← スライダーと同じ動きでセンタリング
-          setProductDrawerOpen(true);    // 商品詳細を開く
+          if (item) {
+            const tx = item.BodyAxis;
+            const ty = is3D ? item.SweetAxis : -item.SweetAxis;
+            setViewState((prev) => ({
+              ...prev,
+              target: [tx, ty - CENTER_Y_OFFSET, 0],
+              // 検索と同じ見やすいズームへ
+              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, 6.0)),
+            }));
+          }
+
+          // 商品詳細ドロワーを開く
+          setProductDrawerOpen(true);
         }}
       />
 
