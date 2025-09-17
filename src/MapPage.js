@@ -33,22 +33,6 @@ const BUTTON_BG = "#e8ddd1";
 const BUTTON_TEXT = "#000";
 const CENTER_Y_OFFSET = -3.5; // 打点を画面中央より少し上に見せる
 
-// 商品Map中心移動
-const FLY_MS = 900; // 移動アニメ時間(ms)
-
-const centerOnWine = (item, zoomHint = 8.5) => {
-  if (!item) return;
-  const tx = item.BodyAxis;
-  const ty = is3D ? item.SweetAxis : -item.SweetAxis;
-  setViewState((prev) => ({
-    ...prev,
-    target: [tx, ty - CENTER_Y_OFFSET, 0],  // スライダーと同じYオフセット
-    zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, zoomHint)),
-    transitionDuration: FLY_MS,
-    transitionInterpolator: new FlyToInterpolator(),
-  }));
-};
-
 // プロット色
 const typeColorMap = {
   White: [150, 150, 150],
@@ -114,6 +98,20 @@ function MapPage() {
   const [highlight2D, setHighlight2D] = useState("");
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
+
+  const FLY_MS = 900; // 移動アニメ時間(ms)
+  const centerOnWine = (item, zoomHint = 8.5) => {
+    if (!item) return;
+    const tx = item.BodyAxis;
+    const ty = is3D ? item.SweetAxis : -item.SweetAxis;
+    setViewState((prev) => ({
+      ...prev,
+      target: [tx, ty - CENTER_Y_OFFSET, 0], // スライダーと同じYオフセット
+      zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, zoomHint)),
+      transitionDuration: FLY_MS,
+      transitionInterpolator: new FlyToInterpolator(),
+    }));
+  };
 
   // 検索・スキャン
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -1168,8 +1166,6 @@ function MapPage() {
         onPick={(item) => {
           if (!item) return;
           setSelectedJANFromSearch(item.JAN);
-          const tx = item.BodyAxis;
-          const ty = is3D ? item.SweetAxis : -item.SweetAxis;
           centerOnWine(item);
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
@@ -1227,8 +1223,6 @@ function MapPage() {
           // データヒット判定
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
-            const tx = hit.BodyAxis;
-            const ty = is3D ? hit.SweetAxis : -hit.SweetAxis;
             centerOnWine(hit);
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
