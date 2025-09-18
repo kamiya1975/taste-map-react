@@ -2,7 +2,11 @@
 import React, { useMemo, useState } from "react";
 import Drawer from "@mui/material/Drawer";
 import { makeIndexed, searchItems, normalizeJP } from "../utils/search";
-import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../ui/constants";
+import {
+  drawerModalProps,
+  paperBaseStyle,
+  DRAWER_HEIGHT,
+} from "../ui/constants";
 
 export default function SearchPanel({
   open,
@@ -22,13 +26,12 @@ export default function SearchPanel({
     if (it) onPick?.(it);
   };
 
-  // 検索結果を「お気に入り」と同じ形式に変換
+  // 検索結果をお気に入り風に整形（番号は検索内だけで 1,2,3…）
   const listed = useMemo(() => {
-    const arr = results.slice(0, 400);
-    return arr.map((x, i) => ({
+    return results.map((x, i) => ({
       ...x,
       addedAt: null, // 検索結果には日付がないので「日付不明」
-      displayIndex: arr.length - i, // 上の項目ほど大きな番号
+      displayIndex: i + 1, // 検索結果内で単純に 1,2,3…
     }));
   }, [results]);
 
@@ -40,7 +43,7 @@ export default function SearchPanel({
       ModalProps={drawerModalProps}
       PaperProps={{ style: paperBaseStyle }}
     >
-      {/* ヘッダ：左に検索枠、右に「閉じる」 */}
+      {/* ヘッダ：検索枠と閉じる */}
       <div
         style={{
           height: "60px",
@@ -143,7 +146,7 @@ export default function SearchPanel({
         </button>
       </div>
 
-      {/* リスト：お気に入りと同じ表示 */}
+      {/* リスト：お気に入りと同じ形式 */}
       <div
         style={{
           height: `calc(${DRAWER_HEIGHT} - 60px)`,
@@ -178,7 +181,6 @@ export default function SearchPanel({
                     fontSize: "16px",
                     fontWeight: "bold",
                     marginRight: "4px",
-                    fontFamily: '"Helvetica Neue", Arial, sans-serif',
                   }}
                 >
                   {item.displayIndex}.
@@ -205,8 +207,6 @@ export default function SearchPanel({
                 {Number.isFinite(item.SweetAxis)
                   ? item.SweetAxis.toFixed(2)
                   : "—"}
-                {/* JAN を出したいなら以下を有効化 */}
-                {/* <br />JAN: {item.JAN || "—"} */}
               </small>
             </li>
           ))}
