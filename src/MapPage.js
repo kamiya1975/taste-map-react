@@ -1272,6 +1272,8 @@ function MapPage() {
         CENTER_Y_OFFSET={CENTER_Y_OFFSET}
         BUTTON_BG={BUTTON_BG}
         BUTTON_TEXT={BUTTON_TEXT}
+        setSelectedJAN={setSelectedJAN}
+        setProductDrawerOpen={setProductDrawerOpen}
       />
 
       {/* 商品ページドロワー */}
@@ -1473,6 +1475,8 @@ function SliderPanel({
   CENTER_Y_OFFSET,
   BUTTON_BG,
   BUTTON_TEXT,
+  setSelectedJAN,
+  setProductDrawerOpen,
 }) {
   return (
     <AnimatePresence>
@@ -1643,6 +1647,20 @@ function SliderPanel({
                       Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)
                     ),
                   }));
+
+                  // 近傍ワイン（UMAP空間で最近傍）を検索 → 商品ドロワーを開く
+                  let nearest = null, bestD2 = Infinity;
+                  for (const d of data) {
+                    if (!Number.isFinite(d.BodyAxis) || !Number.isFinite(d.SweetAxis)) continue;
+                    const dx = d.BodyAxis - umapX;
+                    const dy = d.SweetAxis - umapY; // 反転なしでOK（二乗距離は同じ）
+                    const d2 = dx*dx + dy*dy;
+                    if (d2 < bestD2) { bestD2 = d2; nearest = d; }
+                  }
+                  if (nearest?.JAN) {
+                    setSelectedJAN(String(nearest.JAN));
+                    setProductDrawerOpen(true);
+                  }
 
                   onClose();
                 }}
