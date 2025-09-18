@@ -5,10 +5,11 @@ import { makeIndexed, searchItems, normalizeJP } from "../utils/search";
 import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../ui/constants";
 
 export default function SearchPanel({
-  open, onClose,
+  open,
+  onClose,
   data = [],
-  onPick,         // (item) => void
-  onScanClick     // () => void
+  onPick, // (item) => void
+  onScanClick, // () => void
 }) {
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
@@ -20,6 +21,16 @@ export default function SearchPanel({
     const it = results[i];
     if (it) onPick?.(it);
   };
+
+  // 検索結果を「お気に入り」と同じ形式に変換
+  const listed = useMemo(() => {
+    const arr = results.slice(0, 400);
+    return arr.map((x, i) => ({
+      ...x,
+      addedAt: null, // 検索結果には日付がないので「日付不明」
+      displayIndex: arr.length - i, // 上の項目ほど大きな番号
+    }));
+  }, [results]);
 
   return (
     <Drawer
@@ -42,7 +53,7 @@ export default function SearchPanel({
           gap: 8,
         }}
       >
-        {/* 検索枠（現状デザインのまま） */}
+        {/* 検索枠 */}
         <div
           style={{
             flex: 1,
@@ -57,8 +68,13 @@ export default function SearchPanel({
         >
           <input
             value={q}
-            onChange={(e)=>{ setQ(e.target.value); setActive(0); }}
-            onKeyDown={(e)=>{ if (e.key === "Enter") pick(0); }}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setActive(0);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") pick(0);
+            }}
             placeholder="キーワード"
             style={{
               border: "none",
@@ -90,9 +106,23 @@ export default function SearchPanel({
               cursor: "pointer",
             }}
           >
-            <div style={{ display: "flex", gap: 2, height: 16, alignItems: "stretch" }}>
-              {[3,1,2,1,2,1].map((w, i) => (
-                <span key={i} style={{ width: w, background: "#444", borderRadius: 1 }} />
+            <div
+              style={{
+                display: "flex",
+                gap: 2,
+                height: 16,
+                alignItems: "stretch",
+              }}
+            >
+              {[3, 1, 2, 1, 2, 1].map((w, i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: w,
+                    background: "#444",
+                    borderRadius: 1,
+                  }}
+                />
               ))}
             </div>
           </button>
@@ -102,50 +132,85 @@ export default function SearchPanel({
         <button
           onClick={onClose}
           style={{
-            background:"#eee",
-            border:"1px solid #ccc",
-            padding:"6px 10px",
-            borderRadius:4,
-            whiteSpace: "nowrap"
+            background: "#eee",
+            border: "1px solid #ccc",
+            padding: "6px 10px",
+            borderRadius: 4,
+            whiteSpace: "nowrap",
           }}
         >
           閉じる
         </button>
       </div>
 
-      {/* リスト */}
+      {/* リスト：お気に入りと同じ表示 */}
       <div
         style={{
           height: `calc(${DRAWER_HEIGHT} - 60px)`,
           overflowY: "auto",
-          padding: "0 12px 12px",
+          padding: "12px 16px",
         }}
       >
-        {normalizeJP(q) && results.length === 0 && (
-          <div style={{ color:"#666", padding:"8px 4px" }}>該当する商品が見つかりません。</div>
-        )}
-        {results.map((it, idx)=>(
-          <div
-            key={it.JAN}
-            onClick={()=>pick(idx)}
-            onMouseEnter={()=>setActive(idx)}
-            style={{
-              padding:"10px 6px",
-              borderBottom:"1px solid #f2f2f2",
-              cursor:"pointer",
-              background: idx===active ? "#f6f9ff" : "#fff",
-              borderRadius:6
-            }}
-          >
-            <div style={{ display:"flex", justifyContent:"space-between", gap:8 }}>
-              <div style={{ fontWeight:600, color:"#333" }}>{it.商品名 || "(名称不明)"}</div>
-              <div style={{ color:"#666" }}>{it.JAN}</div>
-            </div>
-            <div style={{ fontSize:12, color:"#666", marginTop:2 }}>
-              {it.Type ?? "-"} / {it.国 ?? ""} {it.産地 ?? ""} / {it.葡萄品種 ?? ""}
-            </div>
+        {normalizeJP(q) && listed.length === 0 && (
+          <div style={{ color: "#666", padding: "8px 4px" }}>
+            該当する商品が見つかりません。
           </div>
-        ))}
+        )}
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {listed.map((item, idx) => (
+            <li
+              key={`${item.JAN}-${idx}`}
+              onClick={() => pick(idx)}
+              onMouseEnter={() => setActive(idx)}
+              style={{
+                padding: "10px 0",
+                borderBottom: "1px solid #eee",
+                cursor: "pointer",
+                background: idx === active ? "#f6f9ff" : "#fff",
+                borderRadius: 6,
+              }}
+            >
+              <div>
+                <strong
+                  style={{
+                    display: "inline-block",
+                    color: "rgb(50, 50, 50)",
+                    fontSize: "16px",
+                    fontWeight: "bold",
+                    marginRight: "4px",
+                    fontFamily: '"Helvetica Neue", Arial, sans-serif',
+                  }}
+                >
+                  {item.displayIndex}.
+                </strong>
+                <span style={{ fontSize: "15px", color: "#555" }}>
+                  {item.addedAt
+                    ? new Date(item.addedAt).toLocaleDateString()
+                    : "（日付不明）"}
+                </span>
+                <br />
+                {item.商品名 || "（名称不明）"}
+              </div>
+              <small>
+                Type: {item.Type || "不明"} / 価格:{" "}
+                {Number.isFinite(item.希望小売価格)
+                  ? `¥${Number(item.希望小売価格).toLocaleString()}`
+                  : "不明"}
+                <br />
+                Body:{" "}
+                {Number.isFinite(item.BodyAxis)
+                  ? item.BodyAxis.toFixed(2)
+                  : "—"}
+                , Sweet:{" "}
+                {Number.isFinite(item.SweetAxis)
+                  ? item.SweetAxis.toFixed(2)
+                  : "—"}
+                {/* JAN を出したいなら以下を有効化 */}
+                {/* <br />JAN: {item.JAN || "—"} */}
+              </small>
+            </li>
+          ))}
+        </ul>
       </div>
     </Drawer>
   );
