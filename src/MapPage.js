@@ -682,7 +682,7 @@ function MapPage() {
       if (!item || !Number.isFinite(item.BodyAxis) || !Number.isFinite(item.SweetAxis)) return [];
       const count = Math.min(Number(ratingObj.rating) || 0, 5);
       if (count <= 0) return [];
-      const radiusBase = 0.1;
+      const radiusBase = 0.6;  //サークル半径のサイズを変える
       return Array.from({ length: count }).map((_, i) => {
         const angleSteps = 40;
         const path = Array.from({ length: angleSteps }, (_, j) => {
@@ -698,7 +698,7 @@ function MapPage() {
           data: [{ path }],
           getPath: (d) => d.path,
           getLineColor: () => lineColor,
-          getWidth: 0.3,
+          getWidth: 0.3,  //サークル線の太さを変える
           widthUnits: "pixels",
           parameters: { depthTest: false },
           pickable: false,
@@ -948,7 +948,7 @@ function MapPage() {
                 data: data.filter((d) => String(d.JAN) === String(selectedJANFromSearch)),
                 getPosition: (d) => [d.BodyAxis, is3D ? d.SweetAxis : -d.SweetAxis, 0],
                 radiusUnits: "meters",
-                getRadius: 0.1,  //サークルサイズ変更
+                getRadius: 0.18,
                 getFillColor: [255, 215, 0, 240],   // ← 黄色（ゴールド）
                 stroked: true,
                 getLineColor: [0, 0, 0, 220],
