@@ -19,45 +19,43 @@ export default function SearchPanel({
   const SCROLL_KEY = "searchPanel.scrollTop";
 
   const indexed = useMemo(() => makeIndexed(data), [data]);
-  const results = useMemo(() => searchItems(indexed, q, 50), [indexed, q]);
+  const results = useMemo(() => searchItems(indexed, q, 200), [indexed, q]);
 
   const pick = (i) => {
     const it = results[i];
-    if (it) onPick?.(it);
+    if (it) onPick?.(it); // ← 一覧は閉じない（MapPage側でも閉じないように！）
   };
 
-  // 検索結果を「お気に入り」と同じ表示モデルに変換
-  // 番号は検索結果内で 1,2,3… と昇順
+  // お気に入りと同じ表示モデルに整形（番号は検索内で 1,2,3…）
   const listed = useMemo(() => {
     return results.map((x, i) => ({
       ...x,
-      addedAt: null,      // 検索結果には日付が無い → 表示は「（日付不明）」
-      displayIndex: i + 1 // 検索内連番
+      addedAt: null,
+      displayIndex: i + 1,
     }));
   }, [results]);
 
-  // Drawerを開いたとき、保存していたスクロール位置を復元
+  // Drawerを開いたらスクロール位置を復元
   useEffect(() => {
     if (!open) return;
     const el = scrollRef.current;
     if (!el) return;
     const y = Number(sessionStorage.getItem(SCROLL_KEY) || 0);
     if (Number.isFinite(y)) {
-      // レイアウト確定後に適用
       requestAnimationFrame(() => {
         el.scrollTop = y;
       });
     }
   }, [open]);
 
-  // スクロール位置を保存（軽めのスロットル）
+  // スクロール位置を保存（軽めスロットル）
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     let t = 0;
     const onScroll = () => {
       const now = Date.now();
-      if (now - t < 80) return; // 80ms throttle
+      if (now - t < 80) return;
       t = now;
       sessionStorage.setItem(SCROLL_KEY, String(el.scrollTop || 0));
     };
@@ -69,8 +67,10 @@ export default function SearchPanel({
     <Drawer
       anchor="bottom"
       open={open}
-      onClose={onClose}
-      ModalProps={drawerModalProps}
+      onClose={onClose} // ← 「閉じる」ボタンを押した時だけ自分で閉じる
+      // 検索一覧は「開いたまま」運用にするための保険
+      hideBackdrop       // 背面操作可&誤バックドロップ閉じ防止
+      ModalProps={{ ...drawerModalProps, keepMounted: true }} // DOM維持でスクロールも安定
       PaperProps={{ style: paperBaseStyle }}
     >
       {/* ヘッダ：検索枠 / スキャン / 閉じる */}
@@ -104,7 +104,7 @@ export default function SearchPanel({
             onChange={(e) => {
               setQ(e.target.value);
               setActive(0);
-              // クエリ変更時はスクロール位置をリセット（必要なら保持に変更可）
+              // クエリ変更時はスクロールを先頭に（維持したければこの行を消す）
               sessionStorage.setItem(SCROLL_KEY, "0");
             }}
             onKeyDown={(e) => {
@@ -163,7 +163,7 @@ export default function SearchPanel({
           </button>
         </div>
 
-        {/* 閉じるボタン */}
+        {/* 閉じるボタン（ユーザーが明示的に閉じたい時のみ） */}
         <button
           onClick={onClose}
           style={{
@@ -178,7 +178,7 @@ export default function SearchPanel({
         </button>
       </div>
 
-      {/* リスト（お気に入りと同じ表示に統一） */}
+      {/* リスト（“お気に入り” と同じ表示） */}
       <div
         ref={scrollRef}
         style={{
@@ -196,7 +196,7 @@ export default function SearchPanel({
           {listed.map((item, idx) => (
             <li
               key={`${item.JAN}-${idx}`}
-              onClick={() => pick(idx)}
+              onClick={() => pick(idx)}           // ← 一覧は閉じない
               onMouseEnter={() => setActive(idx)}
               style={{
                 padding: "10px 0",
@@ -241,7 +241,6 @@ export default function SearchPanel({
                 {Number.isFinite(item.SweetAxis)
                   ? item.SweetAxis.toFixed(2)
                   : "—"}
-                {/* JAN を出したい場合は下を有効化 */}
                 {/* <br />JAN: {item.JAN || "—"} */}
               </small>
             </li>

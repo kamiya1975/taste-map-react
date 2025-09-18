@@ -1147,7 +1147,6 @@ function MapPage() {
           }));
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
-          setIsSearchOpen(false);
         }}
         onScanClick={() => {
           setProductDrawerOpen(false);
