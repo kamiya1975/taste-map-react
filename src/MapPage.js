@@ -118,7 +118,7 @@ function MapPage() {
     if (location.state?.autoOpenSlider) setIsSliderOpen(true);
   }, [location.state]);
 
-  // === ★ 追加/修正: 排他オープンのためのユーティリティ ===
+  // === 排他オープンのためのユーティリティ ===
   const PANEL_ANIM_MS = 320; // 閉じアニメ後に次を開く待ち時間
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -449,8 +449,7 @@ function MapPage() {
 
   // ====== レイヤー計算
   const { thinLines, thickLines } = useMemo(() => {
-    const thin = [],
-      thick = [];
+    const thin = [], thick = [];
     for (let i = -500; i <= 500; i++) {
       const x = i * gridInterval;
       (i % 5 === 0 ? thick : thin).push({
@@ -652,15 +651,11 @@ function MapPage() {
   const detectElbowIndex = (valsDesc) => {
     const n = valsDesc.length;
     if (n <= 3) return n;
-    const x1 = 0,
-      y1 = valsDesc[0];
-    const x2 = n - 1,
-      y2 = valsDesc[n - 1];
-    const dx = x2 - x1,
-      dy = y2 - y1;
+    const x1 = 0, y1 = valsDesc[0];
+    const x2 = n - 1, y2 = valsDesc[n - 1];
+    const dx = x2 - x1, dy = y2 - y1;
     const denom = Math.hypot(dx, dy) || 1;
-    let bestK = 1,
-      bestDist = -Infinity;
+    let bestK = 1, bestDist = -Infinity;
     for (let i = 1; i < n - 1; i++) {
       const num = Math.abs(dy * (i - x1) - dx * (valsDesc[i] - y1));
       const dist = num / denom;
@@ -700,9 +695,7 @@ function MapPage() {
 
     const picked = compassRule === "top20" ? top20 : elbowPick;
 
-    let sw = 0,
-      sx = 0,
-      sy = 0;
+    let sw = 0, sx = 0, sy = 0;
     picked.forEach((p) => {
       sw += p.rating;
       sx += p.rating * p.x;
@@ -817,21 +810,14 @@ function MapPage() {
           inertia: true,
         }}
         onClick={(info) => {
-          if (info?.layer?.id === "slider-mark") {
-            const coord = info?.coordinate;
-            const nearest = findNearestWine(coord);
-            if (nearest?.JAN) {
-              setSelectedJAN(nearest.JAN);
-              setProductDrawerOpen(true);
-            }
-            return;
-          }
+          // 1) プロット直クリック
           const picked = info?.object;
           if (picked?.JAN) {
             setSelectedJAN(picked.JAN);
             setProductDrawerOpen(true);
             return;
           }
+          // 2) 近傍探索で拾って詳細を開く
           const coord = info?.coordinate;
           const nearest = findNearestWine(coord);
           if (nearest?.JAN) {
@@ -1018,7 +1004,7 @@ function MapPage() {
           <option value="">ー</option>
           <option value="PC2">Sweet(PC2)</option>
           <option value="PC1">Body(PC1)</option>
-          <option value="PC3">----(PC3)</option>
+          <option value="PC3">PC3</option>
         </select>
       ) : (
         <select
@@ -1036,7 +1022,7 @@ function MapPage() {
           <option value="">ー</option>
           <option value="PC2">Sweet(PC2)</option>
           <option value="PC1">Body(PC1)</option>
-          <option value="PC3">----(PC3)</option>
+          <option value="PC3">PC3</option>
         </select>
       )}
 
@@ -1119,7 +1105,7 @@ function MapPage() {
         </button>
       )}
 
-      {/* 左下: 設定 */}
+      {/* 左下: 設定（今はトグルのみ。中身は別途） */}
       <button
         onClick={() => setIsSettingsOpen(true)}
         style={{
@@ -1292,7 +1278,11 @@ function MapPage() {
       <Drawer
         anchor="bottom"
         open={productDrawerOpen}
-        onClose={() => { setProductDrawerOpen(false); setSelectedJAN(null); }}
+        onClose={() => {
+          setProductDrawerOpen(false);
+          setSelectedJAN(null);
+          setSelectedJANFromSearch(null); // ← 検索ハイライトも消す
+        }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: paperBaseStyle }}
       >
@@ -1309,7 +1299,11 @@ function MapPage() {
         >
           <div style={{ fontWeight: 600 }}>商品ページ</div>
           <button
-            onClick={() => setProductDrawerOpen(false)}
+            onClick={() => {
+              setProductDrawerOpen(false);
+              setSelectedJAN(null);
+              setSelectedJANFromSearch(null);
+            }}
             style={{
               background: "#eee",
               border: "1px solid #ccc",
@@ -1416,7 +1410,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {list.map((item, idx) => (
                 <li
-                  key={idx}
+                  key={`${item.JAN}-${idx}`}
                   onClick={() => onSelectJAN?.(item.JAN)}
                   style={{
                     padding: "10px 0",
