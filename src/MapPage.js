@@ -180,11 +180,10 @@ function MapPage() {
     if (!data.length) return { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
     const xs = data.map((d) => d.BodyAxis);
     const ys = data.map((d) => (is3D ? d.SweetAxis : -d.SweetAxis));
-    const xmin = Math.min(...xs),
-      xmax = Math.max(...xs);
-    const ymin = Math.min(...ys),
-      ymax = Math.max(...ys);
-    const pad = 1.5;
+    const xmin = Math.min(...xs), xmax = Math.max(...xs);
+    const ymin = Math.min(...ys), ymax = Math.max(...ys);
+    // ★ FIX: “点を少し上に見せる”ための視点オフセット分まで余白を拡張
+    const pad = 1.5 + Math.abs(CENTER_Y_OFFSET);
     return {
       xmin: xmin - pad,
       xmax: xmax + pad,
@@ -293,9 +292,7 @@ function MapPage() {
   // ====== UMAP クラスタ重心（旧 userPin 互換処理用）
   const umapCentroid = useMemo(() => {
     if (!data?.length) return [0, 0];
-    let sx = 0,
-      sy = 0,
-      n = 0;
+    let sx = 0, sy = 0, n = 0;
     for (const d of data) {
       if (Number.isFinite(d.BodyAxis) && Number.isFinite(d.SweetAxis)) {
         sx += d.BodyAxis;
@@ -415,7 +412,7 @@ function MapPage() {
         transitionInterpolator: new FlyToInterpolator(),
       }));
     },
-    [is3D] // ZOOM_LIMITS/INITIAL_ZOOM/CENTER_Y_OFFSET は安定
+    [is3D] // ZOOM_LIMITS/INITIAL_ZOOM/CENTER_Y_OFFSET は外部定数
   );
 
   // ====== 便利関数
@@ -458,8 +455,7 @@ function MapPage() {
   const findNearestWine = (coord) => {
     if (!coord || !Array.isArray(data) || data.length === 0) return null;
     const [cx, cy] = coord;
-    let best = null,
-      bestD2 = Infinity;
+    let best = null, bestD2 = Infinity;
     for (const d of data) {
       const x = d.BodyAxis;
       const y = is3D ? d.SweetAxis : -d.SweetAxis;
@@ -584,9 +580,7 @@ function MapPage() {
         .sort((a, b) => a.d2 - b.d2)
         .slice(0, Math.min(K, samples.length));
       const EPS2 = 1e-6;
-      let sw = 0,
-        sx = 0,
-        sy = 0;
+      let sw = 0, sx = 0, sy = 0;
       neigh.forEach(({ s, d2 }) => {
         const w = 1 / (Math.sqrt(d2) + EPS2);
         sw += w;
@@ -639,12 +633,7 @@ function MapPage() {
     const lineColor = [255, 0, 0, 255];
     return Object.entries(userRatings).flatMap(([jan, ratingObj]) => {
       const item = data.find((d) => String(d.JAN) === String(jan));
-      if (
-        !item ||
-        !Number.isFinite(item.BodyAxis) ||
-        !Number.isFinite(item.SweetAxis)
-      )
-        return [];
+      if (!item || !Number.isFinite(item.BodyAxis) || !Number.isFinite(item.SweetAxis)) return [];
       const count = Math.min(Number(ratingObj.rating) || 0, 5);
       if (count <= 0) return [];
       const radiusBase = 0.1;
@@ -654,9 +643,7 @@ function MapPage() {
           const angle = (j / angleSteps) * 2 * Math.PI;
           const radius = radiusBase * (i + 1);
           const x = item.BodyAxis + Math.cos(angle) * radius;
-          const y =
-            (is3D ? item.SweetAxis : -item.SweetAxis) +
-            Math.sin(angle) * radius;
+          const y = (is3D ? item.SweetAxis : -item.SweetAxis) + Math.sin(angle) * radius;
           return [x, y];
         });
         path.push(path[0]);
@@ -686,10 +673,7 @@ function MapPage() {
     for (let i = 1; i < n - 1; i++) {
       const num = Math.abs(dy * (i - x1) - dx * (valsDesc[i] - y1));
       const dist = num / denom;
-      if (dist > bestDist) {
-        bestDist = dist;
-        bestK = i;
-      }
+      if (dist > bestDist) { bestDist = dist; bestK = i; }
     }
     return bestK + 1;
   };
@@ -703,8 +687,7 @@ function MapPage() {
     const joined = rated
       .map((r) => {
         const it = data.find((d) => String(d.JAN) === r.jan);
-        if (!it || !Number.isFinite(it.BodyAxis) || !Number.isFinite(it.SweetAxis))
-          return null;
+        if (!it || !Number.isFinite(it.BodyAxis) || !Number.isFinite(it.SweetAxis)) return null;
         return { ...r, x: it.BodyAxis, y: it.SweetAxis };
       })
       .filter(Boolean);
@@ -723,11 +706,7 @@ function MapPage() {
     const picked = compassRule === "top20" ? top20 : elbowPick;
 
     let sw = 0, sx = 0, sy = 0;
-    picked.forEach((p) => {
-      sw += p.rating;
-      sx += p.rating * p.x;
-      sy += p.rating * p.y;
-    });
+    picked.forEach((p) => { sw += p.rating; sx += p.rating * p.x; sy += p.rating * p.y; });
     if (sw <= 0) return { point: null, picked, rule: compassRule };
     return { point: [sx / sw, sy / sw], picked, rule: compassRule };
   }, [userRatings, data, compassRule]);
@@ -800,16 +779,9 @@ function MapPage() {
   return (
     <div
       /* 重要: DeckGL 親を常に全画面に固定 */
-      style={{
-        position: "absolute",
-        inset: 0,
-        width: "100%",
-        height: "100%",
-        overflow: "hidden",
-      }}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}
     >
       <DeckGL
-        /* DeckGL は親のサイズにフィットする */
         views={
           is3D
             ? new OrbitView({ near: 0.1, far: 1000 })
@@ -820,6 +792,7 @@ function MapPage() {
         useDevicePixels
         onViewStateChange={({ viewState: vs }) => {
           const z = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom));
+          // ★ クランプ（yはオフセット分まで許容）
           const limitedTarget = [
             Math.max(panBounds.xmin, Math.min(panBounds.xmax, vs.target[0])),
             Math.max(panBounds.ymin, Math.min(panBounds.ymax, vs.target[1])),
@@ -873,9 +846,7 @@ function MapPage() {
             : null,
           !is3D && highlight2D
             ? new GridCellLayer({
-                id: `grid-cells-heat-${highlight2D}-p${HEAT_COLOR_LOW.join(
-                  "_"
-                )}-${HEAT_COLOR_HIGH.join("_")}`,
+                id: `grid-cells-heat-${highlight2D}-p${HEAT_COLOR_LOW.join("_")}-${HEAT_COLOR_HIGH.join("_")}`,
                 data: heatCells,
                 cellSize,
                 getPosition: (d) => d.position,
@@ -883,21 +854,10 @@ function MapPage() {
                   let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
                   if (!Number.isFinite(t)) t = 0;
                   t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
-                  const r = Math.round(
-                    HEAT_COLOR_LOW[0] +
-                      (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t
-                  );
-                  const g = Math.round(
-                    HEAT_COLOR_LOW[1] +
-                      (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t
-                  );
-                  const b = Math.round(
-                    HEAT_COLOR_LOW[2] +
-                      (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t
-                  );
-                  const a = Math.round(
-                    HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t
-                  );
+                  const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t);
+                  const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t);
+                  const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t);
+                  const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
                   return [r, g, b, a];
                 },
                 extruded: false,
@@ -906,16 +866,7 @@ function MapPage() {
                 parameters: { depthTest: false },
                 pickable: false,
                 updateTriggers: {
-                  getFillColor: [
-                    vMin,
-                    vMax,
-                    HEAT_GAMMA,
-                    avgHash,
-                    ...HEAT_COLOR_LOW,
-                    ...HEAT_COLOR_HIGH,
-                    HEAT_ALPHA_MIN,
-                    HEAT_ALPHA_MAX,
-                  ],
+                  getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash, ...HEAT_COLOR_LOW, ...HEAT_COLOR_HIGH, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX],
                 },
               })
             : null,
@@ -946,14 +897,8 @@ function MapPage() {
           selectedJANFromSearch
             ? new ScatterplotLayer({
                 id: "search-highlight",
-                data: data.filter(
-                  (d) => String(d.JAN) === String(selectedJANFromSearch)
-                ),
-                getPosition: (d) => [
-                  d.BodyAxis,
-                  is3D ? d.SweetAxis : -d.SweetAxis,
-                  0,
-                ],
+                data: data.filter((d) => String(d.JAN) === String(selectedJANFromSearch)),
+                getPosition: (d) => [d.BodyAxis, is3D ? d.SweetAxis : -d.SweetAxis, 0],
                 radiusUnits: "meters",
                 getRadius: 0.18,
                 getFillColor: [255, 215, 0, 240],
@@ -1019,14 +964,7 @@ function MapPage() {
         <select
           value={zMetric}
           onChange={(e) => setZMetric(e.target.value)}
-          style={{
-            position: "absolute",
-            top: "10px",
-            left: "10px",
-            zIndex: 10,
-            padding: "6px",
-            fontSize: "14px",
-          }}
+          style={{ position: "absolute", top: "10px", left: "10px", zIndex: 10, padding: "6px", fontSize: "14px" }}
         >
           <option value="">ー</option>
           <option value="PC2">Sweet(PC2)</option>
@@ -1037,14 +975,7 @@ function MapPage() {
         <select
           value={highlight2D}
           onChange={(e) => setHighlight2D(e.target.value)}
-          style={{
-            position: "absolute",
-            top: "10px",
-            left: "10px",
-            zIndex: 10,
-            padding: "6px",
-            fontSize: "14px",
-          }}
+          style={{ position: "absolute", top: "10px", left: "10px", zIndex: 10, padding: "6px", fontSize: "14px" }}
         >
           <option value="">ー</option>
           <option value="PC2">Sweet(PC2)</option>
@@ -1165,7 +1096,7 @@ function MapPage() {
         onPick={(item) => {
           if (!item) return;
           setSelectedJANFromSearch(item.JAN);
-          // ★ 検索→商品ページでも“初期ズーム”でフォーカス
+          // ★ 検索→商品ページでも“初期ズーム”でフォーカス（統一ヘルパー）
           focusOnWine(item, { zoom: INITIAL_ZOOM, duration: 700 });
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
@@ -1211,10 +1142,7 @@ function MapPage() {
 
           // 直近60秒の同一JANは通常スキップ（再読込み中は通す）
           if (!bypassThrottle) {
-            if (
-              jan === lastCommittedRef.current.code &&
-              now - lastCommittedRef.current.at < 60000
-            ) {
+            if (jan === lastCommittedRef.current.code && now - lastCommittedRef.current.at < 60000) {
               return false; // スキャナ継続
             }
           }
@@ -1244,16 +1172,14 @@ function MapPage() {
       {/* お気に入り（下から 60vh） */}
       <FavoritePanel
         isOpen={isRatingListOpen}
-        onClose={() => {
-          setIsRatingListOpen(false);
-        }}
+        onClose={() => { setIsRatingListOpen(false); }}
         favorites={favorites}
         data={data}
         onSelectJAN={(jan) => {
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
-            // ★ お気に入り→商品ページでも“初期ズーム”でフォーカス
+            // ★ お気に入り→商品ページでも“初期ズーム”でフォーカス（統一ヘルパー）
             focusOnWine(item, { zoom: INITIAL_ZOOM, duration: 700 });
           }
           setProductDrawerOpen(true);
@@ -1289,7 +1215,7 @@ function MapPage() {
         onClose={() => {
           setProductDrawerOpen(false);
           setSelectedJAN(null);
-          setSelectedJANFromSearch(null); // ← 検索ハイライトも消す（残したいなら削除）
+          setSelectedJANFromSearch(null); // 検索ハイライトを消す（保持したければここを外す）
         }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: paperBaseStyle }}
@@ -1327,11 +1253,7 @@ function MapPage() {
           <iframe
             title={`product-${selectedJAN}`}
             src={`/products/${selectedJAN}`}
-            style={{
-              border: "none",
-              width: "100%",
-              height: `calc(${DRAWER_HEIGHT} - 48px)`,
-            }}
+            style={{ border: "none", width: "100%", height: `calc(${DRAWER_HEIGHT} - 48px)` }}
           />
         ) : (
           <div style={{ padding: 16 }}>商品を選択してください。</div>
@@ -1610,7 +1532,7 @@ function SliderPanel({
               />
             </div>
 
-            {/* 生成ボタン（既存と同ロジック＋“初期ズームでセンタリング＆最近傍商品を開く”） */}
+            {/* 生成ボタン（既存ロジック＋最近傍商品を開く） */}
             <div style={{ marginTop: 12 }}>
               <button
                 onClick={() => {
@@ -1648,10 +1570,7 @@ function SliderPanel({
                   setViewState((prev) => ({
                     ...prev,
                     target: [coords[0], coords[1] - CENTER_Y_OFFSET, 0],
-                    zoom: Math.max(
-                      ZOOM_LIMITS.min,
-                      Math.min(ZOOM_LIMITS.max, INITIAL_ZOOM)
-                    ),
+                    zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, INITIAL_ZOOM)),
                   }));
 
                   // 近傍ワイン（UMAP空間で最近傍）を検索 → 商品ドロワーを開く
