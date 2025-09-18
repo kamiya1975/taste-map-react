@@ -1642,9 +1642,10 @@ function SliderPanel({
                   setViewState((prev) => ({
                     ...prev,
                     target: [coords[0], coords[1] - CENTER_Y_OFFSET, 0],
+                    // ← ここを「常に初期ズーム」に
                     zoom: Math.max(
                       ZOOM_LIMITS.min,
-                      Math.min(ZOOM_LIMITS.max, prev.zoom ?? INITIAL_ZOOM)
+                      Math.min(ZOOM_LIMITS.max, INITIAL_ZOOM)
                     ),
                   }));
 
