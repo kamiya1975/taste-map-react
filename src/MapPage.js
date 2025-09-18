@@ -457,7 +457,7 @@ function MapPage() {
           localStorage.setItem("userRatings", JSON.stringify(next));
           return next;
         });
-        
+
         const rating = Number(payload?.rating) || 0;
         const willFav = rating > 0;
 
@@ -772,7 +772,7 @@ function MapPage() {
         anchorY: 155,
       }),
       sizeUnits: "meters",
-      getSize: 0.5,
+      getSize: 0.3,  //コンパスサイズを変える
       billboard: true,
       pickable: false,
       parameters: { depthTest: false },
