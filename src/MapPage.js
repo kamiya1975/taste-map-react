@@ -682,7 +682,7 @@ function MapPage() {
       if (!item || !Number.isFinite(item.BodyAxis) || !Number.isFinite(item.SweetAxis)) return [];
       const count = Math.min(Number(ratingObj.rating) || 0, 5);
       if (count <= 0) return [];
-      const radiusBase = 0.6;  //サークル半径のサイズを変える
+      const radiusBase = 0.06;  //サークル半径のサイズを変える
       return Array.from({ length: count }).map((_, i) => {
         const angleSteps = 40;
         const path = Array.from({ length: angleSteps }, (_, j) => {
