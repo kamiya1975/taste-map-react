@@ -1,5 +1,5 @@
 // src/MapPage.js
-import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrbitView, OrthographicView } from "@deck.gl/core";
 import {
@@ -387,33 +387,6 @@ function MapPage() {
       } catch {}
     }
   }, [userPin, is3D, location.state]);
-
-  // ====== 共通：商品へフォーカス（毎回“初期ズーム”に戻してスムーズ移動）
-  const focusOnWine = useCallback(
-    (item, opts = {}) => {
-      if (!item) return;
-      const tx = Number(item.BodyAxis);
-      const tyUMAP = Number(item.SweetAxis);
-      if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
-
-      const tyCanvas = is3D ? tyUMAP : -tyUMAP;
-      const zoomTarget = Math.max(
-        ZOOM_LIMITS.min,
-        Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM)
-      );
-
-      setViewState((prev) => ({
-        ...prev,
-        target: [tx, tyCanvas - CENTER_Y_OFFSET, 0],
-        zoom: zoomTarget,
-        rotationX: is3D ? (prev.rotationX ?? 45) : 0,
-        rotationOrbit: 0,
-        transitionDuration: opts.duration ?? 700,
-        transitionInterpolator: new FlyToInterpolator(),
-      }));
-    },
-    [is3D] // ZOOM_LIMITS/INITIAL_ZOOM/CENTER_Y_OFFSET は外部定数
-  );
 
   // ====== 便利関数
   const toggleFavorite = (jan) => {
