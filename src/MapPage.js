@@ -1,7 +1,7 @@
 // src/MapPage.js
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import DeckGL from "@deck.gl/react";
-import { OrbitView, OrthographicView } from "@deck.gl/core";
+import { OrbitView, OrthographicView, FlyToInterpolator } from "@deck.gl/core";
 import {
   ScatterplotLayer,
   ColumnLayer,
@@ -390,6 +390,33 @@ function MapPage() {
       } catch {}
     }
   }, [userPin, is3D, location.state]);
+
+  // ====== 共通：商品へフォーカス（毎回“初期ズーム”に戻してスムーズ移動）
+  const focusOnWine = useCallback(
+    (item, opts = {}) => {
+      if (!item) return;
+      const tx = Number(item.BodyAxis);
+      const tyUMAP = Number(item.SweetAxis);
+      if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
+
+      const tyCanvas = is3D ? tyUMAP : -tyUMAP;
+      const zoomTarget = Math.max(
+        ZOOM_LIMITS.min,
+        Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM)
+      );
+
+      setViewState((prev) => ({
+        ...prev,
+        target: [tx, tyCanvas - CENTER_Y_OFFSET, 0],
+        zoom: zoomTarget,
+        rotationX: is3D ? (prev.rotationX ?? 45) : 0,
+        rotationOrbit: 0,
+        transitionDuration: opts.duration ?? 700,
+        transitionInterpolator: new FlyToInterpolator(),
+      }));
+    },
+    [is3D] // ZOOM_LIMITS/INITIAL_ZOOM/CENTER_Y_OFFSET は安定
+  );
 
   // ====== 便利関数
   const toggleFavorite = (jan) => {
@@ -1138,15 +1165,8 @@ function MapPage() {
         onPick={(item) => {
           if (!item) return;
           setSelectedJANFromSearch(item.JAN);
-          const tx = item.BodyAxis;
-          const ty = is3D ? item.SweetAxis : -item.SweetAxis;
-          setViewState((prev) => ({
-            ...prev,
-            target: [tx, ty - CENTER_Y_OFFSET, 0],
-            zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, 8.5)),
-            transitionDuration: 800,
-            transitionInterpolator: undefined,
-          }));
+          // ★ 検索→商品ページでも“初期ズーム”でフォーカス
+          focusOnWine(item, { zoom: INITIAL_ZOOM, duration: 700 });
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
         }}
@@ -1202,13 +1222,8 @@ function MapPage() {
           // データヒット判定
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
-            const tx = hit.BodyAxis;
-            const ty = is3D ? hit.SweetAxis : -hit.SweetAxis;
-            setViewState((prev) => ({
-              ...prev,
-              target: [tx, ty - CENTER_Y_OFFSET, 0],
-              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, 8.5)),
-            }));
+            // ★ バーコード→商品ページでも“初期ズーム”でフォーカス
+            focusOnWine(hit, { zoom: INITIAL_ZOOM, duration: 700 });
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
             // 採用記録（勝手な再出現を防ぐ）
@@ -1236,21 +1251,11 @@ function MapPage() {
         data={data}
         onSelectJAN={(jan) => {
           setSelectedJAN(jan);
-
-          // 地図をその商品の位置へセンタリング（スライダーと同じ Y オフセット）
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
-            const tx = item.BodyAxis;
-            const ty = is3D ? item.SweetAxis : -item.SweetAxis;
-            setViewState((prev) => ({
-              ...prev,
-              target: [tx, ty - CENTER_Y_OFFSET, 0],
-              // 検索と同じ見やすいズームへ
-              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, 6.0)),
-            }));
+            // ★ お気に入り→商品ページでも“初期ズーム”でフォーカス
+            focusOnWine(item, { zoom: INITIAL_ZOOM, duration: 700 });
           }
-
-          // 商品詳細ドロワーを開く
           setProductDrawerOpen(true);
         }}
       />
@@ -1284,7 +1289,7 @@ function MapPage() {
         onClose={() => {
           setProductDrawerOpen(false);
           setSelectedJAN(null);
-          setSelectedJANFromSearch(null); // ← 検索ハイライトも消す
+          setSelectedJANFromSearch(null); // ← 検索ハイライトも消す（残したいなら削除）
         }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: paperBaseStyle }}
@@ -1605,7 +1610,7 @@ function SliderPanel({
               />
             </div>
 
-            {/* 生成ボタン（既存と同ロジック） */}
+            {/* 生成ボタン（既存と同ロジック＋“初期ズームでセンタリング＆最近傍商品を開く”） */}
             <div style={{ marginTop: 12 }}>
               <button
                 onClick={() => {
@@ -1643,7 +1648,6 @@ function SliderPanel({
                   setViewState((prev) => ({
                     ...prev,
                     target: [coords[0], coords[1] - CENTER_Y_OFFSET, 0],
-                    // ← ここを「常に初期ズーム」に
                     zoom: Math.max(
                       ZOOM_LIMITS.min,
                       Math.min(ZOOM_LIMITS.max, INITIAL_ZOOM)
@@ -1655,7 +1659,7 @@ function SliderPanel({
                   for (const d of data) {
                     if (!Number.isFinite(d.BodyAxis) || !Number.isFinite(d.SweetAxis)) continue;
                     const dx = d.BodyAxis - umapX;
-                    const dy = d.SweetAxis - umapY; // 反転なしでOK（二乗距離は同じ）
+                    const dy = d.SweetAxis - umapY; // 反転不要（二乗距離は同じ）
                     const d2 = dx*dx + dy*dy;
                     if (d2 < bestD2) { bestD2 = d2; nearest = d; }
                   }
