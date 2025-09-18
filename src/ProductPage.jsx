@@ -16,7 +16,9 @@ const getJANFromURL = () => {
 };
 
 const postToParent = (payload) => {
-  try { window.parent?.postMessage(payload, "*"); } catch {}
+  try {
+    window.parent?.postMessage(payload, "*");
+  } catch {}
 };
 
 // スキャン系の“自動再オープン”原因になりがちなキーを掃除
@@ -59,6 +61,7 @@ const notifyParentClosed = (jan) => {
 function HeartButton({ jan, size = 22 }) {
   const [fav, setFav] = useState(false);
 
+  // ローカルストレージと親からの同期
   useEffect(() => {
     const readFav = () => {
       try {
@@ -69,11 +72,25 @@ function HeartButton({ jan, size = 22 }) {
       }
     };
     readFav();
+
     const onStorage = (e) => {
       if (e.key === "favorites") readFav();
     };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+
+    // 親からのSET_FAVORITEメッセージを受信
+    const onMsg = (e) => {
+      const { type, jan: targetJan, value } = e.data || {};
+      if (type === "SET_FAVORITE" && String(targetJan) === String(jan)) {
+        setFav(!!value);
+      }
+    };
+    window.addEventListener("message", onMsg);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("message", onMsg);
+    };
   }, [jan]);
 
   const toggle = () => {
@@ -165,7 +182,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // マウント→OPEN通知、アンマウント→CLOSED通知（親で selectedJAN を null に）
+  // マウント→OPEN通知、アンマウント→CLOSED通知
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan });
     const onBeforeUnload = () => notifyParentClosed(jan);
@@ -176,7 +193,7 @@ export default function ProductPage() {
     };
   }, [jan]);
 
-  // 商品・評価ロード（お気に入り店舗の在庫から読み取り前提：umapData 参照）
+  // 商品・評価ロード
   useEffect(() => {
     try {
       const data = JSON.parse(localStorage.getItem("umapData") || "[]");
@@ -254,7 +271,6 @@ export default function ProductPage() {
   if (!product) {
     return (
       <div style={{ padding: 16 }}>
-        {/* 内蔵の「閉じる」UIは置かない（親が外枠で閉じる） */}
         商品が見つかりませんでした。
       </div>
     );
@@ -273,8 +289,6 @@ export default function ProductPage() {
         position: "relative",
       }}
     >
-      {/* 内蔵の「閉じる」UIは出さない（＝重複を根絶） */}
-
       {/* 左上に固定の♡ */}
       <div
         style={{
@@ -320,12 +334,14 @@ export default function ProductPage() {
 
       {/* 味データ */}
       <p style={{ margin: "4px 0" }}>
-        Body: {Number(product.BodyAxis).toFixed(2)}, Sweet: {Number(product.SweetAxis).toFixed(2)}
+        Body: {Number(product.BodyAxis).toFixed(2)}, Sweet:{" "}
+        {Number(product.SweetAxis).toFixed(2)}
       </p>
 
       {/* 原産地・年 */}
       <p style={{ margin: "4px 0" }}>
-        {product.産地 || product.生産地 || "シチリア / イタリア"} / {product.生産年 || product.収穫年 || "2022"}
+        {product.産地 || product.生産地 || "シチリア / イタリア"} /{" "}
+        {product.生産年 || product.収穫年 || "2022"}
       </p>
 
       {/* 評価（◎） */}
