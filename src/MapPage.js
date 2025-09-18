@@ -1,7 +1,7 @@
 // src/MapPage.js
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import DeckGL from "@deck.gl/react";
-import { OrbitView, OrthographicView, FlyToInterpolator } from "@deck.gl/core";
+import { OrbitView, OrthographicView } from "@deck.gl/core";
 import {
   ScatterplotLayer,
   ColumnLayer,
@@ -1097,7 +1097,13 @@ function MapPage() {
           if (!item) return;
           setSelectedJANFromSearch(item.JAN);
           // ★ 検索→商品ページでも“初期ズーム”でフォーカス（統一ヘルパー）
-          focusOnWine(item, { zoom: INITIAL_ZOOM, duration: 700 });
+          const tx = item.BodyAxis;
+          const ty = is3D ? item.SweetAxis : -item.SweetAxis;
+          setViewState(prev => ({
+            ...prev,
+            target: [tx, ty - CENTER_Y_OFFSET, 0],
+            zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, INITIAL_ZOOM)),
+          }));
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
         }}
@@ -1151,7 +1157,13 @@ function MapPage() {
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
             // ★ バーコード→商品ページでも“初期ズーム”でフォーカス
-            focusOnWine(hit, { zoom: INITIAL_ZOOM, duration: 700 });
+            const tx = hit.BodyAxis;
+            const ty = is3D ? hit.SweetAxis : -hit.SweetAxis;
+            setViewState(prev => ({
+              ...prev,
+              target: [tx, ty - CENTER_Y_OFFSET, 0],
+              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, INITIAL_ZOOM)),
+            }));
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
             // 採用記録（勝手な再出現を防ぐ）
@@ -1179,8 +1191,13 @@ function MapPage() {
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
-            // ★ お気に入り→商品ページでも“初期ズーム”でフォーカス（統一ヘルパー）
-            focusOnWine(item, { zoom: INITIAL_ZOOM, duration: 700 });
+            const tx = item.BodyAxis;
+            const ty = is3D ? item.SweetAxis : -item.SweetAxis;
+            setViewState(prev => ({
+              ...prev,
+              target: [tx, ty - CENTER_Y_OFFSET, 0],
+              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, INITIAL_ZOOM)),
+            }));
           }
           setProductDrawerOpen(true);
         }}
