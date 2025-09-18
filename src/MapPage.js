@@ -470,6 +470,17 @@ function MapPage() {
           return next;
         });
 
+        // ★ localStorage.favorites も更新する
+        try {
+          const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
+          if (willFav) {
+            if (!favs[jan]) favs[jan] = { addedAt: new Date().toISOString() };
+          } else {
+            delete favs[jan];
+          }
+          localStorage.setItem("favorites", JSON.stringify(favs));
+        } catch {}
+
         // 子iframeの♡UIも即時反映
         sendFavoriteToChild(jan, Number(payload?.rating) > 0);
       }
