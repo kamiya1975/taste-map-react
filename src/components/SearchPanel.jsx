@@ -1,22 +1,22 @@
 // src/components/SearchPanel.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import Drawer from "@mui/material/Drawer";
 import { makeIndexed, searchItems, normalizeJP } from "../utils/search";
-import {
-  drawerModalProps,
-  paperBaseStyle,
-  DRAWER_HEIGHT,
-} from "../ui/constants";
+import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../ui/constants";
 
 export default function SearchPanel({
   open,
   onClose,
   data = [],
-  onPick, // (item) => void
+  onPick,      // (item) => void
   onScanClick, // () => void
 }) {
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
+
+  // スクロール位置の保存・復元
+  const scrollRef = useRef(null);
+  const SCROLL_KEY = "searchPanel.scrollTop";
 
   const indexed = useMemo(() => makeIndexed(data), [data]);
   const results = useMemo(() => searchItems(indexed, q, 50), [indexed, q]);
@@ -26,14 +26,44 @@ export default function SearchPanel({
     if (it) onPick?.(it);
   };
 
-  // 検索結果をお気に入り風に整形（番号は検索内だけで 1,2,3…）
+  // 検索結果を「お気に入り」と同じ表示モデルに変換
+  // 番号は検索結果内で 1,2,3… と昇順
   const listed = useMemo(() => {
     return results.map((x, i) => ({
       ...x,
-      addedAt: null, // 検索結果には日付がないので「日付不明」
-      displayIndex: i + 1, // 検索結果内で単純に 1,2,3…
+      addedAt: null,      // 検索結果には日付が無い → 表示は「（日付不明）」
+      displayIndex: i + 1 // 検索内連番
     }));
   }, [results]);
+
+  // Drawerを開いたとき、保存していたスクロール位置を復元
+  useEffect(() => {
+    if (!open) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const y = Number(sessionStorage.getItem(SCROLL_KEY) || 0);
+    if (Number.isFinite(y)) {
+      // レイアウト確定後に適用
+      requestAnimationFrame(() => {
+        el.scrollTop = y;
+      });
+    }
+  }, [open]);
+
+  // スクロール位置を保存（軽めのスロットル）
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let t = 0;
+    const onScroll = () => {
+      const now = Date.now();
+      if (now - t < 80) return; // 80ms throttle
+      t = now;
+      sessionStorage.setItem(SCROLL_KEY, String(el.scrollTop || 0));
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [open]);
 
   return (
     <Drawer
@@ -43,7 +73,7 @@ export default function SearchPanel({
       ModalProps={drawerModalProps}
       PaperProps={{ style: paperBaseStyle }}
     >
-      {/* ヘッダ：検索枠と閉じる */}
+      {/* ヘッダ：検索枠 / スキャン / 閉じる */}
       <div
         style={{
           height: "60px",
@@ -74,6 +104,8 @@ export default function SearchPanel({
             onChange={(e) => {
               setQ(e.target.value);
               setActive(0);
+              // クエリ変更時はスクロール位置をリセット（必要なら保持に変更可）
+              sessionStorage.setItem(SCROLL_KEY, "0");
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") pick(0);
@@ -146,8 +178,9 @@ export default function SearchPanel({
         </button>
       </div>
 
-      {/* リスト：お気に入りと同じ形式 */}
+      {/* リスト（お気に入りと同じ表示に統一） */}
       <div
+        ref={scrollRef}
         style={{
           height: `calc(${DRAWER_HEIGHT} - 60px)`,
           overflowY: "auto",
@@ -181,6 +214,7 @@ export default function SearchPanel({
                     fontSize: "16px",
                     fontWeight: "bold",
                     marginRight: "4px",
+                    fontFamily: '"Helvetica Neue", Arial, sans-serif',
                   }}
                 >
                   {item.displayIndex}.
@@ -207,6 +241,8 @@ export default function SearchPanel({
                 {Number.isFinite(item.SweetAxis)
                   ? item.SweetAxis.toFixed(2)
                   : "—"}
+                {/* JAN を出したい場合は下を有効化 */}
+                {/* <br />JAN: {item.JAN || "—"} */}
               </small>
             </li>
           ))}
