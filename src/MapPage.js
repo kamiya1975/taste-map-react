@@ -948,7 +948,7 @@ function MapPage() {
                 data: data.filter((d) => String(d.JAN) === String(selectedJANFromSearch)),
                 getPosition: (d) => [d.BodyAxis, is3D ? d.SweetAxis : -d.SweetAxis, 0],
                 radiusUnits: "meters",
-                getRadius: 0.15,  //サークルサイズ変更
+                getRadius: 0.1,  //サークルサイズ変更
                 getFillColor: [255, 215, 0, 240],   // ← 黄色（ゴールド）
                 stroked: true,
                 getLineColor: [0, 0, 0, 220],
