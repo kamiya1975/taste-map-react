@@ -437,6 +437,18 @@ function MapPage() {
           localStorage.setItem("userRatings", JSON.stringify(next));
           return next;
         });
+
+        // ★ 評価が入ったら自動でお気に入り化（0や未設定なら解除）
+        const rating = Number(payload?.rating) || 0;
+        setFavorites((prev) => {
+          const next = { ...prev };
+          if (rating > 0) {
+            if (!next[jan]) next[jan] = { addedAt: new Date().toISOString() };
+          } else {
+            delete next[jan];
+          }
+          return next;
+        });
       }
     };
     window.addEventListener("message", onMsg);
