@@ -1144,6 +1144,8 @@ function MapPage() {
             ...prev,
             target: [tx, ty - CENTER_Y_OFFSET, 0],
             zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, 8.5)),
+            transitionDuration: 800,
+            transitionInterpolator: undefined,
           }));
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
