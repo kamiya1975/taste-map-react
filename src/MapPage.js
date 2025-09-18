@@ -408,8 +408,6 @@ function MapPage() {
         zoom: zoomTarget,
         rotationX: is3D ? (prev.rotationX ?? 45) : 0,
         rotationOrbit: 0,
-        transitionDuration: opts.duration ?? 700,
-        transitionInterpolator: new FlyToInterpolator(),
       }));
     },
     [is3D] // 定数は外部
