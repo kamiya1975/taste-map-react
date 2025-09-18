@@ -457,12 +457,14 @@ function MapPage() {
           localStorage.setItem("userRatings", JSON.stringify(next));
           return next;
         });
-
-        // ★ 評価が入ったら自動でお気に入り化（0や未設定なら解除）
+        
         const rating = Number(payload?.rating) || 0;
+        const willFav = rating > 0;
+
+        // state 更新
         setFavorites((prev) => {
           const next = { ...prev };
-          if (rating > 0) {
+          if (willFav) {
             if (!next[jan]) next[jan] = { addedAt: new Date().toISOString() };
           } else {
             delete next[jan];
@@ -470,7 +472,7 @@ function MapPage() {
           return next;
         });
 
-        // ★ localStorage.favorites も更新する
+        // localStorage 更新
         try {
           const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
           if (willFav) {
@@ -481,8 +483,8 @@ function MapPage() {
           localStorage.setItem("favorites", JSON.stringify(favs));
         } catch {}
 
-        // 子iframeの♡UIも即時反映
-        sendFavoriteToChild(jan, Number(payload?.rating) > 0);
+        // 子iframeのUIも同期
+        sendFavoriteToChild(jan, willFav);
       }
     };
     window.addEventListener("message", onMsg);
