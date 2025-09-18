@@ -1,7 +1,7 @@
 // src/MapPage.js
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import DeckGL from "@deck.gl/react";
-import { OrbitView, OrthographicView } from "@deck.gl/core";
+import { OrbitView, OrthographicView, FlyToInterpolator } from "@deck.gl/core";
 import {
   ScatterplotLayer,
   ColumnLayer,
@@ -182,7 +182,7 @@ function MapPage() {
     const ys = data.map((d) => (is3D ? d.SweetAxis : -d.SweetAxis));
     const xmin = Math.min(...xs), xmax = Math.max(...xs);
     const ymin = Math.min(...ys), ymax = Math.max(...ys);
-    // ★ FIX: “点を少し上に見せる”ための視点オフセット分まで余白を拡張
+    // “点を少し上に見せる”ための視点オフセット分まで余白を拡張
     const pad = 1.5 + Math.abs(CENTER_Y_OFFSET);
     return {
       xmin: xmin - pad,
@@ -387,6 +387,33 @@ function MapPage() {
       } catch {}
     }
   }, [userPin, is3D, location.state]);
+
+  // ====== 共通：商品へフォーカス（毎回“初期ズーム”に戻し、スムーズ移動）
+  const focusOnWine = useCallback(
+    (item, opts = {}) => {
+      if (!item) return;
+      const tx = Number(item.BodyAxis);
+      const tyUMAP = Number(item.SweetAxis);
+      if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
+
+      const tyCanvas = is3D ? tyUMAP : -tyUMAP;
+      const zoomTarget = Math.max(
+        ZOOM_LIMITS.min,
+        Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM)
+      );
+
+      setViewState((prev) => ({
+        ...prev,
+        target: [tx, tyCanvas - CENTER_Y_OFFSET, 0],
+        zoom: zoomTarget,
+        rotationX: is3D ? (prev.rotationX ?? 45) : 0,
+        rotationOrbit: 0,
+        transitionDuration: opts.duration ?? 700,
+        transitionInterpolator: new FlyToInterpolator(),
+      }));
+    },
+    [is3D] // 定数は外部
+  );
 
   // ====== 便利関数
   const toggleFavorite = (jan) => {
@@ -765,7 +792,6 @@ function MapPage() {
         useDevicePixels
         onViewStateChange={({ viewState: vs }) => {
           const z = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom));
-          // ★ クランプ（yはオフセット分まで許容）
           const limitedTarget = [
             Math.max(panBounds.xmin, Math.min(panBounds.xmax, vs.target[0])),
             Math.max(panBounds.ymin, Math.min(panBounds.ymax, vs.target[1])),
@@ -788,6 +814,8 @@ function MapPage() {
           if (picked?.JAN) {
             setSelectedJAN(picked.JAN);
             setProductDrawerOpen(true);
+            // 地図もスムーズに寄せる（初期ズーム）
+            focusOnWine(picked, { duration: 700, zoom: INITIAL_ZOOM });
             return;
           }
           // 2) 近傍探索で拾って詳細を開く
@@ -796,6 +824,7 @@ function MapPage() {
           if (nearest?.JAN) {
             setSelectedJAN(nearest.JAN);
             setProductDrawerOpen(true);
+            focusOnWine(nearest, { duration: 700, zoom: INITIAL_ZOOM });
           }
         }}
         pickingRadius={8}
@@ -1069,16 +1098,10 @@ function MapPage() {
         onPick={(item) => {
           if (!item) return;
           setSelectedJANFromSearch(item.JAN);
-          // ★ 検索→商品ページでも“初期ズーム”でフォーカス（統一ヘルパー）
-          const tx = item.BodyAxis;
-          const ty = is3D ? item.SweetAxis : -item.SweetAxis;
-          setViewState(prev => ({
-            ...prev,
-            target: [tx, ty - CENTER_Y_OFFSET, 0],
-            zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, INITIAL_ZOOM)),
-          }));
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
+          // 初期ズームでスムーズ移動
+          focusOnWine(item, { duration: 700, zoom: INITIAL_ZOOM });
         }}
         onScanClick={() => {
           setProductDrawerOpen(false);
@@ -1129,16 +1152,10 @@ function MapPage() {
           // データヒット判定
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
-            // ★ バーコード→商品ページでも“初期ズーム”でフォーカス
-            const tx = hit.BodyAxis;
-            const ty = is3D ? hit.SweetAxis : -hit.SweetAxis;
-            setViewState(prev => ({
-              ...prev,
-              target: [tx, ty - CENTER_Y_OFFSET, 0],
-              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, INITIAL_ZOOM)),
-            }));
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
+            // 初期ズームでスムーズ移動
+            focusOnWine(hit, { duration: 700, zoom: INITIAL_ZOOM });
             // 採用記録（勝手な再出現を防ぐ）
             lastCommittedRef.current = { code: jan, at: now };
             return true; // 採用→スキャナ側停止
@@ -1164,13 +1181,8 @@ function MapPage() {
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
-            const tx = item.BodyAxis;
-            const ty = is3D ? item.SweetAxis : -item.SweetAxis;
-            setViewState(prev => ({
-              ...prev,
-              target: [tx, ty - CENTER_Y_OFFSET, 0],
-              zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, INITIAL_ZOOM)),
-            }));
+            // 初期ズームでスムーズ移動
+            focusOnWine(item, { duration: 700, zoom: INITIAL_ZOOM });
           }
           setProductDrawerOpen(true);
         }}
@@ -1196,6 +1208,7 @@ function MapPage() {
         BUTTON_TEXT={BUTTON_TEXT}
         setSelectedJAN={setSelectedJAN}
         setProductDrawerOpen={setProductDrawerOpen}
+        focusOnWine={focusOnWine}
       />
 
       {/* 商品ページドロワー */}
@@ -1296,7 +1309,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
           <div
             style={{
               padding: "12px 16px",
-              borderBottom: "1px solid #ddd",
+              borderBottom: "1px solid " + "#ddd",
               background: "#f9f9f9",
               flexShrink: 0,
               display: "flex",
@@ -1395,6 +1408,7 @@ function SliderPanel({
   BUTTON_TEXT,
   setSelectedJAN,
   setProductDrawerOpen,
+  focusOnWine,
 }) {
   return (
     <AnimatePresence>
@@ -1522,7 +1536,7 @@ function SliderPanel({
               />
             </div>
 
-            {/* 生成ボタン（既存ロジック＋最近傍商品を開く） */}
+            {/* 生成ボタン（既存ロジック＋最近傍商品を開く＋スムーズ移動） */}
             <div style={{ marginTop: 12 }}>
               <button
                 onClick={() => {
@@ -1563,7 +1577,7 @@ function SliderPanel({
                     zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, INITIAL_ZOOM)),
                   }));
 
-                  // 近傍ワイン（UMAP空間で最近傍）を検索 → 商品ドロワーを開く
+                  // 近傍ワイン（UMAP空間で最近傍）を検索 → 商品ドロワーを開いて地図も寄せる
                   let nearest = null, bestD2 = Infinity;
                   for (const d of data) {
                     if (!Number.isFinite(d.BodyAxis) || !Number.isFinite(d.SweetAxis)) continue;
@@ -1575,6 +1589,7 @@ function SliderPanel({
                   if (nearest?.JAN) {
                     setSelectedJAN(String(nearest.JAN));
                     setProductDrawerOpen(true);
+                    focusOnWine(nearest, { duration: 700, zoom: INITIAL_ZOOM });
                   }
 
                   onClose();
