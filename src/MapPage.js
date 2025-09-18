@@ -901,7 +901,7 @@ function MapPage() {
                 getPosition: (d) => [d.BodyAxis, is3D ? d.SweetAxis : -d.SweetAxis, 0],
                 radiusUnits: "meters",
                 getRadius: 0.18,
-                getFillColor: [255, 215, 0, 240],
+                getFillColor: [255, 215, 0, 240],   // ← 黄色（ゴールド）
                 stroked: true,
                 getLineColor: [0, 0, 0, 220],
                 getLineWidth: 2,
@@ -1095,7 +1095,7 @@ function MapPage() {
         data={data}
         onPick={(item) => {
           if (!item) return;
-          setSelectedJANFromSearch(item.JAN);
+          setSelectedJANFromSearch(item.JAN); // ← これで検索ハイライト用の状態をON
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
           // 初期ズームでスムーズ移動
@@ -1176,6 +1176,8 @@ function MapPage() {
         favorites={favorites}
         data={data}
         onSelectJAN={(jan) => {
+          setSelectedJANFromSearch(String(jan)); // 🔶 検索と同じ黄色●ハイライトをON
+
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
