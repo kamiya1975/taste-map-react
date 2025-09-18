@@ -72,6 +72,9 @@ const centerGradient = (val) => {
 function MapPage() {
   const location = useLocation();
 
+  // 🔗 商品ページiframe参照（♡状態の同期に使用）
+  const iframeRef = useRef(null);
+
   // スキャナの開閉（都度起動・都度破棄）
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const lastCommittedRef = useRef({ code: "", at: 0 });   // 直近採用JAN（60秒ガード）
@@ -413,12 +416,29 @@ function MapPage() {
     [is3D] // 定数は外部
   );
 
+  // ====== 子iframeへ♡状態を送るヘルパー
+  const sendFavoriteToChild = (jan, value) => {
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: "SET_FAVORITE", jan: String(jan), value: !!value },
+        "*"
+      );
+    } catch {}
+  };
+
   // ====== 便利関数
   const toggleFavorite = (jan) => {
     setFavorites((prev) => {
       const next = { ...prev };
-      if (next[jan]) delete next[jan];
-      else next[jan] = { addedAt: new Date().toISOString() };
+      if (next[jan]) {
+        delete next[jan];
+        // 親でOFFしたら子UIもOFF
+        sendFavoriteToChild(jan, false);
+      } else {
+        next[jan] = { addedAt: new Date().toISOString() };
+        // 親でONしたら子UIもON
+        sendFavoriteToChild(jan, true);
+      }
       return next;
     });
   };
@@ -449,6 +469,9 @@ function MapPage() {
           }
           return next;
         });
+
+        // 子iframeの♡UIも即時反映
+        sendFavoriteToChild(jan, Number(payload?.rating) > 0);
       }
     };
     window.addEventListener("message", onMsg);
@@ -1009,7 +1032,7 @@ function MapPage() {
             height: "40px",
             borderRadius: "50%",
             background: "#eee",
-            border: "1px solid #ccc",
+            border: "1px solid "#ccc",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -1266,9 +1289,16 @@ function MapPage() {
         </div>
         {selectedJAN ? (
           <iframe
+            ref={iframeRef} // ★ 参照をセット
             title={`product-${selectedJAN}`}
             src={`/products/${selectedJAN}`}
             style={{ border: "none", width: "100%", height: `calc(${DRAWER_HEIGHT} - 48px)` }}
+            onLoad={() => {
+              // ★ 開いた瞬間に現在のお気に入り状態を子へ同期
+              const jan = String(selectedJAN);
+              const isFav = !!favorites[jan];
+              sendFavoriteToChild(jan, isFav);
+            }}
           />
         ) : (
           <div style={{ padding: 16 }}>商品を選択してください。</div>
