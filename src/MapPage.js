@@ -949,7 +949,7 @@ function MapPage() {
                 getPosition: (d) => [d.BodyAxis, is3D ? d.SweetAxis : -d.SweetAxis, 0],
                 radiusUnits: "meters",
                 getRadius: 0.18,
-                getFillColor: [255, 215, 0, 240],   // ← 黄色（ゴールド）
+                //getFillColor: [255, 215, 0, 240],   // ← 黄色（ゴールド）
                 stroked: true,
                 getLineColor: [0, 0, 0, 220],
                 getLineWidth: 2,
