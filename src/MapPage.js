@@ -399,7 +399,7 @@ function MapPage() {
       const tyUMAP = Number(item.SweetAxis);
       if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
 
-      const tyCanvas = is3D ? -tyUMAP : tyUMAP;
+      const tyCanvas = is3D ? tyUMAP : -tyUMAP;
       const zoomTarget = Math.max(
         ZOOM_LIMITS.min,
         Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM)
