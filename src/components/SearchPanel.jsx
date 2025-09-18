@@ -14,6 +14,14 @@ export default function SearchPanel({
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
 
+  // 「閉じる」でパネルが閉じたら検索語を消す
+  useEffect(() => {
+    if (!open) {
+      setQ("");
+      setActive(0);
+    }
+  }, [open]);
+
   // スクロール位置の保存・復元
   const scrollRef = useRef(null);
   const SCROLL_KEY = "searchPanel.scrollTop";
@@ -165,7 +173,11 @@ export default function SearchPanel({
 
         {/* 閉じるボタン（ユーザーが明示的に閉じたい時のみ） */}
         <button
-          onClick={onClose}
+          onClick={() => {
+            setQ("");
+            setActive(0);
+            onClose?.();
+            }}
           style={{
             background: "#eee",
             border: "1px solid #ccc",
