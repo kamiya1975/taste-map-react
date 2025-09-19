@@ -11,7 +11,7 @@ import {
   IconLayer,
 } from "@deck.gl/layers";
 import Drawer from "@mui/material/Drawer";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 // 共通UI
@@ -60,6 +60,7 @@ const HEAT_COLOR_HIGH = [255, 165, 0];
 
 function MapPage() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
@@ -932,6 +933,33 @@ function MapPage() {
           <option value="PC1">Body(PC1)</option>
           <option value="PC3">PC3</option>
         </select>
+      )}
+
+      {/* 右上: スライダーへ遷移（2D時のみ表示にしたい場合は {!is3D && ( ... )} で囲む） */}
+      {!is3D && (
+        <button
+          onClick={() => { openSliderExclusive(); }}
+          style={{
+            position: "absolute",
+            top: "70px",
+            right: "10px",
+            zIndex: 10,
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: "#eee",
+            border: "1px solid #ccc",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: "bold",
+            fontSize: "20px",
+          }}
+          aria-label="嗜好スライダー"
+        >
+          ●
+        </button>
       )}
 
       {/* 右サイドの丸ボタン群（/slider は別ページなのでスライダーボタンは無し。♡ と 🔍 のみ） */}
