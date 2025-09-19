@@ -1,36 +1,17 @@
 // src/SliderPage.js
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import DeckGL from "@deck.gl/react";
-import { OrthographicView } from "@deck.gl/core";
-import { LineLayer, IconLayer } from "@deck.gl/layers";
+import useTasteData from "./hooks/useTasteData";
+import {
+  computeMinMaxAndBlendF,
+  interpFromSlider,
+  makePcaToUmap,
+} from "./utils/sliderMapping";
 
-// ====== 小ユーティリティ ======
-const num = (v, def = 0) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : def;
-};
-const median = (arr) => {
-  if (!arr.length) return 0;
-  const a = [...arr].sort((x, y) => x - y);
-  const m = Math.floor(a.length / 2);
-  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
-};
-
-const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
-
-// ====== ダミーMap（罫線）用パラメータ ======
-const GRID_INTERVAL = 0.2;     // 罫線の間隔
-const GRID_EXTENT = 100;       // 罫線の描画範囲（±100）
-const VIEW_ZOOM = 6;           // 見やすい固定ズーム
-const CENTER_Y_OFFSET = -3.5;  // 画面上で点を少し上に見せる時のオフセット量（MapPageと揃え）
-const GRID_THIN_COL = [200, 200, 200, 100];
-const GRID_THICK_COL = [180, 180, 180, 120];
-
-// スライダーの中央グラデーション（見た目用）
+/** 中央から色が伸びるグラデーション */
 const centerGradient = (val) => {
   const base = "#e9e9e9";
-  const active = "#b59678";
+  const active = "#b59678"; // お好みで
   const v = Math.max(0, Math.min(100, Number(val)));
   if (v === 50) return base;
   const a = Math.min(50, v);
@@ -40,284 +21,207 @@ const centerGradient = (val) => {
 
 export default function SliderPage() {
   const navigate = useNavigate();
+  const { rows, loading, error } = useTasteData();
 
-  // ====== 既存ロジック：データ読み込み（生成ボタンの保存座標用） ======
-  const [minMax, setMinMax] = useState(null);
-  const [blendF, setBlendF] = useState(null);
-
-  useEffect(() => {
-    fetch(`${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-
-        const hasSweetBody = "SweetAxis" in data[0] && "BodyAxis" in data[0];
-        const sweetKey = hasSweetBody ? "SweetAxis" : "UMAP2"; // 仮: 甘味=Y
-        const bodyKey  = hasSweetBody ? "BodyAxis"  : "UMAP1"; // 仮: コク=X
-
-        const sweetValues = data.map((d) => num(d[sweetKey]));
-        const bodyValues  = data.map((d) => num(d[bodyKey]));
-
-        const minSweet = Math.min(...sweetValues);
-        const maxSweet = Math.max(...sweetValues);
-        const minBody  = Math.min(...bodyValues);
-        const maxBody  = Math.max(...bodyValues);
-        setMinMax({ minSweet, maxSweet, minBody, maxBody, sweetKey, bodyKey });
-
-        const foundBlend = data.find((d) => String(d.JAN) === "blendF");
-        if (foundBlend) {
-          setBlendF({
-            SweetAxis: num(foundBlend[sweetKey]),
-            BodyAxis:  num(foundBlend[bodyKey]),
-          });
-        } else {
-          setBlendF({
-            SweetAxis: median(sweetValues),
-            BodyAxis:  median(bodyValues),
-          });
-        }
-      })
-      .catch((e) => console.error("データ取得エラー:", e));
-  }, []);
-
-  // ====== スライダー値 ======
   const [sweetness, setSweetness] = useState(50);
   const [body, setBody] = useState(50);
 
-  // ====== ダミーMapの“背景移動”オフセット ======
-  // ・甘味を右に動かす → 罫線は左に（= X 方向マイナス）
-  // ・コクを右に動かす → 罫線は下に（= Y 方向プラス）
-  // 見えやすいよう少し強めの係数にしています。好みに応じて調整可。
-  const offsetX = useMemo(() => (50 - sweetness) * 0.6, [sweetness]);
-  const offsetY = useMemo(() => (body - 50) * 0.6, [body]);
+  // UMAP 側の min/max と blendF（参考用）
+  const umapInfo = useMemo(() => {
+    if (!rows.length) return null;
+    return computeMinMaxAndBlendF(rows, "UMAP2", "UMAP1");
+  }, [rows]);
 
-  // ====== DeckGL: ビューは固定（操作不可） ======
-  const viewState = useMemo(
-    () => ({
-      target: [0, 0 - CENTER_Y_OFFSET, 0], // 中央固定（Yだけ少し上に見せる）
-      zoom: VIEW_ZOOM,
-      rotationX: 0,
-      rotationOrbit: 0,
-    }),
-    []
-  );
+  // PCA→UMAP 近傍回帰（MapPageと同じ kNN ロジック）
+  const pcaToUmap = useMemo(() => makePcaToUmap(rows, 15), [rows]);
 
-  // 罫線データ（固定生成）
-  const { thinLines, thickLines } = useMemo(() => {
-    const thin = [], thick = [];
-    for (let i = -500; i <= 500; i++) {
-      const x = i * GRID_INTERVAL;
-      (i % 5 === 0 ? thick : thin).push({
-        sourcePosition: [x, -GRID_EXTENT, 0],
-        targetPosition: [x,  GRID_EXTENT, 0],
-      });
-      const y = i * GRID_INTERVAL;
-      (i % 5 === 0 ? thick : thin).push({
-        sourcePosition: [-GRID_EXTENT, y, 0],
-        targetPosition: [ GRID_EXTENT, y, 0],
-      });
-    }
-    return { thinLines: thin, thickLines: thick };
-  }, []);
-
-  // コンパス（中央固定）
-  const compassLayer = useMemo(() => {
-    return new IconLayer({
-      id: "dummy-compass",
-      data: [{ position: [0, 0, 0] }],
-      getPosition: (d) => [d.position[0], d.position[1] - CENTER_Y_OFFSET, 0],
-      getIcon: () => ({
-        url: COMPASS_URL,
-        width: 310,
-        height: 310,
-        anchorX: 155,
-        anchorY: 155,
-      }),
-      sizeUnits: "meters",
-      getSize: 0.5,
-      billboard: true,
-      pickable: false,
-      parameters: { depthTest: false },
-    });
-  }, []);
-
-  // ====== 生成ボタン：好みをUMAP座標として保存 → /map へ ======
+  // スライダーを PCA 空間に当ててから UMAP へ写像
   const handleGenerate = () => {
-    if (!minMax || !blendF) return;
+    if (!rows.length || !pcaToUmap) return;
 
-    const { minSweet, maxSweet, minBody, maxBody } = minMax;
+    // --- PCA の範囲計算 ---
+    const pc1s = rows.map((d) => d.PC1).filter(Number.isFinite);
+    const pc2s = rows.map((d) => d.PC2).filter(Number.isFinite);
+    if (!pc1s.length || !pc2s.length) return;
 
-    const sweetValue =
-      sweetness <= 50
-        ? blendF.SweetAxis - ((50 - sweetness) / 50) * (blendF.SweetAxis - minSweet)
-        : blendF.SweetAxis + ((sweetness - 50) / 50) * (maxSweet - blendF.SweetAxis);
+    const minPC1 = Math.min(...pc1s);
+    const maxPC1 = Math.max(...pc1s);
+    const minPC2 = Math.min(...pc2s);
+    const maxPC2 = Math.max(...pc2s);
 
-    const bodyValue =
-      body <= 50
-        ? blendF.BodyAxis - ((50 - body) / 50) * (blendF.BodyAxis - minBody)
-        : blendF.BodyAxis + ((body - 50) / 50) * (maxBody - blendF.BodyAxis);
+    // --- 基準点（blendF があればそれ、無ければ中央値） ---
+    const blendFRow = rows.find((d) => String(d.JAN) === "blendF");
+    const basePC1 = Number.isFinite(blendFRow?.PC1)
+      ? blendFRow.PC1
+      : pc1s.sort((a, b) => a - b)[Math.floor(pc1s.length / 2)];
+    const basePC2 = Number.isFinite(blendFRow?.PC2)
+      ? blendFRow.PC2
+      : pc2s.sort((a, b) => a - b)[Math.floor(pc2s.length / 2)];
 
-    // 新フォーマット（MapPageが読む）：UMAPの実値をそのまま保存
+    // --- スライダー（0-100, 中心50）→ PCA 座標へ補間 ---
+    // コク = PC1, 甘み = PC2 とみなす
+    const pc1Value = interpFromSlider(body, basePC1, minPC1, maxPC1);
+    const pc2Value = interpFromSlider(sweetness, basePC2, minPC2, maxPC2);
+
+    // --- PCA -> UMAP （戻りは [UMAP1, UMAP2]）---
+    const [umapX, umapY] = pcaToUmap(pc1Value, pc2Value);
+
+    // --- 保存（新形式 v2：UMAP 実座標をそのまま保持。MapPage 側で2D表示のみY反転）---
     localStorage.setItem(
       "userPinCoords",
-      JSON.stringify({ coordsUMAP: [bodyValue, sweetValue], version: 2 })
+      JSON.stringify({ coordsUMAP: [umapX, umapY], version: 2 })
     );
 
-    navigate("/map", { state: { centerOnUserPin: true, autoOpenSlider: false } });
+    // --- 地図で userPin を中心に寄せる ---
+    navigate("/map", { state: { centerOnUserPin: true } });
   };
 
   return (
-    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
-      {/* ===== ダミーMap（打点なし） ===== */}
-      <div style={{ position: "relative", flex: "0 0 50vh", minHeight: 320 }}>
-        <DeckGL
-          views={new OrthographicView({ near: -1, far: 1 })}
-          viewState={viewState}
-          controller={false} // ← 操作させない
-          style={{ position: "absolute", inset: 0 }}
-          useDevicePixels
-          layers={[
-            new LineLayer({
-              id: "dummy-grid-thin",
-              data: thinLines,
-              getSourcePosition: (d) => [d.sourcePosition[0] + offsetX, d.sourcePosition[1] + offsetY, 0],
-              getTargetPosition: (d) => [d.targetPosition[0] + offsetX, d.targetPosition[1] + offsetY, 0],
-              getColor: GRID_THIN_COL,
-              getWidth: 1,
-              widthUnits: "pixels",
-              pickable: false,
-              updateTriggers: {
-                getSourcePosition: [offsetX, offsetY],
-                getTargetPosition: [offsetX, offsetY],
-              },
-              // スライダーと連動してスムーズに
-              transitions: {
-                getSourcePosition: { duration: 260, easing: t => t * (2 - t) },
-                getTargetPosition: { duration: 260, easing: t => t * (2 - t) },
-              },
-            }),
-            new LineLayer({
-              id: "dummy-grid-thick",
-              data: thickLines,
-              getSourcePosition: (d) => [d.sourcePosition[0] + offsetX, d.sourcePosition[1] + offsetY, 0],
-              getTargetPosition: (d) => [d.targetPosition[0] + offsetX, d.targetPosition[1] + offsetY, 0],
-              getColor: GRID_THICK_COL,
-              getWidth: 1.25,
-              widthUnits: "pixels",
-              pickable: false,
-              updateTriggers: {
-                getSourcePosition: [offsetX, offsetY],
-                getTargetPosition: [offsetX, offsetY],
-              },
-              transitions: {
-                getSourcePosition: { duration: 260, easing: t => t * (2 - t) },
-                getTargetPosition: { duration: 260, easing: t => t * (2 - t) },
-              },
-            }),
-            compassLayer, // ← 中央固定のコンパス
-          ]}
+    <div
+      style={{
+        padding: 24,
+        maxWidth: 640,
+        margin: "0 auto",
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      }}
+    >
+      <h2 style={{ textAlign: "center", fontSize: 20, marginBottom: 18 }}>
+        基準のワインを飲んだ印象は？
+      </h2>
+
+      {/* スライダー用 CSS（中央から色が伸びる） */}
+      <style>{`
+        .taste-slider{
+          appearance: none;
+          -webkit-appearance: none;
+          width: 100%;
+          height: 6px;
+          background: transparent;
+          margin-top: 8px;
+          outline: none;
+        }
+        .taste-slider::-webkit-slider-runnable-track{
+          height: 6px;
+          border-radius: 9999px;
+          background: var(--range, #e9e9e9);
+        }
+        .taste-slider::-moz-range-track{
+          height: 6px;
+          border-radius: 9999px;
+          background: var(--range, #e9e9e9);
+        }
+        .taste-slider::-webkit-slider-thumb{
+          -webkit-appearance: none;
+          width: 28px; height: 28px; border-radius: 50%;
+          background: #fff; border: 0;
+          box-shadow: 0 2px 6px rgba(0,0,0,.25);
+          margin-top: -11px;
+          cursor: pointer;
+        }
+        .taste-slider::-moz-range-thumb{
+          width: 28px; height: 28px; border-radius: 50%;
+          background: #fff; border: 0;
+          box-shadow: 0 2px 6px rgba(0,0,0,.25);
+          cursor: pointer;
+        }
+      `}</style>
+
+      {/* 甘みスライダー */}
+      <div style={{ marginBottom: 28 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            fontSize: 14,
+            fontWeight: 700,
+            marginBottom: 6,
+          }}
+        >
+          <span>← こんなに甘みは不要</span>
+          <span>もっと甘みが欲しい →</span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={sweetness}
+          onChange={(e) => setSweetness(Number(e.target.value))}
+          className="taste-slider"
+          style={{ "--range": centerGradient(sweetness) }}
         />
       </div>
 
-      {/* ===== スライダーUI ===== */}
-      <div style={{ flex: 1, padding: "16px 20px", overflowY: "auto" }}>
-        {/* スライダーCSS（●がバー中央） */}
-        <style>{`
-          .taste-slider{
-            appearance: none;
-            -webkit-appearance: none;
-            width: 100%;
-            height: 6px;
-            background: transparent;
-            margin-top: 8px;
-            outline: none;
-          }
-          .taste-slider::-webkit-slider-runnable-track{
-            height: 6px;
-            border-radius: 9999px;
-            background: var(--range, #e9e9e9);
-          }
-          .taste-slider::-moz-range-track{
-            height: 6px;
-            border-radius: 9999px;
-            background: var(--range, #e9e9e9);
-          }
-          .taste-slider::-webkit-slider-thumb{
-            -webkit-appearance: none;
-            width: 28px; height: 28px; border-radius: 50%;
-            background: #fff; border: 0;
-            box-shadow: 0 2px 6px rgba(0,0,0,.25);
-            margin-top: -11px;
-            cursor: pointer;
-          }
-          .taste-slider::-moz-range-thumb{
-            width: 28px; height: 28px; border-radius: 50%;
-            background: #fff; border: 0;
-            box-shadow: 0 2px 6px rgba(0,0,0,.25);
-            cursor: pointer;
-          }
-        `}</style>
-
-        <h3 style={{ margin: 0, marginBottom: 12 }}>嗜好スライダー</h3>
-
-        {/* 甘み */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
-            <span>← こんなに甘みは不要</span>
-            <span>もっと甘みが欲しい →</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={sweetness}
-            onChange={(e) => setSweetness(Number(e.target.value))}
-            className="taste-slider"
-            style={{ width: "100%", "--range": centerGradient(sweetness) }}
-          />
+      {/* コクスライダー */}
+      <div style={{ marginBottom: 28 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            fontSize: 14,
+            fontWeight: 700,
+            marginBottom: 6,
+          }}
+        >
+          <span>← もっと軽やかが良い</span>
+          <span>濃厚なコクが欲しい →</span>
         </div>
-
-        {/* コク */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, marginBottom: 6 }}>
-            <span>← もっと軽やかが良い</span>
-            <span>濃厚なコクが欲しい →</span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={body}
-            onChange={(e) => setBody(Number(e.target.value))}
-            className="taste-slider"
-            style={{ width: "100%", "--range": centerGradient(body) }}
-          />
-        </div>
-
-        {/* 生成ボタン */}
-        <div style={{ marginTop: 12 }}>
-          <button
-            onClick={handleGenerate}
-            style={{
-              background: "#e8ddd1",
-              color: "#000",
-              padding: "14px 22px",
-              fontSize: 16,
-              fontWeight: 700,
-              border: "2px solid #e8ddd1",
-              borderRadius: 12,
-              cursor: "pointer",
-              display: "block",
-              margin: "0 auto",
-            }}
-          >
-            あなたの好みからMAPを生成
-          </button>
-        </div>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={body}
+          onChange={(e) => setBody(Number(e.target.value))}
+          className="taste-slider"
+          style={{ "--range": centerGradient(body) }}
+        />
       </div>
+
+      {/* 状態表示（任意） */}
+      {loading && (
+        <div style={{ color: "#666", fontSize: 13, marginBottom: 10 }}>
+          データ読込中…
+        </div>
+      )}
+      {error && (
+        <div style={{ color: "#c00", fontSize: 13, marginBottom: 10 }}>
+          データ取得に失敗しました：{String(error?.message || error)}
+        </div>
+      )}
+
+      {/* 生成ボタン */}
+      <button
+        onClick={handleGenerate}
+        disabled={loading || !!error || !rows.length}
+        style={{
+          background: "#fff",
+          color: "#007bff",
+          padding: "12px 22px",
+          fontSize: 16,
+          fontWeight: "bold",
+          border: "2px solid #007bff",
+          borderRadius: 10,
+          cursor: loading || !!error || !rows.length ? "not-allowed" : "pointer",
+          display: "block",
+          margin: "18px auto 0",
+          opacity: loading || !!error || !rows.length ? 0.6 : 1,
+        }}
+      >
+        あなたの好みからMAPを生成
+      </button>
+
+      {/* （参考）UMAP 範囲の表示：調整時のデバッグに便利 */}
+      {umapInfo && (
+        <div style={{ marginTop: 14, color: "#888", fontSize: 12 }}>
+          <div>UMAP範囲（参考）：</div>
+          <div>
+            Body(UMAP1): {umapInfo.minBody.toFixed(2)} ～ {umapInfo.maxBody.toFixed(2)}
+          </div>
+          <div>
+            Sweet(UMAP2): {umapInfo.minSweet.toFixed(2)} ～ {umapInfo.maxSweet.toFixed(2)}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
