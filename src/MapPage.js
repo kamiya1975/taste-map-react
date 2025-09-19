@@ -938,7 +938,7 @@ function MapPage() {
       {/* 右上: スライダーへ遷移（2D時のみ表示にしたい場合は {!is3D && ( ... )} で囲む） */}
       {!is3D && (
         <button
-          onClick={() => { openSliderExclusive(); }}
+          onClick={() => navigate("/slider")}
           style={{
             position: "absolute",
             top: "70px",
