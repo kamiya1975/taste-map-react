@@ -40,8 +40,6 @@ const GRID_STEP_PX = 15;
 // 薄線・太線の太さ（px）
 const THIN_W_PX = 1;
 const THICK_W_PX = 1.5;
-// ★追加：既存CSSが参照している名前に合わせて alias
-const GRID_LINE_PX = THIN_W_PX;
 // 何本ごとに太線にするか（MapPageは 5）
 const THICK_EVERY = 5;
 // 線色（MapPage の [r,g,b,a] に近似）
@@ -171,26 +169,55 @@ export default function SliderPage() {
           /* ▼ MapPage の thin/thick を縦横2層ずつ = 4レイヤーで再現 */
           backgroundImage: `
             /* 横：薄い線（水平） */
-            repeating-linear-gradient(0deg,
-              rgba(0,0,0,0.10) 0px,
-              rgba(0,0,0,0.10) ${GRID_LINE_PX}px,
-              transparent ${GRID_LINE_PX}px,
-              transparent ${GRID_STEP_PX}px
+            repeating-linear-gradient(
+              0deg,
+              ${THIN_RGBA} 0px,
+              ${THIN_RGBA} ${THIN_W_PX}px,
+              transparent  ${THIN_W_PX}px,
+              transparent  ${GRID_STEP_PX}px
             ),
             /* 縦：薄い線（垂直） */
-            repeating-linear-gradient(90deg,
-              rgba(0,0,0,0.10) 0px,
-              rgba(0,0,0,0.10) ${GRID_LINE_PX}px,
-              transparent ${GRID_LINE_PX}px,
-              transparent ${GRID_STEP_PX}px
+            repeating-linear-gradient(
+              90deg,
+              ${THIN_RGBA} 0px,
+              ${THIN_RGBA} ${THIN_W_PX}px,
+              transparent  ${THIN_W_PX}px,
+              transparent  ${GRID_STEP_PX}px
+            ),
+            /* 横：5本ごとの太線（水平） */
+            repeating-linear-gradient(
+              0deg,
+              ${THICK_RGBA} 0px,
+              ${THICK_RGBA} ${THICK_W_PX}px,
+              transparent  ${THICK_W_PX}px,
+              transparent  ${GRID_STEP_PX * THICK_EVERY}px
+            ),
+            /* 縦：5本ごとの太線（垂直） */
+            repeating-linear-gradient(
+              90deg,
+              ${THICK_RGBA} 0px,
+              ${THICK_RGBA} ${THICK_W_PX}px,
+              transparent  ${THICK_W_PX}px,
+              transparent  ${GRID_STEP_PX * THICK_EVERY}px
             )
           `,
-            backgroundPosition: `${bgOffset.dx}px ${bgOffset.dy}px, ${bgOffset.dx}px ${bgOffset.dy}px`,
-            backgroundSize: `${GRID_STEP_PX}px ${GRID_STEP_PX}px, ${GRID_STEP_PX}px ${GRID_STEP_PX}px`,
-            transition: "background-position 120ms linear",
-          }}
-        >
-
+          /* 4レイヤーを同じオフセットで動かす（甘み→左／ボディ→下） */
+          backgroundPosition: `
+            ${bgOffset.dx}px ${bgOffset.dy}px,
+            ${bgOffset.dx}px ${bgOffset.dy}px,
+            ${bgOffset.dx}px ${bgOffset.dy}px,
+            ${bgOffset.dx}px ${bgOffset.dy}px
+          `,
+          /* ピッチ指定（太線は5倍ピッチ） */
+          backgroundSize: `
+            ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+            ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+            ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
+            ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
+          `,
+          transition:"background-position 120ms linear",
+        }}
+      >
         {/* コンパス（中央固定） */}
         <img
           src={COMPASS_URL}
