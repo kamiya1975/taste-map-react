@@ -98,27 +98,39 @@ function MapPage() {
   const PANEL_ANIM_MS = 320; // 閉じアニメ後に次を開く待ち時間
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  // いま開いているパネル（検索/お気に入り）を閉じて、アニメーション時間だけ待つ
+  const closePanelsThen = async () => {
+    const willClose = (isSearchOpen || isRatingListOpen);
+    if (isSearchOpen) setIsSearchOpen(false);
+    if (isRatingListOpen) setIsRatingListOpen(false);
+    if (willClose) await wait(PANEL_ANIM_MS);
+  };
+
+  // スライダー（●）
+  const openSliderExclusive = async () => {
+    await closePanelsThen();     // ← 閉じ終わるまで待つ
+    navigate("/slider");         // 待ち終えてから遷移
+  };
+
   // 検索（🔍）
   const openSearchExclusive = async () => {
     if (isSearchOpen) {
-      setIsSearchOpen(false);
+      setIsSearchOpen(false); // すでに開いている場合は閉じるだけ
       return;
     }
-    setIsSearchOpen(true);
+    await closePanelsThen();     // 他を閉じてから
+    setIsSearchOpen(true);       // 検索を開く
   };
 
   // お気に入り（♡）
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const openFavoriteExclusive = async () => {
     if (isRatingListOpen) {
-      setIsRatingListOpen(false);
+      setIsRatingListOpen(false); // すでに開いている場合は閉じるだけ
       return;
     }
-    if (isSearchOpen) {
-      setIsSearchOpen(false);
-      await wait(PANEL_ANIM_MS);
-    }
-    setIsRatingListOpen(true);
+    await closePanelsThen();      // 他を閉じてから
+    setIsRatingListOpen(true);    // お気に入りを開く
   };
 
   // ====== パン境界（現在データに基づく）
@@ -938,7 +950,7 @@ function MapPage() {
       {/* 右上: スライダーへ遷移（2D時のみ表示にしたい場合は {!is3D && ( ... )} で囲む） */}
       {!is3D && (
         <button
-          onClick={() => navigate("/slider")}
+          onClick={openSliderExclusive}
           style={{
             position: "absolute",
             top: "70px",
@@ -965,7 +977,7 @@ function MapPage() {
       {/* 右サイドの丸ボタン群（/slider は別ページなのでスライダーボタンは無し。♡ と 🔍 のみ） */}
       {!is3D && (
         <button
-          onClick={() => { openFavoriteExclusive(); }}
+          onClick={openFavoriteExclusive}
           style={{
             position: "absolute",
             top: "120px",
@@ -991,7 +1003,7 @@ function MapPage() {
 
       {!is3D && (
         <button
-          onClick={() => { openSearchExclusive(); }}
+          onClick={openSearchExclusive}
           style={{
             position: "absolute",
             top: "170px",
