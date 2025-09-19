@@ -36,7 +36,7 @@ function fitLocalAffineAndPredict(px,py,neigh){
    ダミーマップ設定（Map と同等の罫線）
 ======================= */
 // 罫線ピッチ（DeckGLの cellSize に見た目を合わせる値。必要に応じ調整）
-const GRID_STEP_PX = 15;
+const GRID_STEP_PX = 12.5;
 // 薄線・太線の太さ（px）
 const THIN_W_PX = 1;
 const THICK_W_PX = 1.5;
@@ -47,12 +47,12 @@ const THIN_RGBA  = "rgba(200,200,200,0.39)"; // [200,200,200,100]
 const THICK_RGBA = "rgba(180,180,180,0.47)"; // [180,180,180,120]
 
 // スライダー1目盛りあたりの地図移動量（px）
-const MOVE_PER_UNIT_PX = 3.0;
+const MOVE_PER_UNIT_PX = 5.0;
 
 // コンパス画像
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 // ← コンパスの大きさ（%）。小さくしたいぶん下げてください（例: 20）
-const COMPASS_SIZE_PCT = 10;
+const COMPASS_SIZE_PCT = 7;
 
 export default function SliderPage() {
   const navigate = useNavigate();
