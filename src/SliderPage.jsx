@@ -2,7 +2,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-// ===== ユーティリティ =====
+/* =======================
+   小ユーティリティ（既存）
+======================= */
 const num = (v, def = 0) => { const n = Number(v); return Number.isFinite(n) ? n : def; };
 const median = (arr) => { if (!arr.length) return 0; const a=[...arr].sort((x,y)=>x-y); const m=Math.floor(a.length/2); return a.length%2?a[m]:(a[m-1]+a[m])/2; };
 const dist2 = (x1,y1,x2,y2)=>{const dx=x1-x2, dy=y1-y2; return dx*dx+dy*dy;};
@@ -14,7 +16,7 @@ const centerGradient = (val) => {
   return `linear-gradient(to right, ${base} 0%, ${base} ${a}%, ${active} ${a}%, ${active} ${b}%, ${base} ${b}%, ${base} 100%)`;
 };
 
-// 3x3 逆行列系
+// 3x3 逆行列系（既存）
 function invert3x3(M){const [[a,b,c],[d,e,f],[g,h,i]]=M;const A=e*i-f*h,B=-(d*i-f*g),C=d*h-e*g;const D=-(b*i-c*h),E=a*i-c*g,F=-(a*h-b*g);const G=b*f-c*e,H=-(a*f-c*d),I=a*e-b*d;const det=a*A+b*B+c*C;if(Math.abs(det)<1e-12)return null;const s=1/det;return[[A*s,D*s,G*s],[B*s,E*s,H*s],[C*s,F*s,I*s]];}
 function mulMatVec(M,v){return[M[0][0]*v[0]+M[0][1]*v[1]+M[0][2]*v[2],M[1][0]*v[0]+M[1][1]*v[1]+M[1][2]*v[2],M[2][0]*v[0]+M[2][1]*v[1]+M[2][2]*v[2]];}
 function fitLocalAffineAndPredict(px,py,neigh){
@@ -30,19 +32,34 @@ function fitLocalAffineAndPredict(px,py,neigh){
   return[a1[0]*px+a1[1]*py+a1[2],a2[0]*px+a2[1]*py+a2[2]];
 }
 
-// ===== ダミーマップ設定 =====
-const GRID_STEP_PX = 30;           // 罫線間隔
-const GRID_LINE_PX = 1;            // 罫線太さ
-const MOVE_PER_UNIT_PX = 3.0;      // 1ステップの移動量
+/* =======================
+   ダミーマップ設定（Map と同等の罫線）
+======================= */
+// 罫線ピッチ（DeckGLの cellSize に見た目を合わせる値。必要に応じ調整）
+const GRID_STEP_PX = 30;
+// 薄線・太線の太さ（px）
+const THIN_W_PX = 1;
+const THICK_W_PX = 1.5;
+// 何本ごとに太線にするか（MapPageは 5）
+const THICK_EVERY = 5;
+// 線色（MapPage の [r,g,b,a] に近似）
+const THIN_RGBA  = "rgba(200,200,200,0.39)"; // [200,200,200,100]
+const THICK_RGBA = "rgba(180,180,180,0.47)"; // [180,180,180,120]
+
+// スライダー1目盛りあたりの地図移動量（px）
+const MOVE_PER_UNIT_PX = 3.0;
+
+// コンパス画像
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
-const COMPASS_SIZE_PCT = 10;       // コンパスサイズ(%)
+// ← コンパスの大きさ（%）。小さくしたいぶん下げてください（例: 20）
+const COMPASS_SIZE_PCT = 20;
 
 export default function SliderPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedStore = location.state?.selectedStore;
 
-  // 店舗チェック（Mapから来たらスキップ）
+  // Map 以外から直接来た場合のみ店舗選択を強制
   useEffect(() => {
     const saved = localStorage.getItem("selectedStore");
     const cameFromMap = location.state?.from === "map";
@@ -51,7 +68,7 @@ export default function SliderPage() {
     }
   }, [selectedStore, navigate, location.state]);
 
-  // ---- UI状態（Hookはreturnより前！）----
+  /* ---------- UI 状態 ---------- */
   const [sweetness, setSweetness] = useState(50);
   const [body, setBody] = useState(50);
 
@@ -62,7 +79,7 @@ export default function SliderPage() {
     return { dx, dy };
   }, [sweetness, body]);
 
-  // データ読込（既存ロジック）
+  /* ---------- 既存：データ読込 & 写像 ---------- */
   const [rows, setRows] = useState([]);
   const [blendF, setBlendF] = useState(null);
   const [pcMinMax, setPcMinMax] = useState(null);
@@ -96,19 +113,23 @@ export default function SliderPage() {
   const handleGenerate = () => {
     if (!blendF || !pcMinMax || !rows.length) return;
     const {minPC1,maxPC1,minPC2,maxPC2}=pcMinMax;
+
+    // 0-100(中央50) → PC空間へ線形補間
     const pc1Value = body<=50
       ? blendF.PC1 - ((50-body)/50)*(blendF.PC1 - minPC1)
       : blendF.PC1 + ((body-50)/50)*(maxPC1 - blendF.PC1);
+
     const pc2Value = sweetness<=50
       ? blendF.PC2 - ((50-sweetness)/50)*(blendF.PC2 - minPC2)
       : blendF.PC2 + ((sweetness-50)/50)*(maxPC2 - blendF.PC2);
+
     const [umapX, umapY] = pca2umap(pc1Value, pc2Value);
     localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: [umapX, umapY], version: 2 }));
     sessionStorage.setItem("tm_autopen_nearest", "1");
     navigate("/map", { state: { centerOnUserPin: true } });
   };
 
-  // ===== JSX（returnはここだけ）=====
+  /* ---------- JSX ---------- */
   return (
     <div
       style={{
@@ -117,9 +138,11 @@ export default function SliderPage() {
       }}
     >
       {/* ヘッダー */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
-        marginBottom:12, borderBottom:"1px solid #eee", paddingBottom:8 }}>
-        <h2 style={{ margin:0, fontSize:18 }}></h2>
+      <div style={{
+        display:"flex", justifyContent:"space-between", alignItems:"center",
+        marginBottom:12, borderBottom:"1px solid #eee", paddingBottom:8
+      }}>
+        <h2 style={{ margin:0, fontSize:18 }}>嗜好スライダー</h2>
         {/* 必ず /map に戻す */}
         <button
           onClick={() => navigate("/map", { replace: true })}
@@ -129,7 +152,7 @@ export default function SliderPage() {
         </button>
       </div>
 
-      {/* ダミーマップ */}
+      {/* ===== ダミーマップ（中央にコンパス固定／背景罫線のみ移動） ===== */}
       <div
         aria-label="taste-map-dummy"
         style={{
@@ -141,22 +164,56 @@ export default function SliderPage() {
           border:"none",
           borderRadius:0,
           overflow:"hidden",
+
+          /* ▼ MapPage の thin/thick を縦横2層ずつ = 4レイヤーで再現 */
           backgroundImage: `
-            repeating-linear-gradient(0deg,
-              rgba(0,0,0,0.10) 0px,
-              rgba(0,0,0,0.10) ${GRID_LINE_PX}px,
-              transparent ${GRID_LINE_PX}px,
-              transparent ${GRID_STEP_PX}px
+            /* 横：薄い線（水平） */
+            repeating-linear-gradient(
+              0deg,
+              ${THIN_RGBA} 0px,
+              ${THIN_RGBA} ${THIN_W_PX}px,
+              transparent  ${THIN_W_PX}px,
+              transparent  ${GRID_STEP_PX}px
             ),
-            repeating-linear-gradient(90deg,
-              rgba(0,0,0,0.10) 0px,
-              rgba(0,0,0,0.10) ${GRID_LINE_PX}px,
-              transparent ${GRID_LINE_PX}px,
-              transparent ${GRID_STEP_PX}px
+            /* 縦：薄い線（垂直） */
+            repeating-linear-gradient(
+              90deg,
+              ${THIN_RGBA} 0px,
+              ${THIN_RGBA} ${THIN_W_PX}px,
+              transparent  ${THIN_W_PX}px,
+              transparent  ${GRID_STEP_PX}px
+            ),
+            /* 横：5本ごとの太線（水平） */
+            repeating-linear-gradient(
+              0deg,
+              ${THICK_RGBA} 0px,
+              ${THICK_RGBA} ${THICK_W_PX}px,
+              transparent  ${THICK_W_PX}px,
+              transparent  ${GRID_STEP_PX * THICK_EVERY}px
+            ),
+            /* 縦：5本ごとの太線（垂直） */
+            repeating-linear-gradient(
+              90deg,
+              ${THICK_RGBA} 0px,
+              ${THICK_RGBA} ${THICK_W_PX}px,
+              transparent  ${THICK_W_PX}px,
+              transparent  ${GRID_STEP_PX * THICK_EVERY}px
             )
           `,
-          backgroundPosition: `${bgOffset.dx}px ${bgOffset.dy}px, ${bgOffset.dx}px ${bgOffset.dy}px`,
-          backgroundSize: `${GRID_STEP_PX}px ${GRID_STEP_PX}px, ${GRID_STEP_PX}px ${GRID_STEP_PX}px`,
+          /* 4レイヤーを同じオフセットで動かす（甘み→左／ボディ→下） */
+          backgroundPosition: `
+            ${bgOffset.dx}px ${bgOffset.dy}px,
+            ${bgOffset.dx}px ${bgOffset.dy}px,
+            ${bgOffset.dx}px ${bgOffset.dy}px,
+            ${bgOffset.dx}px ${bgOffset.dy}px
+          `,
+          /* ピッチ指定（太線は5倍ピッチ） */
+          backgroundSize: `
+            ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+            ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+            ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
+            ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
+          `,
           transition:"background-position 120ms linear",
         }}
       >
@@ -180,15 +237,8 @@ export default function SliderPage() {
         />
       </div>
 
-      {/* スライダー見出し */}
-      <p
-        style={{
-          fontWeight: 700,
-          fontSize: 16,
-          margin: "4px 0 12px",
-          textAlign: "center",
-        }}
-      >
+      {/* スライダー見出し（画像位置に合わせて中央・直上） */}
+      <p style={{ fontWeight:700, fontSize:16, margin:"4px 0 12px", textAlign:"center" }}>
         基準のワインを飲んだ印象は？
       </p>
 
