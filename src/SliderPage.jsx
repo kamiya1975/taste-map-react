@@ -175,6 +175,8 @@ function fitLocalAffineAndPredict(px, py, neigh) {
       JSON.stringify({ coordsUMAP: [umapX, umapY], version: 2 })
     );
 
+    // Map へ遷移する前に「最近傍を自動オープン」用フラグを立てる
+    sessionStorage.setItem("tm_autopen_nearest", "1");
     // Map へ遷移（userPin をセンタリング）
     navigate("/map", { state: { centerOnUserPin: true } });
   };

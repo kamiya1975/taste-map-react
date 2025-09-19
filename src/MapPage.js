@@ -120,8 +120,6 @@ function MapPage() {
     if (willClose) await wait(PANEL_ANIM_MS);
   };
 
-  // ★ closePanelsThen は削除してOK
-
   // スライダー（●）
   const openSliderExclusive = async () => {
     await closeUIsThen();     // ← ここを closeUIsThen に
@@ -354,27 +352,40 @@ function MapPage() {
     }
   }, [userPin, is3D, location.state]);
 
-  // スライダー遷移直後：オレンジ打点の最寄り商品を自動で開く
+  // スライダー直後だけ：オレンジ打点の最寄り商品を自動で開く
   useEffect(() => {
-    // スライダーからの遷移（centerOnUserPin フラグ）で、まだ未実行のときだけ
-    const fromSlider = !!location.state?.centerOnUserPin;
-    if (!fromSlider || autoOpenOnceRef.current) return;
-    if (!userPin || !data.length) return;
+    // セッションフラグ or location.state があれば発火対象
+    const wantAutoOpen =
+      sessionStorage.getItem("tm_autopen_nearest") === "1" ||
+      !!location.state?.centerOnUserPin;
 
-    autoOpenOnceRef.current = true;           // 二重実行防止
-    setIsSearchOpen(false);                   // 他パネルは閉じる
+    if (!wantAutoOpen) return;              // そもそも対象外
+    if (autoOpenOnceRef.current) return;    // 既に実行済み
+    if (!userPin || !Array.isArray(data) || data.length === 0) return; // データ待ち
+
+    autoOpenOnceRef.current = true;
+    sessionStorage.removeItem("tm_autopen_nearest"); // 使い捨て
+
+    // 他UIは閉じてから
+    setIsSearchOpen(false);
     setIsRatingListOpen(false);
 
-    // 現在の表示系（2D/3D）に合わせたキャンバス座標で最近傍を探す
-    const canvasCoord = [userPin[0], is3D ? userPin[1] : -userPin[1]];
-    const nearest = findNearestWine(canvasCoord);
-    if (nearest?.JAN) {
-      setSelectedJAN(nearest.JAN);
-      setSelectedJANFromSearch(nearest.JAN);  // ハイライトしたい場合
-      setProductDrawerOpen(true);
-      focusOnWine(nearest, { zoom: INITIAL_ZOOM });
-    }
-  }, [location.state, userPin, data, is3D, focusOnWine]);
+    // 次フレームで実行（描画と履歴書き換えが終わってから）
+    requestAnimationFrame(() => {
+      try {
+        const canvasCoord = [userPin[0], is3D ? userPin[1] : -userPin[1]];
+        const nearest = findNearestWine(canvasCoord);
+        if (nearest?.JAN) {
+          setSelectedJAN(nearest.JAN);
+          setSelectedJANFromSearch(nearest.JAN); // ハイライト要らなければ null に
+          setProductDrawerOpen(true);
+          focusOnWine(nearest, { zoom: INITIAL_ZOOM });
+        }
+      } catch (e) {
+        console.error("auto-open-nearest failed:", e);
+      }
+    });
+  }, [location.key, userPin, data, is3D, focusOnWine]);
 
   // ====== 共通：商品へフォーカス（毎回“初期ズーム”に戻す）
   const focusOnWine = useCallback(
