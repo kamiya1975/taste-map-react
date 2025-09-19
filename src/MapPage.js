@@ -385,7 +385,7 @@ function MapPage() {
         console.error("auto-open-nearest failed:", e);
       }
     });
-  }, [location.key, userPin, data, is3D, focusOnWine, findNearestWine]);
+  }, [location.key, userPin, data, is3D]);
 
   // ====== 共通：商品へフォーカス（毎回“初期ズーム”に戻す）
   const focusOnWine = useCallback(
