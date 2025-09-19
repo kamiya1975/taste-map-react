@@ -11,7 +11,7 @@ import {
   IconLayer,
 } from "@deck.gl/layers";
 import Drawer from "@mui/material/Drawer";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 // 共通UI
@@ -26,10 +26,12 @@ import {
 const REREAD_LS_KEY = "tm_reread_until";
 
 /* =======================
-   定数
+   定数（コンポーネント外に配置：ESLint回避）
 ======================= */
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 const CENTER_Y_OFFSET = -3.5; // 打点を画面中央より少し上に見せる
+const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
+const INITIAL_ZOOM = 6;
 
 // プロット色
 const typeColorMap = {
@@ -58,7 +60,6 @@ const HEAT_COLOR_HIGH = [255, 165, 0];
 
 function MapPage() {
   const location = useLocation();
-  const navigate = useNavigate();
 
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
@@ -70,8 +71,6 @@ function MapPage() {
 
   // ====== ビュー制御
   const [is3D, setIs3D] = useState(false);
-  const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
-  const INITIAL_ZOOM = 6;
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
     rotationX: 0,
@@ -94,30 +93,21 @@ function MapPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
 
-  // お気に入りパネル
-  const [isRatingListOpen, setIsRatingListOpen] = useState(false);
-
-  // 表示モード（スライダーは別ページ化済み）
-  const [sliderMarkerMode] = useState("orange"); // 'orange' | 'compass'
-
   // === 排他オープンのためのユーティリティ ===
   const PANEL_ANIM_MS = 320; // 閉じアニメ後に次を開く待ち時間
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // ===== 排他制御関数群 =====
-  const openSliderExclusive = async () => {
-    // Drawer類は全部閉じてから遷移
+  // 検索（🔍）
+  const openSearchExclusive = async () => {
     if (isSearchOpen) {
       setIsSearchOpen(false);
-      await wait(PANEL_ANIM_MS);
+      return;
     }
-    if (isRatingListOpen) {
-      setIsRatingListOpen(false);
-      await wait(PANEL_ANIM_MS);
-    }
-    navigate("/slider");
+    setIsSearchOpen(true);
   };
 
+  // お気に入り（♡）
+  const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const openFavoriteExclusive = async () => {
     if (isRatingListOpen) {
       setIsRatingListOpen(false);
@@ -128,18 +118,6 @@ function MapPage() {
       await wait(PANEL_ANIM_MS);
     }
     setIsRatingListOpen(true);
-  };
-
-  const openSearchExclusive = async () => {
-    if (isSearchOpen) {
-      setIsSearchOpen(false);
-      return;
-    }
-    if (isRatingListOpen) {
-      setIsRatingListOpen(false);
-      await wait(PANEL_ANIM_MS);
-    }
-    setIsSearchOpen(true);
   };
 
   // ====== パン境界（現在データに基づく）
@@ -269,8 +247,8 @@ function MapPage() {
     return n ? [sx / n, sy / n] : [0, 0];
   }, [data]);
 
-  // userPin 読み出し（新旧形式サポート）
-  const readUserPinFromStorage = () => {
+  // userPin 読み出し（新旧形式サポート）→ useCallback で安定化
+  const readUserPinFromStorage = useCallback(() => {
     try {
       const raw = localStorage.getItem("userPinCoords");
       if (!raw) return null;
@@ -316,7 +294,7 @@ function MapPage() {
       console.warn("userPinCoords の解析に失敗:", e);
       return null;
     }
-  };
+  }, [umapCentroid]);
 
   // userPin 同期（SliderPageで保存された座標を読む）
   useEffect(() => {
@@ -332,7 +310,7 @@ function MapPage() {
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("storage", onStorage);
     };
-  }, [umapCentroid]);
+  }, [readUserPinFromStorage]);
 
   // 初回センタリング（必要時）
   useEffect(() => {
@@ -389,8 +367,8 @@ function MapPage() {
     } catch {}
   };
 
-  // ====== 便利関数
-  const toggleFavorite = (jan) => {
+  // ====== 便利関数（useCallbackで安定化）
+  const toggleFavorite = useCallback((jan) => {
     setFavorites((prev) => {
       const next = { ...prev };
       if (next[jan]) {
@@ -402,7 +380,7 @@ function MapPage() {
       }
       return next;
     });
-  };
+  }, []);
 
   // 商品ページ（iframe）からの postMessage
   useEffect(() => {
@@ -445,12 +423,14 @@ function MapPage() {
         } catch {}
 
         // 子iframeのUIも同期
-        sendFavoriteToChild(jan, willFav);
+        try {
+          sendFavoriteToChild(jan, willFav);
+        } catch {}
       }
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, []);
+  }, [toggleFavorite]);
 
   // 評価の有無
   const hasAnyRating = useMemo(
@@ -631,7 +611,7 @@ function MapPage() {
     });
   }, [data, userRatings, is3D]);
 
-  // ===== 嗜好コンパス（評価から重心） =====
+  // ===== 嗜好コンパス
   const detectElbowIndex = (valsDesc) => {
     const n = valsDesc.length;
     if (n <= 3) return n;
@@ -666,11 +646,14 @@ function MapPage() {
     joined.sort((a, b) => b.rating - a.rating);
 
     const n = joined.length;
+    const k20 = Math.max(3, Math.ceil(n * 0.2));
+    const top20 = joined.slice(0, Math.min(k20, n));
+
     const scores = joined.map((r) => r.rating);
     const kelbow = detectElbowIndex(scores);
     const elbowPick = joined.slice(0, Math.min(kelbow, n));
 
-    const picked = elbowPick;
+    const picked = elbowPick; // 既定は elbow
 
     let sw = 0, sx = 0, sy = 0;
     picked.forEach((p) => { sw += p.rating; sx += p.rating * p.x; sy += p.rating * p.y; });
@@ -702,7 +685,7 @@ function MapPage() {
 
   // スライダー結果（コンパス：評価が入ると消える）
   const userPinCompassLayer = useMemo(() => {
-    if (!userPin || sliderMarkerMode !== "compass") return null;
+    if (!userPin) return null; // markerMode は常にオレンジ想定だが、保守で残す
     if (hasAnyRating) return null;
     return new IconLayer({
       id: "user-pin-compass",
@@ -721,11 +704,11 @@ function MapPage() {
       pickable: false,
       parameters: { depthTest: false },
     });
-  }, [userPin, hasAnyRating, is3D, sliderMarkerMode]);
+  }, [userPin, hasAnyRating, is3D]);
 
   // スライダー結果（オレンジ打点：常時表示）
   const userPinOrangeLayer = useMemo(() => {
-    if (!userPin || sliderMarkerMode !== "orange") return null;
+    if (!userPin) return null;
     return new ScatterplotLayer({
       id: "user-pin-orange",
       data: [{ x: userPin[0], y: userPin[1] }],
@@ -740,7 +723,7 @@ function MapPage() {
       pickable: false,
       parameters: { depthTest: false },
     });
-  }, [userPin, is3D, sliderMarkerMode]);
+  }, [userPin, is3D]);
 
   // ====== レンダリング
   return (
@@ -868,7 +851,7 @@ function MapPage() {
                 getPosition: (d) => [d.BodyAxis, is3D ? d.SweetAxis : -d.SweetAxis, 0],
                 radiusUnits: "meters",
                 getRadius: 0.18,
-                getFillColor: [255, 215, 0, 240],
+                getFillColor: [255, 215, 0, 240],   // 黄色（ゴールド）
                 stroked: true,
                 getLineColor: [0, 0, 0, 220],
                 getLineWidth: 2,
@@ -951,33 +934,7 @@ function MapPage() {
         </select>
       )}
 
-      {/* 右サイドの丸ボタン群（●=スライダー、♡=お気に入り、🔍=検索） */}
-      {!is3D && (
-        <button
-          onClick={() => { openSliderExclusive(); }}
-          style={{
-            position: "absolute",
-            top: "70px",
-            right: "10px",
-            zIndex: 10,
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            background: "#eee",
-            border: "1px solid #ccc",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: "bold",
-            fontSize: "20px",
-          }}
-          aria-label="嗜好スライダー"
-        >
-          ●
-        </button>
-      )}
-
+      {/* 右サイドの丸ボタン群（/slider は別ページなのでスライダーボタンは無し。♡ と 🔍 のみ） */}
       {!is3D && (
         <button
           onClick={() => { openFavoriteExclusive(); }}
@@ -1133,7 +1090,7 @@ function MapPage() {
         onClose={() => {
           setProductDrawerOpen(false);
           setSelectedJAN(null);
-          setSelectedJANFromSearch(null); // 検索ハイライトを消す
+          setSelectedJANFromSearch(null); // 検索ハイライトを消す（保持したければ外す）
         }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: paperBaseStyle }}
@@ -1176,7 +1133,9 @@ function MapPage() {
             onLoad={() => {
               const jan = String(selectedJAN);
               const isFav = !!favorites[jan];
-              sendFavoriteToChild(jan, isFav);
+              try {
+                sendFavoriteToChild(jan, isFav);
+              } catch {}
             }}
           />
         ) : (
@@ -1230,7 +1189,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
           <div
             style={{
               padding: "12px 16px",
-              borderBottom: "1px solid " + "#ddd",
+              borderBottom: "1px solid #ddd",
               background: "#f9f9f9",
               flexShrink: 0,
               display: "flex",
