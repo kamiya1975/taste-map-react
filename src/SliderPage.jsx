@@ -5,7 +5,7 @@ import useTasteData from "./hooks/useTasteData";
 import {
   computeMinMaxAndBlendF,
   interpFromSlider,
-} from "./utils/sliderMapping";
+} from "../utils/SliderMapping";
 
 export default function SliderPage() {
   const navigate = useNavigate();

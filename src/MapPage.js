@@ -11,9 +11,8 @@ import {
   IconLayer,
 } from "@deck.gl/layers";
 import Drawer from "@mui/material/Drawer";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { computeMinMaxAndBlendF, interpFromSlider, makePcaToUmap } from "./utils/sliderMapping";
 
 // 共通UI
 import SearchPanel from "./components/SearchPanel";
@@ -59,6 +58,7 @@ const HEAT_COLOR_HIGH = [255, 165, 0];
 
 function MapPage() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
@@ -94,24 +94,30 @@ function MapPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
 
-  // 表示モード（スライダーはSliderPageに集約：ここでは表示方法だけ保持）
+  // お気に入りパネル
+  const [isRatingListOpen, setIsRatingListOpen] = useState(false);
+
+  // 表示モード（スライダーは別ページ化済み）
   const [sliderMarkerMode] = useState("orange"); // 'orange' | 'compass'
 
   // === 排他オープンのためのユーティリティ ===
   const PANEL_ANIM_MS = 320; // 閉じアニメ後に次を開く待ち時間
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // 検索（🔍）
-  const openSearchExclusive = async () => {
+  // ===== 排他制御関数群 =====
+  const openSliderExclusive = async () => {
+    // Drawer類は全部閉じてから遷移
     if (isSearchOpen) {
       setIsSearchOpen(false);
-      return;
+      await wait(PANEL_ANIM_MS);
     }
-    setIsSearchOpen(true);
+    if (isRatingListOpen) {
+      setIsRatingListOpen(false);
+      await wait(PANEL_ANIM_MS);
+    }
+    navigate("/slider");
   };
 
-  // お気に入り（♡）
-  const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const openFavoriteExclusive = async () => {
     if (isRatingListOpen) {
       setIsRatingListOpen(false);
@@ -122,6 +128,18 @@ function MapPage() {
       await wait(PANEL_ANIM_MS);
     }
     setIsRatingListOpen(true);
+  };
+
+  const openSearchExclusive = async () => {
+    if (isSearchOpen) {
+      setIsSearchOpen(false);
+      return;
+    }
+    if (isRatingListOpen) {
+      setIsRatingListOpen(false);
+      await wait(PANEL_ANIM_MS);
+    }
+    setIsSearchOpen(true);
   };
 
   // ====== パン境界（現在データに基づく）
@@ -358,7 +376,7 @@ function MapPage() {
         rotationOrbit: 0,
       }));
     },
-    [is3D] // 定数は外部
+    [is3D]
   );
 
   // ====== 子iframeへ♡状態を送るヘルパー
@@ -613,7 +631,7 @@ function MapPage() {
     });
   }, [data, userRatings, is3D]);
 
-  // ===== 嗜好コンパス
+  // ===== 嗜好コンパス（評価から重心） =====
   const detectElbowIndex = (valsDesc) => {
     const n = valsDesc.length;
     if (n <= 3) return n;
@@ -648,14 +666,11 @@ function MapPage() {
     joined.sort((a, b) => b.rating - a.rating);
 
     const n = joined.length;
-    const k20 = Math.max(3, Math.ceil(n * 0.2));
-    const top20 = joined.slice(0, Math.min(k20, n));
-
     const scores = joined.map((r) => r.rating);
     const kelbow = detectElbowIndex(scores);
     const elbowPick = joined.slice(0, Math.min(kelbow, n));
 
-    const picked = elbowPick; // 既定は elbow
+    const picked = elbowPick;
 
     let sw = 0, sx = 0, sy = 0;
     picked.forEach((p) => { sw += p.rating; sx += p.rating * p.x; sy += p.rating * p.y; });
@@ -853,7 +868,7 @@ function MapPage() {
                 getPosition: (d) => [d.BodyAxis, is3D ? d.SweetAxis : -d.SweetAxis, 0],
                 radiusUnits: "meters",
                 getRadius: 0.18,
-                getFillColor: [255, 215, 0, 240],   // 黄色（ゴールド）
+                getFillColor: [255, 215, 0, 240],
                 stroked: true,
                 getLineColor: [0, 0, 0, 220],
                 getLineWidth: 2,
@@ -936,7 +951,7 @@ function MapPage() {
         </select>
       )}
 
-      {/* 右サイドの丸ボタン群*/}
+      {/* 右サイドの丸ボタン群（●=スライダー、♡=お気に入り、🔍=検索） */}
       {!is3D && (
         <button
           onClick={() => { openSliderExclusive(); }}
@@ -1118,7 +1133,7 @@ function MapPage() {
         onClose={() => {
           setProductDrawerOpen(false);
           setSelectedJAN(null);
-          setSelectedJANFromSearch(null); // 検索ハイライトを消す（保持したければ外す）
+          setSelectedJANFromSearch(null); // 検索ハイライトを消す
         }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: paperBaseStyle }}
