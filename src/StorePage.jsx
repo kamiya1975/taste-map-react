@@ -84,7 +84,7 @@ export default function StorePage() {
   const formatKm = (d) => (Number.isFinite(d) ? `${d.toFixed(1)}km` : "—");
 
   const handleStoreSelect = (store) => {
-    navigate("/map", { state: { selectedStore: store, autoOpenSlider: true } });
+    navigate("/slider", { state: { selectedStore: store } });
   };
 
   return (

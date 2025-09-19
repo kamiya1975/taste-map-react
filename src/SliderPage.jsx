@@ -1,6 +1,6 @@
 // src/SliderPage.jsx
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // ===== 小ユーティリティ =====
 const num = (v, def = 0) => {
@@ -71,8 +71,15 @@ function fitLocalAffineAndPredict(px, py, neigh) {
   return [a1[0]*px+a1[1]*py+a1[2], a2[0]*px+a2[1]*py+a2[2]];
 }
 
-export default function SliderPage() {
-  const navigate = useNavigate();
+  export default function SliderPage() {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const selectedStore = location.state?.selectedStore;
+
+    // ストア未選択なら /store に戻す
+    useEffect(() => {
+      if (!selectedStore) navigate("/store", { replace: true });
+    }, [selectedStore, navigate]);
 
   // UI 状態
   const [sweetness, setSweetness] = useState(50);
