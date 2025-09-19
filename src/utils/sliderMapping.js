@@ -76,3 +76,4 @@ export function makePcaToUmap(data, K = 15) {
     return sw > 0 ? [sx / sw, sy / sw] : [neigh[0].s.x, neigh[0].s.y];
   };
 }
+
