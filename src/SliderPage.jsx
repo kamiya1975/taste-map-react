@@ -20,10 +20,10 @@ const median = (arr) => {
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 
 // ====== ダミーMap（罫線）用パラメータ ======
-const GRID_INTERVAL = 0.2;               // 罫線の間隔
-const GRID_EXTENT = 100;                 // 罫線の描画範囲（±100）
-const VIEW_ZOOM = 6;                     // 見やすい固定ズーム
-const CENTER_Y_OFFSET = -3.5;            // 画面上で点を少し上に見せる時のオフセット量（MapPageと揃え）
+const GRID_INTERVAL = 0.2;     // 罫線の間隔
+const GRID_EXTENT = 100;       // 罫線の描画範囲（±100）
+const VIEW_ZOOM = 6;           // 見やすい固定ズーム
+const CENTER_Y_OFFSET = -3.5;  // 画面上で点を少し上に見せる時のオフセット量（MapPageと揃え）
 const GRID_THIN_COL = [200, 200, 200, 100];
 const GRID_THICK_COL = [180, 180, 180, 120];
 
@@ -95,12 +95,15 @@ export default function SliderPage() {
   const offsetY = useMemo(() => (body - 50) * 0.6, [body]);
 
   // ====== DeckGL: ビューは固定（操作不可） ======
-  const viewState = useMemo(() => ({
-    target: [0, -0 - CENTER_Y_OFFSET, 0],
-    zoom: VIEW_ZOOM,
-    rotationX: 0,
-    rotationOrbit: 0,
-  }), []);
+  const viewState = useMemo(
+    () => ({
+      target: [0, 0 - CENTER_Y_OFFSET, 0], // 中央固定（Yだけ少し上に見せる）
+      zoom: VIEW_ZOOM,
+      rotationX: 0,
+      rotationOrbit: 0,
+    }),
+    []
+  );
 
   // 罫線データ（固定生成）
   const { thinLines, thickLines } = useMemo(() => {
@@ -175,6 +178,7 @@ export default function SliderPage() {
           viewState={viewState}
           controller={false} // ← 操作させない
           style={{ position: "absolute", inset: 0 }}
+          useDevicePixels
           layers={[
             new LineLayer({
               id: "dummy-grid-thin",
@@ -188,6 +192,11 @@ export default function SliderPage() {
               updateTriggers: {
                 getSourcePosition: [offsetX, offsetY],
                 getTargetPosition: [offsetX, offsetY],
+              },
+              // スライダーと連動してスムーズに
+              transitions: {
+                getSourcePosition: { duration: 260, easing: t => t * (2 - t) },
+                getTargetPosition: { duration: 260, easing: t => t * (2 - t) },
               },
             }),
             new LineLayer({
@@ -203,6 +212,10 @@ export default function SliderPage() {
                 getSourcePosition: [offsetX, offsetY],
                 getTargetPosition: [offsetX, offsetY],
               },
+              transitions: {
+                getSourcePosition: { duration: 260, easing: t => t * (2 - t) },
+                getTargetPosition: { duration: 260, easing: t => t * (2 - t) },
+              },
             }),
             compassLayer, // ← 中央固定のコンパス
           ]}
@@ -211,6 +224,43 @@ export default function SliderPage() {
 
       {/* ===== スライダーUI ===== */}
       <div style={{ flex: 1, padding: "16px 20px", overflowY: "auto" }}>
+        {/* スライダーCSS（●がバー中央） */}
+        <style>{`
+          .taste-slider{
+            appearance: none;
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: transparent;
+            margin-top: 8px;
+            outline: none;
+          }
+          .taste-slider::-webkit-slider-runnable-track{
+            height: 6px;
+            border-radius: 9999px;
+            background: var(--range, #e9e9e9);
+          }
+          .taste-slider::-moz-range-track{
+            height: 6px;
+            border-radius: 9999px;
+            background: var(--range, #e9e9e9);
+          }
+          .taste-slider::-webkit-slider-thumb{
+            -webkit-appearance: none;
+            width: 28px; height: 28px; border-radius: 50%;
+            background: #fff; border: 0;
+            box-shadow: 0 2px 6px rgba(0,0,0,.25);
+            margin-top: -11px;
+            cursor: pointer;
+          }
+          .taste-slider::-moz-range-thumb{
+            width: 28px; height: 28px; border-radius: 50%;
+            background: #fff; border: 0;
+            box-shadow: 0 2px 6px rgba(0,0,0,.25);
+            cursor: pointer;
+          }
+        `}</style>
+
         <h3 style={{ margin: 0, marginBottom: 12 }}>嗜好スライダー</h3>
 
         {/* 甘み */}

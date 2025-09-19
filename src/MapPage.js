@@ -107,9 +107,9 @@ function MapPage() {
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
 
   // UI
-  //const [isSliderOpen, setIsSliderOpen] = useState(false);
-  //const [sweetness, setSweetness] = useState(50);
-  //const [body, setBody] = useState(50);
+  const [isSliderOpen, setIsSliderOpen] = useState(false);
+  const [sweetness, setSweetness] = useState(50);
+  const [body, setBody] = useState(50);
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -1673,3 +1673,4 @@ function SliderPanel({
 }
 
 export default MapPage;
+
