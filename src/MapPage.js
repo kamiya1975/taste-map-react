@@ -123,7 +123,7 @@ function MapPage() {
   // スライダー（●）
   const openSliderExclusive = async () => {
     await closeUIsThen();     // ← ここを closeUIsThen に
-    navigate("/slider");
+    navigate("/slider", { state: { from: "map" } });
   };
 
   // 検索（🔍）

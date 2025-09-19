@@ -2,19 +2,19 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-// ===== 既存ユーティリティ群（そのまま） =====
+// ===== ユーティリティ =====
 const num = (v, def = 0) => { const n = Number(v); return Number.isFinite(n) ? n : def; };
 const median = (arr) => { if (!arr.length) return 0; const a=[...arr].sort((x,y)=>x-y); const m=Math.floor(a.length/2); return a.length%2?a[m]:(a[m-1]+a[m])/2; };
 const dist2 = (x1,y1,x2,y2)=>{const dx=x1-x2, dy=y1-y2; return dx*dx+dy*dy;};
 const centerGradient = (val) => {
-  const base = "#e9e9e9", active = "#b59678";
-  const v = Math.max(0, Math.min(100, Number(val)));
-  if (v === 50) return base;
-  const a = Math.min(50, v), b = Math.max(50, v);
+  const base="#e9e9e9", active="#b59678";
+  const v=Math.max(0,Math.min(100,Number(val)));
+  if(v===50) return base;
+  const a=Math.min(50,v), b=Math.max(50,v);
   return `linear-gradient(to right, ${base} 0%, ${base} ${a}%, ${active} ${a}%, ${active} ${b}%, ${base} ${b}%, ${base} 100%)`;
 };
 
-// 3x3 逆行列系（既存）
+// 3x3 逆行列系
 function invert3x3(M){const [[a,b,c],[d,e,f],[g,h,i]]=M;const A=e*i-f*h,B=-(d*i-f*g),C=d*h-e*g;const D=-(b*i-c*h),E=a*i-c*g,F=-(a*h-b*g);const G=b*f-c*e,H=-(a*f-c*d),I=a*e-b*d;const det=a*A+b*B+c*C;if(Math.abs(det)<1e-12)return null;const s=1/det;return[[A*s,D*s,G*s],[B*s,E*s,H*s],[C*s,F*s,I*s]];}
 function mulMatVec(M,v){return[M[0][0]*v[0]+M[0][1]*v[1]+M[0][2]*v[2],M[1][0]*v[0]+M[1][1]*v[1]+M[1][2]*v[2],M[2][0]*v[0]+M[2][1]*v[1]+M[2][2]*v[2]];}
 function fitLocalAffineAndPredict(px,py,neigh){
@@ -30,40 +30,39 @@ function fitLocalAffineAndPredict(px,py,neigh){
   return[a1[0]*px+a1[1]*py+a1[2],a2[0]*px+a2[1]*py+a2[2]];
 }
 
-// ===== ここから本件の“動くダミーマップ”実装 =====
-const GRID_STEP_PX = 30;           // 罫線の間隔（px）
-const GRID_LINE_PX = 1;            // 罫線の太さ（px）
-const MOVE_PER_UNIT_PX = 3.0;      // スライダー1目盛りあたりの移動量（px）
-const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`; // 画像パス
-
-// ← コンパスの大きさ（%）。小さくしたいぶん下げてください（例: 26）
-const COMPASS_SIZE_PCT = 20;
+// ===== ダミーマップ設定 =====
+const GRID_STEP_PX = 30;           // 罫線間隔
+const GRID_LINE_PX = 1;            // 罫線太さ
+const MOVE_PER_UNIT_PX = 3.0;      // 1ステップの移動量
+const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
+const COMPASS_SIZE_PCT = 20;       // コンパスサイズ(%)
 
 export default function SliderPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedStore = location.state?.selectedStore;
 
+  // 店舗チェック（Mapから来たらスキップ）
   useEffect(() => {
-    if (!selectedStore) {
-      const saved = localStorage.getItem("selectedStore");
-      if (!saved) navigate("/store", { replace: true });
+    const saved = localStorage.getItem("selectedStore");
+    const cameFromMap = location.state?.from === "map";
+    if (!selectedStore && !saved && !cameFromMap) {
+      navigate("/store", { replace: true });
     }
-  }, [selectedStore, navigate]);
+  }, [selectedStore, navigate, location.state]);
 
-  // UI 状態
+  // ---- UI状態（Hookはreturnより前！）----
   const [sweetness, setSweetness] = useState(50);
   const [body, setBody] = useState(50);
 
-  // ダミーマップの背景位置（スライダー → 背景オフセット）
-  // 甘味を右に: 罫線は左へ（= 背景Xを“負方向”へ）、ボディを右に: 罫線は下へ（= 背景Yを“正方向”へ）
+  // 背景のオフセット（甘み→左へ、ボディ→下へ）
   const bgOffset = useMemo(() => {
-    const dx = -(sweetness - 50) * MOVE_PER_UNIT_PX; // CSSのbackground-position-x（px）
-    const dy =  (body      - 50) * MOVE_PER_UNIT_PX; // CSSのbackground-position-y（px）
+    const dx = -(sweetness - 50) * MOVE_PER_UNIT_PX;
+    const dy =  (body      - 50) * MOVE_PER_UNIT_PX;
     return { dx, dy };
   }, [sweetness, body]);
 
-  // ===== 既存：データ読込み（PCA/UMAP）＆写像 =====
+  // データ読込（既存ロジック）
   const [rows, setRows] = useState([]);
   const [blendF, setBlendF] = useState(null);
   const [pcMinMax, setPcMinMax] = useState(null);
@@ -73,16 +72,15 @@ export default function SliderPage() {
     fetch(url)
       .then((r)=>{ if(!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((data)=>{
-        const cleaned = (data||[]).map(d=>({
+        const cleaned=(data||[]).map(d=>({
           JAN:String(d.JAN??""), PC1:num(d.PC1), PC2:num(d.PC2),
           UMAP1:num(d.UMAP1), UMAP2:num(d.UMAP2)
         })).filter(r=>Number.isFinite(r.PC1)&&Number.isFinite(r.PC2)&&Number.isFinite(r.UMAP1)&&Number.isFinite(r.UMAP2));
         setRows(cleaned);
-        const b = cleaned.find(d=>d.JAN==="blendF");
-        if (b) setBlendF({PC1:b.PC1, PC2:b.PC2});
-        else setBlendF({PC1:median(cleaned.map(r=>r.PC1)), PC2:median(cleaned.map(r=>r.PC2))});
+        const b=cleaned.find(d=>d.JAN==="blendF");
+        setBlendF(b?{PC1:b.PC1,PC2:b.PC2}:{PC1:median(cleaned.map(r=>r.PC1)),PC2:median(cleaned.map(r=>r.PC2))});
         const pc1s=cleaned.map(r=>r.PC1), pc2s=cleaned.map(r=>r.PC2);
-        setPcMinMax({minPC1:Math.min(...pc1s), maxPC1:Math.max(...pc1s), minPC2:Math.min(...pc2s), maxPC2:Math.max(...pc2s)});
+        setPcMinMax({minPC1:Math.min(...pc1s),maxPC1:Math.max(...pc1s),minPC2:Math.min(...pc2s),maxPC2:Math.max(...pc2s)});
       })
       .catch(e=>console.error("load failed:", e));
   }, []);
@@ -90,63 +88,59 @@ export default function SliderPage() {
   const pca2umap = (px,py,k=20)=>{
     if(!rows.length) return [0,0];
     const eps=1e-6;
-    const neigh = rows.map(d=>{const d2=dist2(px,py,d.PC1,d.PC2); return {...d,d2,w:1/(d2+eps)};})
-                      .sort((a,b)=>a.d2-b.d2).slice(0,Math.min(k,rows.length));
+    const neigh=rows.map(d=>{const d2=dist2(px,py,d.PC1,d.PC2);return {...d,d2,w:1/(d2+eps)};})
+                    .sort((a,b)=>a.d2-b.d2).slice(0,Math.min(k,rows.length));
     return fitLocalAffineAndPredict(px,py,neigh);
   };
 
   const handleGenerate = () => {
     if (!blendF || !pcMinMax || !rows.length) return;
     const {minPC1,maxPC1,minPC2,maxPC2}=pcMinMax;
-
-    // 0-100(中央50) → PC空間へ線形補間
     const pc1Value = body<=50
       ? blendF.PC1 - ((50-body)/50)*(blendF.PC1 - minPC1)
       : blendF.PC1 + ((body-50)/50)*(maxPC1 - blendF.PC1);
-
     const pc2Value = sweetness<=50
       ? blendF.PC2 - ((50-sweetness)/50)*(blendF.PC2 - minPC2)
       : blendF.PC2 + ((sweetness-50)/50)*(maxPC2 - blendF.PC2);
-
     const [umapX, umapY] = pca2umap(pc1Value, pc2Value);
     localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: [umapX, umapY], version: 2 }));
     sessionStorage.setItem("tm_autopen_nearest", "1");
     navigate("/map", { state: { centerOnUserPin: true } });
   };
 
+  // ===== JSX（returnはここだけ）=====
   return (
     <div
       style={{
-        padding: 16, fontFamily: "sans-serif", background: "#fff",
-        minHeight: "100vh", boxSizing: "border-box", maxWidth: 720, margin: "0 auto",
+        padding:16, fontFamily:"sans-serif", background:"#fff",
+        minHeight:"100vh", boxSizing:"border-box", maxWidth:720, margin:"0 auto",
       }}
     >
       {/* ヘッダー */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
-                    marginBottom: 12, borderBottom: "1px solid #eee", paddingBottom: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>嗜好スライダー</h2>
-        <button onClick={()=>navigate(-1)}
-          style={{ background:"#eee", border:"1px solid #ccc", borderRadius:6, fontSize:13, padding:"6px 10px", cursor:"pointer" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+        marginBottom:12, borderBottom:"1px solid #eee", paddingBottom:8 }}>
+        <h2 style={{ margin:0, fontSize:18 }}>嗜好スライダー</h2>
+        {/* 必ず /map に戻す */}
+        <button
+          onClick={() => navigate("/map", { replace: true })}
+          style={{ background:"#eee", border:"1px solid #ccc", borderRadius:6, fontSize:13, padding:"6px 10px", cursor:"pointer" }}
+        >
           閉じる
         </button>
       </div>
 
-      {/* ===== ダミーマップ（中央にコンパス固定／背景罫線のみ移動） ===== */}
+      {/* ダミーマップ */}
       <div
         aria-label="taste-map-dummy"
         style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: 640,
-          aspectRatio: "1 / 1",
-          margin: "0 auto 16px auto",
-          // ★ 縁をなくす
-          border: "none",
-          // 打点マップと同じにするなら角丸も消す
-          borderRadius: 0,
-          overflow: "hidden",
-
-          // 罫線は定数 GRID_STEP_PX / GRID_LINE_PX を使用
+          position:"relative",
+          width:"100%",
+          maxWidth:640,
+          aspectRatio:"1 / 1",
+          margin:"0 auto 16px auto",
+          border:"none",
+          borderRadius:0,
+          overflow:"hidden",
           backgroundImage: `
             repeating-linear-gradient(0deg,
               rgba(0,0,0,0.10) 0px,
@@ -161,31 +155,32 @@ export default function SliderPage() {
               transparent ${GRID_STEP_PX}px
             )
           `,
-           backgroundPosition: `${bgOffset.dx}px ${bgOffset.dy}px, ${bgOffset.dx}px ${bgOffset.dy}px`,
-           backgroundSize: `${GRID_STEP_PX}px ${GRID_STEP_PX}px, ${GRID_STEP_PX}px ${GRID_STEP_PX}px`,
-           transition: "background-position 120ms linear",
+          backgroundPosition: `${bgOffset.dx}px ${bgOffset.dy}px, ${bgOffset.dx}px ${bgOffset.dy}px`,
+          backgroundSize: `${GRID_STEP_PX}px ${GRID_STEP_PX}px, ${GRID_STEP_PX}px ${GRID_STEP_PX}px`,
+          transition:"background-position 120ms linear",
         }}
       >
-        {/* ★ コンパスのサイズを%指定で統一 */}
+        {/* コンパス（中央固定） */}
         <img
           src={COMPASS_URL}
           alt="compass"
           draggable={false}
           style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            width: `${COMPASS_SIZE_PCT}%`,   // ← ここだけ
-            height: "auto",
-            transform: "translate(-50%, -50%)",
-            pointerEvents: "none",
-            userSelect: "none",
-            opacity: 0.9,
-            filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.25))",
+            position:"absolute",
+            left:"50%",
+            top:"50%",
+            width:`${COMPASS_SIZE_PCT}%`,
+            height:"auto",
+            transform:"translate(-50%, -50%)",
+            pointerEvents:"none",
+            userSelect:"none",
+            opacity:0.9,
+            filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.25))",
           }}
         />
       </div>
-      {/* スライダー CSS（つまみ&中央グラデ） */}
+
+      {/* スライダーCSS */}
       <style>{`
         .taste-slider{ appearance:none; -webkit-appearance:none; width:100%; height:6px; background:transparent; margin-top:8px; outline:none; }
         .taste-slider::-webkit-slider-runnable-track{ height:6px; border-radius:9999px; background:var(--range,#e9e9e9); }
@@ -195,23 +190,27 @@ export default function SliderPage() {
       `}</style>
 
       {/* 甘み */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom:20 }}>
         <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:6 }}>
           <span>← こんなに甘みは不要</span><span>もっと甘みが欲しい →</span>
         </div>
-        <input type="range" min="0" max="100" value={sweetness}
+        <input
+          type="range" min="0" max="100" value={sweetness}
           onChange={(e)=>setSweetness(Number(e.target.value))}
-          className="taste-slider" style={{ "--range": centerGradient(sweetness) }} />
+          className="taste-slider" style={{ "--range": centerGradient(sweetness) }}
+        />
       </div>
 
       {/* コク（ボディ） */}
-      <div style={{ marginBottom: 22 }}>
+      <div style={{ marginBottom:22 }}>
         <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:6 }}>
           <span>← もっと軽やかが良い</span><span>濃厚なコクが欲しい →</span>
         </div>
-        <input type="range" min="0" max="100" value={body}
+        <input
+          type="range" min="0" max="100" value={body}
           onChange={(e)=>setBody(Number(e.target.value))}
-          className="taste-slider" style={{ "--range": centerGradient(body) }} />
+          className="taste-slider" style={{ "--range": centerGradient(body) }}
+        />
       </div>
 
       {/* 生成ボタン */}
