@@ -31,10 +31,13 @@ function fitLocalAffineAndPredict(px,py,neigh){
 }
 
 // ===== ここから本件の“動くダミーマップ”実装 =====
-const GRID_STEP_PX = 36;           // 罫線の間隔（px）
+const GRID_STEP_PX = 30;           // 罫線の間隔（px）
 const GRID_LINE_PX = 1;            // 罫線の太さ（px）
 const MOVE_PER_UNIT_PX = 3.0;      // スライダー1目盛りあたりの移動量（px）
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`; // 画像パス
+
+// ← コンパスの大きさ（%）。小さくしたいぶん下げてください（例: 26）
+const COMPASS_SIZE_PCT = 20;
 
 export default function SliderPage() {
   const navigate = useNavigate();
@@ -137,10 +140,13 @@ export default function SliderPage() {
           maxWidth: 640,
           aspectRatio: "1 / 1",
           margin: "0 auto 16px auto",
-          border: "1px solid #e5e5e5",
-          borderRadius: 12,
+          // ★ 縁をなくす
+          border: "none",
+          // 打点マップと同じにするなら角丸も消す
+          borderRadius: 0,
           overflow: "hidden",
-          // 2本のrepeating-linear-gradientで格子を描く
+
+          // 罫線は定数 GRID_STEP_PX / GRID_LINE_PX を使用
           backgroundImage: `
             repeating-linear-gradient(0deg,
               rgba(0,0,0,0.10) 0px,
@@ -155,13 +161,12 @@ export default function SliderPage() {
               transparent ${GRID_STEP_PX}px
             )
           `,
-          // スライダーで background-position を変化
-          backgroundPosition: `${bgOffset.dx}px ${bgOffset.dy}px, ${bgOffset.dx}px ${bgOffset.dy}px`,
-          backgroundSize: `${GRID_STEP_PX}px ${GRID_STEP_PX}px, ${GRID_STEP_PX}px ${GRID_STEP_PX}px`,
-          transition: "background-position 120ms linear", // ほどよくヌルっと
+           backgroundPosition: `${bgOffset.dx}px ${bgOffset.dy}px, ${bgOffset.dx}px ${bgOffset.dy}px`,
+           backgroundSize: `${GRID_STEP_PX}px ${GRID_STEP_PX}px, ${GRID_STEP_PX}px ${GRID_STEP_PX}px`,
+           transition: "background-position 120ms linear",
         }}
       >
-        {/* コンパス（常に中央固定） */}
+        {/* ★ コンパスのサイズを%指定で統一 */}
         <img
           src={COMPASS_URL}
           alt="compass"
@@ -170,7 +175,7 @@ export default function SliderPage() {
             position: "absolute",
             left: "50%",
             top: "50%",
-            width: "42%",
+            width: `${COMPASS_SIZE_PCT}%`,   // ← ここだけ
             height: "auto",
             transform: "translate(-50%, -50%)",
             pointerEvents: "none",
@@ -180,7 +185,6 @@ export default function SliderPage() {
           }}
         />
       </div>
-
       {/* スライダー CSS（つまみ&中央グラデ） */}
       <style>{`
         .taste-slider{ appearance:none; -webkit-appearance:none; width:100%; height:6px; background:transparent; margin-top:8px; outline:none; }
