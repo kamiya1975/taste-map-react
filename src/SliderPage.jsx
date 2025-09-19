@@ -1,11 +1,11 @@
 // src/SliderPage.jsx
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState,} from "react";
 import { useNavigate } from "react-router-dom";
 import useTasteData from "./hooks/useTasteData";
 import {
   computeMinMaxAndBlendF,
   interpFromSlider,
-} from "../utils/SliderMapping";
+} from "./utils/sliderMapping";
 
 export default function SliderPage() {
   const navigate = useNavigate();

@@ -63,9 +63,7 @@ export function makePcaToUmap(data, K = 15) {
       .sort((a, b) => a.d - b.d)
       .slice(0, Math.min(K, samples.length));
 
-    let sw = 0,
-      sx = 0,
-      sy = 0;
+    let sw = 0, sx = 0, sy = 0;
     const EPS = 1e-6;
     for (const { s, d } of neigh) {
       const w = 1 / (d + EPS);
@@ -76,4 +74,3 @@ export function makePcaToUmap(data, K = 15) {
     return sw > 0 ? [sx / sw, sy / sw] : [neigh[0].s.x, neigh[0].s.y];
   };
 }
-
