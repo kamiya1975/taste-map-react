@@ -377,7 +377,7 @@ function MapPage() {
         const nearest = findNearestWine(canvasCoord);
         if (nearest?.JAN) {
           setSelectedJAN(nearest.JAN);
-          setSelectedJANFromSearch(nearest.JAN); // ハイライト要らなければ null に
+          setSelectedJANFromSearch(null);
           setProductDrawerOpen(true);
           focusOnWine(nearest, { zoom: INITIAL_ZOOM });
         }
@@ -385,7 +385,7 @@ function MapPage() {
         console.error("auto-open-nearest failed:", e);
       }
     });
-  }, [location.key, userPin, data, is3D, focusOnWine]);
+  }, [location.key, userPin, data, is3D, focusOnWine, findNearestWine]);
 
   // ====== 共通：商品へフォーカス（毎回“初期ズーム”に戻す）
   const focusOnWine = useCallback(
@@ -494,7 +494,7 @@ function MapPage() {
   );
 
   // クリック座標から最近傍検索
-  const findNearestWine = (coord) => {
+  const findNearestWine = React.useCallback((coord) => {
     if (!coord || !Array.isArray(data) || data.length === 0) return null;
     const [cx, cy] = coord;
     let best = null, bestD2 = Infinity;
@@ -510,7 +510,7 @@ function MapPage() {
       }
     }
     return best;
-  };
+  }, [data, is3D]);
 
   // ====== レイヤー計算
   const { thinLines, thickLines } = useMemo(() => {
