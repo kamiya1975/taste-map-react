@@ -35,7 +35,7 @@ const GRID_STEP_PX = 30;           // 罫線間隔
 const GRID_LINE_PX = 1;            // 罫線太さ
 const MOVE_PER_UNIT_PX = 3.0;      // 1ステップの移動量
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
-const COMPASS_SIZE_PCT = 20;       // コンパスサイズ(%)
+const COMPASS_SIZE_PCT = 10;       // コンパスサイズ(%)
 
 export default function SliderPage() {
   const navigate = useNavigate();
@@ -119,7 +119,7 @@ export default function SliderPage() {
       {/* ヘッダー */}
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
         marginBottom:12, borderBottom:"1px solid #eee", paddingBottom:8 }}>
-        <h2 style={{ margin:0, fontSize:18 }}>嗜好スライダー</h2>
+        <h2 style={{ margin:0, fontSize:18 }}></h2>
         {/* 必ず /map に戻す */}
         <button
           onClick={() => navigate("/map", { replace: true })}
@@ -179,6 +179,18 @@ export default function SliderPage() {
           }}
         />
       </div>
+
+      {/* スライダー見出し */}
+      <p
+        style={{
+          fontWeight: 700,
+          fontSize: 16,
+          margin: "4px 0 12px",
+          textAlign: "center",
+        }}
+      >
+        基準のワインを飲んだ印象は？
+      </p>
 
       {/* スライダーCSS */}
       <style>{`
