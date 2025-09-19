@@ -721,7 +721,7 @@ function MapPage() {
     const [ux, uy] = compass.point;
     return new IconLayer({
       id: "preference-compass",
-      data: [{ position: [ux, is3D ? uy : -uy, 0] }],
+      data: [{ position: [ux, is3D ? -uy : -uy, 0] }], //ここ
       getPosition: (d) => d.position,
       getIcon: () => ({
         url: COMPASS_URL,
