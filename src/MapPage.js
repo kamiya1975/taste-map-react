@@ -107,15 +107,11 @@ function MapPage() {
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
 
   // UI
-  const [isSliderOpen, setIsSliderOpen] = useState(false);
-  const [sweetness, setSweetness] = useState(50);
-  const [body, setBody] = useState(50);
+  //const [isSliderOpen, setIsSliderOpen] = useState(false);
+  //const [sweetness, setSweetness] = useState(50);
+  //const [body, setBody] = useState(50);
   const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-  // スライダーで背景を動かすオフセット（deck.gl座標系の“マップ単位”）
-  const offsetX = useMemo(() => (50 - sweetness) * 0.1, [sweetness]); // 甘味:右→背景は左
-  const offsetY = useMemo(() => (body - 50) * 0.1, [body]);          // コク:右→背景は下
 
   // 表示モード
   const [sliderMarkerMode, setSliderMarkerMode] = useState("orange"); // 'orange' | 'compass'
@@ -536,7 +532,7 @@ function MapPage() {
       });
     }
     return { thinLines: thin, thickLines: thick };
-  }, [offsetX, offsetY]);
+  }, []);
 
   const cells = useMemo(() => {
     const map = new Map();
