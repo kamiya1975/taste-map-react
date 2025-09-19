@@ -94,43 +94,49 @@ function MapPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
 
+  // （推奨）先に宣言しておく
+  const [isRatingListOpen, setIsRatingListOpen] = useState(false);
+
   // === 排他オープンのためのユーティリティ ===
-  const PANEL_ANIM_MS = 320; // 閉じアニメ後に次を開く待ち時間
+  const PANEL_ANIM_MS = 320;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // いま開いているパネル（検索/お気に入り）を閉じて、アニメーション時間だけ待つ
-  const closePanelsThen = async () => {
-    const willClose = (isSearchOpen || isRatingListOpen);
-    if (isSearchOpen) setIsSearchOpen(false);
-    if (isRatingListOpen) setIsRatingListOpen(false);
+  /** 商品ドロワー／検索／お気に入り をまとめて閉じ、閉じアニメ分だけ待つ */
+  const closeUIsThen = async () => {
+    let willClose = false;
+
+    if (productDrawerOpen) {
+      setProductDrawerOpen(false);
+      setSelectedJAN(null);
+      setSelectedJANFromSearch(null); // ハイライトも消す
+      willClose = true;
+    }
+    if (isSearchOpen) { setIsSearchOpen(false); willClose = true; }
+    if (isRatingListOpen) { setIsRatingListOpen(false); willClose = true; }
+
     if (willClose) await wait(PANEL_ANIM_MS);
   };
 
+  // ★ closePanelsThen は削除してOK
+
   // スライダー（●）
   const openSliderExclusive = async () => {
-    await closePanelsThen();     // ← 閉じ終わるまで待つ
-    navigate("/slider");         // 待ち終えてから遷移
+    await closeUIsThen();     // ← ここを closeUIsThen に
+    navigate("/slider");
   };
 
   // 検索（🔍）
   const openSearchExclusive = async () => {
-    if (isSearchOpen) {
-      setIsSearchOpen(false); // すでに開いている場合は閉じるだけ
-      return;
-    }
-    await closePanelsThen();     // 他を閉じてから
-    setIsSearchOpen(true);       // 検索を開く
+    if (isSearchOpen) { setIsSearchOpen(false); return; }
+    await closeUIsThen();
+    setIsSearchOpen(true);
   };
 
   // お気に入り（♡）
-  const [isRatingListOpen, setIsRatingListOpen] = useState(false);
   const openFavoriteExclusive = async () => {
-    if (isRatingListOpen) {
-      setIsRatingListOpen(false); // すでに開いている場合は閉じるだけ
-      return;
-    }
-    await closePanelsThen();      // 他を閉じてから
-    setIsRatingListOpen(true);    // お気に入りを開く
+    if (isRatingListOpen) { setIsRatingListOpen(false); return; }
+    await closeUIsThen();
+    setIsRatingListOpen(true);
   };
 
   // ====== パン境界（現在データに基づく）
