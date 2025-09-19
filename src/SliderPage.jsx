@@ -265,14 +265,18 @@ export default function SliderPage() {
       <button
         onClick={handleGenerate}
         style={{
-          width: "100%",
+          width: "80%",
+          maxWidth: 420,
+          margin: "0 auto",
           padding: "16px 18px",
           background: "#f5e9dd",
+          color: "#000",
           border: "none",
           borderRadius: 10,
           fontSize: 16,
           fontWeight: 700,
           cursor: "pointer",
+          display: "block",
         }}
         disabled={!blendF || !pcMinMax || !rows.length}
       >
