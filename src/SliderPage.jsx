@@ -76,10 +76,18 @@ function fitLocalAffineAndPredict(px, py, neigh) {
     const location = useLocation();
     const selectedStore = location.state?.selectedStore;
 
-    // ストア未選択なら /store に戻す
     useEffect(() => {
-      if (!selectedStore) navigate("/store", { replace: true });
-    }, [selectedStore, navigate]);
+    if (!selectedStore) {
+      const saved = localStorage.getItem("selectedStore");
+      if (!saved) {
+        // ほんとに何も無ければストアへ
+        navigate("/store", { replace: true });
+      } else {
+        // 必要ならここでパースして state に載せ直す処理を追加してOK
+        // ただし必須ではない（現在のコードでは selectedStore を後続で使ってない）
+      }
+    }
+  }, [selectedStore, navigate]);
 
   // UI 状態
   const [sweetness, setSweetness] = useState(50);

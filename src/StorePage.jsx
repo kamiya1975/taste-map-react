@@ -107,6 +107,7 @@ export default function StorePage() {
   const formatKm = (d) => (Number.isFinite(d) ? `${d.toFixed(1)}km` : "—");
 
   const handleStoreSelect = (store) => {
+    localStorage.setItem("selectedStore", JSON.stringify(store));
     navigate("/slider", { state: { selectedStore: store } });
   };
 
