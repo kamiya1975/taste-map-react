@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 const mockStores = [
@@ -37,9 +37,20 @@ export default function StorePage() {
   const [tab, setTab] = useState("list");           // ← まず一覧。距離計算後に "nearby" へ
   const [expanded, setExpanded] = useState(null);
   const [sortedStores, setSortedStores] = useState(mockStores);
+  const askedRef = useRef(false); // StrictMode/再マウント対策
+  const VIS_KEY = "tm_geo_prompted_once"; // セッション中は一回だけ
 
   useEffect(() => {
-    const askForLocation = () => {
+    // Store ページが“実際に表示状態”のときだけ実行
+    const runAsk = () => {
+      if (askedRef.current) return;                 // 既に実行済み（StrictMode対策）
+      if (sessionStorage.getItem(VIS_KEY) === "1") { // 同一セッションで一度だけ
+        setTab("list");
+        return;
+      }
+      askedRef.current = true;
+      sessionStorage.setItem(VIS_KEY, "1");
+
       if (!("geolocation" in navigator)) {
         setTab("list");
         return;
@@ -78,7 +89,19 @@ export default function StorePage() {
         { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
       );
     };
-    askForLocation();
+
+    // ページが “見えている” ときにだけ発火。見えてなければ可視化を待つ
+    const onVisible = () => {
+      if (document.visibilityState === "visible") runAsk();
+    };
+    if (document.visibilityState === "visible") {
+      runAsk();
+    } else {
+      document.addEventListener("visibilitychange", onVisible, { once: true });
+    }
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const formatKm = (d) => (Number.isFinite(d) ? `${d.toFixed(1)}km` : "—");
