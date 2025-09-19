@@ -13,7 +13,7 @@ import {
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { computeMinMaxAndBlendF, interpFromSlider, makePcaToUmap } from "../utils/sliderMapping";
+import { computeMinMaxAndBlendF, interpFromSlider, makePcaToUmap } from "./utils/sliderMapping";
 
 // 共通UI
 import SearchPanel from "./components/SearchPanel";
@@ -936,7 +936,33 @@ function MapPage() {
         </select>
       )}
 
-      {/* 右サイドの丸ボタン群（スライダーは削除。♡ と 🔍 のみ） */}
+      {/* 右サイドの丸ボタン群*/}
+      {!is3D && (
+        <button
+          onClick={() => { openSliderExclusive(); }}
+          style={{
+            position: "absolute",
+            top: "70px",
+            right: "10px",
+            zIndex: 10,
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: "#eee",
+            border: "1px solid #ccc",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: "bold",
+            fontSize: "20px",
+          }}
+          aria-label="嗜好スライダー"
+        >
+          ●
+        </button>
+      )}
+
       {!is3D && (
         <button
           onClick={() => { openFavoriteExclusive(); }}
