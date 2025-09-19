@@ -13,7 +13,7 @@ import {
 import Drawer from "@mui/material/Drawer";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { computeMinMaxAndBlendF, interpFromSlider, makePcaToUmap } from "src/utils/sliderMapping";
+import { computeMinMaxAndBlendF, interpFromSlider, makePcaToUmap } from "./utils/sliderMapping';
 
 // 共通UI
 import SearchPanel from "./components/SearchPanel";

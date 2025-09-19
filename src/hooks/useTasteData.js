@@ -1,6 +1,6 @@
 // src/hooks/useTasteData.js
 import { useEffect, useState } from "react";
-import { num } from "src/utils/sliderMapping";
+import { num } from "../utils/sliderMapping';
 
 export default function useTasteData() {
   const [rows, setRows] = useState([]);
