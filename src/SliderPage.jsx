@@ -36,7 +36,7 @@ function fitLocalAffineAndPredict(px,py,neigh){
    ダミーマップ設定（Map と同等の罫線）
 ======================= */
 // 罫線ピッチ（DeckGLの cellSize に見た目を合わせる値。必要に応じ調整）
-const GRID_STEP_PX = 12;
+const GRID_STEP_PX = 15;
 // 薄線・太線の太さ（px）
 const THIN_W_PX = 1;
 const THICK_W_PX = 1.5;
@@ -142,7 +142,7 @@ export default function SliderPage() {
         display:"flex", justifyContent:"space-between", alignItems:"center",
         marginBottom:12, borderBottom:"1px solid #eee", paddingBottom:8
       }}>
-        <h2 style={{ margin:0, fontSize:18 }}>嗜好スライダー</h2>
+        <h2 style={{ margin:0, fontSize:18 }}></h2>
         {/* 必ず /map に戻す */}
         <button
           onClick={() => navigate("/map", { replace: true })}
@@ -160,7 +160,8 @@ export default function SliderPage() {
           width:"100%",
           maxWidth:640,
           aspectRatio:"1 / 1",
-          margin:"0 auto 16px auto",
+          margin: "0 calc(50% - 50svw) 16px",
+          aspectRatio: "1 / 1",
           border:"none",
           borderRadius:0,
           overflow:"hidden",
@@ -168,55 +169,26 @@ export default function SliderPage() {
           /* ▼ MapPage の thin/thick を縦横2層ずつ = 4レイヤーで再現 */
           backgroundImage: `
             /* 横：薄い線（水平） */
-            repeating-linear-gradient(
-              0deg,
-              ${THIN_RGBA} 0px,
-              ${THIN_RGBA} ${THIN_W_PX}px,
-              transparent  ${THIN_W_PX}px,
-              transparent  ${GRID_STEP_PX}px
+            repeating-linear-gradient(0deg,
+              rgba(0,0,0,0.10) 0px,
+              rgba(0,0,0,0.10) ${GRID_LINE_PX}px,
+              transparent ${GRID_LINE_PX}px,
+              transparent ${GRID_STEP_PX}px
             ),
             /* 縦：薄い線（垂直） */
-            repeating-linear-gradient(
-              90deg,
-              ${THIN_RGBA} 0px,
-              ${THIN_RGBA} ${THIN_W_PX}px,
-              transparent  ${THIN_W_PX}px,
-              transparent  ${GRID_STEP_PX}px
-            ),
-            /* 横：5本ごとの太線（水平） */
-            repeating-linear-gradient(
-              0deg,
-              ${THICK_RGBA} 0px,
-              ${THICK_RGBA} ${THICK_W_PX}px,
-              transparent  ${THICK_W_PX}px,
-              transparent  ${GRID_STEP_PX * THICK_EVERY}px
-            ),
-            /* 縦：5本ごとの太線（垂直） */
-            repeating-linear-gradient(
-              90deg,
-              ${THICK_RGBA} 0px,
-              ${THICK_RGBA} ${THICK_W_PX}px,
-              transparent  ${THICK_W_PX}px,
-              transparent  ${GRID_STEP_PX * THICK_EVERY}px
+            repeating-linear-gradient(90deg,
+              rgba(0,0,0,0.10) 0px,
+              rgba(0,0,0,0.10) ${GRID_LINE_PX}px,
+              transparent ${GRID_LINE_PX}px,
+              transparent ${GRID_STEP_PX}px
             )
           `,
-          /* 4レイヤーを同じオフセットで動かす（甘み→左／ボディ→下） */
-          backgroundPosition: `
-            ${bgOffset.dx}px ${bgOffset.dy}px,
-            ${bgOffset.dx}px ${bgOffset.dy}px,
-            ${bgOffset.dx}px ${bgOffset.dy}px,
-            ${bgOffset.dx}px ${bgOffset.dy}px
-          `,
-          /* ピッチ指定（太線は5倍ピッチ） */
-          backgroundSize: `
-            ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
-            ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
-            ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
-            ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
-          `,
-          transition:"background-position 120ms linear",
-        }}
-      >
+            backgroundPosition: `${bgOffset.dx}px ${bgOffset.dy}px, ${bgOffset.dx}px ${bgOffset.dy}px`,
+            backgroundSize: `${GRID_STEP_PX}px ${GRID_STEP_PX}px, ${GRID_STEP_PX}px ${GRID_STEP_PX}px`,
+            transition: "background-position 120ms linear",
+          }}
+        >
+
         {/* コンパス（中央固定） */}
         <img
           src={COMPASS_URL}
