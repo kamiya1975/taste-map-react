@@ -1,4 +1,6 @@
 // src/SliderPage.js
+import useTasteData from "./hooks/useTasteData";
+import { computeMinMaxAndBlendF, interpFromSlider, makePcaToUmap } from "src/utils/sliderMapping";
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useTasteData from "./hooks/useTasteData";
