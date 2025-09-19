@@ -40,6 +40,8 @@ const GRID_STEP_PX = 15;
 // 薄線・太線の太さ（px）
 const THIN_W_PX = 1;
 const THICK_W_PX = 1.5;
+// ★追加：既存CSSが参照している名前に合わせて alias
+const GRID_LINE_PX = THIN_W_PX;
 // 何本ごとに太線にするか（MapPageは 5）
 const THICK_EVERY = 5;
 // 線色（MapPage の [r,g,b,a] に近似）
