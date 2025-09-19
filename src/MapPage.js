@@ -65,6 +65,9 @@ function MapPage() {
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
 
+  // スライダーから戻った直後の「一度だけ自動オープン」ガード
+  const autoOpenOnceRef = useRef(false);
+
   // スキャナの開閉（都度起動・都度破棄）
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const lastCommittedRef = useRef({ code: "", at: 0 });   // 直近採用JAN（60秒ガード）
@@ -350,6 +353,28 @@ function MapPage() {
       } catch {}
     }
   }, [userPin, is3D, location.state]);
+
+  // スライダー遷移直後：オレンジ打点の最寄り商品を自動で開く
+  useEffect(() => {
+    // スライダーからの遷移（centerOnUserPin フラグ）で、まだ未実行のときだけ
+    const fromSlider = !!location.state?.centerOnUserPin;
+    if (!fromSlider || autoOpenOnceRef.current) return;
+    if (!userPin || !data.length) return;
+
+    autoOpenOnceRef.current = true;           // 二重実行防止
+    setIsSearchOpen(false);                   // 他パネルは閉じる
+    setIsRatingListOpen(false);
+
+    // 現在の表示系（2D/3D）に合わせたキャンバス座標で最近傍を探す
+    const canvasCoord = [userPin[0], is3D ? userPin[1] : -userPin[1]];
+    const nearest = findNearestWine(canvasCoord);
+    if (nearest?.JAN) {
+      setSelectedJAN(nearest.JAN);
+      setSelectedJANFromSearch(nearest.JAN);  // ハイライトしたい場合
+      setProductDrawerOpen(true);
+      focusOnWine(nearest, { zoom: INITIAL_ZOOM });
+    }
+  }, [location.state, userPin, data, is3D, focusOnWine]);
 
   // ====== 共通：商品へフォーカス（毎回“初期ズーム”に戻す）
   const focusOnWine = useCallback(
