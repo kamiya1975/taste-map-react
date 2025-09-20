@@ -97,14 +97,15 @@ function MapPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
 
-  // （推奨）先に宣言しておく
-  const [isRatingListOpen, setIsRatingListOpen] = useState(false);
+  // NEW: 一覧の排他表示制御（♡ と ◎）
+  const [isFavoriteOpen, setIsFavoriteOpen] = useState(false);
+  const [isRatedOpen, setIsRatedOpen] = useState(false);
 
   // === 排他オープンのためのユーティリティ ===
   const PANEL_ANIM_MS = 320;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  /** 商品ドロワー／検索／お気に入り をまとめて閉じ、閉じアニメ分だけ待つ */
+  /** 商品ドロワー／検索／お気に入り／評価 をまとめて閉じ、閉じアニメ分だけ待つ */
   const closeUIsThen = async () => {
     let willClose = false;
 
@@ -115,7 +116,8 @@ function MapPage() {
       willClose = true;
     }
     if (isSearchOpen) { setIsSearchOpen(false); willClose = true; }
-    if (isRatingListOpen) { setIsRatingListOpen(false); willClose = true; }
+    if (isFavoriteOpen) { setIsFavoriteOpen(false); willClose = true; }
+    if (isRatedOpen) { setIsRatedOpen(false); willClose = true; }
 
     if (willClose) await wait(PANEL_ANIM_MS);
   };
@@ -135,9 +137,16 @@ function MapPage() {
 
   // お気に入り（♡）
   const openFavoriteExclusive = async () => {
-    if (isRatingListOpen) { setIsRatingListOpen(false); return; }
+    if (isFavoriteOpen) { setIsFavoriteOpen(false); return; }
     await closeUIsThen();
-    setIsRatingListOpen(true);
+    setIsFavoriteOpen(true);
+  };
+
+  // NEW: 評価（◎）
+  const openRatedExclusive = async () => {
+    if (isRatedOpen) { setIsRatedOpen(false); return; }
+    await closeUIsThen();
+    setIsRatedOpen(true);
   };
 
   // ====== パン境界（現在データに基づく）
@@ -415,7 +424,8 @@ function MapPage() {
     sessionStorage.removeItem("tm_autopen_nearest");
 
     setIsSearchOpen(false);
-    setIsRatingListOpen(false);
+    setIsFavoriteOpen(false);
+    setIsRatedOpen(false);
 
     requestAnimationFrame(() => {
       try {
@@ -487,8 +497,13 @@ function MapPage() {
     const onMsg = (e) => {
       const { type, jan, payload } = e.data || {};
       if (!type) return;
-      if (type === "TOGGLE_FAVORITE" && jan) toggleFavorite(String(jan));
+
+      if (type === "TOGGLE_FAVORITE" && jan) {
+        toggleFavorite(String(jan));
+      }
+
       if (type === "RATING_UPDATED" && jan) {
+        // ★ ここで「評価」を userRatings にのみ反映する（♡は操作しない）
         setUserRatings((prev) => {
           const next = { ...prev };
           if (!payload || !payload.rating) delete next[jan];
@@ -496,33 +511,6 @@ function MapPage() {
           localStorage.setItem("userRatings", JSON.stringify(next));
           return next;
         });
-
-        const rating = Number(payload?.rating) || 0;
-        const willFav = rating > 0;
-
-        setFavorites((prev) => {
-          const next = { ...prev };
-          if (willFav) {
-            if (!next[jan]) next[jan] = { addedAt: new Date().toISOString() };
-          } else {
-            delete next[jan];
-          }
-          return next;
-        });
-
-        try {
-          const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
-          if (willFav) {
-            if (!favs[jan]) favs[jan] = { addedAt: new Date().toISOString() };
-          } else {
-            delete favs[jan];
-          }
-          localStorage.setItem("favorites", JSON.stringify(favs));
-        } catch {}
-
-        try {
-          sendFavoriteToChild(jan, willFav);
-        } catch {}
       }
     };
     window.addEventListener("message", onMsg);
@@ -1051,7 +1039,7 @@ function MapPage() {
         </button>
       )}
 
-      {/* 右サイドの丸ボタン群（♡ と 🔍） */}
+      {/* 右サイドの丸ボタン群（♡ → ◎ → 🔍） */}
       {!is3D && (
         <button
           onClick={openFavoriteExclusive}
@@ -1080,10 +1068,37 @@ function MapPage() {
 
       {!is3D && (
         <button
+          onClick={openRatedExclusive}
+          style={{
+            position: "absolute",
+            top: "170px", // ♡の下、🔍の上
+            right: "10px",
+            zIndex: 10,
+            width: "40px",
+            height: "40px",
+            borderRadius: "50%",
+            background: "#eee",
+            border: "1px solid #ccc",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: "bold",
+            fontSize: "18px",
+          }}
+          aria-label="評価一覧"
+          title="評価（◎）一覧"
+        >
+          ◎
+        </button>
+      )}
+
+      {!is3D && (
+        <button
           onClick={openSearchExclusive}
           style={{
             position: "absolute",
-            top: "170px",
+            top: "220px", // ◎の下
             right: "10px",
             zIndex: 10,
             width: "40px",
@@ -1185,9 +1200,26 @@ function MapPage() {
 
       {/* お気に入り（下から 60vh） */}
       <FavoritePanel
-        isOpen={isRatingListOpen}
-        onClose={() => { setIsRatingListOpen(false); }}
+        isOpen={isFavoriteOpen}
+        onClose={() => { setIsFavoriteOpen(false); }}
         favorites={favorites}
+        data={data}
+        onSelectJAN={(jan) => {
+          setSelectedJANFromSearch(String(jan));
+          setSelectedJAN(jan);
+          const item = data.find((d) => String(d.JAN) === String(jan));
+          if (item) {
+            focusOnWine(item, { zoom: INITIAL_ZOOM });
+          }
+          setProductDrawerOpen(true);
+        }}
+      />
+
+      {/* NEW: 評価（◎）一覧パネル */}
+      <RatedPanel
+        isOpen={isRatedOpen}
+        onClose={() => { setIsRatedOpen(false); }}
+        userRatings={userRatings}
         data={data}
         onSelectJAN={(jan) => {
           setSelectedJANFromSearch(String(jan));
@@ -1263,7 +1295,7 @@ function MapPage() {
   );
 } // MapPage end
 
-// === お気に入り一覧パネル ===
+// === お気に入り一覧パネル（♡） ===
 function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
   const list = React.useMemo(() => {
     const arr = Object.entries(favorites || {})
@@ -1314,7 +1346,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
               alignItems: "center",
             }}
           >
-            <h3 style={{ margin: 0 }}>お気に入り</h3>
+            <h3 style={{ margin: 0 }}>お気に入り（♡）</h3>
             <button
               onClick={onClose}
               style={{
@@ -1382,6 +1414,148 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
               ))}
               {list.length === 0 && (
                 <li style={{ color: "#666" }}>まだお気に入りはありません。</li>
+              )}
+            </ul>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// === NEW: 評価一覧パネル（◎） ===
+function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
+  const list = React.useMemo(() => {
+    // userRatings = { JAN: { rating, date, weather } }
+    const arr = Object.entries(userRatings || {})
+      .map(([jan, meta]) => {
+        const item = (data || []).find((d) => String(d.JAN) === String(jan));
+        if (!item) return null;
+        const rating = Number(meta?.rating) || 0;
+        if (rating <= 0) return null;
+        return {
+          ...item,
+          ratedAt: meta?.date ?? null,
+          rating,
+        };
+      })
+      .filter(Boolean);
+
+    // 直近評価順（降順）
+    arr.sort((a, b) => new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
+    return arr.map((x, i) => ({ ...x, displayIndex: arr.length - i }));
+  }, [userRatings, data]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", stiffness: 200, damping: 25 }}
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: DRAWER_HEIGHT,
+            backgroundColor: "#fff",
+            boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
+            zIndex: 20,
+            borderTopLeftRadius: "12px",
+            borderTopRightRadius: "12px",
+            display: "flex",
+            flexDirection: "column",
+            fontFamily:
+              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            pointerEvents: "auto",
+          }}
+        >
+          <div
+            style={{
+              padding: "12px 16px",
+              borderBottom: "1px solid #ddd",
+              background: "#f9f9f9",
+              flexShrink: 0,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h3 style={{ margin: 0 }}>評価（◎）</h3>
+            <button
+              onClick={onClose}
+              style={{
+                background: "#eee",
+                border: "1px solid #ccc",
+                padding: "6px 10px",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              閉じる
+            </button>
+          </div>
+
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: "12px 16px",
+              backgroundColor: "#fff",
+            }}
+          >
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {list.map((item, idx) => (
+                <li
+                  key={`${item.JAN}-${idx}`}
+                  onClick={() => onSelectJAN?.(item.JAN)}
+                  style={{
+                    padding: "10px 0",
+                    borderBottom: "1px solid #eee",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <div>
+                      <strong
+                        style={{
+                          display: "inline-block",
+                          color: "rgb(50, 50, 50)",
+                          fontSize: "16px",
+                          fontWeight: "bold",
+                          marginRight: "4px",
+                          fontFamily: '"Helvetica Neue", Arial, sans-serif',
+                        }}
+                      >
+                        {item.displayIndex}.
+                      </strong>
+                      <span style={{ fontSize: "15px", color: "#555" }}>
+                        {item.ratedAt
+                          ? new Date(item.ratedAt).toLocaleString()
+                          : "（日時不明）"}
+                      </span>
+                      <br />
+                      {item.商品名 || "（名称不明）"}
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 700 }}>
+                      {"◎".repeat(Math.max(0, Math.min(5, Math.floor(item.rating))))}
+                    </div>
+                  </div>
+                  <small>
+                    Type: {item.Type || "不明"} / 価格:{" "}
+                    {item.希望小売価格
+                      ? `¥${item.希望小売価格.toLocaleString()}`
+                      : "不明"}
+                    <br />
+                    Body: {Number.isFinite(item.BodyAxis) ? item.BodyAxis.toFixed(2) : "—"}, Sweet:{" "}
+                    {Number.isFinite(item.SweetAxis) ? item.SweetAxis.toFixed(2) : "—"}
+                  </small>
+                </li>
+              ))}
+              {list.length === 0 && (
+                <li style={{ color: "#666" }}>まだ評価がありません。</li>
               )}
             </ul>
           </div>
