@@ -22,6 +22,7 @@ import {
   drawerModalProps,
   paperBaseStyle,
 } from "./ui/constants";
+import FavoritePanel from "./components/FavoritePanel";
 
 const REREAD_LS_KEY = "tm_reread_until";
 
@@ -1397,7 +1398,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
 }
 
 // === NEW: 評価一覧パネル（◎） ===
-function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelectJAN }) {
+function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
   const list = React.useMemo(() => {
     // userRatings = { JAN: { rating, date, weather } }
     const arr = Object.entries(userRatings || {})
