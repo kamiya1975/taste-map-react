@@ -46,32 +46,11 @@ const MOVE_PER_UNIT_PX = 5.0;
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 const COMPASS_SIZE_PCT = 9;
 
-// 上余白カット後のUI高さ見込み（ヘッダー削除→少し詰める）
-const RESERVED_SVH = 34; // 既存40→34に縮小（必要に応じて30〜36で微調整）
+// 上余白カット後のUI高さ見込み
+const RESERVED_SVH = 34;
 
-// SliderPage 内に追加（handleGenerateの近く）
-const handleCloseToBlendF = () => {
-  // blendF の UMAP 座標を取得
-  let umapX = 0, umapY = 0;
-  const blendRow = rows.find(r => r.JAN === "blendF");
-
-  if (blendRow && Number.isFinite(blendRow.UMAP1) && Number.isFinite(blendRow.UMAP2)) {
-    umapX = blendRow.UMAP1;
-    umapY = blendRow.UMAP2;
-  } else if (blendF) {
-    // UMAPが無いケースはPC座標から推定
-    [umapX, umapY] = pca2umap(blendF.PC1, blendF.PC2);
-  }
-
-  // MapPage に渡すため、一時ストレージへ依頼を書き込む
-  sessionStorage.setItem(
-    "tm_center_umap",
-    JSON.stringify({ x: umapX, y: umapY, reason: "blendF", ts: Date.now() })
-  );
-
-  // 画面遷移（state も付けておくとより確実にトリガーできる）
-  navigate("/map", { replace: true, state: { centerOnBlendF: true } });
-};
+// 罫線ピッチなどの定数の下あたりに1行追加（中央に太線が来る調整）
+const ALIGN_OFFSET = GRID_STEP_PX * THICK_EVERY / 2 - THICK_W_PX / 2; // 32.5 - 0.7 = 31.8px
 
 export default function SliderPage() {
   const navigate = useNavigate();
@@ -94,10 +73,6 @@ export default function SliderPage() {
       document.documentElement.style.overscrollBehaviorY = prevOverscroll;
     };
   }, []);
-
-  // 罫線ピッチなどの定数の下あたりに1行追加
-  const THIN_OFFSET  = GRID_STEP_PX / 2 - THIN_W_PX  / 2;         // 6.5 - 0.5  = 6.0px
-  const THICK_OFFSET = GRID_STEP_PX * THICK_EVERY / 2 - THICK_W_PX / 2; // 32.5 - 0.7 = 31.8px
 
   // Map 以外から直接来た場合のみ店舗選択を強制
   useEffect(() => {
@@ -135,7 +110,7 @@ export default function SliderPage() {
         })).filter(r=>Number.isFinite(r.PC1)&&Number.isFinite(r.PC2)&&Number.isFinite(r.UMAP1)&&Number.isFinite(r.UMAP2));
         setRows(cleaned);
         const b=cleaned.find(d=>d.JAN==="blendF");
-        setBlendF(b?{PC1:b.PC1,PC2:b.PC2}:{PC1:median(cleaned.map(r=>r.PC1)),PC2:median(cleaned.map(r=>r.PC2))});
+        setBlendF(b?{PC1:b.PC1,PC2:b.PC2,UMAP1:b.UMAP1,UMAP2:b.UMAP2}:null);
         const pc1s=cleaned.map(r=>r.PC1), pc2s=cleaned.map(r=>r.PC2);
         setPcMinMax({minPC1:Math.min(...pc1s),maxPC1:Math.max(...pc1s),minPC2:Math.min(...pc2s),maxPC2:Math.max(...pc2s)});
       })
@@ -169,6 +144,27 @@ export default function SliderPage() {
     navigate("/map", { state: { centerOnUserPin: true } });
   };
 
+  // 「閉じる」→ blendF の位置に戻す
+  const handleClose = () => {
+    try {
+      let x = null, y = null;
+      // 最優先：データ内の blendF の UMAP 座標
+      const b = rows.find((d) => String(d.JAN) === "blendF");
+      if (b && Number.isFinite(b.UMAP1) && Number.isFinite(b.UMAP2)) {
+        x = b.UMAP1; y = b.UMAP2;
+      }
+      // フォールバック：UMAP の中央値
+      if (x == null || y == null) {
+        const xs = rows.map(r=>r.UMAP1).filter(Number.isFinite);
+        const ys = rows.map(r=>r.UMAP2).filter(Number.isFinite);
+        if (xs.length && ys.length) { x = median(xs); y = median(ys); }
+        else { x = 0; y = 0; }
+      }
+      sessionStorage.setItem("tm_center_umap", JSON.stringify({ x, y }));
+    } catch {}
+    navigate("/map", { replace: true, state: { centerOnBlendF: true } });
+  };
+
   /* ---------- JSX（上余白カット & 「閉じる」をマップ内へ） ---------- */
   return (
     <div
@@ -180,7 +176,6 @@ export default function SliderPage() {
         background: "#fff",
         display: "flex",
         flexDirection: "column",
-        // 上を詰める：トップ余白最小化（左右下は最低限）
         padding: "8px 16px 12px",
         boxSizing: "border-box",
         gap: 8,
@@ -192,7 +187,6 @@ export default function SliderPage() {
           aria-label="taste-map-dummy"
           style={{
             position: "relative",
-            // 画面内に“確実に収まる”最大サイズ（幅と高さの両方を考慮）
             width: `min(calc(100svw - 32px), calc(100svh - ${RESERVED_SVH}svh))`,
             aspectRatio: "1 / 1",
             border: "none",
@@ -208,10 +202,10 @@ export default function SliderPage() {
               repeating-linear-gradient(90deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px)
             `,
             backgroundPosition: `
-              calc(50% + ${bgOffset.dx + THIN_OFFSET}px)  calc(50% + ${bgOffset.dy + THIN_OFFSET}px),
-              calc(50% + ${bgOffset.dx + THIN_OFFSET}px)  calc(50% + ${bgOffset.dy + THIN_OFFSET}px),
-              calc(50% + ${bgOffset.dx + THICK_OFFSET}px) calc(50% + ${bgOffset.dy + THICK_OFFSET}px),
-              calc(50% + ${bgOffset.dx + THICK_OFFSET}px) calc(50% + ${bgOffset.dy + THICK_OFFSET}px)
+              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
+              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
+              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
+              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px
             `,
             backgroundSize: `
               ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
@@ -223,7 +217,7 @@ export default function SliderPage() {
         >
           {/* 「閉じる」：マップ内 右上・オーバーレイ配置 */}
           <button
-            onClick={() => navigate("/map", { replace: true })}
+            onClick={handleClose}
             style={{
               position: "absolute",
               top: 8,
@@ -264,7 +258,7 @@ export default function SliderPage() {
         </div>
       </div>
 
-      {/* 見出し（上に詰めたので行間も少し圧縮） */}
+      {/* 見出し */}
       <p style={{ fontWeight:700, fontSize:16, margin:"2px 0 6px", textAlign:"center", flexShrink:0 }}>
         基準のワインを飲んだ印象は？
       </p>
@@ -304,11 +298,11 @@ export default function SliderPage() {
 
       {/* 生成ボタン：マップ内 下中央オーバーレイ */}
       <button
-        onClick={handleCloseToBlendF}
+        onClick={handleGenerate}
         style={{
           position: "absolute",
           left: "50%",
-          bottom: 150,                 // ← 位置はここで微調整（例: 8〜24）
+          bottom: 150,
           transform: "translateX(-50%)",
           width: "min(80%, 420px)",
           padding: "14px 16px",
