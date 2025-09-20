@@ -1342,7 +1342,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
               alignItems: "center",
             }}
           >
-            <h3 style={{ margin: 0 }}>お気に入り（♡）</h3>
+            <h3 style={{ margin: 0 }}>飲みたい（仮名）</h3>
             <button
               onClick={onClose}
               style={{
@@ -1409,7 +1409,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
                 </li>
               ))}
               {list.length === 0 && (
-                <li style={{ color: "#666" }}>まだお気に入りはありません。</li>
+                <li style={{ color: "#666" }}>まだ「飲みたいワイン」はありません。</li>
               )}
             </ul>
           </div>
@@ -1479,7 +1479,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
               alignItems: "center",
             }}
           >
-            <h3 style={{ margin: 0 }}>評価（◎）</h3>
+            <h3 style={{ margin: 0 }}>飲んだ（仮名）</h3>
             <button
               onClick={onClose}
               style={{
