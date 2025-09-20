@@ -511,6 +511,19 @@ function MapPage() {
           localStorage.setItem("userRatings", JSON.stringify(next));
           return next;
         });
+
+        // ★ 追加：評価>0になったら必ず「♡」をオフにする
+        if (payload && Number(payload.rating) > 0) {
+          setFavorites((prev) => {
+            if (!prev[jan]) return prev;      // もともとオフなら何もしない
+            const next = { ...prev };
+            delete next[jan];
+            return next;
+          });
+          try {
+            sendFavoriteToChild(jan, false);  // 商品ページ側のハートも同期してオフ
+          } catch {}
+        }
       }
     };
     window.addEventListener("message", onMsg);
