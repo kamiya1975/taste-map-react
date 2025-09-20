@@ -199,7 +199,7 @@ export default function ProductPage() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       notifyParentClosed(jan);
-      window.removeEventListener("beforeunload", onBeforeunload);
+      window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [jan]);
 
