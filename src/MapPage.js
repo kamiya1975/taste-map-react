@@ -535,6 +535,7 @@ function MapPage() {
             if (!prev[janStr]) return prev;
             const next = { ...prev };
             delete next[janStr];
+            try { localStorage.setItem("favorites", JSON.stringify(next)); } catch {}
             return next;
           });
           try {

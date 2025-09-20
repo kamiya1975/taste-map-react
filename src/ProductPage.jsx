@@ -78,11 +78,18 @@ function HeartButton({ jan, size = 22 }) {
     };
     window.addEventListener("storage", onStorage);
 
-    // 親からのSET_FAVORITEメッセージを受信
+    // 親からのメッセージを受信（SET_FAVORITE / STATE_SNAPSHOT）
     const onMsg = (e) => {
-      const { type, jan: targetJan, value } = e.data || {};
-      if (type === "SET_FAVORITE" && String(targetJan) === String(jan)) {
+      const { type, jan: targetJan, value, favorite } = e.data || {};
+      const match = String(targetJan) === String(jan);
+      if (!match) return;
+
+      if (type === "SET_FAVORITE") {
         setFav(!!value);
+      }
+      if (type === "STATE_SNAPSHOT") {
+        // 親の真値で最終上書き
+        setFav(!!favorite);
       }
     };
     window.addEventListener("message", onMsg);
@@ -182,18 +189,21 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // マウント→OPEN通知、アンマウント→CLOSED通知
+  // マウント→OPEN通知、アンマウント→CLOSED通知 + 親へ状態問い合わせ
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan });
+    // 親に「今の状態を教えて」を送る（毎回）
+    postToParent({ type: "REQUEST_STATE", jan });
+
     const onBeforeUnload = () => notifyParentClosed(jan);
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       notifyParentClosed(jan);
-      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("beforeunload", onBeforeunload);
     };
   }, [jan]);
 
-  // 商品・評価ロード
+  // 商品・評価ロード（ローカルの初期値。のちに STATE_SNAPSHOT で上書き）
   useEffect(() => {
     try {
       const data = JSON.parse(localStorage.getItem("umapData") || "[]");
@@ -206,6 +216,21 @@ export default function ProductPage() {
       const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
       if (ratings[jan]) setRating(ratings[jan].rating ?? 0);
     } catch {}
+  }, [jan]);
+
+  // 親からの STATE_SNAPSHOT を受け取り、UIを上書き
+  useEffect(() => {
+    const onMsg = (e) => {
+      const { type, jan: targetJan, rating: ratingPayload } = e.data || {};
+      if (type !== "STATE_SNAPSHOT") return;
+      if (String(targetJan) !== String(jan)) return;
+
+      try {
+        setRating(ratingPayload?.rating ?? 0);
+      } catch {}
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
   }, [jan]);
 
   const handleCircleClick = async (value) => {
@@ -396,6 +421,24 @@ export default function ProductPage() {
 
       {/* 説明ダミー */}
       <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
         昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
