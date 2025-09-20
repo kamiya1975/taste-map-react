@@ -274,14 +274,27 @@ export default function SliderPage() {
         />
       </div>
 
-      {/* 生成ボタン */}
+      {/* 生成ボタン：マップ内 下中央オーバーレイ */}
       <button
         onClick={handleGenerate}
         style={{
-          width:"80%", maxWidth:420, marginTop:"auto", padding:"12px 14px",
-          background:"#f5e9dd", color:"#000", border:"none", borderRadius:10,
-          fontSize:16, fontWeight:700, cursor:"pointer", display:"block",
-          flexShrink:0
+          position: "absolute",
+          left: "50%",
+          bottom: 12,                 // ← 位置はここで微調整（例: 8〜24）
+          transform: "translateX(-50%)",
+          width: "min(80%, 420px)",
+          padding: "14px 16px",
+          background: "rgba(245,233,221,0.98)",
+          color: "#000",
+          border: "none",
+          borderRadius: 10,
+          fontSize: 16,
+          fontWeight: 700,
+          cursor: "pointer",
+          boxShadow: "0 4px 10px rgba(0,0,0,0.18)",
+          zIndex: 3,
+          WebkitBackdropFilter: "blur(2px)",
+          backdropFilter: "blur(2px)",
         }}
         disabled={!blendF || !pcMinMax || !rows.length}
       >
