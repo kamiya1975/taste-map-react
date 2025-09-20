@@ -784,25 +784,6 @@ function MapPage() {
     });
   }, [userPin, hasAnyRating, is3D]);
 
-  // スライダー結果（オレンジ打点：常時表示）
-  const userPinOrangeLayer = useMemo(() => {
-    if (!userPin) return null;
-    return new ScatterplotLayer({
-      id: "user-pin-orange",
-      data: [{ x: userPin[0], y: userPin[1] }],
-      getPosition: (d) => [d.x, is3D ? d.y : -d.y, 0],
-      radiusUnits: "meters",
-      getRadius: 0.12,
-      getFillColor: [255, 140, 0, 230],
-      stroked: true,
-      getLineWidth: 2,
-      lineWidthUnits: "pixels",
-      getLineColor: [255, 255, 255, 255],
-      pickable: false,
-      parameters: { depthTest: false },
-    });
-  }, [userPin, is3D]);
-
   // ====== レンダリング
   return (
     <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}>
@@ -916,7 +897,6 @@ function MapPage() {
           }),
           // スライダー結果マーカー
           userPinCompassLayer,
-          //userPinOrangeLayer,
           // 検索ハイライト
           selectedJANFromSearch
             ? new ScatterplotLayer({
