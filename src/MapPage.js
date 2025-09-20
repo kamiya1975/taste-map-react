@@ -862,7 +862,7 @@ function MapPage() {
                 cellSize,
                 getPosition: (d) => d.position,
                 getFillColor: (d) =>
-                  d.hasFavorite
+                  d.hasRating
                     ? [180, 100, 50, 150]   // ◎（評価あり）セルだけ色付け
                     : [200, 200, 200, 40],  // 通常セル
                 getElevation: 0,
