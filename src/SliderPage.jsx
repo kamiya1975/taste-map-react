@@ -180,10 +180,14 @@ export default function SliderPage() {
               repeating-linear-gradient(90deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px)
             `,
             backgroundPosition: `
-              ${bgOffset.dx}px ${bgOffset.dy}px,
-              ${bgOffset.dx}px ${bgOffset.dy}px,
-              ${bgOffset.dx}px ${bgOffset.dy}px,
-              ${bgOffset.dx}px ${bgOffset.dy}px
+              calc(${bgOffset.dx}px + ${GRID_STEP_PX * THICK_EVERY / 2}px) 
+              calc(${bgOffset.dy}px + ${GRID_STEP_PX * THICK_EVERY / 2}px),
+              calc(${bgOffset.dx}px + ${GRID_STEP_PX * THICK_EVERY / 2}px) 
+              calc(${bgOffset.dy}px + ${GRID_STEP_PX * THICK_EVERY / 2}px),
+              calc(${bgOffset.dx}px + ${GRID_STEP_PX * THICK_EVERY / 2}px) 
+              calc(${bgOffset.dy}px + ${GRID_STEP_PX * THICK_EVERY / 2}px),
+              calc(${bgOffset.dx}px + ${GRID_STEP_PX * THICK_EVERY / 2}px) 
+              calc(${bgOffset.dy}px + ${GRID_STEP_PX * THICK_EVERY / 2}px)
             `,
             backgroundSize: `
               ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
