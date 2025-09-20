@@ -897,23 +897,6 @@ function MapPage() {
           }),
           // スライダー結果マーカー
           userPinCompassLayer,
-          // 検索ハイライト
-          selectedJANFromSearch && !productDrawerOpen
-            ? new ScatterplotLayer({
-                id: "search-highlight",
-                data: data.filter((d) => String(d.JAN) === String(selectedJANFromSearch)),
-                getPosition: (d) => [d.BodyAxis, is3D ? d.SweetAxis : -d.SweetAxis, 0],
-                radiusUnits: "meters",
-                getRadius: 0.18,
-                getFillColor: [255, 215, 0, 240],   // 黄色（ゴールド）
-                stroked: true,
-                getLineColor: [0, 0, 0, 220],
-                getLineWidth: 2,
-                lineWidthUnits: "pixels",
-                pickable: false,
-                parameters: { depthTest: false },
-              })
-            : null,
           // コンパス
           compassLayer,
           // 最前面：ワイン打点
