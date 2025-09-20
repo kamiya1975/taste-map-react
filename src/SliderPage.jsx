@@ -46,25 +46,30 @@ const MOVE_PER_UNIT_PX = 5.0;
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 const COMPASS_SIZE_PCT = 9;
 
-// ページ左右パディング（下の full-bleed 計算で使用）
-const PAGE_PAD_PX = 16;
-// PC幅かどうかを判定（～720px をモバイル相当としてフルブリード）
-const useIsNarrow = () => {
-  const get = () => (typeof window !== "undefined" ? window.innerWidth <= 720 : true);
-  const [narrow, setNarrow] = useState(get());
-  useEffect(() => {
-    const onResize = () => setNarrow(get());
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-  return narrow;
-};
+// レイアウト調整：上下固定のために確保しておく“その他UI”高さ見込み（svh）
+const RESERVED_SVH = 40; // ヘッダー + ラベル/スライダー + ボタンあわせて約40svh
 
 export default function SliderPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedStore = location.state?.selectedStore;
-  const isNarrow = useIsNarrow();
+
+  // ===== スクロールロック（このページ滞在中のみ有効）=====
+  useEffect(() => {
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevOverscroll = document.documentElement.style.overscrollBehaviorY;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    document.documentElement.style.overscrollBehaviorY = "none"; // iOSのバウンス防止
+
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.documentElement.style.overscrollBehaviorY = prevOverscroll;
+    };
+  }, []);
 
   // Map 以外から直接来た場合のみ店舗選択を強制
   useEffect(() => {
@@ -86,7 +91,7 @@ export default function SliderPage() {
     return { dx, dy };
   }, [sweetness, body]);
 
-  /* ---------- 既存：データ読込 & 写像 ---------- */
+  /* ---------- データ読込 & 写像（既存） ---------- */
   const [rows, setRows] = useState([]);
   const [blendF, setBlendF] = useState(null);
   const [pcMinMax, setPcMinMax] = useState(null);
@@ -139,20 +144,23 @@ export default function SliderPage() {
   /* ---------- JSX ---------- */
   return (
     <div
+      // 画面固定（上下に動かない）
       style={{
+        position: "fixed",
+        inset: 0,                 // top:0, right:0, bottom:0, left:0
+        overflow: "hidden",       // 内側のスクロールも禁止
+        fontFamily: "sans-serif",
+        background: "#fff",
+        display: "flex",
+        flexDirection: "column",
         padding: "16px",
-        fontFamily:"sans-serif",
-        background:"#fff",
-        minHeight:"100vh",
-        boxSizing:"border-box",
-        maxWidth:720,
-        margin:"0 auto",
+        boxSizing: "border-box",
       }}
     >
       {/* ヘッダー */}
       <div style={{
         display:"flex", justifyContent:"space-between", alignItems:"center",
-        marginBottom:12, borderBottom:"1px solid #eee", paddingBottom:8
+        borderBottom:"1px solid #eee", paddingBottom:8, marginBottom:12, flexShrink:0
       }}>
         <h2 style={{ margin:0, fontSize:18 }}></h2>
         <button
@@ -163,96 +171,63 @@ export default function SliderPage() {
         </button>
       </div>
 
-      {/* ===== ダミーマップ（中央にコンパス固定／背景罫線のみ移動） ===== */}
-      <div
-        aria-label="taste-map-dummy"
-        style={
-          isNarrow
-            ? {
-                // --- モバイル：左右の余白ゼロ（フルブリード） ---
-                position:"relative",
-                width: `calc(100svw + ${PAGE_PAD_PX*2}px)`,
-                height:`calc(100svw + ${PAGE_PAD_PX*2}px)`, // 正方形
-                margin: `0 calc(50% - 50svw - ${PAGE_PAD_PX}px) 12px`,
-                border:"none",
-                borderRadius:0,
-                overflow:"hidden",
-
-                backgroundImage: `
-                  repeating-linear-gradient(0deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
-                  repeating-linear-gradient(90deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
-                  repeating-linear-gradient(0deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px),
-                  repeating-linear-gradient(90deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px)
-                `,
-                backgroundPosition: `
-                  ${bgOffset.dx}px ${bgOffset.dy}px,
-                  ${bgOffset.dx}px ${bgOffset.dy}px,
-                  ${bgOffset.dx}px ${bgOffset.dy}px,
-                  ${bgOffset.dx}px ${bgOffset.dy}px
-                `,
-                backgroundSize: `
-                  ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
-                  ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
-                  ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
-                  ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
-                `,
-                transition:"background-position 120ms linear",
-              }
-            : {
-                // --- PC幅：従来どおり中央 640px 正方形 ---
-                position:"relative",
-                width:"100%",
-                maxWidth:640,
-                aspectRatio:"1 / 1",
-                margin:"0 auto 12px",
-                border:"none",
-                borderRadius:0,
-                overflow:"hidden",
-
-                backgroundImage: `
-                  repeating-linear-gradient(0deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
-                  repeating-linear-gradient(90deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
-                  repeating-linear-gradient(0deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px),
-                  repeating-linear-gradient(90deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px)
-                `,
-                backgroundPosition: `
-                  ${bgOffset.dx}px ${bgOffset.dy}px,
-                  ${bgOffset.dx}px ${bgOffset.dy}px,
-                  ${bgOffset.dx}px ${bgOffset.dy}px,
-                  ${bgOffset.dx}px ${bgOffset.dy}px
-                `,
-                backgroundSize: `
-                  ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
-                  ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
-                  ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
-                  ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
-                `,
-                transition:"background-position 120ms linear",
-              }
-        }
-      >
-        {/* コンパス（中央固定） */}
-        <img
-          src={COMPASS_URL}
-          alt="compass"
-          draggable={false}
+      {/* ===== ダミーマップ（正方形・はみ出さない） ===== */}
+      <div style={{ flexShrink: 0, display: "flex", justifyContent: "center" }}>
+        <div
+          aria-label="taste-map-dummy"
           style={{
-            position:"absolute",
-            left:"50%",
-            top:"50%",
-            width:`${COMPASS_SIZE_PCT}%`,
-            height:"auto",
-            transform:"translate(-50%, -50%)",
-            pointerEvents:"none",
-            userSelect:"none",
-            opacity:0.9,
-            filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.25))",
+            // 画面内に“確実に収まる”最大サイズ（幅と高さの両方を考慮）
+            width: `min(calc(100svw - 32px), calc(100svh - ${RESERVED_SVH}svh))`,
+            aspectRatio: "1 / 1",
+            border: "none",
+            borderRadius: 0,
+            overflow: "hidden",
+            transition: "background-position 120ms linear",
+
+            /* 罫線（4レイヤー） */
+            backgroundImage: `
+              repeating-linear-gradient(0deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
+              repeating-linear-gradient(90deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
+              repeating-linear-gradient(0deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px),
+              repeating-linear-gradient(90deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px)
+            `,
+            backgroundPosition: `
+              ${bgOffset.dx}px ${bgOffset.dy}px,
+              ${bgOffset.dx}px ${bgOffset.dy}px,
+              ${bgOffset.dx}px ${bgOffset.dy}px,
+              ${bgOffset.dx}px ${bgOffset.dy}px
+            `,
+            backgroundSize: `
+              ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+              ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+              ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
+              ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
+            `,
           }}
-        />
+        >
+          {/* コンパス（中央固定） */}
+          <img
+            src={COMPASS_URL}
+            alt="compass"
+            draggable={false}
+            style={{
+              position:"absolute",
+              left:"50%",
+              top:"50%",
+              width:`${COMPASS_SIZE_PCT}%`,
+              height:"auto",
+              transform:"translate(-50%, -50%)",
+              pointerEvents:"none",
+              userSelect:"none",
+              opacity:0.9,
+              filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.25))",
+            }}
+          />
+        </div>
       </div>
 
-      {/* スライダー見出し（画像位置に合わせて中央・直上） */}
-      <p style={{ fontWeight:700, fontSize:16, margin:"4px 0 12px", textAlign:"center" }}>
+      {/* 見出し */}
+      <p style={{ fontWeight:700, fontSize:16, margin:"8px 0 10px", textAlign:"center", flexShrink:0 }}>
         基準のワインを飲んだ印象は？
       </p>
 
@@ -266,7 +241,7 @@ export default function SliderPage() {
       `}</style>
 
       {/* 甘み */}
-      <div style={{ marginBottom:20 }}>
+      <div style={{ marginBottom:14, flexShrink:0 }}>
         <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:6 }}>
           <span>← こんなに甘みは不要</span><span>もっと甘みが欲しい →</span>
         </div>
@@ -278,7 +253,7 @@ export default function SliderPage() {
       </div>
 
       {/* コク（ボディ） */}
-      <div style={{ marginBottom:22 }}>
+      <div style={{ marginBottom:16, flexShrink:0 }}>
         <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:6 }}>
           <span>← もっと軽やかが良い</span><span>濃厚なコクが欲しい →</span>
         </div>
@@ -293,9 +268,10 @@ export default function SliderPage() {
       <button
         onClick={handleGenerate}
         style={{
-          width:"80%", maxWidth:420, margin:"0 auto", padding:"16px 18px",
+          width:"80%", maxWidth:420, margin:"0 auto", padding:"14px 16px",
           background:"#f5e9dd", color:"#000", border:"none", borderRadius:10,
           fontSize:16, fontWeight:700, cursor:"pointer", display:"block",
+          flexShrink:0
         }}
         disabled={!blendF || !pcMinMax || !rows.length}
       >
