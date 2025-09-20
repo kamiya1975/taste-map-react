@@ -46,8 +46,8 @@ const MOVE_PER_UNIT_PX = 5.0;
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 const COMPASS_SIZE_PCT = 9;
 
-// レイアウト調整：上下固定のために確保しておく“その他UI”高さ見込み（svh）
-const RESERVED_SVH = 40; // ヘッダー + ラベル/スライダー + ボタンあわせて約40svh
+// 上余白カット後のUI高さ見込み（ヘッダー削除→少し詰める）
+const RESERVED_SVH = 34; // 既存40→34に縮小（必要に応じて30〜36で微調整）
 
 export default function SliderPage() {
   const navigate = useNavigate();
@@ -62,7 +62,7 @@ export default function SliderPage() {
 
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
-    document.documentElement.style.overscrollBehaviorY = "none"; // iOSのバウンス防止
+    document.documentElement.style.overscrollBehaviorY = "none";
 
     return () => {
       document.body.style.overflow = prevBodyOverflow;
@@ -141,41 +141,29 @@ export default function SliderPage() {
     navigate("/map", { state: { centerOnUserPin: true } });
   };
 
-  /* ---------- JSX ---------- */
+  /* ---------- JSX（上余白カット & 「閉じる」をマップ内へ） ---------- */
   return (
     <div
-      // 画面固定（上下に動かない）
       style={{
         position: "fixed",
-        inset: 0,                 // top:0, right:0, bottom:0, left:0
-        overflow: "hidden",       // 内側のスクロールも禁止
+        inset: 0,
+        overflow: "hidden",
         fontFamily: "sans-serif",
         background: "#fff",
         display: "flex",
         flexDirection: "column",
-        padding: "16px",
+        // 上を詰める：トップ余白最小化（左右下は最低限）
+        padding: "8px 16px 12px",
         boxSizing: "border-box",
+        gap: 8,
       }}
     >
-      {/* ヘッダー */}
-      <div style={{
-        display:"flex", justifyContent:"space-between", alignItems:"center",
-        borderBottom:"1px solid #eee", paddingBottom:8, marginBottom:12, flexShrink:0
-      }}>
-        <h2 style={{ margin:0, fontSize:18 }}></h2>
-        <button
-          onClick={() => navigate("/map", { replace: true })}
-          style={{ background:"#eee", border:"1px solid #ccc", borderRadius:6, fontSize:13, padding:"6px 10px", cursor:"pointer" }}
-        >
-          閉じる
-        </button>
-      </div>
-
       {/* ===== ダミーマップ（正方形・はみ出さない） ===== */}
       <div style={{ flexShrink: 0, display: "flex", justifyContent: "center" }}>
         <div
           aria-label="taste-map-dummy"
           style={{
+            position: "relative",
             // 画面内に“確実に収まる”最大サイズ（幅と高さの両方を考慮）
             width: `min(calc(100svw - 32px), calc(100svh - ${RESERVED_SVH}svh))`,
             aspectRatio: "1 / 1",
@@ -205,6 +193,28 @@ export default function SliderPage() {
             `,
           }}
         >
+          {/* 「閉じる」：マップ内 右上・オーバーレイ配置 */}
+          <button
+            onClick={() => navigate("/map", { replace: true })}
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              background: "rgba(255,255,255,0.9)",
+              border: "1px solid #ccc",
+              borderRadius: 8,
+              fontSize: 13,
+              padding: "6px 10px",
+              cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+              zIndex: 2,
+              WebkitBackdropFilter: "blur(2px)",
+              backdropFilter: "blur(2px)",
+            }}
+          >
+            閉じる
+          </button>
+
           {/* コンパス（中央固定） */}
           <img
             src={COMPASS_URL}
@@ -226,14 +236,14 @@ export default function SliderPage() {
         </div>
       </div>
 
-      {/* 見出し */}
-      <p style={{ fontWeight:700, fontSize:16, margin:"8px 0 10px", textAlign:"center", flexShrink:0 }}>
+      {/* 見出し（上に詰めたので行間も少し圧縮） */}
+      <p style={{ fontWeight:700, fontSize:16, margin:"2px 0 6px", textAlign:"center", flexShrink:0 }}>
         基準のワインを飲んだ印象は？
       </p>
 
       {/* スライダーCSS */}
       <style>{`
-        .taste-slider{ appearance:none; -webkit-appearance:none; width:100%; height:6px; background:transparent; margin-top:8px; outline:none; }
+        .taste-slider{ appearance:none; -webkit-appearance:none; width:100%; height:6px; background:transparent; margin-top:6px; outline:none; }
         .taste-slider::-webkit-slider-runnable-track{ height:6px; border-radius:9999px; background:var(--range,#e9e9e9); }
         .taste-slider::-moz-range-track{ height:6px; border-radius:9999px; background:var(--range,#e9e9e9); }
         .taste-slider::-webkit-slider-thumb{ -webkit-appearance:none; width:28px; height:28px; border-radius:50%; background:#fff; border:0; box-shadow:0 2px 6px rgba(0,0,0,.25); margin-top:-11px; cursor:pointer; }
@@ -241,8 +251,8 @@ export default function SliderPage() {
       `}</style>
 
       {/* 甘み */}
-      <div style={{ marginBottom:14, flexShrink:0 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:6 }}>
+      <div style={{ marginBottom:10, flexShrink:0 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:4 }}>
           <span>← こんなに甘みは不要</span><span>もっと甘みが欲しい →</span>
         </div>
         <input
@@ -253,8 +263,8 @@ export default function SliderPage() {
       </div>
 
       {/* コク（ボディ） */}
-      <div style={{ marginBottom:16, flexShrink:0 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:6 }}>
+      <div style={{ marginBottom:10, flexShrink:0 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:4 }}>
           <span>← もっと軽やかが良い</span><span>濃厚なコクが欲しい →</span>
         </div>
         <input
@@ -268,7 +278,7 @@ export default function SliderPage() {
       <button
         onClick={handleGenerate}
         style={{
-          width:"80%", maxWidth:420, margin:"0 auto", padding:"14px 16px",
+          width:"80%", maxWidth:420, margin:"0 auto", padding:"12px 14px",
           background:"#f5e9dd", color:"#000", border:"none", borderRadius:10,
           fontSize:16, fontWeight:700, cursor:"pointer", display:"block",
           flexShrink:0
