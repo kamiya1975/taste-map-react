@@ -573,7 +573,6 @@ function MapPage() {
           position: [toCorner(ix), toCorner(iy)],
           count: 0,
           hasRating: false,
-          hasFavorite: false,
         });
       }
       if (userRatings[d.JAN]) map.get(key).hasRating = true;
@@ -864,7 +863,7 @@ function MapPage() {
                 getPosition: (d) => d.position,
                 getFillColor: (d) =>
                   d.hasFavorite
-                    ? [180, 100, 50, 150]   // 評価ありセルの色（そのまま）
+                    ? [180, 100, 50, 150]   // ◎（評価あり）セルだけ色付け
                     : [200, 200, 200, 40],  // 通常セル
                 getElevation: 0,
                 pickable: false,
