@@ -1342,7 +1342,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
               alignItems: "center",
             }}
           >
-            <h3 style={{ margin: 0 }}>飲みたい（仮名）</h3>
+            <h3 style={{ margin: 0 }}>飲みたいワイン</h3>
             <button
               onClick={onClose}
               style={{
@@ -1479,7 +1479,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
               alignItems: "center",
             }}
           >
-            <h3 style={{ margin: 0 }}>飲んだ（仮名）</h3>
+            <h3 style={{ margin: 0 }}>飲んだワイン</h3>
             <button
               onClick={onClose}
               style={{
