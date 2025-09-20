@@ -22,7 +22,6 @@ import {
   drawerModalProps,
   paperBaseStyle,
 } from "./ui/constants";
-import FavoritePanel from "./components/FavoritePanel";
 
 const REREAD_LS_KEY = "tm_reread_until";
 
@@ -1402,13 +1401,12 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
   const list = React.useMemo(() => {
     // userRatings = { JAN: { rating, date, weather } }
     const arr = Object.entries(userRatings || {})
-      // ★ ここで評価>0のアイテムを除外（“表示させない”安全弾き）
-      .filter(([jan]) => !(Number(userRatings?.[jan]?.rating) > 0))
+      // ★ 評価>0 のみ採用（表示する）
       .map(([jan, meta]) => {
-        const item = (data || []).find((d) => String(d.JAN) === String(jan));
-        if (!item) return null;
         const rating = Number(meta?.rating) || 0;
         if (rating <= 0) return null;
+        const item = (data || []).find((d) => String(d.JAN) === String(jan));
+        if (!item) return null;
         return {
           ...item,
           ratedAt: meta?.date ?? null,
@@ -1420,7 +1418,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
     // 直近評価順（降順）
     arr.sort((a, b) => new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
     return arr.map((x, i) => ({ ...x, displayIndex: arr.length - i }));
-  }, [favorites, data, userRatings]);
+  }, [data, userRatings]); // ← favorites はこのスコープに無いので削除
 
   return (
     <AnimatePresence>
@@ -1540,5 +1538,6 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
     </AnimatePresence>
   );
 }
+
 
 export default MapPage;
