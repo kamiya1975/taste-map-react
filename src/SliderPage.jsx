@@ -186,11 +186,11 @@ export default function SliderPage() {
         <div
           aria-label="taste-map-dummy"
           style={{
-            flex: "1 1 auto",
-            width: "100%",
-            aspectRatio: "1 / 1",
             position: "relative",
-            backgroundColor: "#fff",
+            width: "min(calc(100svw - 32px), calc(100svh - 34svh))",
+            aspectRatio: "1 / 1",
+            overflow: "hidden",
+
             /* === グリッド罫線: 細線/太線とも中央基準で交差 === */
             backgroundImage: `
              /* 細：横 */
@@ -238,20 +238,61 @@ export default function SliderPage() {
               calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px),
               calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px)
             `,
-            backgroundRepeat: "repeat"
+            backgroundRepeat: "repeat",
+            transition: "background-position 120ms linear",
           }}
         >
+           {/* 閉じる（マップ内右上） */}
+           <button
+             onClick={() => {
+               // blendF を中心に戻す合図（任意：入れておくと便利）
+               try {
+                 const b = (rows || []).find(d => String(d.JAN) === "blendF");
+                 if (b) {
+                   sessionStorage.setItem(
+                     "tm_center_umap",
+                     JSON.stringify({ x: Number(b.UMAP1), y: Number(b.UMAP2) })
+                   );
+                 }
+               } catch {}
+               navigate("/map", { replace: true, state: { centerOnBlendF: true } });
+             }}
+             style={{
+               position: "absolute",
+               top: 8,
+               right: 8,
+               zIndex: 5,
+               background: "rgba(255,255,255,0.9)",
+               border: "1px solid #ccc",
+               borderRadius: 8,
+               fontSize: 13,
+               padding: "6px 10px",
+               cursor: "pointer",
+               boxShadow: "0 2px 6px rgba(0,0,0,.15)",
+               WebkitBackdropFilter: "blur(2px)",
+               backdropFilter: "blur(2px)"
+             }}
+           >
+             閉じる
+           </button>
+
           {/* コンパス画像 */}
           <img
             src={COMPASS_URL}
             alt="compass"
+            draggable={false}
            style={{
               position: "absolute",
               top: "50%",
               left: "50%",
-              width: 60,
-              height: 60,
-              transform: "translate(-50%, -50%)"
+              width: `${COMPASS_SIZE_PCT}%`,
+              height: "auto",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              userSelect: "none",
+              opacity: 0.9,
+              filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.25))",
+              zIndex: 1
             }}
           />
         </div>
