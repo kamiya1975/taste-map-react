@@ -1176,6 +1176,7 @@ function MapPage() {
         onClose={() => { setIsFavoriteOpen(false); }}
         favorites={favorites}
         data={data}
+        userRatings={userRatings}
         onSelectJAN={(jan) => {
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
@@ -1396,10 +1397,12 @@ function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
 }
 
 // === NEW: 評価一覧パネル（◎） ===
-function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
+function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelectJAN }) {
   const list = React.useMemo(() => {
     // userRatings = { JAN: { rating, date, weather } }
     const arr = Object.entries(userRatings || {})
+      // ★ ここで評価>0のアイテムを除外（“表示させない”安全弾き）
+      .filter(([jan]) => !(Number(userRatings?.[jan]?.rating) > 0))
       .map(([jan, meta]) => {
         const item = (data || []).find((d) => String(d.JAN) === String(jan));
         if (!item) return null;
@@ -1416,7 +1419,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
     // 直近評価順（降順）
     arr.sort((a, b) => new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
     return arr.map((x, i) => ({ ...x, displayIndex: arr.length - i }));
-  }, [userRatings, data]);
+  }, [favorites, data, userRatings]);
 
   return (
     <AnimatePresence>
