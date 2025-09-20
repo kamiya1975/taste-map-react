@@ -864,10 +864,8 @@ function MapPage() {
                 getPosition: (d) => d.position,
                 getFillColor: (d) =>
                   d.hasFavorite
-                    ? [255, 165, 0, 140]
-                    : d.hasRating
-                    ? [180, 100, 50, 150]
-                    : [200, 200, 200, 40],
+                    ? [180, 100, 50, 150]   // 評価ありセルの色（そのまま）
+                    : [200, 200, 200, 40],  // 通常セル
                 getElevation: 0,
                 pickable: false,
               })
