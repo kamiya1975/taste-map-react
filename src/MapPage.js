@@ -898,7 +898,7 @@ function MapPage() {
           // スライダー結果マーカー
           userPinCompassLayer,
           // 検索ハイライト
-          selectedJANFromSearch
+          selectedJANFromSearch && !productDrawerOpen
             ? new ScatterplotLayer({
                 id: "search-highlight",
                 data: data.filter((d) => String(d.JAN) === String(selectedJANFromSearch)),
@@ -1102,7 +1102,7 @@ function MapPage() {
         data={data}
         onPick={(item) => {
           if (!item) return;
-          setSelectedJANFromSearch(item.JAN);
+          setSelectedJANFromSearch(null);
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
           focusOnWine(item, { zoom: INITIAL_ZOOM });
@@ -1181,7 +1181,7 @@ function MapPage() {
         favorites={favorites}
         data={data}
         onSelectJAN={(jan) => {
-          setSelectedJANFromSearch(String(jan));
+          setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
@@ -1198,7 +1198,7 @@ function MapPage() {
         userRatings={userRatings}
         data={data}
         onSelectJAN={(jan) => {
-          setSelectedJANFromSearch(String(jan));
+          setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
