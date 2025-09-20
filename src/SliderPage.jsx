@@ -35,29 +35,36 @@ function fitLocalAffineAndPredict(px,py,neigh){
 /* =======================
    ダミーマップ設定（Map と同等の罫線）
 ======================= */
-// 罫線ピッチ（DeckGLの cellSize に見た目を合わせる値。必要に応じ調整）
 const GRID_STEP_PX = 13;
-// 薄線・太線の太さ（px）
 const THIN_W_PX = 1;
 const THICK_W_PX = 1.4;
-// 何本ごとに太線にするか（MapPageは 5）
 const THICK_EVERY = 5;
-// 線色（MapPage の [r,g,b,a] に近似）
-const THIN_RGBA  = "rgba(200,200,200,0.39)"; // [200,200,200,100]
-const THICK_RGBA = "rgba(180,180,180,0.47)"; // [180,180,180,120]
-
-// スライダー1目盛りあたりの地図移動量（px）
+const THIN_RGBA  = "rgba(200,200,200,0.39)";
+const THICK_RGBA = "rgba(180,180,180,0.47)";
 const MOVE_PER_UNIT_PX = 5.0;
 
-// コンパス画像
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
-// ← コンパスの大きさ（%）。小さくしたいぶん下げてください（例: 20）
 const COMPASS_SIZE_PCT = 9;
+
+// ページ左右パディング（下の full-bleed 計算で使用）
+const PAGE_PAD_PX = 16;
+// PC幅かどうかを判定（～720px をモバイル相当としてフルブリード）
+const useIsNarrow = () => {
+  const get = () => (typeof window !== "undefined" ? window.innerWidth <= 720 : true);
+  const [narrow, setNarrow] = useState(get());
+  useEffect(() => {
+    const onResize = () => setNarrow(get());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return narrow;
+};
 
 export default function SliderPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedStore = location.state?.selectedStore;
+  const isNarrow = useIsNarrow();
 
   // Map 以外から直接来た場合のみ店舗選択を強制
   useEffect(() => {
@@ -133,8 +140,13 @@ export default function SliderPage() {
   return (
     <div
       style={{
-        padding:16, fontFamily:"sans-serif", background:"#fff",
-        minHeight:"100vh", boxSizing:"border-box", maxWidth:720, margin:"0 auto",
+        padding: "16px",
+        fontFamily:"sans-serif",
+        background:"#fff",
+        minHeight:"100vh",
+        boxSizing:"border-box",
+        maxWidth:720,
+        margin:"0 auto",
       }}
     >
       {/* ヘッダー */}
@@ -143,7 +155,6 @@ export default function SliderPage() {
         marginBottom:12, borderBottom:"1px solid #eee", paddingBottom:8
       }}>
         <h2 style={{ margin:0, fontSize:18 }}></h2>
-        {/* 必ず /map に戻す */}
         <button
           onClick={() => navigate("/map", { replace: true })}
           style={{ background:"#eee", border:"1px solid #ccc", borderRadius:6, fontSize:13, padding:"6px 10px", cursor:"pointer" }}
@@ -155,68 +166,70 @@ export default function SliderPage() {
       {/* ===== ダミーマップ（中央にコンパス固定／背景罫線のみ移動） ===== */}
       <div
         aria-label="taste-map-dummy"
-        style={{
-          position:"relative",
-          width:"100%",
-          maxWidth:640,
-          aspectRatio:"1 / 1",
-          margin: "0 calc(50% - 50svw) 16px",
-          aspectRatio: "1 / 1",
-          border:"none",
-          borderRadius:0,
-          overflow:"hidden",
+        style={
+          isNarrow
+            ? {
+                // --- モバイル：左右の余白ゼロ（フルブリード） ---
+                position:"relative",
+                width: `calc(100svw + ${PAGE_PAD_PX*2}px)`,
+                height:`calc(100svw + ${PAGE_PAD_PX*2}px)`, // 正方形
+                margin: `0 calc(50% - 50svw - ${PAGE_PAD_PX}px) 12px`,
+                border:"none",
+                borderRadius:0,
+                overflow:"hidden",
 
-          /* ▼ MapPage の thin/thick を縦横2層ずつ = 4レイヤーで再現 */
-          backgroundImage: `
-            /* 横：薄い線（水平） */
-            repeating-linear-gradient(
-              0deg,
-              ${THIN_RGBA} 0px,
-              ${THIN_RGBA} ${THIN_W_PX}px,
-              transparent  ${THIN_W_PX}px,
-              transparent  ${GRID_STEP_PX}px
-            ),
-            /* 縦：薄い線（垂直） */
-            repeating-linear-gradient(
-              90deg,
-              ${THIN_RGBA} 0px,
-              ${THIN_RGBA} ${THIN_W_PX}px,
-              transparent  ${THIN_W_PX}px,
-              transparent  ${GRID_STEP_PX}px
-            ),
-            /* 横：5本ごとの太線（水平） */
-            repeating-linear-gradient(
-              0deg,
-              ${THICK_RGBA} 0px,
-              ${THICK_RGBA} ${THICK_W_PX}px,
-              transparent  ${THICK_W_PX}px,
-              transparent  ${GRID_STEP_PX * THICK_EVERY}px
-            ),
-            /* 縦：5本ごとの太線（垂直） */
-            repeating-linear-gradient(
-              90deg,
-              ${THICK_RGBA} 0px,
-              ${THICK_RGBA} ${THICK_W_PX}px,
-              transparent  ${THICK_W_PX}px,
-              transparent  ${GRID_STEP_PX * THICK_EVERY}px
-            )
-          `,
-          /* 4レイヤーを同じオフセットで動かす（甘み→左／ボディ→下） */
-          backgroundPosition: `
-            ${bgOffset.dx}px ${bgOffset.dy}px,
-            ${bgOffset.dx}px ${bgOffset.dy}px,
-            ${bgOffset.dx}px ${bgOffset.dy}px,
-            ${bgOffset.dx}px ${bgOffset.dy}px
-          `,
-          /* ピッチ指定（太線は5倍ピッチ） */
-          backgroundSize: `
-            ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
-            ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
-            ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
-            ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
-          `,
-          transition:"background-position 120ms linear",
-        }}
+                backgroundImage: `
+                  repeating-linear-gradient(0deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
+                  repeating-linear-gradient(90deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
+                  repeating-linear-gradient(0deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px),
+                  repeating-linear-gradient(90deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px)
+                `,
+                backgroundPosition: `
+                  ${bgOffset.dx}px ${bgOffset.dy}px,
+                  ${bgOffset.dx}px ${bgOffset.dy}px,
+                  ${bgOffset.dx}px ${bgOffset.dy}px,
+                  ${bgOffset.dx}px ${bgOffset.dy}px
+                `,
+                backgroundSize: `
+                  ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+                  ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+                  ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
+                  ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
+                `,
+                transition:"background-position 120ms linear",
+              }
+            : {
+                // --- PC幅：従来どおり中央 640px 正方形 ---
+                position:"relative",
+                width:"100%",
+                maxWidth:640,
+                aspectRatio:"1 / 1",
+                margin:"0 auto 12px",
+                border:"none",
+                borderRadius:0,
+                overflow:"hidden",
+
+                backgroundImage: `
+                  repeating-linear-gradient(0deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
+                  repeating-linear-gradient(90deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
+                  repeating-linear-gradient(0deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px),
+                  repeating-linear-gradient(90deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px)
+                `,
+                backgroundPosition: `
+                  ${bgOffset.dx}px ${bgOffset.dy}px,
+                  ${bgOffset.dx}px ${bgOffset.dy}px,
+                  ${bgOffset.dx}px ${bgOffset.dy}px,
+                  ${bgOffset.dx}px ${bgOffset.dy}px
+                `,
+                backgroundSize: `
+                  ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+                  ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+                  ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
+                  ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
+                `,
+                transition:"background-position 120ms linear",
+              }
+        }
       >
         {/* コンパス（中央固定） */}
         <img
