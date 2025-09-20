@@ -36,7 +36,7 @@ function fitLocalAffineAndPredict(px,py,neigh){
    ダミーマップ設定（Map と同等の罫線）
 ======================= */
 // 罫線ピッチ（DeckGLの cellSize に見た目を合わせる値。必要に応じ調整）
-const GRID_STEP_PX = 15;
+const GRID_STEP_PX = 13;
 // 薄線・太線の太さ（px）
 const THIN_W_PX = 1;
 const THICK_W_PX = 1.5;
