@@ -122,7 +122,7 @@ function MapPage() {
 
   // スライダー（●）
   const openSliderExclusive = async () => {
-    await closeUIsThen();     // ← ここを closeUIsThen に
+    await closeUIsThen();
     navigate("/slider", { state: { from: "map" } });
   };
 
@@ -332,45 +332,93 @@ function MapPage() {
     };
   }, [readUserPinFromStorage]);
 
-  // 初回センタリング（必要時）
+  /** ===== 共通：UMAP座標へセンタリング（Y反転やオフセット込み） ===== */
+  const centerToUMAP = useCallback((xUMAP, yUMAP, opts = {}) => {
+    if (!Number.isFinite(xUMAP) || !Number.isFinite(yUMAP)) return;
+    const yCanvas = is3D ? yUMAP : -yUMAP;
+    const zoomTarget = Math.max(
+      ZOOM_LIMITS.min,
+      Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM)
+    );
+    setViewState((prev) => ({
+      ...prev,
+      target: [xUMAP, yCanvas - CENTER_Y_OFFSET, 0],
+      zoom: zoomTarget,
+      rotationX: is3D ? (prev.rotationX ?? 45) : 0,
+      rotationOrbit: 0,
+    }));
+  }, [is3D]);
+
+  // 初回センタリング（userPin 指定時）
   useEffect(() => {
     if (!userPin) return;
     const shouldCenter = !!location.state?.centerOnUserPin;
     if (shouldCenter) {
-      setViewState((prev) => ({
-        ...prev,
-        target: [
-          userPin[0],
-          (is3D ? userPin[1] : -userPin[1]) - CENTER_Y_OFFSET,
-          0,
-        ],
-        zoom: prev.zoom ?? INITIAL_ZOOM,
-      }));
+      centerToUMAP(userPin[0], userPin[1], { zoom: INITIAL_ZOOM });
       try {
         window.history.replaceState({}, document.title, window.location.pathname);
       } catch {}
     }
-  }, [userPin, is3D, location.state]);
+  }, [userPin, location.state, centerToUMAP]);
+
+  /** === NEW: SliderPage「閉じる」→ blendF に戻る要求を処理 === */
+  useEffect(() => {
+    // stateフラグ or sessionStorage どちらでも起動
+    const fromState = !!location.state?.centerOnBlendF;
+    const raw = sessionStorage.getItem("tm_center_umap");
+
+    // 何も要求が無ければ抜ける
+    if (!fromState && !raw) return;
+    if (!Array.isArray(data) || data.length === 0) return; // データ待ち
+
+    let targetX = null, targetY = null;
+
+    try {
+      if (raw) {
+        const payload = JSON.parse(raw);
+        if (Number.isFinite(payload?.x) && Number.isFinite(payload?.y)) {
+          targetX = Number(payload.x);
+          targetY = Number(payload.y);
+        }
+      }
+    } catch {}
+
+    // payload が無い/不正なときはデータから blendF を検索
+    if (targetX == null || targetY == null) {
+      const b = data.find((d) => String(d.JAN) === "blendF");
+      if (b && Number.isFinite(b.BodyAxis) && Number.isFinite(b.SweetAxis)) {
+        targetX = b.BodyAxis;
+        targetY = b.SweetAxis;
+      }
+    }
+
+    if (targetX != null && targetY != null) {
+      centerToUMAP(targetX, targetY, { zoom: INITIAL_ZOOM });
+    }
+
+    // 一度だけ消費
+    sessionStorage.removeItem("tm_center_umap");
+    try {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch {}
+  }, [location.state, data, centerToUMAP]);
 
   // スライダー直後だけ：オレンジ打点の最寄り商品を自動で開く
   useEffect(() => {
-    // セッションフラグ or location.state があれば発火対象
     const wantAutoOpen =
       sessionStorage.getItem("tm_autopen_nearest") === "1" ||
       !!location.state?.centerOnUserPin;
 
-    if (!wantAutoOpen) return;              // そもそも対象外
-    if (autoOpenOnceRef.current) return;    // 既に実行済み
-    if (!userPin || !Array.isArray(data) || data.length === 0) return; // データ待ち
+    if (!wantAutoOpen) return;
+    if (autoOpenOnceRef.current) return;
+    if (!userPin || !Array.isArray(data) || data.length === 0) return;
 
     autoOpenOnceRef.current = true;
-    sessionStorage.removeItem("tm_autopen_nearest"); // 使い捨て
+    sessionStorage.removeItem("tm_autopen_nearest");
 
-    // 他UIは閉じてから
     setIsSearchOpen(false);
     setIsRatingListOpen(false);
 
-    // 次フレームで実行（描画と履歴書き換えが終わってから）
     requestAnimationFrame(() => {
       try {
         const canvasCoord = [userPin[0], is3D ? userPin[1] : -userPin[1]];
@@ -395,7 +443,6 @@ function MapPage() {
       const tyUMAP = Number(item.SweetAxis);
       if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
 
-      const tyCanvas = -tyUMAP;
       const zoomTarget = Math.max(
         ZOOM_LIMITS.min,
         Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM)
@@ -403,7 +450,7 @@ function MapPage() {
 
       setViewState((prev) => ({
         ...prev,
-        target: [tx, tyCanvas - CENTER_Y_OFFSET, 0],
+        target: [tx, (is3D ? tyUMAP : -tyUMAP) - CENTER_Y_OFFSET, 0],
         zoom: zoomTarget,
         rotationX: is3D ? (prev.rotationX ?? 45) : 0,
         rotationOrbit: 0,
@@ -455,7 +502,6 @@ function MapPage() {
         const rating = Number(payload?.rating) || 0;
         const willFav = rating > 0;
 
-        // state 更新
         setFavorites((prev) => {
           const next = { ...prev };
           if (willFav) {
@@ -466,7 +512,6 @@ function MapPage() {
           return next;
         });
 
-        // localStorage 更新
         try {
           const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
           if (willFav) {
@@ -477,7 +522,6 @@ function MapPage() {
           localStorage.setItem("favorites", JSON.stringify(favs));
         } catch {}
 
-        // 子iframeのUIも同期
         try {
           sendFavoriteToChild(jan, willFav);
         } catch {}
@@ -702,14 +746,12 @@ function MapPage() {
 
     const n = joined.length;
     const k20 = Math.max(3, Math.ceil(n * 0.2));
-    const top20 = joined.slice(0, Math.min(k20, n));
-
+    const top20 = joined.slice(0, Math.min(k20, n)); // 使っていないが残し
     const scores = joined.map((r) => r.rating);
     const kelbow = detectElbowIndex(scores);
     const elbowPick = joined.slice(0, Math.min(kelbow, n));
 
-    const picked = elbowPick; // 既定は elbow
-
+    const picked = elbowPick;
     let sw = 0, sx = 0, sy = 0;
     picked.forEach((p) => { sw += p.rating; sx += p.rating * p.x; sy += p.rating * p.y; });
     if (sw <= 0) return { point: null, picked, rule: "elbow" };
@@ -721,7 +763,7 @@ function MapPage() {
     const [ux, uy] = compass.point;
     return new IconLayer({
       id: "preference-compass",
-      data: [{ position: [ux, is3D ? -uy : -uy, 0] }], //ここ
+      data: [{ position: [ux, is3D ? -uy : -uy, 0] }],
       getPosition: (d) => d.position,
       getIcon: () => ({
         url: COMPASS_URL,
@@ -740,7 +782,7 @@ function MapPage() {
 
   // スライダー結果（コンパス：評価が入ると消える）
   const userPinCompassLayer = useMemo(() => {
-    if (!userPin) return null; // markerMode は常にオレンジ想定だが、保守で残す
+    if (!userPin) return null;
     if (hasAnyRating) return null;
     return new IconLayer({
       id: "user-pin-compass",
@@ -782,9 +824,7 @@ function MapPage() {
 
   // ====== レンダリング
   return (
-    <div
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}
-    >
+    <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}>
       <DeckGL
         views={
           is3D
@@ -906,7 +946,7 @@ function MapPage() {
                 getPosition: (d) => [d.BodyAxis, is3D ? d.SweetAxis : -d.SweetAxis, 0],
                 radiusUnits: "meters",
                 getRadius: 0.18,
-                getFillColor: [255, 215, 0, 240],   // 黄色（ゴールド）
+                getFillColor: [255, 215, 0, 240],
                 stroked: true,
                 getLineColor: [0, 0, 0, 220],
                 getLineWidth: 2,
@@ -1093,7 +1133,6 @@ function MapPage() {
         open={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
-          // --- EAN-13 検証（親側の最終ゲート）---
           const isValidEan13 = (ean) => {
             if (!/^\d{13}$/.test(ean)) return false;
             let sum = 0;
@@ -1113,38 +1152,33 @@ function MapPage() {
           }
 
           const now = Date.now();
-          // --- 「再読込み」ウィンドウ中は60sガードを一時解除 ---
           let bypassThrottle = false;
           try {
             const until = Number(sessionStorage.getItem(REREAD_LS_KEY) || 0);
             bypassThrottle = until > 0 && now < until;
           } catch {}
 
-          // 直近60秒の同一JANは通常スキップ（再読込み中は通す）
           if (!bypassThrottle) {
             if (jan === lastCommittedRef.current.code && now - lastCommittedRef.current.at < 60000) {
-              return false; // スキャナ継続
+              return false;
             }
           }
 
-          // データヒット判定
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
             focusOnWine(hit, { zoom: INITIAL_ZOOM });
-            // 採用記録（勝手な再出現を防ぐ）
             lastCommittedRef.current = { code: jan, at: now };
-            return true; // 採用→スキャナ側停止
+            return true;
           }
 
-          // 未登録JAN：ワンショット警告（12s抑制）
           const lastWarn = unknownWarnedRef.current.get(jan) || 0;
           if (now - lastWarn > 12000) {
             alert(`JAN: ${jan} は見つかりませんでした。`);
             unknownWarnedRef.current.set(jan, now);
           }
-          return false; // スキャナ継続
+          return false;
         }}
       />
 
@@ -1172,7 +1206,7 @@ function MapPage() {
         onClose={() => {
           setProductDrawerOpen(false);
           setSelectedJAN(null);
-          setSelectedJANFromSearch(null); // 検索ハイライトを消す（保持したければ外す）
+          setSelectedJANFromSearch(null);
         }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: paperBaseStyle }}

@@ -49,6 +49,30 @@ const COMPASS_SIZE_PCT = 9;
 // 上余白カット後のUI高さ見込み（ヘッダー削除→少し詰める）
 const RESERVED_SVH = 34; // 既存40→34に縮小（必要に応じて30〜36で微調整）
 
+// SliderPage 内に追加（handleGenerateの近く）
+const handleCloseToBlendF = () => {
+  // blendF の UMAP 座標を取得
+  let umapX = 0, umapY = 0;
+  const blendRow = rows.find(r => r.JAN === "blendF");
+
+  if (blendRow && Number.isFinite(blendRow.UMAP1) && Number.isFinite(blendRow.UMAP2)) {
+    umapX = blendRow.UMAP1;
+    umapY = blendRow.UMAP2;
+  } else if (blendF) {
+    // UMAPが無いケースはPC座標から推定
+    [umapX, umapY] = pca2umap(blendF.PC1, blendF.PC2);
+  }
+
+  // MapPage に渡すため、一時ストレージへ依頼を書き込む
+  sessionStorage.setItem(
+    "tm_center_umap",
+    JSON.stringify({ x: umapX, y: umapY, reason: "blendF", ts: Date.now() })
+  );
+
+  // 画面遷移（state も付けておくとより確実にトリガーできる）
+  navigate("/map", { replace: true, state: { centerOnBlendF: true } });
+};
+
 export default function SliderPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -280,7 +304,7 @@ export default function SliderPage() {
 
       {/* 生成ボタン：マップ内 下中央オーバーレイ */}
       <button
-        onClick={handleGenerate}
+        onClick={handleCloseToBlendF}
         style={{
           position: "absolute",
           left: "50%",
