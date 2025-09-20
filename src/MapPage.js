@@ -496,39 +496,76 @@ function MapPage() {
   useEffect(() => {
     const onMsg = (e) => {
       const { type, jan, payload } = e.data || {};
-      if (!type) return;
+      if (!type || !jan) return;
 
-      if (type === "TOGGLE_FAVORITE" && jan) {
+      // 1) ハートのトグル
+      if (type === "TOGGLE_FAVORITE") {
         toggleFavorite(String(jan));
+        return;
       }
 
-      if (type === "RATING_UPDATED" && jan) {
-        // ★ ここで「評価」を userRatings にのみ反映する（♡は操作しない）
+      // 2) 子から「いまの状態を教えて」
+      if (type === "REQUEST_STATE") {
+        const isFav = !!favorites[jan];
+        const ratingPayload = userRatings[jan] || null;
+        try {
+          iframeRef.current?.contentWindow?.postMessage(
+            { type: "STATE_SNAPSHOT", jan, favorite: isFav, rating: ratingPayload },
+            "*"
+          );
+        } catch {}
+        return;
+      }
+
+      // 3) 評価が更新された
+      if (type === "RATING_UPDATED") {
+        // userRatings を更新
         setUserRatings((prev) => {
           const next = { ...prev };
-          if (!payload || !payload.rating) delete next[jan];
-          else next[jan] = payload; // {rating,date,weather}
+          if (!payload || !payload.rating) {
+            delete next[jan];
+          } else {
+            next[jan] = payload; // { rating, date, weather }
+          }
           localStorage.setItem("userRatings", JSON.stringify(next));
           return next;
         });
 
-        // ★ 追加：評価>0になったら必ず「♡」をオフにする
+        // 評価 > 0 なら自動的に♡を外す
         if (payload && Number(payload.rating) > 0) {
           setFavorites((prev) => {
-            if (!prev[jan]) return prev;      // もともとオフなら何もしない
+            if (!prev[jan]) return prev;
             const next = { ...prev };
             delete next[jan];
             return next;
           });
           try {
-            sendFavoriteToChild(jan, false);  // 商品ページ側のハートも同期してオフ
+            sendFavoriteToChild(jan, false);
           } catch {}
         }
+
+        // 最新スナップショットを返信（UI同期用）
+        const effectiveFav =
+          payload && Number(payload.rating) > 0 ? false : !!favorites[jan];
+        try {
+          iframeRef.current?.contentWindow?.postMessage(
+            {
+              type: "STATE_SNAPSHOT",
+              jan,
+              favorite: effectiveFav,
+              rating: payload || null,
+            },
+            "*"
+          );
+        } catch {}
+        return;
       }
     };
+
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [toggleFavorite]);
+  }, [toggleFavorite, favorites, userRatings]);
+
 
   // 評価の有無
   const hasAnyRating = useMemo(
@@ -1269,7 +1306,7 @@ function MapPage() {
 } // MapPage end
 
 // === お気に入り一覧パネル（♡） ===
-function FavoritePanel({ isOpen, onClose, favorites, data, onSelectJAN }) {
+function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelectJAN }) {
   const list = React.useMemo(() => {
     const arr = Object.entries(favorites || {})
       .map(([jan, meta]) => {
