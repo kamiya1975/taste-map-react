@@ -1551,7 +1551,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
                 </li>
               ))}
               {list.length === 0 && (
-                <li style={{ color: "#666" }}>まだ評価がありません。</li>
+                <li style={{ color: "#666" }}>まだ「飲んだワイン」がありません。</li>
               )}
             </ul>
           </div>
