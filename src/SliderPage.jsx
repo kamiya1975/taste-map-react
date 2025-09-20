@@ -280,7 +280,7 @@ export default function SliderPage() {
         style={{
           position: "absolute",
           left: "50%",
-          bottom: 12,                 // ← 位置はここで微調整（例: 8〜24）
+          bottom: 24,                 // ← 位置はここで微調整（例: 8〜24）
           transform: "translateX(-50%)",
           width: "min(80%, 420px)",
           padding: "14px 16px",
