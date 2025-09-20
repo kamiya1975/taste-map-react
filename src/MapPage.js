@@ -916,7 +916,7 @@ function MapPage() {
           }),
           // スライダー結果マーカー
           userPinCompassLayer,
-          userPinOrangeLayer,
+          //userPinOrangeLayer,
           // 検索ハイライト
           selectedJANFromSearch
             ? new ScatterplotLayer({
