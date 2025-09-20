@@ -186,26 +186,45 @@ export default function SliderPage() {
         <div
           aria-label="taste-map-dummy"
           style={{
-            position: "relative",
-            width: `min(calc(100svw - 32px), calc(100svh - ${RESERVED_SVH}svh))`,
+            flex: "1 1 auto",
+            width: "100%",
             aspectRatio: "1 / 1",
-            border: "none",
-            borderRadius: 0,
-            overflow: "hidden",
-            transition: "background-position 120ms linear",
-
-            /* 罫線（4レイヤー） */
+            position: "relative",
+            backgroundColor: "#fff",
+            /* === グリッド罫線: 細線/太線とも中央基準で交差 === */
             backgroundImage: `
-              repeating-linear-gradient(0deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
-              repeating-linear-gradient(90deg, ${THIN_RGBA} 0px, ${THIN_RGBA} ${THIN_W_PX}px, transparent ${THIN_W_PX}px, transparent ${GRID_STEP_PX}px),
-              repeating-linear-gradient(0deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px),
-              repeating-linear-gradient(90deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px)
-            `,
-            backgroundPosition: `
-              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
-              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
-              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
-              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px
+             /* 細：横 */
+             linear-gradient(
+               0deg,
+               transparent calc(50% - ${THIN_W_PX / 2}px),
+               ${THIN_RGBA}  calc(50% - ${THIN_W_PX / 2}px),
+               ${THIN_RGBA}  calc(50% + ${THIN_W_PX / 2}px),
+               transparent   calc(50% + ${THIN_W_PX / 2}px)
+              ),
+              /* 細：縦 */
+              linear-gradient(
+                90deg,
+                transparent calc(50% - ${THIN_W_PX / 2}px),
+                ${THIN_RGBA}  calc(50% - ${THIN_W_PX / 2}px),
+                ${THIN_RGBA}  calc(50% + ${THIN_W_PX / 2}px),
+                transparent   calc(50% + ${THIN_W_PX / 2}px)
+              ),
+              /* 太：横（5ピッチごと） */
+              linear-gradient(
+                0deg,
+                transparent  calc(50% - ${THICK_W_PX / 2}px),
+                ${THICK_RGBA} calc(50% - ${THICK_W_PX / 2}px),
+                ${THICK_RGBA} calc(50% + ${THICK_W_PX / 2}px),
+                transparent  calc(50% + ${THICK_W_PX / 2}px)
+              ),
+              /* 太：縦（5ピッチごと） */
+              linear-gradient(
+                90deg,
+                transparent  calc(50% - ${THICK_W_PX / 2}px),
+                ${THICK_RGBA} calc(50% - ${THICK_W_PX / 2}px),
+                ${THICK_RGBA} calc(50% + ${THICK_W_PX / 2}px),
+                transparent  calc(50% + ${THICK_W_PX / 2}px)
+              )
             `,
             backgroundSize: `
               ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
@@ -213,46 +232,26 @@ export default function SliderPage() {
               ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
               ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
             `,
+            backgroundPosition: `
+              calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px),
+              calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px),
+              calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px),
+              calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px)
+            `,
+            backgroundRepeat: "repeat"
           }}
         >
-          {/* 「閉じる」：マップ内 右上・オーバーレイ配置 */}
-          <button
-            onClick={handleClose}
-            style={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              background: "rgba(255,255,255,0.9)",
-              border: "1px solid #ccc",
-              borderRadius: 8,
-              fontSize: 13,
-              padding: "6px 10px",
-              cursor: "pointer",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-              zIndex: 2,
-              WebkitBackdropFilter: "blur(2px)",
-              backdropFilter: "blur(2px)",
-            }}
-          >
-            閉じる
-          </button>
-
-          {/* コンパス（中央固定） */}
+          {/* コンパス画像 */}
           <img
             src={COMPASS_URL}
             alt="compass"
-            draggable={false}
-            style={{
-              position:"absolute",
-              left:"50%",
-              top:"50%",
-              width:`${COMPASS_SIZE_PCT}%`,
-              height:"auto",
-              transform:"translate(-50%, -50%)",
-              pointerEvents:"none",
-              userSelect:"none",
-              opacity:0.9,
-              filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.25))",
+           style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              width: 60,
+              height: 60,
+              transform: "translate(-50%, -50%)"
             }}
           />
         </div>
