@@ -363,11 +363,9 @@ function MapPage() {
 
   /** === NEW: SliderPage「閉じる」→ blendF に戻る要求を処理 === */
   useEffect(() => {
-    // stateフラグ or sessionStorage どちらでも起動
     const fromState = !!location.state?.centerOnBlendF;
     const raw = sessionStorage.getItem("tm_center_umap");
 
-    // 何も要求が無ければ抜ける
     if (!fromState && !raw) return;
     if (!Array.isArray(data) || data.length === 0) return; // データ待ち
 
@@ -745,13 +743,10 @@ function MapPage() {
     joined.sort((a, b) => b.rating - a.rating);
 
     const n = joined.length;
-    const k20 = Math.max(3, Math.ceil(n * 0.2));
-    const top20 = joined.slice(0, Math.min(k20, n)); // 使っていないが残し
     const scores = joined.map((r) => r.rating);
     const kelbow = detectElbowIndex(scores);
-    const elbowPick = joined.slice(0, Math.min(kelbow, n));
+    const picked = joined.slice(0, Math.min(kelbow, n));
 
-    const picked = elbowPick;
     let sw = 0, sx = 0, sy = 0;
     picked.forEach((p) => { sw += p.rating; sx += p.rating * p.x; sy += p.rating * p.y; });
     if (sw <= 0) return { point: null, picked, rule: "elbow" };
@@ -763,7 +758,7 @@ function MapPage() {
     const [ux, uy] = compass.point;
     return new IconLayer({
       id: "preference-compass",
-      data: [{ position: [ux, is3D ? -uy : -uy, 0] }],
+      data: [{ position: [ux, -uy, 0] }], // 2D/3D ともにキャンバス座標へ反転
       getPosition: (d) => d.position,
       getIcon: () => ({
         url: COMPASS_URL,
@@ -778,7 +773,7 @@ function MapPage() {
       pickable: false,
       parameters: { depthTest: false },
     });
-  }, [compass, is3D]);
+  }, [compass]);
 
   // スライダー結果（コンパス：評価が入ると消える）
   const userPinCompassLayer = useMemo(() => {
@@ -946,7 +941,7 @@ function MapPage() {
                 getPosition: (d) => [d.BodyAxis, is3D ? d.SweetAxis : -d.SweetAxis, 0],
                 radiusUnits: "meters",
                 getRadius: 0.18,
-                getFillColor: [255, 215, 0, 240],
+                getFillColor: [255, 215, 0, 240],   // 黄色（ゴールド）
                 stroked: true,
                 getLineColor: [0, 0, 0, 220],
                 getLineWidth: 2,
@@ -1029,7 +1024,7 @@ function MapPage() {
         </select>
       )}
 
-      {/* 右上: スライダーへ遷移（2D時のみ表示にしたい場合は {!is3D && ( ... )} で囲む） */}
+      {/* 右上: スライダーへ遷移（2D時のみ表示） */}
       {!is3D && (
         <button
           onClick={openSliderExclusive}
@@ -1056,7 +1051,7 @@ function MapPage() {
         </button>
       )}
 
-      {/* 右サイドの丸ボタン群（/slider は別ページなのでスライダーボタンは無し。♡ と 🔍 のみ） */}
+      {/* 右サイドの丸ボタン群（♡ と 🔍） */}
       {!is3D && (
         <button
           onClick={openFavoriteExclusive}
@@ -1133,6 +1128,7 @@ function MapPage() {
         open={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
+          // --- EAN-13 検証 ---
           const isValidEan13 = (ean) => {
             if (!/^\d{13}$/.test(ean)) return false;
             let sum = 0;
@@ -1152,33 +1148,38 @@ function MapPage() {
           }
 
           const now = Date.now();
+          // --- 「再読込み」ウィンドウ中は60sガードを一時解除 ---
           let bypassThrottle = false;
           try {
             const until = Number(sessionStorage.getItem(REREAD_LS_KEY) || 0);
             bypassThrottle = until > 0 && now < until;
           } catch {}
 
+          // 直近60秒の同一JANは通常スキップ（再読込み中は通す）
           if (!bypassThrottle) {
             if (jan === lastCommittedRef.current.code && now - lastCommittedRef.current.at < 60000) {
-              return false;
+              return false; // スキャナ継続
             }
           }
 
+          // データヒット判定
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
             focusOnWine(hit, { zoom: INITIAL_ZOOM });
+            // 採用記録（勝手な再出現を防ぐ）
             lastCommittedRef.current = { code: jan, at: now };
-            return true;
+            return true; // 採用→スキャナ側停止
           }
 
+          // 未登録JAN：ワンショット警告（12s抑制）
           const lastWarn = unknownWarnedRef.current.get(jan) || 0;
           if (now - lastWarn > 12000) {
             alert(`JAN: ${jan} は見つかりませんでした。`);
             unknownWarnedRef.current.set(jan, now);
           }
-          return false;
+          return false; // スキャナ継続
         }}
       />
 
@@ -1206,7 +1207,7 @@ function MapPage() {
         onClose={() => {
           setProductDrawerOpen(false);
           setSelectedJAN(null);
-          setSelectedJANFromSearch(null);
+          setSelectedJANFromSearch(null); // 検索ハイライトを消す
         }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: paperBaseStyle }}
