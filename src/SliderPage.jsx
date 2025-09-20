@@ -71,6 +71,9 @@ export default function SliderPage() {
     };
   }, []);
 
+  // 罫線ピッチなどの定数の下あたりに1行追加
+  const ALIGN_OFFSET = GRID_STEP_PX * THICK_EVERY / 2 - THICK_W_PX / 2; // 32.5 - 0.7 = 31.8px
+
   // Map 以外から直接来た場合のみ店舗選択を強制
   useEffect(() => {
     const saved = localStorage.getItem("selectedStore");
@@ -180,14 +183,10 @@ export default function SliderPage() {
               repeating-linear-gradient(90deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px)
             `,
             backgroundPosition: `
-              calc(${bgOffset.dx}px + ${GRID_STEP_PX * THICK_EVERY / 2}px) 
-              calc(${bgOffset.dy}px + ${GRID_STEP_PX * THICK_EVERY / 2}px),
-              calc(${bgOffset.dx}px + ${GRID_STEP_PX * THICK_EVERY / 2}px) 
-              calc(${bgOffset.dy}px + ${GRID_STEP_PX * THICK_EVERY / 2}px),
-              calc(${bgOffset.dx}px + ${GRID_STEP_PX * THICK_EVERY / 2}px) 
-              calc(${bgOffset.dy}px + ${GRID_STEP_PX * THICK_EVERY / 2}px),
-              calc(${bgOffset.dx}px + ${GRID_STEP_PX * THICK_EVERY / 2}px) 
-              calc(${bgOffset.dy}px + ${GRID_STEP_PX * THICK_EVERY / 2}px)
+              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
+              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
+              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
+              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px
             `,
             backgroundSize: `
               ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
