@@ -39,7 +39,7 @@ function fitLocalAffineAndPredict(px,py,neigh){
 const GRID_STEP_PX = 13;
 // 薄線・太線の太さ（px）
 const THIN_W_PX = 1;
-const THICK_W_PX = 1.5;
+const THICK_W_PX = 1.4;
 // 何本ごとに太線にするか（MapPageは 5）
 const THICK_EVERY = 5;
 // 線色（MapPage の [r,g,b,a] に近似）
