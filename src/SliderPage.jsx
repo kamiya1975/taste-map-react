@@ -72,7 +72,8 @@ export default function SliderPage() {
   }, []);
 
   // 罫線ピッチなどの定数の下あたりに1行追加
-  const ALIGN_OFFSET = GRID_STEP_PX * THICK_EVERY / 2 - THICK_W_PX / 2; // 32.5 - 0.7 = 31.8px
+  const THIN_OFFSET  = GRID_STEP_PX / 2 - THIN_W_PX  / 2;         // 6.5 - 0.5  = 6.0px
+  const THICK_OFFSET = GRID_STEP_PX * THICK_EVERY / 2 - THICK_W_PX / 2; // 32.5 - 0.7 = 31.8px
 
   // Map 以外から直接来た場合のみ店舗選択を強制
   useEffect(() => {
@@ -183,10 +184,10 @@ export default function SliderPage() {
               repeating-linear-gradient(90deg, ${THICK_RGBA} 0px, ${THICK_RGBA} ${THICK_W_PX}px, transparent ${THICK_W_PX}px, transparent ${GRID_STEP_PX * THICK_EVERY}px)
             `,
             backgroundPosition: `
-              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
-              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
-              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px,
-              ${bgOffset.dx + ALIGN_OFFSET}px ${bgOffset.dy + ALIGN_OFFSET}px
+              calc(50% + ${bgOffset.dx + THIN_OFFSET}px)  calc(50% + ${bgOffset.dy + THIN_OFFSET}px),
+              calc(50% + ${bgOffset.dx + THIN_OFFSET}px)  calc(50% + ${bgOffset.dy + THIN_OFFSET}px),
+              calc(50% + ${bgOffset.dx + THICK_OFFSET}px) calc(50% + ${bgOffset.dy + THICK_OFFSET}px),
+              calc(50% + ${bgOffset.dx + THICK_OFFSET}px) calc(50% + ${bgOffset.dy + THICK_OFFSET}px)
             `,
             backgroundSize: `
               ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
