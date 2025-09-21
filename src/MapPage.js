@@ -1439,7 +1439,11 @@ function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelect
 // === 評価一覧パネル（◎）— 並び替え対応版 ===
 function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
   // 追加：並び替えモード ('date' | 'rating')
-  const [sortMode, setSortMode] = React.useState("date");
+  const [sortMode, setSortMode] = React.useState(() => {
+    try {
+      return localStorage.getItem("rated_sort_mode") === "rating" ? "rating" : "date";
+    } catch { return "date"; }
+  });
 
   const list = React.useMemo(() => {
     // userRatings = { JAN: { rating, date, weather } }
@@ -1526,7 +1530,8 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
                 }}
               >
                 <button
-                  onClick={() => setSortMode("date")}
+                  onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); localStorage.setItem("rated_sort_mode","date"); }}
+                  onClick={(e) => { e.preventDefault(); setSortMode("date"); localStorage.setItem("rated_sort_mode","date"); }}
                   aria-pressed={sortMode === "date"}
                   style={{
                     padding: "6px 10px",
@@ -1540,7 +1545,8 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
                   日付順
                 </button>
                 <button
-                  onClick={() => setSortMode("rating")}
+                  onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); localStorage.setItem("rated_sort_mode","rating"); }}
+                  onClick={(e) => { e.preventDefault(); setSortMode("rating"); localStorage.setItem("rated_sort_mode","rating"); }}
                   aria-pressed={sortMode === "rating"}
                   style={{
                     padding: "6px 10px",
