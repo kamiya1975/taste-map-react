@@ -542,7 +542,6 @@ function MapPage() {
             sendFavoriteToChild(jan, false);
           } catch {}
           setIsFavoriteOpen(false);
-          setIsRatedOpen(true);
         }
 
         // 最新スナップショットを返信（UI同期用）
