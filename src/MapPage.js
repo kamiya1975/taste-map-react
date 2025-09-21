@@ -1273,7 +1273,7 @@ function MapPage() {
               setSelectedJANFromSearch(null);
             }}
             style={{
-              background: "#eee",
+              background: "#fff",
               border: "1px solid #ccc",
               padding: "6px 10px",
               borderRadius: "4px",
@@ -1363,7 +1363,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelect
             <button
               onClick={onClose}
               style={{
-                background: "#eee",
+                background: "#fff",
                 border: "1px solid #ccc",
                 padding: "6px 10px",
                 borderRadius: "4px",
@@ -1563,7 +1563,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
               <button
                 onClick={onClose}
                 style={{
-                  background: "#eee",
+                  background: "#fff",
                   border: "1px solid #ccc",
                   padding: "6px 10px",
                   borderRadius: "4px",
