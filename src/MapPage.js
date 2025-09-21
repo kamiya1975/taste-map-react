@@ -1273,7 +1273,7 @@ function MapPage() {
               setSelectedJANFromSearch(null);
             }}
             style={{
-              background: "#fff",
+              background: "#eee",
               border: "1px solid #ccc",
               padding: "6px 10px",
               borderRadius: "4px",
@@ -1363,7 +1363,7 @@ function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelect
             <button
               onClick={onClose}
               style={{
-                background: "#fff",
+                background: "#eee",
                 border: "1px solid #ccc",
                 padding: "6px 10px",
                 borderRadius: "4px",
@@ -1536,7 +1536,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
                   style={{
                     padding: "6px 10px",
                     fontSize: 13,
-                    background: sortMode === "date" ? "#e9e9e9" : "#fff",
+                    background: sortMode === "date" ? "#e9e9e9" : "#eee",
                     border: "none",
                     borderRight: "1px solid #ccc",
                     cursor: "pointer",
@@ -1551,7 +1551,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
                   style={{
                     padding: "6px 10px",
                     fontSize: 13,
-                    background: sortMode === "rating" ? "#e9e9e9" : "#fff",
+                    background: sortMode === "rating" ? "#e9e9e9" : "#eee",
                     border: "none",
                     cursor: "pointer",
                   }}
@@ -1563,7 +1563,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
               <button
                 onClick={onClose}
                 style={{
-                  background: "#fff",
+                  background: "#eee",
                   border: "1px solid #ccc",
                   padding: "6px 10px",
                   borderRadius: "4px",
