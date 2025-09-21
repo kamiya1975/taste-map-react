@@ -1436,12 +1436,14 @@ function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelect
   );
 }
 
-// === NEW: 評価一覧パネル（◎） ===
+// === 評価一覧パネル（◎）— 並び替え対応版 ===
 function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
+  // 追加：並び替えモード ('date' | 'rating')
+  const [sortMode, setSortMode] = React.useState("date");
+
   const list = React.useMemo(() => {
     // userRatings = { JAN: { rating, date, weather } }
     const arr = Object.entries(userRatings || {})
-      // ★ 評価>0 のみ採用（表示する）
       .map(([jan, meta]) => {
         const rating = Number(meta?.rating) || 0;
         if (rating <= 0) return null;
@@ -1455,10 +1457,20 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
       })
       .filter(Boolean);
 
-    // 直近評価順（降順）
-    arr.sort((a, b) => new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
-    return arr.map((x, i) => ({ ...x, displayIndex: arr.length - i }));
-  }, [data, userRatings]); // ← favorites はこのスコープに無いので削除
+    // 並び替え
+    if (sortMode === "rating") {
+      // 評価の高い順 → 同点は新しい評価が先
+      arr.sort((a, b) => {
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        return new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0);
+      });
+    } else {
+      // 日付の新しい順（従来）
+      arr.sort((a, b) => new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
+    }
+
+    return arr.map((x, i) => ({ ...x, displayIndex: i + 1 }));
+  }, [data, userRatings, sortMode]);
 
   return (
     <AnimatePresence>
@@ -1495,21 +1507,67 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              gap: 12,
             }}
           >
             <h3 style={{ margin: 0 }}>飲んだワイン</h3>
-            <button
-              onClick={onClose}
-              style={{
-                background: "#eee",
-                border: "1px solid #ccc",
-                padding: "6px 10px",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              閉じる
-            </button>
+
+            {/* 並び替えトグル（右側） */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontSize: 13, color: "#666" }}>並び替え</span>
+              <div
+                role="group"
+                aria-label="並び替え"
+                style={{
+                  display: "inline-flex",
+                  border: "1px solid #ccc",
+                  borderRadius: 8,
+                  overflow: "hidden",
+                }}
+              >
+                <button
+                  onClick={() => setSortMode("date")}
+                  aria-pressed={sortMode === "date"}
+                  style={{
+                    padding: "6px 10px",
+                    fontSize: 13,
+                    background: sortMode === "date" ? "#e9e9e9" : "#fff",
+                    border: "none",
+                    borderRight: "1px solid #ccc",
+                    cursor: "pointer",
+                  }}
+                >
+                  日付順
+                </button>
+                <button
+                  onClick={() => setSortMode("rating")}
+                  aria-pressed={sortMode === "rating"}
+                  style={{
+                    padding: "6px 10px",
+                    fontSize: 13,
+                    background: sortMode === "rating" ? "#e9e9e9" : "#fff",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  評価順
+                </button>
+              </div>
+
+              <button
+                onClick={onClose}
+                style={{
+                  background: "#eee",
+                  border: "1px solid #ccc",
+                  padding: "6px 10px",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  marginLeft: 8,
+                }}
+              >
+                閉じる
+              </button>
+            </div>
           </div>
 
           <div
@@ -1578,6 +1636,5 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
     </AnimatePresence>
   );
 }
-
 
 export default MapPage;
