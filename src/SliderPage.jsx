@@ -263,7 +263,7 @@ export default function SliderPage() {
                right: 8,
                zIndex: 5,
                background: "rgba(255,255,255,0.9)",
-               border: "1px solid #ccc",
+               border: "1px solid #eee",
                borderRadius: 8,
                fontSize: 13,
                padding: "6px 10px",
