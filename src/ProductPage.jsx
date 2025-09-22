@@ -204,7 +204,7 @@ export default function ProductPage() {
   const jan = useMemo(() => getJANFromURL(), []);
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
-  
+
   // --- DEBUG ---
   console.log('[child] href=', window.location.href);// --- DEBUG ---
   console.log('[child] jan=', jan);// --- DEBUG ---
@@ -255,12 +255,13 @@ export default function ProductPage() {
   // 親からの STATE_SNAPSHOT を受け取り、UIを上書き（評価のみ）
   useEffect(() => {
     const onMsg = (e) => {
-      const { type, jan: targetJan, rating: ratingPayload } = e.data || {};
+      const { type, jan: targetJan, rating: ratingPayload, hideHeart } = e.data || {};
       if (type !== "STATE_SNAPSHOT") return;
       if (String(targetJan) !== String(jan)) return;
 
       try {
         setRating(ratingPayload?.rating ?? 0);
+        if (typeof hideHeart === 'boolean') setHideHeart(hideHeart);
       } catch {}
     };
     window.addEventListener("message", onMsg);
