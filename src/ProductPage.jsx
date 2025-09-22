@@ -1,3 +1,4 @@
+// src/ProductPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 
 /** =========================
@@ -6,7 +7,7 @@ import React, { useEffect, useMemo, useState } from "react";
 const getJANFromURL = () => {
   try {
     const url = new URL(window.location.href);
-    // /products/:JAN or ?jan=XXXX どちらにも対応
+    // /products/:JAN or ?jan=XXXX の両対応
     const byPath = window.location.pathname.split("/").filter(Boolean).pop();
     const byQuery = url.searchParams.get("jan");
     return String(byQuery || byPath || "").trim();
@@ -55,7 +56,7 @@ const notifyParentClosed = (jan) => {
   } catch {}
 };
 
-// ◎一覧から開いたかどうか（?fromRated=1|true）をURLクエリで判定
+// ◎一覧から開いたか（?fromRated=1|true）をURLクエリで判定
 const useHideHeartFromQuery = () => {
   const [hide, setHide] = useState(false);
   useEffect(() => {
@@ -204,7 +205,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // ★ 追加：◎一覧から来たか（来ていれば♡を隠す）— クエリを初期値として state 化
+  // ◎一覧から来たか（来ていれば♡を隠す）— クエリを初期値として state 化
   const hideHeartFromQuery = useHideHeartFromQuery();
   const [hideHeart, setHideHeart] = useState(hideHeartFromQuery);
   useEffect(() => { setHideHeart(hideHeartFromQuery); }, [hideHeartFromQuery]);
@@ -219,7 +220,6 @@ export default function ProductPage() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       notifyParentClosed(jan);
-      // ↓ ここを onBeforeUnload に統一（U を大文字）
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [jan]);
@@ -239,7 +239,7 @@ export default function ProductPage() {
     } catch {}
   }, [jan]);
 
-  // 親からの STATE_SNAPSHOT を受け取り、UIを上書き
+  // 親からの STATE_SNAPSHOT を受け取り、UIを上書き（評価のみ）
   useEffect(() => {
     const onMsg = (e) => {
       const { type, jan: targetJan, rating: ratingPayload } = e.data || {};
@@ -254,7 +254,7 @@ export default function ProductPage() {
     return () => window.removeEventListener("message", onMsg);
   }, [jan]);
 
-  // ★ 親（MapPage）からの「HIDE_HEART」指示を受けたら即時反映
+  // 親（MapPage）からの「HIDE_HEART」指示を受けたら即時反映
   useEffect(() => {
     const onMsg = (e) => {
       const { type, jan: targetJan, value } = e.data || {};
@@ -277,6 +277,7 @@ export default function ProductPage() {
     if (newRating === 0) {
       delete ratings[jan];
     } else {
+      // ★ 気象情報の取得（失敗してもアプリは継続）
       let weather = {};
       try {
         const token = process.env.REACT_APP_IPINFO_TOKEN;
@@ -328,11 +329,7 @@ export default function ProductPage() {
   };
 
   if (!product) {
-    return (
-      <div style={{ padding: 16 }}>
-        商品が見つかりませんでした。
-      </div>
-    );
+    return <div style={{ padding: 16 }}>商品が見つかりませんでした。</div>;
   }
 
   const price = product.希望小売価格 ?? product.価格 ?? 1800;
@@ -457,9 +454,6 @@ export default function ProductPage() {
 
       {/* 説明ダミー */}
       <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
         昨今では、世界標準の飲み物と言えるまでになっています。 …（略）

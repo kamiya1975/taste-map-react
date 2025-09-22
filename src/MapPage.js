@@ -24,6 +24,7 @@ import {
 } from "./ui/constants";
 
 const REREAD_LS_KEY = "tm_reread_until";
+const [openFromRated, setOpenFromRated] = useState(false);
 
 /* =======================
    定数（コンポーネント外に配置：ESLint回避）
@@ -61,7 +62,6 @@ const HEAT_COLOR_HIGH = [255, 165, 0];
 function MapPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [openFromRated, setOpenFromRated] = useState(false);
 
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
@@ -1135,7 +1135,7 @@ function MapPage() {
         data={data}
         onPick={(item) => {
           if (!item) return;
-          setOpenFromRated(false);  // ★ 検索からは fromRated=false
+          setOpenFromRated(false);   // ← ◎以外からは必ず false
           setSelectedJANFromSearch(null);
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
@@ -1216,7 +1216,7 @@ function MapPage() {
         data={data}
         userRatings={userRatings}
         onSelectJAN={(jan) => {
-          setOpenFromRated(false);  // ★ ♡からは fromRated=false
+          setOpenFromRated(false);   // ← ◎以外からは必ず false
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
@@ -1234,7 +1234,7 @@ function MapPage() {
         userRatings={userRatings}
         data={data}
         onSelectJAN={(jan) => {
-          setOpenFromRated(true); // ★ 「◎一覧から来た」フラグを立てる
+          setOpenFromRated(false);   // ← ◎以外からは必ず false
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
@@ -1290,7 +1290,7 @@ function MapPage() {
           <iframe
             ref={iframeRef}
             title={`product-${selectedJAN}`}
-            src={`${process.env.PUBLIC_URL || ""}/products/${selectedJAN}${openFromRated ? '?fromRated=1' : ''}`}
+            src={`${process.env.PUBLIC_URL || ""}/products/${selectedJAN}${openFromRated ? "?fromRated=1" : ""}`}
             style={{ border: "none", width: "100%", height: `calc(${DRAWER_HEIGHT} - 48px)` }}
             onLoad={() => {
               const jan = String(selectedJAN);
