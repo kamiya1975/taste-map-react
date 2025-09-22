@@ -509,7 +509,6 @@ function MapPage() {
 
       // 2) 子から「いまの状態を教えて」
       if (type === "REQUEST_STATE") {
-        console.log('[parent] REQUEST_STATE for jan=', janStr, 'openFromRated=', openFromRated);//発火チェック
         const isFav = !!favorites[janStr];
         const ratingPayload = userRatings[janStr] || null;
         try {
@@ -522,7 +521,6 @@ function MapPage() {
             (sessionStorage.getItem('tm_from_rated_jan') === janStr) ||
             openFromRated;
           if (fromRated) {
-            console.log('[parent] send HIDE_HEART (on REQUEST_STATE)', { jan: janStr, value: true });
             iframeRef.current?.contentWindow?.postMessage(
               { type: "HIDE_HEART", jan: janStr, value: true },
               "*"
@@ -1321,7 +1319,6 @@ function MapPage() {
             })()}
             style={{ border: "none", width: "100%", height: `calc(${DRAWER_HEIGHT} - 48px)` }}
             onLoad={() => {
-              console.log('[parent] onLoad, openFromRated=', openFromRated, 'jan=', selectedJAN);  //発火チェック
               const jan = String(selectedJAN);
               const isFav = !!favorites[jan];
               try {
@@ -1331,7 +1328,6 @@ function MapPage() {
                   fromRatedRef.current ||
                   (sessionStorage.getItem('tm_from_rated_jan') === jan);
                 if (fromRated) {
-                  console.log('[parent] send HIDE_HEART (onLoad)', { jan, value: true }); //発火チェック
                   iframeRef.current?.contentWindow?.postMessage(
                     { type: "HIDE_HEART", jan, value: true },
                     "*"

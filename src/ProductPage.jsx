@@ -205,19 +205,6 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // --- DEBUG ---
-  console.log('[child] href=', window.location.href);// --- DEBUG ---
-  console.log('[child] jan=', jan);// --- DEBUG ---
-
-
-  // --- DEBUG: 受信メッセージ可視化（何でも出す）---
-  useEffect(() => {
-    const dbg = (e) => console.log('[child] message=', e.data);
-    window.addEventListener('message', dbg);
-    return () => window.removeEventListener('message', dbg);
-  }, []);
-
-
   // ◎一覧から来たか（来ていれば♡を隠す）— クエリを初期値として state 化
   const hideHeartFromQuery = useHideHeartFromQuery();
   const [hideHeart, setHideHeart] = useState(hideHeartFromQuery);
