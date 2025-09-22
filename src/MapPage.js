@@ -1435,32 +1435,51 @@ function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelect
   );
 }
 
-// === 評価一覧パネル（◎）— 並び替え対応版 ===
+// === 評価一覧パネル（◎）— 「評価した順」で通し番号を付与する版 ===
 function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
-  // 追加：並び替えモード ('date' | 'rating')
+  // 並び替えモード ('date' | 'rating') は従来どおり維持
   const [sortMode, setSortMode] = React.useState(() => {
     try {
       return localStorage.getItem("rated_sort_mode") === "rating" ? "rating" : "date";
     } catch { return "date"; }
   });
 
+  // ★ 評価“した順”の通し番号マップ（古い→新しいで 1,2,3...）
+  const rankMap = React.useMemo(() => {
+    // 現在「評価>0」のものだけを対象に、meta.date（評価日時）昇順で採番
+    const items = Object.entries(userRatings || {})
+      .map(([jan, meta]) => ({
+        jan: String(jan),
+        rating: Number(meta?.rating) || 0,
+        t: meta?.date ? new Date(meta.date).getTime() : 0, // 日付がない場合は 0 扱い（最古側に寄る）
+      }))
+      .filter((x) => x.rating > 0);
+
+    // 同時刻のタイはJANで安定ソート（決定論的）
+    items.sort((a, b) => (a.t - b.t) || a.jan.localeCompare(b.jan));
+
+    const map = new Map();
+    items.forEach((x, idx) => map.set(x.jan, idx + 1));
+    return map;
+  }, [userRatings]);
+
+  // 表示用リスト：並び順はUIの選択に従うが、左端の displayIndex は rankMap に従う
   const list = React.useMemo(() => {
-    // userRatings = { JAN: { rating, date, weather } }
     const arr = Object.entries(userRatings || {})
       .map(([jan, meta]) => {
         const rating = Number(meta?.rating) || 0;
         if (rating <= 0) return null;
-        const item = (data || []).find((d) => String(d.JAN) === String(jan));
-        if (!item) return null;
+        const it = (data || []).find((d) => String(d.JAN) === String(jan));
+        if (!it) return null;
         return {
-          ...item,
+          ...it,
           ratedAt: meta?.date ?? null,
           rating,
+          displayIndex: rankMap.get(String(jan)) ?? null, // ← “評価順の通し番号”
         };
       })
       .filter(Boolean);
 
-    // 並び替え
     if (sortMode === "rating") {
       // 評価の高い順 → 同点は新しい評価が先
       arr.sort((a, b) => {
@@ -1472,8 +1491,8 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
       arr.sort((a, b) => new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
     }
 
-    return arr.map((x, i) => ({ ...x, displayIndex: i + 1 }));
-  }, [data, userRatings, sortMode]);
+    return arr;
+  }, [data, userRatings, sortMode, rankMap]);
 
   return (
     <AnimatePresence>
@@ -1485,9 +1504,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
           transition={{ type: "spring", stiffness: 200, damping: 25 }}
           style={{
             position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
+            bottom: 0, left: 0, right: 0,
             height: DRAWER_HEIGHT,
             backgroundColor: "#fff",
             boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
@@ -1596,6 +1613,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                     <div>
+                      {/* ★ 表示番号は“評価順の通し番号” */}
                       <strong
                         style={{
                           display: "inline-block",
@@ -1606,7 +1624,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
                           fontFamily: '"Helvetica Neue", Arial, sans-serif',
                         }}
                       >
-                        {item.displayIndex}.
+                        {item.displayIndex ?? "—"}.
                       </strong>
                       <span style={{ fontSize: "15px", color: "#555" }}>
                         {item.ratedAt
