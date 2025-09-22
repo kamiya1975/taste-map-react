@@ -204,8 +204,10 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // ★ 追加：◎一覧から来たか（来ていれば♡を隠す）
-  const hideHeart = useHideHeartFromQuery();
+  // ★ 追加：◎一覧から来たか（来ていれば♡を隠す）— クエリを初期値として state 化
+  const hideHeartFromQuery = useHideHeartFromQuery();
+  const [hideHeart, setHideHeart] = useState(hideHeartFromQuery);
+  useEffect(() => { setHideHeart(hideHeartFromQuery); }, [hideHeartFromQuery]);
 
   // マウント→OPEN通知、アンマウント→CLOSED通知 + 親へ状態問い合わせ
   useEffect(() => {
@@ -217,7 +219,7 @@ export default function ProductPage() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       notifyParentClosed(jan);
-      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("beforeunload", onBeforeunload);
     };
   }, [jan]);
 
@@ -246,6 +248,19 @@ export default function ProductPage() {
       try {
         setRating(ratingPayload?.rating ?? 0);
       } catch {}
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [jan]);
+
+  // ★ 親（MapPage）からの「HIDE_HEART」指示を受けたら即時反映
+  useEffect(() => {
+    const onMsg = (e) => {
+      const { type, jan: targetJan, value } = e.data || {};
+      if (String(targetJan) !== String(jan)) return;
+      if (type === "HIDE_HEART") {
+        setHideHeart(Boolean(value));
+      }
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);

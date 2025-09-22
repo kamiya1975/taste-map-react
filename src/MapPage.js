@@ -1290,15 +1290,22 @@ function MapPage() {
           <iframe
             ref={iframeRef}
             title={`product-${selectedJAN}`}
-            src={`/products/${selectedJAN}${openFromRated ? '?fromRated=1' : ''}`}
+            src={`${process.env.PUBLIC_URL || ""}/products/${selectedJAN}${openFromRated ? '?fromRated=1' : ''}`}
             style={{ border: "none", width: "100%", height: `calc(${DRAWER_HEIGHT} - 48px)` }}
             onLoad={() => {
               const jan = String(selectedJAN);
               const isFav = !!favorites[jan];
               try {
                 sendFavoriteToChild(jan, isFav);
+                // ★ ◎一覧から来た場合は、明示的に子へ「♡を隠せ」を通知
+                if (openFromRated) {
+                  iframeRef.current?.contentWindow?.postMessage(
+                    { type: "HIDE_HEART", jan, value: true },
+                    "*"
+                  );
+                }
               } catch {}
-              setOpenFromRated(false);  // ★ クエリ使い終わったらフラグを下ろす（次回の残留を防ぐ）
+              setOpenFromRated(false);  // ★ 指示を送った“後”でフラグを下ろす
             }}
           />
         ) : (
