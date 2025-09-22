@@ -508,6 +508,7 @@ function MapPage() {
 
       // 2) 子から「いまの状態を教えて」
       if (type === "REQUEST_STATE") {
+        console.log('[parent] REQUEST_STATE for jan=', janStr, 'openFromRated=', openFromRated);//発火チェック
         const isFav = !!favorites[janStr];
         const ratingPayload = userRatings[janStr] || null;
         try {
@@ -515,6 +516,16 @@ function MapPage() {
             { type: "STATE_SNAPSHOT", jan: janStr, favorite: isFav, rating: ratingPayload },
             "*"
           );
+          
+          //発火チェック
+          if (openFromRated) {
+            console.log('[parent] send HIDE_HEART (on REQUEST_STATE)', { jan: janStr, value: true });
+            iframeRef.current?.contentWindow?.postMessage(
+              { type: "HIDE_HEART", jan: janStr, value: true },
+              "*"
+            );
+          }
+
         } catch {}
         return;
       }
@@ -1293,12 +1304,14 @@ function MapPage() {
             src={`${process.env.PUBLIC_URL || ""}/products/${selectedJAN}${openFromRated ? "?fromRated=1" : ""}`}
             style={{ border: "none", width: "100%", height: `calc(${DRAWER_HEIGHT} - 48px)` }}
             onLoad={() => {
+              console.log('[parent] onLoad, openFromRated=', openFromRated, 'jan=', selectedJAN);  //発火チェック
               const jan = String(selectedJAN);
               const isFav = !!favorites[jan];
               try {
                 sendFavoriteToChild(jan, isFav);
                 // ★ ◎一覧から来た場合は、明示的に子へ「♡を隠せ」を通知
                 if (openFromRated) {
+                  console.log('[parent] send HIDE_HEART (onLoad)', { jan, value: true }); //発火チェック
                   iframeRef.current?.contentWindow?.postMessage(
                     { type: "HIDE_HEART", jan, value: true },
                     "*"
