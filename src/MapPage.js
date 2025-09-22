@@ -1435,27 +1435,23 @@ function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelect
   );
 }
 
-// === 評価一覧パネル（◎）— 「評価した順」で通し番号を付与する版 ===
+// === 評価一覧パネル（◎）— 「評価した順」で通し番号を付与 + 開くたび日付順 ===
 function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
-  // 並び替えモード ('date' | 'rating') は従来どおり維持
-  const [sortMode, setSortMode] = React.useState(() => {
-    try {
-      return localStorage.getItem("rated_sort_mode") === "rating" ? "rating" : "date";
-    } catch { return "date"; }
-  });
+  // 並び替えモード ('date' | 'rating')。開くたびに日付順へ戻す
+  const [sortMode, setSortMode] = React.useState("date");
+  React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
   // ★ 評価“した順”の通し番号マップ（古い→新しいで 1,2,3...）
   const rankMap = React.useMemo(() => {
-    // 現在「評価>0」のものだけを対象に、meta.date（評価日時）昇順で採番
     const items = Object.entries(userRatings || {})
       .map(([jan, meta]) => ({
         jan: String(jan),
         rating: Number(meta?.rating) || 0,
-        t: meta?.date ? new Date(meta.date).getTime() : 0, // 日付がない場合は 0 扱い（最古側に寄る）
+        t: meta?.date ? new Date(meta.date).getTime() : 0, // 日付なしは最古扱い
       }))
       .filter((x) => x.rating > 0);
 
-    // 同時刻のタイはJANで安定ソート（決定論的）
+    // 同時刻はJANで安定化
     items.sort((a, b) => (a.t - b.t) || a.jan.localeCompare(b.jan));
 
     const map = new Map();
@@ -1463,7 +1459,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
     return map;
   }, [userRatings]);
 
-  // 表示用リスト：並び順はUIの選択に従うが、左端の displayIndex は rankMap に従う
+  // 表示用リスト：並び順はUIで変更可。表示番号は rankMap に固定。
   const list = React.useMemo(() => {
     const arr = Object.entries(userRatings || {})
       .map(([jan, meta]) => {
@@ -1487,10 +1483,9 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
         return new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0);
       });
     } else {
-      // 日付の新しい順（従来）
+      // 日付の新しい順（デフォルト）
       arr.sort((a, b) => new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
     }
-
     return arr;
   }, [data, userRatings, sortMode, rankMap]);
 
@@ -1503,73 +1498,51 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
           exit={{ y: "100%" }}
           transition={{ type: "spring", stiffness: 200, damping: 25 }}
           style={{
-            position: "absolute",
-            bottom: 0, left: 0, right: 0,
-            height: DRAWER_HEIGHT,
-            backgroundColor: "#fff",
-            boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
-            zIndex: 20,
-            borderTopLeftRadius: "12px",
-            borderTopRightRadius: "12px",
-            display: "flex",
-            flexDirection: "column",
-            fontFamily:
-              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+            position: "absolute", bottom: 0, left: 0, right: 0,
+            height: DRAWER_HEIGHT, backgroundColor: "#fff",
+            boxShadow: "0 -2px 10px rgba(0,0,0,0.2)", zIndex: 20,
+            borderTopLeftRadius: "12px", borderTopRightRadius: "12px",
+            display: "flex", flexDirection: "column",
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             pointerEvents: "auto",
           }}
         >
           <div
             style={{
-              padding: "12px 16px",
-              borderBottom: "1px solid #ddd",
-              background: "#f9f9f9",
-              flexShrink: 0,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 12,
+              padding: "12px 16px", borderBottom: "1px solid #ddd",
+              background: "#f9f9f9", flexShrink: 0,
+              display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
             }}
           >
             <h3 style={{ margin: 0 }}>飲んだワイン</h3>
 
-            {/* 並び替えトグル（右側） */}
+            {/* 並び替えトグル */}
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <span style={{ fontSize: 13, color: "#666" }}>並び替え</span>
               <div
-                role="group"
-                aria-label="並び替え"
-                style={{
-                  display: "inline-flex",
-                  border: "1px solid #ccc",
-                  borderRadius: 8,
-                  overflow: "hidden",
-                }}
+                role="group" aria-label="並び替え"
+                style={{ display: "inline-flex", border: "1px solid #ccc", borderRadius: 8, overflow: "hidden" }}
               >
                 <button
-                  onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); localStorage.setItem("rated_sort_mode","date"); }}
-                  onClick={(e) => { e.preventDefault(); setSortMode("date"); localStorage.setItem("rated_sort_mode","date"); }}
+                  onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
+                  onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
                   aria-pressed={sortMode === "date"}
                   style={{
-                    padding: "6px 10px",
-                    fontSize: 13,
+                    padding: "6px 10px", fontSize: 13,
                     background: sortMode === "date" ? "#e9e9e9" : "#eee",
-                    border: "none",
-                    borderRight: "1px solid #ccc",
-                    cursor: "pointer",
+                    border: "none", borderRight: "1px solid #ccc", cursor: "pointer",
                   }}
                 >
                   日付順
                 </button>
                 <button
-                  onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); localStorage.setItem("rated_sort_mode","rating"); }}
-                  onClick={(e) => { e.preventDefault(); setSortMode("rating"); localStorage.setItem("rated_sort_mode","rating"); }}
+                  onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); }}
+                  onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
                   aria-pressed={sortMode === "rating"}
                   style={{
-                    padding: "6px 10px",
-                    fontSize: 13,
+                    padding: "6px 10px", fontSize: 13,
                     background: sortMode === "rating" ? "#e9e9e9" : "#eee",
-                    border: "none",
-                    cursor: "pointer",
+                    border: "none", cursor: "pointer",
                   }}
                 >
                   評価順
@@ -1579,12 +1552,9 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
               <button
                 onClick={onClose}
                 style={{
-                  background: "#eee",
-                  border: "1px solid #ccc",
-                  padding: "6px 10px",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  marginLeft: 8,
+                  background: "#eee", border: "1px solid #ccc",
+                  padding: "6px 10px", borderRadius: "4px",
+                  cursor: "pointer", marginLeft: 8,
                 }}
               >
                 閉じる
@@ -1592,44 +1562,28 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
             </div>
           </div>
 
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "12px 16px",
-              backgroundColor: "#fff",
-            }}
-          >
+          <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", backgroundColor: "#fff" }}>
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {list.map((item, idx) => (
                 <li
                   key={`${item.JAN}-${idx}`}
                   onClick={() => onSelectJAN?.(item.JAN)}
-                  style={{
-                    padding: "10px 0",
-                    borderBottom: "1px solid #eee",
-                    cursor: "pointer",
-                  }}
+                  style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                     <div>
                       {/* ★ 表示番号は“評価順の通し番号” */}
                       <strong
                         style={{
-                          display: "inline-block",
-                          color: "rgb(50, 50, 50)",
-                          fontSize: "16px",
-                          fontWeight: "bold",
-                          marginRight: "4px",
+                          display: "inline-block", color: "rgb(50, 50, 50)",
+                          fontSize: "16px", fontWeight: "bold", marginRight: "4px",
                           fontFamily: '"Helvetica Neue", Arial, sans-serif',
                         }}
                       >
                         {item.displayIndex ?? "—"}.
                       </strong>
                       <span style={{ fontSize: "15px", color: "#555" }}>
-                        {item.ratedAt
-                          ? new Date(item.ratedAt).toLocaleString()
-                          : "（日時不明）"}
+                        {item.ratedAt ? new Date(item.ratedAt).toLocaleString() : "（日時不明）"}
                       </span>
                       <br />
                       {item.商品名 || "（名称不明）"}
@@ -1640,9 +1594,7 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
                   </div>
                   <small>
                     Type: {item.Type || "不明"} / 価格:{" "}
-                    {item.希望小売価格
-                      ? `¥${item.希望小売価格.toLocaleString()}`
-                      : "不明"}
+                    {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
                     <br />
                     Body: {Number.isFinite(item.BodyAxis) ? item.BodyAxis.toFixed(2) : "—"}, Sweet:{" "}
                     {Number.isFinite(item.SweetAxis) ? item.SweetAxis.toFixed(2) : "—"}
