@@ -1310,16 +1310,15 @@ function MapPage() {
           <iframe
             ref={iframeRef}
             title={`product-${selectedJAN}`}
-            src={() => {
+            src={(() => {
               const jan = String(selectedJAN ?? '');
               let fromRated = fromRatedRef.current;
               try {
                 const s = sessionStorage.getItem('tm_from_rated_jan');
-                fromRated = fromRated || (s && s === jan);
+                fromRated = fromRated || (s === jan);
               } catch {}
-              const q = fromRated ? '?fromRated=1' : '';
-              return `${process.env.PUBLIC_URL || ''}/products/${jan}${q}`;
-            }()}
+              return `${process.env.PUBLIC_URL || ''}/products/${jan}${fromRated ? '?fromRated=1' : ''}`;
+            })()}
             style={{ border: "none", width: "100%", height: `calc(${DRAWER_HEIGHT} - 48px)` }}
             onLoad={() => {
               console.log('[parent] onLoad, openFromRated=', openFromRated, 'jan=', selectedJAN);  //発火チェック
