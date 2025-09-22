@@ -541,7 +541,7 @@ function MapPage() {
           try {
             sendFavoriteToChild(jan, false);
           } catch {}
-          setIsFavoriteOpen(false);
+          //setIsFavoriteOpen(false);
         }
 
         // 最新スナップショットを返信（UI同期用）
