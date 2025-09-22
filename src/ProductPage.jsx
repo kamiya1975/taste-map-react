@@ -219,7 +219,8 @@ export default function ProductPage() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       notifyParentClosed(jan);
-      window.removeEventListener("beforeunload", onBeforeunload);
+      // ↓ ここを onBeforeUnload に統一（U を大文字）
+      window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [jan]);
 
