@@ -24,7 +24,6 @@ import {
 } from "./ui/constants";
 
 const REREAD_LS_KEY = "tm_reread_until";
-const [openFromRated, setOpenFromRated] = useState(false);
 
 /* =======================
    定数（コンポーネント外に配置：ESLint回避）
@@ -62,6 +61,7 @@ const HEAT_COLOR_HIGH = [255, 165, 0];
 function MapPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [openFromRated, setOpenFromRated] = useState(false);
 
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
