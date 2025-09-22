@@ -61,6 +61,7 @@ const HEAT_COLOR_HIGH = [255, 165, 0];
 function MapPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [openFromRated, setOpenFromRated] = useState(false);
 
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
@@ -1134,6 +1135,7 @@ function MapPage() {
         data={data}
         onPick={(item) => {
           if (!item) return;
+          setOpenFromRated(false);  // ★ 検索からは fromRated=false
           setSelectedJANFromSearch(null);
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
@@ -1214,6 +1216,7 @@ function MapPage() {
         data={data}
         userRatings={userRatings}
         onSelectJAN={(jan) => {
+          setOpenFromRated(false);  // ★ ♡からは fromRated=false
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
@@ -1231,6 +1234,7 @@ function MapPage() {
         userRatings={userRatings}
         data={data}
         onSelectJAN={(jan) => {
+          setOpenFromRated(true); // ★ 「◎一覧から来た」フラグを立てる
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
@@ -1286,7 +1290,7 @@ function MapPage() {
           <iframe
             ref={iframeRef}
             title={`product-${selectedJAN}`}
-            src={`/products/${selectedJAN}`}
+            src={`/products/${selectedJAN}${openFromRated ? '?fromRated=1' : ''}`}
             style={{ border: "none", width: "100%", height: `calc(${DRAWER_HEIGHT} - 48px)` }}
             onLoad={() => {
               const jan = String(selectedJAN);
@@ -1294,6 +1298,7 @@ function MapPage() {
               try {
                 sendFavoriteToChild(jan, isFav);
               } catch {}
+              setOpenFromRated(false);  // ★ クエリ使い終わったらフラグを下ろす（次回の残留を防ぐ）
             }}
           />
         ) : (

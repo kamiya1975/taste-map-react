@@ -55,6 +55,21 @@ const notifyParentClosed = (jan) => {
   } catch {}
 };
 
+// ◎一覧から開いたかどうか（?fromRated=1|true）をURLクエリで判定
+const useHideHeartFromQuery = () => {
+  const [hide, setHide] = useState(false);
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const v = (url.searchParams.get("fromRated") || "").toLowerCase();
+      setHide(v === "1" || v === "true");
+    } catch {
+      setHide(false);
+    }
+  }, []);
+  return hide;
+};
+
 /** =========================
  *  お気に入りハート（手動のみ）
  * ========================= */
@@ -189,6 +204,9 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
+  // ★ 追加：◎一覧から来たか（来ていれば♡を隠す）
+  const hideHeart = useHideHeartFromQuery();
+
   // マウント→OPEN通知、アンマウント→CLOSED通知 + 親へ状態問い合わせ
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan });
@@ -314,17 +332,19 @@ export default function ProductPage() {
         position: "relative",
       }}
     >
-      {/* 左上に固定の♡（手動トグル） */}
-      <div
-        style={{
-          position: "fixed",
-          top: 12,
-          left: 12,
-          zIndex: 1000,
-        }}
-      >
-        <HeartButton jan={jan} size={22} />
-      </div>
+      {/* 左上に固定の♡（手動トグル）— ◎一覧から来たときは完全に非表示 */}
+      {!hideHeart && (
+        <div
+          style={{
+            position: "fixed",
+            top: 12,
+            left: 12,
+            zIndex: 1000,
+          }}
+        >
+          <HeartButton jan={jan} size={22} />
+        </div>
+      )}
 
       {/* 商品画像 */}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
