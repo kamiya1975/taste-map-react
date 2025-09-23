@@ -56,11 +56,13 @@ const CircleRatingRowDisplay = ({ currentRating = -1 }) => {
         marginLeft: "-8px", // 左に寄せる
       }}
     >
-      {[0, 1, 2, 3, 4, 5].map((val) => (
+      {[1, 2, 3, 4, 5].map((val) => (
         <CircleRatingIcon
           key={val}
-          ringLevel={val}
+          value={v}
           currentRating={currentRating}
+          onClick={handleCircleClick}
+          centerColor={typeColor}
         />
       ))}
     </div>
