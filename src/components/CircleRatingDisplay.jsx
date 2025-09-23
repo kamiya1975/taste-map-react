@@ -21,7 +21,7 @@ const CircleRatingIcon = ({ ringLevel, currentRating }) => {
       {[...Array(ringCount)].map((_, i) => {
         const size = baseSize + ringGap * 2 * i;
         const color = i === 0
-          ? currentRating >= 0 ? "#000" : "#ccc"
+          ? "rgb(150,150,150)"   // ★ 中心は常に同じ色
           : i <= currentRating ? "#000" : "#ccc";
         return (
           <div
