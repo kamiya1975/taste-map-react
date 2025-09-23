@@ -234,7 +234,7 @@ export default function SearchPanel({
                 <span style={{ fontSize: "15px", color: "#555" }}>
                   {item.addedAt
                     ? new Date(item.addedAt).toLocaleDateString()
-                    : "（日付不明）"}
+                    : ""}
                 </span>
                 <br />
                 {item.商品名 || "（名称不明）"}
