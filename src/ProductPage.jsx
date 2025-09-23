@@ -200,6 +200,9 @@ const CircleRating = ({ value, currentRating, onClick }) => {
   );
 };
 
+/** =========================
+ *  ProductPage
+ * ========================= */
 export default function ProductPage() {
   const jan = useMemo(() => getJANFromURL(), []);
   const [product, setProduct] = useState(null);
@@ -213,7 +216,6 @@ export default function ProductPage() {
   // マウント→OPEN通知、アンマウント→CLOSED通知 + 親へ状態問い合わせ
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan });
-    // 親に「今の状態を教えて」を送る（毎回）
     postToParent({ type: "REQUEST_STATE", jan });
 
     const onBeforeUnload = () => notifyParentClosed(jan);
@@ -224,7 +226,7 @@ export default function ProductPage() {
     };
   }, [jan]);
 
-  // 商品・評価ロード（ローカルの初期値。のちに STATE_SNAPSHOT で上書き）
+  // 商品・評価ロード
   useEffect(() => {
     try {
       const data = JSON.parse(localStorage.getItem("umapData") || "[]");
@@ -239,7 +241,7 @@ export default function ProductPage() {
     } catch {}
   }, [jan]);
 
-  // 親からの STATE_SNAPSHOT を受け取り、UIを上書き（評価のみ）
+  // 親からの STATE_SNAPSHOT
   useEffect(() => {
     const onMsg = (e) => {
       const { type, jan: targetJan, rating: ratingPayload, hideHeart } = e.data || {};
@@ -248,14 +250,14 @@ export default function ProductPage() {
 
       try {
         setRating(ratingPayload?.rating ?? 0);
-        if (typeof hideHeart === 'boolean') setHideHeart(hideHeart);
+        if (typeof hideHeart === "boolean") setHideHeart(hideHeart);
       } catch {}
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [jan]);
 
-  // 親（MapPage）からの「HIDE_HEART」指示を受けたら即時反映
+  // 親からの HIDE_HEART
   useEffect(() => {
     const onMsg = (e) => {
       const { type, jan: targetJan, value } = e.data || {};
@@ -278,7 +280,6 @@ export default function ProductPage() {
     if (newRating === 0) {
       delete ratings[jan];
     } else {
-      // ★ 気象情報の取得（失敗してもアプリは継続）
       let weather = {};
       try {
         const token = process.env.REACT_APP_IPINFO_TOKEN;
@@ -335,6 +336,16 @@ export default function ProductPage() {
 
   const price = product.希望小売価格 ?? product.価格 ?? 1800;
 
+  // ★ Typeごとの色マップ
+  const typeColors = {
+    Spa: "#6BAED6",
+    White: "#D9D76C",
+    Red: "#8B2E3B",
+    Rose: "#E48E8E",
+    Other: "#CCCCCC",
+  };
+  const typeColor = typeColors[product.Type] || typeColors.Other;
+
   return (
     <div
       style={{
@@ -346,7 +357,7 @@ export default function ProductPage() {
         position: "relative",
       }}
     >
-      {/* 左上に固定の♡（手動トグル）— ◎一覧から来たときは完全に非表示 */}
+      {/* 左上に固定の♡ */}
       {!hideHeart && (
         <div
           style={{
@@ -383,7 +394,7 @@ export default function ProductPage() {
           style={{
             width: 16,
             height: 16,
-            backgroundColor: "#651E3E",
+            backgroundColor: typeColor,
             borderRadius: 4,
             marginRight: 8,
           }}
@@ -393,7 +404,7 @@ export default function ProductPage() {
 
       {/* 味データ */}
       <p style={{ margin: "4px 0" }}>
-        Body: {Number(product.UMAP1).toFixed(2)}, Sweet:{" "}
+        UMAP1: {Number(product.UMAP1).toFixed(2)}, UMAP2:{" "}
         {Number(product.UMAP2).toFixed(2)}
       </p>
 
@@ -460,19 +471,19 @@ export default function ProductPage() {
         昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        昨今では、世界標準の飲み物と言えるまでになっています。
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        昨今では、世界標準の飲み物と言えるまでになっています。
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        昨今では、世界標準の飲み物と言えるまでになっています。
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        昨今では、世界標準の飲み物と言えるまでになっています。
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        昨今では、世界標準の飲み物と言えるまでになっています。
       </div>
     </div>
   );
