@@ -404,8 +404,8 @@ export default function ProductPage() {
 
       {/* 味データ */}
       <p style={{ margin: "4px 0" }}>
-        body: {Number(product.PC1).toFixed(2)}, 
-        Sweet:{" "}{Number(product.PC2).toFixed(2)}
+        Sweet: {Number(product.PC2).toFixed(2)}, 
+        body:{" "}{Number(product.PC1).toFixed(2)}
       </p>
 
       {/* 原産地・年 */}
