@@ -950,7 +950,7 @@ function MapPage() {
         onClick={openSliderExclusive}
         style={{
           position: "absolute",
-          top: "70px",
+          top: "10px",
           right: "10px",
           zIndex: 10,
           width: "40px",
@@ -970,12 +970,36 @@ function MapPage() {
         ●
       </button>
 
+      <button
+        onClick={openSearchExclusive}
+        style={{
+          position: "absolute",
+          top: "60px", 
+          right: "10px",
+          zIndex: 10,
+          width: "40px",
+          height: "40px",
+          borderRadius: "50%",
+          background: "#eee",
+          border: "1px solid #ccc",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: "bold",
+          fontSize: "18px",
+        }}
+        aria-label="検索"
+      >
+        🔍
+      </button>
+
       {/* 右サイドの丸ボタン群（♡ → ◎ → 🔍） */}
       <button
         onClick={openFavoriteExclusive}
         style={{
           position: "absolute",
-          top: "120px",
+          top: "110px",
           right: "10px",
           zIndex: 10,
           width: "40px",
@@ -999,7 +1023,7 @@ function MapPage() {
         onClick={openRatedExclusive}
         style={{
           position: "absolute",
-          top: "170px", // ♡の下、🔍の上
+          top: "160px", // ♡の下、🔍の上
           right: "10px",
           zIndex: 10,
           width: "40px",
@@ -1018,30 +1042,6 @@ function MapPage() {
         title="評価（◎）一覧"
       >
         ◎
-      </button>
-
-      <button
-        onClick={openSearchExclusive}
-        style={{
-          position: "absolute",
-          top: "220px", // ◎の下
-          right: "10px",
-          zIndex: 10,
-          width: "40px",
-          height: "40px",
-          borderRadius: "50%",
-          background: "#eee",
-          border: "1px solid #ccc",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontWeight: "bold",
-          fontSize: "18px",
-        }}
-        aria-label="検索"
-      >
-        🔍
       </button>
 
       {/* ====== 検索パネル（背面Map操作可） */}
