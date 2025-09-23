@@ -157,7 +157,7 @@ function HeartButton({ jan, size = 22 }) {
 /** =========================
  *  評価（◎）
  * ========================= */
-const CircleRating = ({ value, currentRating, onClick }) => {
+const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) => {
   const outerSize = 40;
   const baseSize = 8;
   const ringGap = 3;
@@ -191,7 +191,7 @@ const CircleRating = ({ value, currentRating, onClick }) => {
               border: `1.5px solid ${value === currentRating ? "#000" : "#bbb"}`,
               borderRadius: "50%",
               boxSizing: "border-box",
-              backgroundColor: i === 0 ? "#000" : "transparent",
+              backgroundColor: i === 0 ? centerColor : "transparent",
             }}
           />
         );
@@ -452,12 +452,13 @@ export default function ProductPage() {
               maxWidth: 300,
             }}
           >
-            {[0, 1, 2, 3, 4, 5].map((v) => (
+            {[1, 2, 3, 4, 5].map((v) => (
               <CircleRating
                 key={v}
                 value={v}
                 currentRating={rating}
                 onClick={handleCircleClick}
+                centerColor={typeColor}
               />
             ))}
           </div>

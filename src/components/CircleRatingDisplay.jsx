@@ -61,7 +61,6 @@ const CircleRatingRowDisplay = ({ currentRating = -1 }) => {
           key={val}
           value={v}
           currentRating={currentRating}
-          onClick={handleCircleClick}
           centerColor={typeColor}
         />
       ))}
