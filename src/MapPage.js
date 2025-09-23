@@ -1361,8 +1361,8 @@ function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelect
                       ? `¥${item.希望小売価格.toLocaleString()}`
                       : "不明"}
                     <br />
-                    Body: {Number.isFinite(item.UMAP1) ? item.UMAP1.toFixed(2) : "—"}, Sweet:{" "}
-                    {Number.isFinite(item.UMAP2) ? item.UMAP2.toFixed(2) : "—"}
+                    Sweet: {Number.isFinite(item.PC2) ? item.PC2.toFixed(2) : "—"}, Body:{" "}
+                    {Number.isFinite(item.PC1) ? item.PC1.toFixed(2) : "—"}
                   </small>
                 </li>
               ))}
@@ -1551,8 +1551,8 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
                     Type: {item.Type || "不明"} / 価格:{" "}
                     {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
                     <br />
-                    Body: {Number.isFinite(item.UMAP1) ? item.UMAP1.toFixed(2) : "—"}, Sweet:{" "}
-                    {Number.isFinite(item.UMAP2) ? item.UMAP2.toFixed(2) : "—"}
+                    Sweet: {Number.isFinite(item.PC2) ? item.PC2.toFixed(2) : "—"}, Body:{" "}
+                    {Number.isFinite(item.PC1) ? item.PC1.toFixed(2) : "—"}
                   </small>
                 </li>
               ))}
