@@ -189,6 +189,7 @@ function MapPage() {
               生産年: r["生産年"],
               "容量 ml": toNum(r["容量 ml"]),
               希望小売価格: toNum(r["希望小売価格"]),
+              コメント: r["コメント"] ?? r["comment"] ?? r["説明"] ?? "",
             };
           })
           .filter(

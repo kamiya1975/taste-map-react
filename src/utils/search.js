@@ -16,7 +16,8 @@ export const buildSearchText = (d) =>
       d?.国,
       d?.産地,
       d?.葡萄品種,
-      Number.isFinite(d?.希望小売価格) ? `¥${d.希望小売価格}` : ""
+      Number.isFinite(d?.希望小売価格) ? `¥${d.希望小売価格}` : "",
+      d?.コメント,   // ★ 商品コメントも検索対象に追加
     ]
       .filter(Boolean)
       .join(" ")
