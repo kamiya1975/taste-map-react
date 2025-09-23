@@ -1,61 +1,26 @@
 // src/MapPage.js
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
-import DeckGL from "@deck.gl/react";
-import { OrthographicView } from "@deck.gl/core";
-import {
-  ScatterplotLayer,
-  LineLayer,
-  GridCellLayer,
-  PathLayer,
-  IconLayer,
-} from "@deck.gl/layers";
 import Drawer from "@mui/material/Drawer";
 import { useLocation, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 
-// 共通UI
+// パネル / Canvas
 import SearchPanel from "./components/SearchPanel";
 import BarcodeScanner from "./components/BarcodeScanner";
+import FavoritePanel from "./components/FavoritePanel";
+import RatedPanel from "./components/RatedPanel";
+import MapCanvas from "./components/MapCanvas";
+
+// 共通定数
 import {
   DRAWER_HEIGHT,
   drawerModalProps,
   paperBaseStyle,
+  ZOOM_LIMITS,
+  INITIAL_ZOOM,
+  CENTER_Y_OFFSET,
 } from "./ui/constants";
 
 const REREAD_LS_KEY = "tm_reread_until";
-
-/* =======================
-   定数（コンポーネント外に配置：ESLint回避）
-======================= */
-const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
-const CENTER_Y_OFFSET = -3.5; // 打点を画面中央より少し上に見せる
-const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
-const INITIAL_ZOOM = 6;
-
-// プロット色
-const typeColorMap = {
-  White: [150, 150, 150],
-  Red: [150, 150, 150],
-  Rose: [150, 150, 150],
-  Sparkling: [150, 150, 150],
-  Other: [150, 150, 150],
-};
-const ORANGE = [255, 140, 0];
-
-// グリッド・ヒートマップ関連
-const cellSize = 0.2;
-const gridInterval = cellSize;
-const EPS = 1e-9;
-const toIndex = (v) => Math.floor((v + EPS) / cellSize);
-const toCorner = (i) => i * cellSize;
-const keyOf = (ix, iy) => `${ix},${iy}`;
-
-const HEAT_ALPHA_MIN = 24;
-const HEAT_ALPHA_MAX = 255;
-const HEAT_GAMMA = 0.65;
-const HEAT_CLIP_PCT = [0.0, 0.98];
-const HEAT_COLOR_LOW = [255, 255, 255];
-const HEAT_COLOR_HIGH = [255, 165, 0];
 
 function MapPage() {
   const location = useLocation();
@@ -273,7 +238,7 @@ function MapPage() {
     return n ? [sx / n, sy / n] : [0, 0];
   }, [data]);
 
-  // userPin 読み出し（新旧形式サポート）→ useCallback で安定化
+  // userPin 読み出し（新旧形式サポート）
   const readUserPinFromStorage = useCallback(() => {
     try {
       const raw = localStorage.getItem("userPinCoords");
@@ -405,6 +370,25 @@ function MapPage() {
     } catch {}
   }, [location.state, data, centerToUMAP]);
 
+  // クリック座標から最近傍検索（自動オープン用）
+  const findNearestWine = useCallback((coord) => {
+    if (!coord || !Array.isArray(data) || data.length === 0) return null;
+    const [cx, cy] = coord;
+    let best = null, bestD2 = Infinity;
+    for (const d of data) {
+      const x = d.UMAP1;
+      const y = -d.UMAP2;
+      const dx = x - cx;
+      const dy = y - cy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        best = d;
+      }
+    }
+    return best;
+  }, [data]);
+
   // スライダー直後だけ：オレンジ打点の最寄り商品を自動で開く
   useEffect(() => {
     const wantAutoOpen =
@@ -436,7 +420,7 @@ function MapPage() {
         console.error("auto-open-nearest failed:", e);
       }
     });
-  }, [location.key, userPin, data]);
+  }, [location.key, userPin, data, findNearestWine]); // ← 依存に findNearestWine を追加
 
   // ====== 共通：商品へフォーカス（毎回“初期ズーム”に戻す）
   const focusOnWine = useCallback(
@@ -490,7 +474,7 @@ function MapPage() {
     const onMsg = (e) => {
       const { type, jan, payload } = e.data || {};
       if (!type || !jan) return;
-      const janStr = String(jan); // ← 追加：常に文字列キーで扱う
+      const janStr = String(jan); // ← 常に文字列キーで扱う
 
       // 1) ハートのトグル
       if (type === "TOGGLE_FAVORITE") {
@@ -518,7 +502,7 @@ function MapPage() {
             );
           }
          } catch {}
-         // ここで確実にフラグを下ろして掃除
+         // 掃除
          fromRatedRef.current = false;
          try { sessionStorage.removeItem('tm_from_rated_jan'); } catch {}
          setOpenFromRated(false);
@@ -545,22 +529,14 @@ function MapPage() {
             try { localStorage.setItem("favorites", JSON.stringify(next)); } catch {}
             return next;
           });
-          try {
-            sendFavoriteToChild(jan, false);
-          } catch {}
+          try { sendFavoriteToChild(jan, false); } catch {}
         }
 
         // 最新スナップショットを返信（UI同期用）
-        const effectiveFav =
-          payload && Number(payload.rating) > 0 ? false : !!favorites[janStr];
+        const effectiveFav = payload && Number(payload.rating) > 0 ? false : !!favorites[janStr];
         try {
           iframeRef.current?.contentWindow?.postMessage(
-            {
-              type: "STATE_SNAPSHOT",
-              jan: janStr,
-              favorite: effectiveFav,
-              rating: payload || null,
-            },
+            { type: "STATE_SNAPSHOT", jan: janStr, favorite: effectiveFav, rating: payload || null },
             "*"
           );
         } catch {}
@@ -578,159 +554,7 @@ function MapPage() {
     [userRatings]
   );
 
-  // クリック座標から最近傍検索
-  const findNearestWine = React.useCallback((coord) => {
-    if (!coord || !Array.isArray(data) || data.length === 0) return null;
-    const [cx, cy] = coord;
-    let best = null, bestD2 = Infinity;
-    for (const d of data) {
-      const x = d.UMAP1;
-      const y = -d.UMAP2;
-      const dx = x - cx;
-      const dy = y - cy;
-      const d2 = dx * dx + dy * dy;
-      if (d2 < bestD2) {
-        bestD2 = d2;
-        best = d;
-      }
-    }
-    return best;
-  }, [data]);
-
-  // ====== レイヤー計算
-  const { thinLines, thickLines } = useMemo(() => {
-    const thin = [], thick = [];
-    for (let i = -500; i <= 500; i++) {
-      const x = i * gridInterval;
-      (i % 5 === 0 ? thick : thin).push({
-        sourcePosition: [x, -100, 0],
-        targetPosition: [x, 100, 0],
-      });
-      const y = i * gridInterval;
-      (i % 5 === 0 ? thick : thin).push({
-        sourcePosition: [-100, y, 0],
-        targetPosition: [100, y, 0],
-      });
-    }
-    return { thinLines: thin, thickLines: thick };
-  }, []);
-
-  const cells = useMemo(() => {
-    const map = new Map();
-    data.forEach((d) => {
-      const ix = toIndex(d.UMAP1);
-      const iy = toIndex(-d.UMAP2);
-      const key = keyOf(ix, iy);
-      if (!map.has(key)) {
-        map.set(key, {
-          ix,
-          iy,
-          position: [toCorner(ix), toCorner(iy)],
-          count: 0,
-          hasRating: false,
-        });
-      }
-      if ((userRatings[d.JAN]?.rating ?? 0) > 0) map.get(key).hasRating = true;
-      map.get(key).count += 1;
-    });
-    return Array.from(map.values());
-  }, [data, userRatings, favorites]);
-
-  const { heatCells, vMin, vMax, avgHash } = useMemo(() => {
-    if (!highlight2D)
-      return { heatCells: [], vMin: 0, vMax: 1, avgHash: "empty" };
-    const sumMap = new Map();
-    const cntMap = new Map();
-    for (const d of data) {
-      const v = Number(d[highlight2D]);
-      if (!Number.isFinite(v)) continue;
-      const ix = toIndex(d.UMAP1);
-      const iy = toIndex(-d.UMAP2);
-      const key = keyOf(ix, iy);
-      sumMap.set(key, (sumMap.get(key) || 0) + v);
-      cntMap.set(key, (cntMap.get(key) || 0) + 1);
-    }
-    const vals = [];
-    const cellsArr = [];
-    for (const [key, sum] of sumMap.entries()) {
-      const count = cntMap.get(key) || 1;
-      const avg = sum / count;
-      vals.push(avg);
-      const [ix, iy] = key.split(",").map(Number);
-      cellsArr.push({
-        ix,
-        iy,
-        position: [toCorner(ix), toCorner(iy)],
-        avg,
-        count,
-      });
-    }
-    if (vals.length === 0)
-      return { heatCells: [], vMin: 0, vMax: 1, avgHash: "none" };
-    vals.sort((a, b) => a - b);
-    const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
-    const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
-    const lo = vals[loIdx];
-    const hi = vals[hiIdx];
-    const epsHi = hi - lo < 1e-9 ? lo + 1e-9 : hi;
-    const hash = `${cellsArr.length}|${lo.toFixed(3)}|${epsHi.toFixed(
-      3
-    )}|${highlight2D}`;
-    return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
-  }, [data, highlight2D]);
-
-  // メイン（2D: Scatter）
-  const mainLayer = useMemo(() => {
-    return new ScatterplotLayer({
-      id: "scatter",
-      data,
-      getPosition: (d) => [d.UMAP1, -d.UMAP2, 0],
-      getFillColor: (d) =>
-        String(d.JAN) === String(selectedJAN)
-          ? ORANGE
-          : typeColorMap[d.Type] || typeColorMap.Other,
-      updateTriggers: { getFillColor: [selectedJAN] },
-      radiusUnits: "meters",
-      getRadius: 0.03,
-      pickable: true,
-      onClick: null,
-    });
-  }, [data, selectedJAN]);
-
-  // 評価サークル（◎）
-  const ratingCircleLayers = useMemo(() => {
-    const lineColor = [255, 0, 0, 255];
-    return Object.entries(userRatings).flatMap(([jan, ratingObj]) => {
-      const item = data.find((d) => String(d.JAN) === String(jan));
-      if (!item || !Number.isFinite(item.UMAP1) || !Number.isFinite(item.UMAP2)) return [];
-      const count = Math.min(Number(ratingObj.rating) || 0, 5);
-      if (count <= 0) return [];
-      const radiusBase = 0.06;
-      return Array.from({ length: count }).map((_, i) => {
-        const angleSteps = 40;
-        const path = Array.from({ length: angleSteps }, (_, j) => {
-          const angle = (j / angleSteps) * 2 * Math.PI;
-          const radius = radiusBase * (i + 1);
-          const x = item.UMAP1 + Math.cos(angle) * radius;
-          const y = -item.UMAP2 + Math.sin(angle) * radius;
-          return [x, y];
-        });
-        path.push(path[0]);
-        return new PathLayer({
-          id: `ring-${jan}-${i}`,
-          data: [{ path }],
-          getPath: (d) => d.path,
-          getLineColor: () => lineColor,
-          getWidth: 0.3,
-          widthUnits: "pixels",
-          parameters: { depthTest: false },
-          pickable: false,
-        });
-      });
-    });
-  }, [data, userRatings]);
-
-  // ===== 嗜好コンパス
+  // ===== 嗜好コンパス（DeckGLは MapCanvas 側で描画）
   const detectElbowIndex = (valsDesc) => {
     const n = valsDesc.length;
     if (n <= 3) return n;
@@ -775,163 +599,35 @@ function MapPage() {
     return { point: [sx / sw, sy / sw], picked, rule: "elbow" };
   }, [userRatings, data]);
 
-  const compassLayer = useMemo(() => {
-    if (!compass?.point) return null;
-    const [ux, uy] = compass.point;
-    return new IconLayer({
-      id: "preference-compass",
-      data: [{ position: [ux, -uy, 0] }], // 2Dキャンバス座標へ反転
-      getPosition: (d) => d.position,
-      getIcon: () => ({
-        url: COMPASS_URL,
-        width: 310,
-        height: 310,
-        anchorX: 155,
-        anchorY: 155,
-      }),
-      sizeUnits: "meters",
-      getSize: 0.4,
-      billboard: true,
-      pickable: false,
-      parameters: { depthTest: false },
-    });
-  }, [compass]);
-
-  // スライダー結果（コンパス：評価が入ると消える）
-  const userPinCompassLayer = useMemo(() => {
-    if (!userPin) return null;
-    if (hasAnyRating) return null;
-    return new IconLayer({
-      id: "user-pin-compass",
-      data: [{ position: [userPin[0], -userPin[1], 0] }],
-      getPosition: (d) => d.position,
-      getIcon: () => ({
-        url: COMPASS_URL,
-        width: 310,
-        height: 310,
-        anchorX: 155,
-        anchorY: 155,
-      }),
-      sizeUnits: "meters",
-      getSize: 0.5,
-      billboard: true,
-      pickable: false,
-      parameters: { depthTest: false },
-    });
-  }, [userPin, hasAnyRating]);
-
   // ====== レンダリング
   return (
     <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}>
-      <DeckGL
-        views={new OrthographicView({ near: -1, far: 1 })}
+      {/* デッキGLは分離済み */}
+      <MapCanvas
+        data={data}
+        userRatings={userRatings}
+        selectedJAN={selectedJAN}
+        highlight2D={highlight2D}
+        userPin={hasAnyRating ? null : userPin}
+        compassPoint={compass?.point || null}
+        panBounds={panBounds}
         viewState={viewState}
-        style={{ position: "absolute", inset: 0 }}
-        useDevicePixels
-        onViewStateChange={({ viewState: vs }) => {
-          const z = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom));
-          const limitedTarget = [
-            Math.max(panBounds.xmin, Math.min(panBounds.xmax, vs.target[0])),
-            Math.max(panBounds.ymin, Math.min(panBounds.ymax, vs.target[1])),
-            vs.target[2],
-          ];
-          setViewState({ ...vs, zoom: z, target: limitedTarget });
-        }}
-        controller={{
-          dragPan: true,
-          dragRotate: false,
-          minZoom: ZOOM_LIMITS.min,
-          maxZoom: ZOOM_LIMITS.max,
-          inertia: false,
-        }}
-        onClick={(info) => {
-          // 1) プロット直クリック
-          const picked = info?.object;
-          if (picked?.JAN) {
-            setSelectedJAN(picked.JAN);
-            setProductDrawerOpen(true);
-            focusOnWine(picked, { zoom: INITIAL_ZOOM });
-            return;
-          }
-          // 2) 近傍探索で拾って詳細を開く
-          const coord = info?.coordinate;
-          const nearest = findNearestWine(coord);
-          if (nearest?.JAN) {
-            setSelectedJAN(nearest.JAN);
-            setProductDrawerOpen(true);
-            focusOnWine(nearest, { zoom: INITIAL_ZOOM });
+        setViewState={setViewState}
+        onPickWine={(item) => {
+          if (!item) return;
+          setSelectedJAN(item.JAN);
+          setProductDrawerOpen(true);
+          // 初期ズームに戻しつつフォーカス
+          const tx = Number(item.UMAP1);
+          const ty = Number(item.UMAP2);
+          if (Number.isFinite(tx) && Number.isFinite(ty)) {
+            setViewState((prev) => ({
+              ...prev,
+              target: [tx, -ty - CENTER_Y_OFFSET, 0],
+              zoom: INITIAL_ZOOM,
+            }));
           }
         }}
-        pickingRadius={8}
-        layers={[
-          ...ratingCircleLayers,
-          !highlight2D
-            ? new GridCellLayer({
-                id: "grid-cells-base",
-                data: cells,
-                cellSize,
-                getPosition: (d) => d.position,
-                getFillColor: (d) =>
-                  d.hasRating
-                    ? [180, 100, 50, 150]   // 評価あり色付け
-                    : [200, 200, 200, 40],  // 通常セル
-                getElevation: 0,
-                pickable: false,
-              })
-            : null,
-          highlight2D
-            ? new GridCellLayer({
-                id: `grid-cells-heat-${highlight2D}-p${HEAT_COLOR_LOW.join("_")}-${HEAT_COLOR_HIGH.join("_")}`,
-                data: heatCells,
-                cellSize,
-                getPosition: (d) => d.position,
-                getFillColor: (d) => {
-                  let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
-                  if (!Number.isFinite(t)) t = 0;
-                  t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
-                  const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t);
-                  const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t);
-                  const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t);
-                  const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
-                  return [r, g, b, a];
-                },
-                extruded: false,
-                getElevation: 0,
-                opacity: 1,
-                parameters: { depthTest: false },
-                pickable: false,
-                updateTriggers: {
-                  getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash, ...HEAT_COLOR_LOW, ...HEAT_COLOR_HIGH, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX],
-                },
-              })
-            : null,
-          new LineLayer({
-            id: "grid-lines-thin",
-            data: thinLines,
-            getSourcePosition: (d) => d.sourcePosition,
-            getTargetPosition: (d) => d.targetPosition,
-            getColor: [200, 200, 200, 100],
-            getWidth: 1,
-            widthUnits: "pixels",
-            pickable: false,
-          }),
-          new LineLayer({
-            id: "grid-lines-thick",
-            data: thickLines,
-            getSourcePosition: (d) => d.sourcePosition,
-            getTargetPosition: (d) => d.targetPosition,
-            getColor: [180, 180, 180, 120],
-            getWidth: 1.25,
-            widthUnits: "pixels",
-            pickable: false,
-          }),
-          // スライダー結果マーカー
-          userPinCompassLayer,
-          // コンパス
-          compassLayer,
-          // 最前面：ワイン打点
-          mainLayer,
-        ]}
       />
 
       {/* 左上: 指標セレクタ（2Dハイライト） */}
@@ -975,7 +671,7 @@ function MapPage() {
         onClick={openSearchExclusive}
         style={{
           position: "absolute",
-          top: "60px", 
+          top: "60px",
           right: "10px",
           zIndex: 10,
           width: "40px",
@@ -995,7 +691,7 @@ function MapPage() {
         🔍
       </button>
 
-      {/* 右サイドの丸ボタン群（♡ → ◎ → 🔍） */}
+      {/* 右サイドの丸ボタン群（♡ → ◎） */}
       <button
         onClick={openFavoriteExclusive}
         style={{
@@ -1024,7 +720,7 @@ function MapPage() {
         onClick={openRatedExclusive}
         style={{
           position: "absolute",
-          top: "160px", // ♡の下、🔍の上
+          top: "160px",
           right: "10px",
           zIndex: 10,
           width: "40px",
@@ -1056,7 +752,15 @@ function MapPage() {
           setSelectedJANFromSearch(null);
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
-          focusOnWine(item, { zoom: INITIAL_ZOOM });
+          // フォーカス
+          const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
+          if (Number.isFinite(tx) && Number.isFinite(ty)) {
+            setViewState((prev) => ({
+              ...prev,
+              target: [tx, -ty - CENTER_Y_OFFSET, 0],
+              zoom: INITIAL_ZOOM,
+            }));
+          }
         }}
         onScanClick={() => {
           setProductDrawerOpen(false);
@@ -1109,9 +813,17 @@ function MapPage() {
           if (hit) {
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
-            focusOnWine(hit, { zoom: INITIAL_ZOOM });
             // 採用記録（勝手な再出現を防ぐ）
             lastCommittedRef.current = { code: jan, at: now };
+            // フォーカス
+            const tx = Number(hit.UMAP1), ty = Number(hit.UMAP2);
+            if (Number.isFinite(tx) && Number.isFinite(ty)) {
+              setViewState((prev) => ({
+                ...prev,
+                target: [tx, -ty - CENTER_Y_OFFSET, 0],
+                zoom: INITIAL_ZOOM,
+              }));
+            }
             return true; // 採用→スキャナ側停止
           }
 
@@ -1138,7 +850,14 @@ function MapPage() {
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
-            focusOnWine(item, { zoom: INITIAL_ZOOM });
+            const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
+            if (Number.isFinite(tx) && Number.isFinite(ty)) {
+              setViewState((prev) => ({
+                ...prev,
+                target: [tx, -ty - CENTER_Y_OFFSET, 0],
+                zoom: INITIAL_ZOOM,
+              }));
+            }
           }
           setProductDrawerOpen(true);
         }}
@@ -1159,7 +878,14 @@ function MapPage() {
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
-            focusOnWine(item, { zoom: INITIAL_ZOOM });
+            const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
+            if (Number.isFinite(tx) && Number.isFinite(ty)) {
+              setViewState((prev) => ({
+                ...prev,
+                target: [tx, -ty - CENTER_Y_OFFSET, 0],
+                zoom: INITIAL_ZOOM,
+              }));
+            }
           }
           setProductDrawerOpen(true);
         }}
@@ -1224,7 +950,11 @@ function MapPage() {
               const jan = String(selectedJAN);
               const isFav = !!favorites[jan];
               try {
-                sendFavoriteToChild(jan, isFav);
+                // ハート状態
+                iframeRef.current?.contentWindow?.postMessage(
+                  { type: "SET_FAVORITE", jan, value: isFav },
+                  "*"
+                );
                 // ref/SS も見る（state が false でも走らせる）
                 const fromRated =
                   fromRatedRef.current ||
@@ -1236,7 +966,7 @@ function MapPage() {
                   );
                 }
               } catch {}
-              // onLoad 時点ではフラグは下ろさない（REQUEST_STATE で確実に下ろす）
+              // REQUEST_STATE 側で確実にフラグを下ろす
             }}
           />
         ) : (
@@ -1244,327 +974,6 @@ function MapPage() {
         )}
       </Drawer>
     </div>
-  );
-} // MapPage end
-
-// === お気に入り一覧パネル（♡） ===
-function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelectJAN }) {
-  const list = React.useMemo(() => {
-    const arr = Object.entries(favorites || {})
-      .map(([jan, meta]) => {
-        const item = (data || []).find((d) => String(d.JAN) === String(jan));
-        if (!item) return null;
-        return { ...item, addedAt: meta?.addedAt ?? null };
-      })
-      .filter(Boolean)
-      // ★ 追加：評価>0のものは♡一覧に出さない（視覚的一貫性の最終防衛）
-      .filter((item) => !(Number(userRatings?.[String(item.JAN)]?.rating) > 0));
-
-    arr.sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
-    return arr.map((x, i) => ({ ...x, displayIndex: arr.length - i }));
- }, [favorites, data, userRatings]); // ← userRatings も依存に
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", stiffness: 200, damping: 25 }}
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: DRAWER_HEIGHT,
-            backgroundColor: "#fff",
-            boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
-            zIndex: 20,
-            borderTopLeftRadius: "12px",
-            borderTopRightRadius: "12px",
-            display: "flex",
-            flexDirection: "column",
-            fontFamily:
-              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            pointerEvents: "auto",
-          }}
-        >
-          <div
-            style={{
-              padding: "12px 16px",
-              borderBottom: "1px solid #ddd",
-              background: "#f9f9f9",
-              flexShrink: 0,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <h3 style={{ margin: 0 }}>飲みたいワイン</h3>
-            <button
-              onClick={onClose}
-              style={{
-                background: "#eee",
-                border: "1px solid #ccc",
-                padding: "6px 10px",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
-              閉じる
-            </button>
-          </div>
-
-          <div
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "12px 16px",
-              backgroundColor: "#fff",
-            }}
-          >
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {list.map((item, idx) => (
-                <li
-                  key={`${item.JAN}-${idx}`}
-                  onClick={() => onSelectJAN?.(item.JAN)}
-                  style={{
-                    padding: "10px 0",
-                    borderBottom: "1px solid #eee",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div>
-                    <strong
-                      style={{
-                        display: "inline-block",
-                        color: "rgb(50, 50, 50)",
-                        fontSize: "16px",
-                        fontWeight: "bold",
-                        marginRight: "4px",
-                        fontFamily: '"Helvetica Neue", Arial, sans-serif',
-                      }}
-                    >
-                      {item.displayIndex}.
-                    </strong>
-                    <span style={{ fontSize: "15px", color: "#555" }}>
-                      {item.addedAt
-                        ? new Date(item.addedAt).toLocaleDateString()
-                        : "（日付不明）"}
-                    </span>
-                    <br />
-                    {item.商品名 || "（名称不明）"}
-                  </div>
-                  <small>
-                    Type: {item.Type || "不明"} / 価格:{" "}
-                    {item.希望小売価格
-                      ? `¥${item.希望小売価格.toLocaleString()}`
-                      : "不明"}
-                    <br />
-                    Sweet: {Number.isFinite(item.PC2) ? item.PC2.toFixed(2) : "—"}, Body:{" "}
-                    {Number.isFinite(item.PC1) ? item.PC1.toFixed(2) : "—"}
-                  </small>
-                </li>
-              ))}
-              {list.length === 0 && (
-                <li style={{ color: "#666" }}>まだ「飲みたいワイン」はありません。</li>
-              )}
-            </ul>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// === 評価一覧パネル（◎）— 「評価した順」で通し番号を付与 + 開くたび日付順 ===
-function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
-  // 並び替えモード ('date' | 'rating')。開くたびに日付順へ戻す
-  const [sortMode, setSortMode] = React.useState("date");
-  React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
-
-  // スクロール用の参照
-  const scrollRef = React.useRef(null);
-
-  // 並び替えモード変更時にスクロールを先頭に戻す
-  React.useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = 0;
-    }
-  }, [sortMode]);
-
-  // ★ 評価“した順”の通し番号マップ（古い→新しいで 1,2,3...）
-  const rankMap = React.useMemo(() => {
-    const items = Object.entries(userRatings || {})
-      .map(([jan, meta]) => ({
-        jan: String(jan),
-        rating: Number(meta?.rating) || 0,
-        t: meta?.date ? new Date(meta.date).getTime() : 0, // 日付なしは最古扱い
-      }))
-      .filter((x) => x.rating > 0);
-
-    // 同時刻はJANで安定化
-    items.sort((a, b) => (a.t - b.t) || a.jan.localeCompare(b.jan));
-
-    const map = new Map();
-    items.forEach((x, idx) => map.set(x.jan, idx + 1));
-    return map;
-  }, [userRatings]);
-
-  // 表示用リスト：並び順はUIで変更可。表示番号は rankMap に固定。
-  const list = React.useMemo(() => {
-    const arr = Object.entries(userRatings || {})
-      .map(([jan, meta]) => {
-        const rating = Number(meta?.rating) || 0;
-        if (rating <= 0) return null;
-        const it = (data || []).find((d) => String(d.JAN) === String(jan));
-        if (!it) return null;
-        return {
-          ...it,
-          ratedAt: meta?.date ?? null,
-          rating,
-          displayIndex: rankMap.get(String(jan)) ?? null, // ← “評価順の通し番号”
-        };
-      })
-      .filter(Boolean);
-
-    if (sortMode === "rating") {
-      // 評価の高い順 → 同点は新しい評価が先
-      arr.sort((a, b) => {
-        if (b.rating !== a.rating) return b.rating - a.rating;
-        return new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0);
-      });
-    } else {
-      // 日付の新しい順（デフォルト）
-      arr.sort((a, b) => new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
-    }
-    return arr;
-  }, [data, userRatings, sortMode, rankMap]);
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", stiffness: 200, damping: 25 }}
-          style={{
-            position: "absolute", bottom: 0, left: 0, right: 0,
-            height: DRAWER_HEIGHT, backgroundColor: "#fff",
-            boxShadow: "0 -2px 10px rgba(0,0,0,0.2)", zIndex: 20,
-            borderTopLeftRadius: "12px", borderTopRightRadius: "12px",
-            display: "flex", flexDirection: "column",
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-            pointerEvents: "auto",
-          }}
-        >
-          <div
-            style={{
-              padding: "12px 16px", borderBottom: "1px solid #ddd",
-              background: "#f9f9f9", flexShrink: 0,
-              display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12,
-            }}
-          >
-            <h3 style={{ margin: 0 }}>飲んだワイン</h3>
-
-            {/* 並び替えトグル */}
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ fontSize: 13, color: "#666" }}>並び替え</span>
-              <div
-                role="group" aria-label="並び替え"
-                style={{ display: "inline-flex", border: "1px solid #ccc", borderRadius: 8, overflow: "hidden" }}
-              >
-                <button
-                  onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
-                  onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
-                  aria-pressed={sortMode === "date"}
-                  style={{
-                    padding: "6px 10px", fontSize: 13,
-                    background: sortMode === "date" ? "#e9e9e9" : "#eee",
-                    border: "none", borderRight: "1px solid #ccc", cursor: "pointer",
-                  }}
-                >
-                  日付順
-                </button>
-                <button
-                  onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); }}
-                  onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
-                  aria-pressed={sortMode === "rating"}
-                  style={{
-                    padding: "6px 10px", fontSize: 13,
-                    background: sortMode === "rating" ? "#e9e9e9" : "#eee",
-                    border: "none", cursor: "pointer",
-                  }}
-                >
-                  評価順
-                </button>
-              </div>
-
-              <button
-                onClick={onClose}
-                style={{
-                  background: "#eee", border: "1px solid #ccc",
-                  padding: "6px 10px", borderRadius: "4px",
-                  cursor: "pointer", marginLeft: 8,
-                }}
-              >
-                閉じる
-              </button>
-            </div>
-          </div>
-
-          <div
-            ref={scrollRef}
-            style={{ flex: 1, overflowY: "auto", padding: "12px 16px", backgroundColor: "#fff" }}
-          >
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {list.map((item, idx) => (
-                <li
-                  key={`${item.JAN}-${idx}`}
-                  onClick={() => onSelectJAN?.(item.JAN)}
-                  style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <div>
-                      {/* ★ 表示番号は“評価順の通し番号” */}
-                      <strong
-                        style={{
-                          display: "inline-block", color: "rgb(50, 50, 50)",
-                          fontSize: "16px", fontWeight: "bold", marginRight: "4px",
-                          fontFamily: '"Helvetica Neue", Arial, sans-serif',
-                        }}
-                      >
-                        {item.displayIndex ?? "—"}.
-                      </strong>
-                      <span style={{ fontSize: "15px", color: "#555" }}>
-                        {item.ratedAt ? new Date(item.ratedAt).toLocaleString() : "（日時不明）"}
-                      </span>
-                      <br />
-                      {item.商品名 || "（名称不明）"}
-                    </div>
-                    <div style={{ fontSize: 18, fontWeight: 700 }}>
-                      {"◎".repeat(Math.max(0, Math.min(5, Math.floor(item.rating))))}
-                    </div>
-                  </div>
-                  <small>
-                    Type: {item.Type || "不明"} / 価格:{" "}
-                    {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
-                    <br />
-                    Sweet: {Number.isFinite(item.PC2) ? item.PC2.toFixed(2) : "—"}, Body:{" "}
-                    {Number.isFinite(item.PC1) ? item.PC1.toFixed(2) : "—"}
-                  </small>
-                </li>
-              ))}
-              {list.length === 0 && (
-                <li style={{ color: "#666" }}>まだ「飲んだワイン」がありません。</li>
-              )}
-            </ul>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 }
 

@@ -19,3 +19,27 @@ export const paperBaseStyle = {
   overflow: "hidden",
   pointerEvents: "auto"
 };
+
+// === 追加: Map共通定数 ===
+export const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
+export const CENTER_Y_OFFSET = -3.5;
+export const ZOOM_LIMITS = { min: 5.0, max: 10.0 };
+export const INITIAL_ZOOM = 6;
+
+export const TYPE_COLOR_MAP = {
+  White: [150, 150, 150],
+  Red: [150, 150, 150],
+  Rose: [150, 150, 150],
+  Sparkling: [150, 150, 150],
+  Other: [150, 150, 150],
+};
+export const ORANGE = [255, 140, 0];
+
+// ヒート/グリッド
+export const GRID_CELL_SIZE = 0.2;
+export const HEAT_ALPHA_MIN = 24;
+export const HEAT_ALPHA_MAX = 255;
+export const HEAT_GAMMA = 0.65;
+export const HEAT_CLIP_PCT = [0.0, 0.98];
+export const HEAT_COLOR_LOW = [255, 255, 255];
+export const HEAT_COLOR_HIGH = [255, 165, 0];
