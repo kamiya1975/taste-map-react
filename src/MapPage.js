@@ -148,8 +148,8 @@ function MapPage() {
   // ====== パン境界（現在データに基づく）
   const panBounds = useMemo(() => {
     if (!data.length) return { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
-    const xs = data.map((d) => d.BodyAxis);
-    const ys = data.map((d) => -d.SweetAxis);
+    const xs = data.map((d) => d.UMAP1);
+    const ys = data.map((d) => -d.UMAP2);
     const xmin = Math.min(...xs), xmax = Math.max(...xs);
     const ymin = Math.min(...ys), ymax = Math.max(...ys);
     const pad = 1.5 + Math.abs(CENTER_Y_OFFSET);
@@ -177,8 +177,8 @@ function MapPage() {
             return {
               JAN: String(r.JAN ?? ""),
               Type: r.Type ?? "Other",
-              BodyAxis: Number(r.UMAP1),
-              SweetAxis: Number(r.UMAP2),
+              UMAP1: Number(r.UMAP1),
+              UMAP2: Number(r.UMAP2),
               PC1: Number(r.PC1),
               PC2: Number(r.PC2),
               PC3: Number(r.PC3),
@@ -193,8 +193,8 @@ function MapPage() {
           })
           .filter(
             (r) =>
-              Number.isFinite(r.BodyAxis) &&
-              Number.isFinite(r.SweetAxis) &&
+              Number.isFinite(r.UMAP1) &&
+              Number.isFinite(r.UMAP2) &&
               r.JAN !== ""
           );
         setData(cleaned);
@@ -263,9 +263,9 @@ function MapPage() {
     if (!data?.length) return [0, 0];
     let sx = 0, sy = 0, n = 0;
     for (const d of data) {
-      if (Number.isFinite(d.BodyAxis) && Number.isFinite(d.SweetAxis)) {
-        sx += d.BodyAxis;
-        sy += d.SweetAxis;
+      if (Number.isFinite(d.UMAP1) && Number.isFinite(d.UMAP2)) {
+        sx += d.UMAP1;
+        sy += d.UMAP2;
         n++;
       }
     }
@@ -387,9 +387,9 @@ function MapPage() {
     // payload が無い/不正なときはデータから blendF を検索
     if (targetX == null || targetY == null) {
       const b = data.find((d) => String(d.JAN) === "blendF");
-      if (b && Number.isFinite(b.BodyAxis) && Number.isFinite(b.SweetAxis)) {
-        targetX = b.BodyAxis;
-        targetY = b.SweetAxis;
+      if (b && Number.isFinite(b.UMAP1) && Number.isFinite(b.UMAP2)) {
+        targetX = b.UMAP1;
+        targetY = b.UMAP2;
       }
     }
 
@@ -441,8 +441,8 @@ function MapPage() {
   const focusOnWine = useCallback(
     (item, opts = {}) => {
       if (!item) return;
-      const tx = Number(item.BodyAxis);
-      const tyUMAP = Number(item.SweetAxis);
+      const tx = Number(item.UMAP1);
+      const tyUMAP = Number(item.UMAP2);
       if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
 
       const zoomTarget = Math.max(
@@ -583,8 +583,8 @@ function MapPage() {
     const [cx, cy] = coord;
     let best = null, bestD2 = Infinity;
     for (const d of data) {
-      const x = d.BodyAxis;
-      const y = -d.SweetAxis;
+      const x = d.UMAP1;
+      const y = -d.UMAP2;
       const dx = x - cx;
       const dy = y - cy;
       const d2 = dx * dx + dy * dy;
@@ -617,8 +617,8 @@ function MapPage() {
   const cells = useMemo(() => {
     const map = new Map();
     data.forEach((d) => {
-      const ix = toIndex(d.BodyAxis);
-      const iy = toIndex(-d.SweetAxis);
+      const ix = toIndex(d.UMAP1);
+      const iy = toIndex(-d.UMAP2);
       const key = keyOf(ix, iy);
       if (!map.has(key)) {
         map.set(key, {
@@ -643,8 +643,8 @@ function MapPage() {
     for (const d of data) {
       const v = Number(d[highlight2D]);
       if (!Number.isFinite(v)) continue;
-      const ix = toIndex(d.BodyAxis);
-      const iy = toIndex(-d.SweetAxis);
+      const ix = toIndex(d.UMAP1);
+      const iy = toIndex(-d.UMAP2);
       const key = keyOf(ix, iy);
       sumMap.set(key, (sumMap.get(key) || 0) + v);
       cntMap.set(key, (cntMap.get(key) || 0) + 1);
@@ -683,7 +683,7 @@ function MapPage() {
     return new ScatterplotLayer({
       id: "scatter",
       data,
-      getPosition: (d) => [d.BodyAxis, -d.SweetAxis, 0],
+      getPosition: (d) => [d.UMAP1, -d.UMAP2, 0],
       getFillColor: (d) =>
         String(d.JAN) === String(selectedJAN)
           ? ORANGE
@@ -701,7 +701,7 @@ function MapPage() {
     const lineColor = [255, 0, 0, 255];
     return Object.entries(userRatings).flatMap(([jan, ratingObj]) => {
       const item = data.find((d) => String(d.JAN) === String(jan));
-      if (!item || !Number.isFinite(item.BodyAxis) || !Number.isFinite(item.SweetAxis)) return [];
+      if (!item || !Number.isFinite(item.UMAP1) || !Number.isFinite(item.UMAP2)) return [];
       const count = Math.min(Number(ratingObj.rating) || 0, 5);
       if (count <= 0) return [];
       const radiusBase = 0.06;
@@ -710,8 +710,8 @@ function MapPage() {
         const path = Array.from({ length: angleSteps }, (_, j) => {
           const angle = (j / angleSteps) * 2 * Math.PI;
           const radius = radiusBase * (i + 1);
-          const x = item.BodyAxis + Math.cos(angle) * radius;
-          const y = -item.SweetAxis + Math.sin(angle) * radius;
+          const x = item.UMAP1 + Math.cos(angle) * radius;
+          const y = -item.UMAP2 + Math.sin(angle) * radius;
           return [x, y];
         });
         path.push(path[0]);
@@ -755,8 +755,8 @@ function MapPage() {
     const joined = rated
       .map((r) => {
         const it = data.find((d) => String(d.JAN) === r.jan);
-        if (!it || !Number.isFinite(it.BodyAxis) || !Number.isFinite(it.SweetAxis)) return null;
-        return { ...r, x: it.BodyAxis, y: it.SweetAxis };
+        if (!it || !Number.isFinite(it.UMAP1) || !Number.isFinite(it.UMAP2)) return null;
+        return { ...r, x: it.UMAP1, y: it.UMAP2 };
       })
       .filter(Boolean);
     if (joined.length === 0) return { point: null, picked: [], rule: "elbow" };
@@ -1361,8 +1361,8 @@ function FavoritePanel({ isOpen, onClose, favorites, data, userRatings, onSelect
                       ? `¥${item.希望小売価格.toLocaleString()}`
                       : "不明"}
                     <br />
-                    Body: {Number.isFinite(item.BodyAxis) ? item.BodyAxis.toFixed(2) : "—"}, Sweet:{" "}
-                    {Number.isFinite(item.SweetAxis) ? item.SweetAxis.toFixed(2) : "—"}
+                    Body: {Number.isFinite(item.UMAP1) ? item.UMAP1.toFixed(2) : "—"}, Sweet:{" "}
+                    {Number.isFinite(item.UMAP2) ? item.UMAP2.toFixed(2) : "—"}
                   </small>
                 </li>
               ))}
@@ -1551,8 +1551,8 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
                     Type: {item.Type || "不明"} / 価格:{" "}
                     {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
                     <br />
-                    Body: {Number.isFinite(item.BodyAxis) ? item.BodyAxis.toFixed(2) : "—"}, Sweet:{" "}
-                    {Number.isFinite(item.SweetAxis) ? item.SweetAxis.toFixed(2) : "—"}
+                    Body: {Number.isFinite(item.UMAP1) ? item.UMAP1.toFixed(2) : "—"}, Sweet:{" "}
+                    {Number.isFinite(item.UMAP2) ? item.UMAP2.toFixed(2) : "—"}
                   </small>
                 </li>
               ))}
