@@ -1383,6 +1383,16 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
+  // スクロール用の参照
+  const scrollRef = React.useRef(null);
+
+  // 並び替えモード変更時にスクロールを先頭に戻す
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [sortMode]);
+
   // ★ 評価“した順”の通し番号マップ（古い→新しいで 1,2,3...）
   const rankMap = React.useMemo(() => {
     const items = Object.entries(userRatings || {})
@@ -1504,7 +1514,10 @@ function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
             </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", backgroundColor: "#fff" }}>
+          <div
+            ref={scrollRef}
+            style={{ flex: 1, overflowY: "auto", padding: "12px 16px", backgroundColor: "#fff" }}
+          >
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {list.map((item, idx) => (
                 <li
