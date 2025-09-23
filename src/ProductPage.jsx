@@ -393,8 +393,8 @@ export default function ProductPage() {
 
       {/* 味データ */}
       <p style={{ margin: "4px 0" }}>
-        Body: {Number(product.BodyAxis).toFixed(2)}, Sweet:{" "}
-        {Number(product.SweetAxis).toFixed(2)}
+        Body: {Number(product.UMAP1).toFixed(2)}, Sweet:{" "}
+        {Number(product.UMAP2).toFixed(2)}
       </p>
 
       {/* 原産地・年 */}
