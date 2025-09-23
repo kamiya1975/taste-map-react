@@ -245,13 +245,13 @@ export default function SearchPanel({
                   ? `¥${Number(item.希望小売価格).toLocaleString()}`
                   : "不明"}
                 <br />
-                Body:{" "}
-                {Number.isFinite(item.BodyAxis)
-                  ? item.BodyAxis.toFixed(2)
+                Sweet:{" "}
+                {Number.isFinite(item.PC2)
+                  ? item.PC2.toFixed(2)
                   : "—"}
-                , Sweet:{" "}
-                {Number.isFinite(item.SweetAxis)
-                  ? item.SweetAxis.toFixed(2)
+                , Body:{" "}
+                {Number.isFinite(item.PC2)
+                  ? item.PC2.toFixed(2)
                   : "—"}
                 {/* <br />JAN: {item.JAN || "—"} */}
               </small>
