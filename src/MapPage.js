@@ -1,10 +1,9 @@
 // src/MapPage.js
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import DeckGL from "@deck.gl/react";
-import { OrbitView, OrthographicView } from "@deck.gl/core";
+import { OrthographicView } from "@deck.gl/core";
 import {
   ScatterplotLayer,
-  ColumnLayer,
   LineLayer,
   GridCellLayer,
   PathLayer,
@@ -75,19 +74,14 @@ function MapPage() {
   const lastCommittedRef = useRef({ code: "", at: 0 });   // 直近採用JAN（60秒ガード）
   const unknownWarnedRef = useRef(new Map());             // 未登録JANの警告デバウンス
 
-  // ====== ビュー制御
-  const [is3D, setIs3D] = useState(false);
+  // ====== ビュー制御（2D専用）
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
-    rotationX: 0,
-    rotationOrbit: 0,
     zoom: INITIAL_ZOOM,
   });
-  const [saved2DViewState, setSaved2DViewState] = useState(null);
 
   // ====== データ & 状態
   const [data, setData] = useState([]);
-  const [zMetric, setZMetric] = useState("");
   const [userRatings, setUserRatings] = useState({});
   const [favorites, setFavorites] = useState({});
   const [userPin, setUserPin] = useState(null);
@@ -99,7 +93,7 @@ function MapPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
 
-  // NEW: 一覧の排他表示制御（♡ と ◎）
+  // 一覧の排他表示制御（♡ と ◎）
   const [isFavoriteOpen, setIsFavoriteOpen] = useState(false);
   const [isRatedOpen, setIsRatedOpen] = useState(false);
 
@@ -144,7 +138,7 @@ function MapPage() {
     setIsFavoriteOpen(true);
   };
 
-  // NEW: 評価（◎）
+  // 評価（◎）
   const openRatedExclusive = async () => {
     if (isRatedOpen) { setIsRatedOpen(false); return; }
     await closeUIsThen();
@@ -155,7 +149,7 @@ function MapPage() {
   const panBounds = useMemo(() => {
     if (!data.length) return { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
     const xs = data.map((d) => d.BodyAxis);
-    const ys = data.map((d) => (is3D ? d.SweetAxis : -d.SweetAxis));
+    const ys = data.map((d) => -d.SweetAxis);
     const xmin = Math.min(...xs), xmax = Math.max(...xs);
     const ymin = Math.min(...ys), ymax = Math.max(...ys);
     const pad = 1.5 + Math.abs(CENTER_Y_OFFSET);
@@ -165,7 +159,7 @@ function MapPage() {
       ymin: ymin - pad,
       ymax: ymax + pad,
     };
-  }, [data, is3D]);
+  }, [data]);
 
   // ====== データ読み込み
   useEffect(() => {
@@ -346,7 +340,7 @@ function MapPage() {
   /** ===== 共通：UMAP座標へセンタリング（Y反転やオフセット込み） ===== */
   const centerToUMAP = useCallback((xUMAP, yUMAP, opts = {}) => {
     if (!Number.isFinite(xUMAP) || !Number.isFinite(yUMAP)) return;
-    const yCanvas = is3D ? yUMAP : -yUMAP;
+    const yCanvas = -yUMAP;
     const zoomTarget = Math.max(
       ZOOM_LIMITS.min,
       Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM)
@@ -355,10 +349,8 @@ function MapPage() {
       ...prev,
       target: [xUMAP, yCanvas - CENTER_Y_OFFSET, 0],
       zoom: zoomTarget,
-      rotationX: is3D ? (prev.rotationX ?? 45) : 0,
-      rotationOrbit: 0,
     }));
-  }, [is3D]);
+  }, []);
 
   // 初回センタリング（userPin 指定時）
   useEffect(() => {
@@ -372,7 +364,7 @@ function MapPage() {
     }
   }, [userPin, location.state, centerToUMAP]);
 
-  /** === NEW: SliderPage「閉じる」→ blendF に戻る要求を処理 === */
+  /** === SliderPage「閉じる」→ blendF に戻る要求を処理 === */
   useEffect(() => {
     const fromState = !!location.state?.centerOnBlendF;
     const raw = sessionStorage.getItem("tm_center_umap");
@@ -431,7 +423,7 @@ function MapPage() {
 
     requestAnimationFrame(() => {
       try {
-        const canvasCoord = [userPin[0], is3D ? userPin[1] : -userPin[1]];
+        const canvasCoord = [userPin[0], -userPin[1]];
         const nearest = findNearestWine(canvasCoord);
         if (nearest?.JAN) {
           setSelectedJAN(nearest.JAN);
@@ -443,7 +435,7 @@ function MapPage() {
         console.error("auto-open-nearest failed:", e);
       }
     });
-  }, [location.key, userPin, data, is3D]);
+  }, [location.key, userPin, data]);
 
   // ====== 共通：商品へフォーカス（毎回“初期ズーム”に戻す）
   const focusOnWine = useCallback(
@@ -460,13 +452,11 @@ function MapPage() {
 
       setViewState((prev) => ({
         ...prev,
-        target: [tx, (is3D ? tyUMAP : -tyUMAP) - CENTER_Y_OFFSET, 0],
+        target: [tx, -tyUMAP - CENTER_Y_OFFSET, 0],
         zoom: zoomTarget,
-        rotationX: is3D ? (prev.rotationX ?? 45) : 0,
-        rotationOrbit: 0,
       }));
     },
-    [is3D]
+    []
   );
 
   // ====== 子iframeへ♡状態を送るヘルパー
@@ -579,8 +569,7 @@ function MapPage() {
 
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [toggleFavorite, favorites, userRatings]);
-
+  }, [toggleFavorite, favorites, userRatings, openFromRated]);
 
   // 評価の有無
   const hasAnyRating = useMemo(
@@ -595,7 +584,7 @@ function MapPage() {
     let best = null, bestD2 = Infinity;
     for (const d of data) {
       const x = d.BodyAxis;
-      const y = is3D ? d.SweetAxis : -d.SweetAxis;
+      const y = -d.SweetAxis;
       const dx = x - cx;
       const dy = y - cy;
       const d2 = dx * dx + dy * dy;
@@ -605,7 +594,7 @@ function MapPage() {
       }
     }
     return best;
-  }, [data, is3D]);
+  }, [data]);
 
   // ====== レイヤー計算
   const { thinLines, thickLines } = useMemo(() => {
@@ -629,7 +618,7 @@ function MapPage() {
     const map = new Map();
     data.forEach((d) => {
       const ix = toIndex(d.BodyAxis);
-      const iy = toIndex(is3D ? d.SweetAxis : -d.SweetAxis);
+      const iy = toIndex(-d.SweetAxis);
       const key = keyOf(ix, iy);
       if (!map.has(key)) {
         map.set(key, {
@@ -644,10 +633,10 @@ function MapPage() {
       map.get(key).count += 1;
     });
     return Array.from(map.values());
-  }, [data, userRatings, favorites, is3D]);
+  }, [data, userRatings, favorites]);
 
   const { heatCells, vMin, vMax, avgHash } = useMemo(() => {
-    if (is3D || !highlight2D)
+    if (!highlight2D)
       return { heatCells: [], vMin: 0, vMax: 1, avgHash: "empty" };
     const sumMap = new Map();
     const cntMap = new Map();
@@ -687,29 +676,10 @@ function MapPage() {
       3
     )}|${highlight2D}`;
     return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
-  }, [data, highlight2D, is3D]);
+  }, [data, highlight2D]);
 
-  // メイン（3D: Column / 2D: Scatter）
+  // メイン（2D: Scatter）
   const mainLayer = useMemo(() => {
-    if (is3D) {
-      return new ColumnLayer({
-        id: `columns-${zMetric}`,
-        data,
-        diskResolution: 12,
-        radius: 0.03,
-        extruded: true,
-        elevationScale: 2,
-        getPosition: (d) => [d.BodyAxis, d.SweetAxis],
-        getElevation: (d) => (zMetric ? Number(d[zMetric]) || 0 : 0),
-        getFillColor: (d) =>
-          String(d.JAN) === String(selectedJAN)
-            ? ORANGE
-            : typeColorMap[d.Type] || typeColorMap.Other,
-        updateTriggers: { getFillColor: [selectedJAN] },
-        pickable: true,
-        onClick: null,
-      });
-    }
     return new ScatterplotLayer({
       id: "scatter",
       data,
@@ -724,7 +694,7 @@ function MapPage() {
       pickable: true,
       onClick: null,
     });
-  }, [data, is3D, zMetric, selectedJAN]);
+  }, [data, selectedJAN]);
 
   // 評価サークル（◎）
   const ratingCircleLayers = useMemo(() => {
@@ -741,7 +711,7 @@ function MapPage() {
           const angle = (j / angleSteps) * 2 * Math.PI;
           const radius = radiusBase * (i + 1);
           const x = item.BodyAxis + Math.cos(angle) * radius;
-          const y = (is3D ? item.SweetAxis : -item.SweetAxis) + Math.sin(angle) * radius;
+          const y = -item.SweetAxis + Math.sin(angle) * radius;
           return [x, y];
         });
         path.push(path[0]);
@@ -757,7 +727,7 @@ function MapPage() {
         });
       });
     });
-  }, [data, userRatings, is3D]);
+  }, [data, userRatings]);
 
   // ===== 嗜好コンパス
   const detectElbowIndex = (valsDesc) => {
@@ -809,7 +779,7 @@ function MapPage() {
     const [ux, uy] = compass.point;
     return new IconLayer({
       id: "preference-compass",
-      data: [{ position: [ux, -uy, 0] }], // 2D/3D ともにキャンバス座標へ反転
+      data: [{ position: [ux, -uy, 0] }], // 2Dキャンバス座標へ反転
       getPosition: (d) => d.position,
       getIcon: () => ({
         url: COMPASS_URL,
@@ -832,7 +802,7 @@ function MapPage() {
     if (hasAnyRating) return null;
     return new IconLayer({
       id: "user-pin-compass",
-      data: [{ position: [userPin[0], is3D ? userPin[1] : -userPin[1], 0] }],
+      data: [{ position: [userPin[0], -userPin[1], 0] }],
       getPosition: (d) => d.position,
       getIcon: () => ({
         url: COMPASS_URL,
@@ -847,17 +817,13 @@ function MapPage() {
       pickable: false,
       parameters: { depthTest: false },
     });
-  }, [userPin, hasAnyRating, is3D]);
+  }, [userPin, hasAnyRating]);
 
   // ====== レンダリング
   return (
     <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}>
       <DeckGL
-        views={
-          is3D
-            ? new OrbitView({ near: 0.1, far: 1000 })
-            : new OrthographicView({ near: -1, far: 1 })
-        }
+        views={new OrthographicView({ near: -1, far: 1 })}
         viewState={viewState}
         style={{ position: "absolute", inset: 0 }}
         useDevicePixels
@@ -872,9 +838,7 @@ function MapPage() {
         }}
         controller={{
           dragPan: true,
-          dragRotate: is3D,
-          minRotationX: 5,
-          maxRotationX: 90,
+          dragRotate: false,
           minZoom: ZOOM_LIMITS.min,
           maxZoom: ZOOM_LIMITS.max,
           inertia: false,
@@ -900,7 +864,7 @@ function MapPage() {
         pickingRadius={8}
         layers={[
           ...ratingCircleLayers,
-          !is3D && !highlight2D
+          !highlight2D
             ? new GridCellLayer({
                 id: "grid-cells-base",
                 data: cells,
@@ -914,7 +878,7 @@ function MapPage() {
                 pickable: false,
               })
             : null,
-          !is3D && highlight2D
+          highlight2D
             ? new GridCellLayer({
                 id: `grid-cells-heat-${highlight2D}-p${HEAT_COLOR_LOW.join("_")}-${HEAT_COLOR_HIGH.join("_")}`,
                 data: heatCells,
@@ -969,179 +933,116 @@ function MapPage() {
         ]}
       />
 
-      {/* ====== 画面右上: 2D/3D トグル */}
+      {/* 左上: 指標セレクタ（2Dハイライト） */}
+      <select
+        value={highlight2D}
+        onChange={(e) => setHighlight2D(e.target.value)}
+        style={{ position: "absolute", top: "10px", left: "10px", zIndex: 10, padding: "6px", fontSize: "14px" }}
+      >
+        <option value="">ー</option>
+        <option value="PC2">Sweet(PC2)</option>
+        <option value="PC1">Body(PC1)</option>
+        <option value="PC3">PC3</option>
+      </select>
+
+      {/* 右上: スライダーへ遷移（●） */}
       <button
-        onClick={() => {
-          const nextIs3D = !is3D;
-          setIs3D(nextIs3D);
-          if (nextIs3D) {
-            setSaved2DViewState(viewState);
-            setViewState({
-              target: [viewState.target[0], viewState.target[1], 0],
-              zoom: viewState.zoom,
-              rotationX: 45,
-              rotationOrbit: 0,
-            });
-          } else {
-            setViewState({
-              ...(saved2DViewState ?? {
-                target: [0, 0, 0],
-                zoom: INITIAL_ZOOM,
-                rotationX: 0,
-                rotationOrbit: 0,
-              }),
-              rotationX: 0,
-              rotationOrbit: 0,
-            });
-          }
-        }}
+        onClick={openSliderExclusive}
         style={{
           position: "absolute",
-          top: "10px",
+          top: "70px",
           right: "10px",
           zIndex: 10,
-          padding: "8px 12px",
-          fontSize: "14px",
-          background: "#fff",
+          width: "40px",
+          height: "40px",
+          borderRadius: "50%",
+          background: "#eee",
           border: "1px solid #ccc",
-          borderRadius: "4px",
           cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: "bold",
+          fontSize: "20px",
         }}
+        aria-label="嗜好スライダー"
       >
-        {is3D ? "2D" : "3D"}
+        ●
       </button>
 
-      {/* 左上: 指標セレクタ */}
-      {is3D ? (
-        <select
-          value={zMetric}
-          onChange={(e) => setZMetric(e.target.value)}
-          style={{ position: "absolute", top: "10px", left: "10px", zIndex: 10, padding: "6px", fontSize: "14px" }}
-        >
-          <option value="">ー</option>
-          <option value="PC2">Sweet(PC2)</option>
-          <option value="PC1">Body(PC1)</option>
-          <option value="PC3">PC3</option>
-        </select>
-      ) : (
-        <select
-          value={highlight2D}
-          onChange={(e) => setHighlight2D(e.target.value)}
-          style={{ position: "absolute", top: "10px", left: "10px", zIndex: 10, padding: "6px", fontSize: "14px" }}
-        >
-          <option value="">ー</option>
-          <option value="PC2">Sweet(PC2)</option>
-          <option value="PC1">Body(PC1)</option>
-          <option value="PC3">PC3</option>
-        </select>
-      )}
-
-      {/* 右上: スライダーへ遷移（2D時のみ表示） */}
-      {!is3D && (
-        <button
-          onClick={openSliderExclusive}
-          style={{
-            position: "absolute",
-            top: "70px",
-            right: "10px",
-            zIndex: 10,
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            background: "#eee",
-            border: "1px solid #ccc",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: "bold",
-            fontSize: "20px",
-          }}
-          aria-label="嗜好スライダー"
-        >
-          ●
-        </button>
-      )}
-
       {/* 右サイドの丸ボタン群（♡ → ◎ → 🔍） */}
-      {!is3D && (
-        <button
-          onClick={openFavoriteExclusive}
-          style={{
-            position: "absolute",
-            top: "120px",
-            right: "10px",
-            zIndex: 10,
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            background: "#eee",
-            border: "1px solid #ccc",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: "bold",
-            fontSize: "20px",
-          }}
-          aria-label="お気に入り一覧"
-        >
-          ♡
-        </button>
-      )}
+      <button
+        onClick={openFavoriteExclusive}
+        style={{
+          position: "absolute",
+          top: "120px",
+          right: "10px",
+          zIndex: 10,
+          width: "40px",
+          height: "40px",
+          borderRadius: "50%",
+          background: "#eee",
+          border: "1px solid #ccc",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: "bold",
+          fontSize: "20px",
+        }}
+        aria-label="お気に入り一覧"
+      >
+        ♡
+      </button>
 
-      {!is3D && (
-        <button
-          onClick={openRatedExclusive}
-          style={{
-            position: "absolute",
-            top: "170px", // ♡の下、🔍の上
-            right: "10px",
-            zIndex: 10,
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            background: "#eee",
-            border: "1px solid #ccc",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: "bold",
-            fontSize: "18px",
-          }}
-          aria-label="評価一覧"
-          title="評価（◎）一覧"
-        >
-          ◎
-        </button>
-      )}
+      <button
+        onClick={openRatedExclusive}
+        style={{
+          position: "absolute",
+          top: "170px", // ♡の下、🔍の上
+          right: "10px",
+          zIndex: 10,
+          width: "40px",
+          height: "40px",
+          borderRadius: "50%",
+          background: "#eee",
+          border: "1px solid #ccc",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: "bold",
+          fontSize: "18px",
+        }}
+        aria-label="評価一覧"
+        title="評価（◎）一覧"
+      >
+        ◎
+      </button>
 
-      {!is3D && (
-        <button
-          onClick={openSearchExclusive}
-          style={{
-            position: "absolute",
-            top: "220px", // ◎の下
-            right: "10px",
-            zIndex: 10,
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            background: "#eee",
-            border: "1px solid #ccc",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: "bold",
-            fontSize: "18px",
-          }}
-          aria-label="検索"
-        >
-          🔍
-        </button>
-      )}
+      <button
+        onClick={openSearchExclusive}
+        style={{
+          position: "absolute",
+          top: "220px", // ◎の下
+          right: "10px",
+          zIndex: 10,
+          width: "40px",
+          height: "40px",
+          borderRadius: "50%",
+          background: "#eee",
+          border: "1px solid #ccc",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: "bold",
+          fontSize: "18px",
+        }}
+        aria-label="検索"
+      >
+        🔍
+      </button>
 
       {/* ====== 検索パネル（背面Map操作可） */}
       <SearchPanel
@@ -1242,14 +1143,14 @@ function MapPage() {
         }}
       />
 
-      {/* NEW: 評価（◎）一覧パネル */}
+      {/* 評価（◎）一覧パネル */}
       <RatedPanel
         isOpen={isRatedOpen}
         onClose={() => { setIsRatedOpen(false); }}
         userRatings={userRatings}
         data={data}
         onSelectJAN={(jan) => {
-          setOpenFromRated(true);    // ◎から開いたフラグを state にも立てる（ログの整合性にも効く）
+          setOpenFromRated(true);    // ◎から開いたフラグ
           fromRatedRef.current = true;
           try { sessionStorage.setItem('tm_from_rated_jan', String(jan)); } catch {}
 
