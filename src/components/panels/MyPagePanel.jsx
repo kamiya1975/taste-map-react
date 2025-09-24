@@ -27,8 +27,8 @@ const CIRCLE_BTN = {
 const VALUE_INPUT = {
   border: "none",
   outline: "none",
-  fontSize: 16,
-  padding: "6px 8px",
+  fontSize: 12,
+  padding: "8px 4px",
   background: "transparent",
   color: "#1c1c1e",
   lineHeight: "1.4",
@@ -282,7 +282,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "120px 1fr",
+                  gridTemplateColumns: "80px 1fr",
                   gap: 8,
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
@@ -303,7 +303,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "120px 1fr",
+                  gridTemplateColumns: "80px 1fr",
                   gap: 8,
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
@@ -327,7 +327,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "120px 1fr",
+                  gridTemplateColumns: "80px 1fr",
                   gap: 8,
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
@@ -353,7 +353,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "120px 1fr",
+                  gridTemplateColumns: "80px 1fr",
                   gap: 8,
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
@@ -379,7 +379,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "120px 1fr",
+                  gridTemplateColumns: "80px 1fr",
                   gap: 8,
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
@@ -403,7 +403,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "120px 1fr",
+                  gridTemplateColumns: "80px 1fr",
                   gap: 8,
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
@@ -424,7 +424,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "120px 1fr",
+                  gridTemplateColumns: "80px 1fr",
                   gap: 8,
                   padding: "12px 14px",
                   alignItems: "center",
