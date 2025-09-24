@@ -2,37 +2,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Drawer from "@mui/material/Drawer";
 
-/**
- * 仕様メモ
- * - 左からスライド。iOS設定風の区切りと余白。
- * - 左下に「×」丸ボタン（MapPageの〓と同じ位置＆サイズ＆スタイル）。
- * - 初回に選んだ店舗（localStorage.selectedStore）を一番上に固定で表示（解除不可）。
- * - それ以外の店舗はチェックON/OFF可能。localStorage.favoriteStores に保存。
- * - ストア一覧は localStorage.allStores（StorePage 側で保存する想定）を優先利用。
- *   無ければ primaryStore のみ表示。位置情報を取得して近い順に並べ替え。
- */
-
-const BTN_CIRCLE = {
-  position: "absolute",
-  left: "12px",
-  bottom: "max(12px, env(safe-area-inset-bottom))",
-  top: "auto",
-  right: "auto",
-  zIndex: 10,
-  width: "40px",
-  height: "40px",
-  borderRadius: "50%",
-  background: "#eee",
-  border: "1px solid #ccc",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontWeight: "bold",
-  fontSize: "20px",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-};
-
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const toRad = (d) => (d * Math.PI) / 180;
@@ -65,9 +34,9 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
   const [pass2, setPass2] = useState("");
 
   // 店舗
-  const [primaryStore, setPrimaryStore] = useState(null); // 固定
-  const [allStores, setAllStores] = useState([]);         // 候補
-  const [favSet, setFavSet] = useState(new Set());        // 追加店舗
+  const [primaryStore, setPrimaryStore] = useState(null);
+  const [allStores, setAllStores] = useState([]);
+  const [favSet, setFavSet] = useState(new Set());
 
   // 位置情報
   const [geo, setGeo] = useState(null);
@@ -76,39 +45,38 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
   useEffect(() => {
     if (!isOpen) return;
 
-    // 初回選択の固定店舗（解除不可）
+    // 固定店舗
     const sel = readJSON("selectedStore", null);
     setPrimaryStore(sel);
 
-    // 候補店舗（StorePage 側で保存しておくと良い）
+    // 候補店舗
     const fromLS = readJSON("allStores", null);
     setAllStores(Array.isArray(fromLS) ? fromLS : (sel ? [sel] : []));
 
-    // お気に入り（追加）セット
+    // お気に入り
     const favArr = readJSON("favoriteStores", []);
     setFavSet(new Set((favArr || []).map(storeKey)));
 
-    // ユーザー情報（任意：保存している場合は復元）
+    // ユーザー情報
     const savedNickname = localStorage.getItem("user.nickname") || "";
     const savedUserId = localStorage.getItem("user.id") || "";
     setNickname(savedNickname);
     setUserId(savedUserId);
+    setPass1(""); // パスワードは空欄に初期化
+    setPass2("");
 
-    // 位置情報を取得して近い順へ
+    // 位置情報
     const ask = async () => {
       if (!("geolocation" in navigator)) return;
       try {
-        await new Promise((resolve, reject) => {
+        await new Promise((resolve) => {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
               const { latitude, longitude } = pos.coords || {};
               setGeo({ lat: latitude, lng: longitude });
               resolve();
             },
-            (err) => {
-              console.warn("Geolocation denied:", err);
-              resolve(); // 失敗でも続行（距離なし）
-            },
+            () => resolve(),
             { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
           );
         });
@@ -117,12 +85,10 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
     ask();
   }, [isOpen]);
 
-  // 近い順に並び替え
+  // 近い順
   const sortedStores = useMemo(() => {
     const list = Array.isArray(allStores) ? allStores.slice() : [];
-    if (!geo || !Number.isFinite(geo.lat) || !Number.isFinite(geo.lng)) {
-      return list;
-    }
+    if (!geo) return list;
     return list
       .map((s) => ({
         ...s,
@@ -131,23 +97,17 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
             ? haversineKm(geo.lat, geo.lng, s.lat, s.lng)
             : null,
       }))
-      .sort((a, b) => {
-        const da = a.distanceKm ?? Infinity;
-        const db = b.distanceKm ?? Infinity;
-        return da - db;
-      });
+      .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
   }, [allStores, geo]);
 
-  // チェック変更
+  // チェック切替
   const toggleFav = (s) => {
     const k = storeKey(s);
-    // primary は外せない
     if (primaryStore && k === storeKey(primaryStore)) return;
     setFavSet((prev) => {
       const next = new Set(prev);
       if (next.has(k)) next.delete(k);
       else next.add(k);
-      // 保存
       try {
         const arr = sortedStores.filter((st) => next.has(storeKey(st)));
         localStorage.setItem("favoriteStores", JSON.stringify(arr));
@@ -156,7 +116,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
     });
   };
 
-  // 保存（例：ニックネーム・ID・パスワード）
+  // 保存
   const saveProfile = () => {
     if (pass1 && pass1 !== pass2) {
       alert("パスワードが一致しません。");
@@ -172,7 +132,6 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
     }
   };
 
-  // 表示ユーティリティ
   const fmtKm = (d) =>
     Number.isFinite(d) ? `（${d.toFixed(1)}km）` : "";
 
@@ -189,14 +148,13 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
           position: "relative",
           display: "flex",
           flexDirection: "column",
-          // 下の×が見切れないよう余白
           paddingBottom: "64px",
         },
       }}
     >
       {/* 見出し */}
       <div style={{
-        padding: "14px 16px",
+        padding: "14px 12px", // ← 左寄せ修正
         borderBottom: "1px solid #e5e5ea",
         fontWeight: 700,
       }}>
@@ -205,8 +163,8 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
 
       {/* コンテンツ */}
       <div style={{ flex: 1, overflowY: "auto" }}>
-        {/* セクション：基準のワイン */}
-        <section style={{ padding: "12px 16px" }}>
+        {/* 基準ワイン */}
+        <section style={{ padding: "12px" }}>
           <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>
             基準のワイン
           </div>
@@ -220,19 +178,18 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
               borderRadius: 10,
               fontWeight: 600,
               cursor: "pointer",
+              textAlign: "left", // 左寄せ
             }}
           >
             スライダーを開く
           </button>
         </section>
 
-        {/* セクション：プロフィール */}
-        <section style={{ padding: "12px 16px" }}>
+        {/* アカウント */}
+        <section style={{ padding: "12px" }}>
           <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>
             アカウント
           </div>
-
-          {/* iOS設定風の行ボックス */}
           <div style={{
             background: "#fff",
             border: "1px solid #d1d1d6",
@@ -242,99 +199,60 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
             {/* ニックネーム */}
             <div style={{
               display: "grid",
-              gridTemplateColumns: "120px 1fr",
-              gap: 8,
-              padding: "12px 14px",
+              gridTemplateColumns: "100px 1fr",
+              padding: "12px",
               borderBottom: "1px solid #e5e5ea",
-              alignItems: "center",
             }}>
-              <div style={{ color: "#1c1c1e" }}>ニックネーム</div>
+              <div>ニックネーム</div>
               <input
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                placeholder="-"
-                style={{
-                  border: "none",
-                  outline: "none",
-                  fontSize: 16,
-                  padding: "6px 8px",
-                  background: "transparent",
-                }}
+                style={{ border: "none", outline: "none" }}
               />
             </div>
-
             {/* ID */}
             <div style={{
               display: "grid",
-              gridTemplateColumns: "120px 1fr",
-              gap: 8,
-              padding: "12px 14px",
+              gridTemplateColumns: "100px 1fr",
+              padding: "12px",
               borderBottom: "1px solid #e5e5ea",
-              alignItems: "center",
             }}>
-              <div style={{ color: "#1c1c1e" }}>ID</div>
+              <div>ID</div>
               <input
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
-                placeholder="t-kamiya@clt.co.jp"
-                style={{
-                  border: "none",
-                  outline: "none",
-                  fontSize: 16,
-                  padding: "6px 8px",
-                  background: "transparent",
-                }}
+                style={{ border: "none", outline: "none" }}
               />
             </div>
-
-            {/* パスワード（変更/再入力） */}
+            {/* パスワード */}
             <div style={{
               display: "grid",
-              gridTemplateColumns: "120px 1fr",
-              gap: 8,
-              padding: "12px 14px",
+              gridTemplateColumns: "100px 1fr",
+              padding: "12px",
               borderBottom: "1px solid #e5e5ea",
-              alignItems: "center",
             }}>
-              <div style={{ color: "#1c1c1e" }}>Pass変更</div>
+              <div>Pass変更</div>
               <input
                 type="password"
                 value={pass1}
                 onChange={(e) => setPass1(e.target.value)}
-                placeholder="●●●●●●●●●●●"
-                style={{
-                  border: "none",
-                  outline: "none",
-                  fontSize: 16,
-                  padding: "6px 8px",
-                  background: "transparent",
-                }}
+                style={{ border: "none", outline: "none" }}
               />
             </div>
             <div style={{
               display: "grid",
-              gridTemplateColumns: "120px 1fr",
-              gap: 8,
-              padding: "12px 14px",
-              alignItems: "center",
+              gridTemplateColumns: "100px 1fr",
+              padding: "12px",
             }}>
-              <div style={{ color: "#1c1c1e" }}>再入力</div>
+              <div>再入力</div>
               <input
                 type="password"
                 value={pass2}
                 onChange={(e) => setPass2(e.target.value)}
-                placeholder="●●●●●●●●●●●"
-                style={{
-                  border: "none",
-                  outline: "none",
-                  fontSize: 16,
-                  padding: "6px 8px",
-                  background: "transparent",
-                }}
+                style={{ border: "none", outline: "none" }}
               />
             </div>
           </div>
-
           <div style={{ marginTop: 12, textAlign: "right" }}>
             <button
               onClick={saveProfile}
@@ -353,78 +271,44 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
           </div>
         </section>
 
-        {/* セクション：お気に入り店舗追加（近い順） */}
-        <section style={{ padding: "12px 16px" }}>
+        {/* 店舗 */}
+        <section style={{ padding: "12px" }}>
           <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>
             お気に入り店舗追加（近い順）
           </div>
-
-          {/* 店舗ボックス */}
           <div style={{
             background: "#fff",
             border: "1px solid #d1d1d6",
             borderRadius: 12,
             overflow: "hidden",
           }}>
-            {/* 最上段：固定（チェック解除不可） */}
             {primaryStore && (
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "12px 14px",
-                  borderBottom: "1px solid #e5e5ea",
-                  gap: 12,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <input type="checkbox" checked readOnly />
-                  <div>
-                    <div style={{ fontWeight: 600 }}>
-                      {primaryStore.name || primaryStore.storeName} {primaryStore.branch || primaryStore.storeBranch}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#6e6e73" }}>
-                      {Number.isFinite(primaryStore.distanceKm) ? fmtKm(primaryStore.distanceKm) : ""}
-                    </div>
+              <label style={{ display: "flex", padding: "12px", borderBottom: "1px solid #e5e5ea" }}>
+                <input type="checkbox" checked readOnly />
+                <div style={{ marginLeft: 8 }}>
+                  <div style={{ fontWeight: 600 }}>
+                    {primaryStore.name || primaryStore.storeName} {primaryStore.branch || primaryStore.storeBranch}
                   </div>
                 </div>
-                <span style={{ fontSize: 12, color: "#6e6e73" }}>固定</span>
+                <span style={{ marginLeft: "auto", fontSize: 12, color: "#6e6e73" }}>固定</span>
               </label>
             )}
-
-            {/* その他：ON/OFF可（近い順） */}
             {sortedStores
               .filter((s) => !primaryStore || storeKey(s) !== storeKey(primaryStore))
               .map((s, i) => {
                 const k = storeKey(s);
-                const checked = favSet.has(k);
                 return (
-                  <label
-                    key={`${k}-${i}`}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "12px 14px",
-                      borderBottom: "1px solid #e5e5ea",
-                      gap: 12,
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleFav(s)}
-                      />
-                      <div>
-                        <div style={{ fontWeight: 600 }}>
-                          {s.name || s.storeName} {s.branch || s.storeBranch}
-                        </div>
-                        <div style={{ fontSize: 12, color: "#6e6e73" }}>
-                          {fmtKm(s.distanceKm)}
-                        </div>
+                  <label key={i} style={{ display: "flex", padding: "12px", borderBottom: "1px solid #e5e5ea" }}>
+                    <input
+                      type="checkbox"
+                      checked={favSet.has(k)}
+                      onChange={() => toggleFav(s)}
+                    />
+                    <div style={{ marginLeft: 8 }}>
+                      <div style={{ fontWeight: 600 }}>
+                        {s.name || s.storeName} {s.branch || s.storeBranch}
                       </div>
+                      <div style={{ fontSize: 12, color: "#6e6e73" }}>{fmtKm(s.distanceKm)}</div>
                     </div>
                   </label>
                 );
@@ -433,12 +317,25 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
         </section>
       </div>
 
-      {/* 左下：×（MapPageの〓と同じ位置・スタイル） */}
+      {/* 閉じるボタン（左下固定） */}
       <button
         onClick={onClose}
-        aria-label="閉じる"
-        title="閉じる"
-        style={BTN_CIRCLE}
+        style={{
+          position: "absolute",
+          left: "12px",
+          bottom: "max(12px, env(safe-area-inset-bottom))",
+          width: "40px",
+          height: "40px",
+          borderRadius: "50%",
+          background: "#eee",
+          border: "1px solid #ccc",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "20px",
+          fontWeight: "bold",
+        }}
       >
         ×
       </button>
