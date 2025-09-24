@@ -146,9 +146,10 @@ async function fetchStores({ q = "", lat = null, lon = null, limit = 50 } = {}) 
       }))
       .map((d) => ({
         ...d,
-        _dist: Number.isFinite(d.lat) && Number.isFinite(d.lon)
-          ? haversineKm(me.lat, me.lon, d.lat, d.lon)
-          : Infinity,
+        _dist:
+          Number.isFinite(d.lat) && Number.isFinite(d.lon)
+            ? haversineKm(me.lat, me.lon, d.lat, d.lon)
+            : Infinity,
       }))
       .sort((a, b) => a._dist - b._dist);
   }
@@ -177,6 +178,8 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
   // 状態
   const [loadingStores, setLoadingStores] = useState(false);
   const [storesError, setStoresError] = useState("");
+
+  // サブページ（このアプリの説明）
   const [showAbout, setShowAbout] = useState(false);
 
   // オープン時に復元＆初期化
@@ -222,20 +225,6 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
           }));
           setAllStores(normalized);
           writeJSON("allStores", normalized);
-
-          // primaryStore が未設定なら「最寄り」を初期選択にしてもOK（必要なら有効化）
-          // if (!sel && normalized.length) {
-          //   const nearest = normalized
-          //     .map((s) => ({
-          //       ...s,
-          //       _d: Number.isFinite(s.lat) && Number.isFinite(s.lng)
-          //         ? haversineKm(loc.lat, loc.lon, s.lat, s.lng)
-          //         : Infinity,
-          //     }))
-          //     .sort((a, b) => a._d - b._d)[0];
-          //   setPrimaryStore(nearest);
-          //   writeJSON("selectedStore", nearest);
-          // }
         } catch (e) {
           setStoresError("店舗情報の取得に失敗しました（API/モックとも）。");
         } finally {
@@ -345,9 +334,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
     setLoadingStores(true);
     setStoresError("");
     try {
-      const loc = geo
-        ? { lat: geo.lat, lon: geo.lng }
-        : await resolveLocation();
+      const loc = geo ? { lat: geo.lat, lon: geo.lng } : await resolveLocation();
       if (!geo) setGeo({ lat: loc.lat, lng: loc.lon });
 
       const rows = await fetchStores({ lat: loc.lat, lon: loc.lon, limit: 50 });
@@ -411,318 +398,378 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
 
         {/* コンテンツ */}
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {/* 基準ワイン */}
-          <section style={{ padding: "12px 16px" }}>
-            <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>基準のワイン</div>
-            <button
-              onClick={() => {
-                onClose?.();
-                onOpenSlider?.();
-              }}
-              style={{
-                width: "100%",
-                padding: "12px",
-                background: "#fff",
-                border: "1px solid #d1d1d6",
-                borderRadius: 10,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              スライダーを開く
-            </button>
-          </section>
-
-          {/* このアプリの説明（遷移ボタン） */}
-          <section style={{ padding: "0 16px 12px" }}>
-            <button
-              onClick={() => setShowAbout(true)}
-              style={{
-                width: "100%",
-                padding: "12px",
-                background: "#fff",
-                border: "1px solid #d1d1d6",
-                borderRadius: 10,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              このアプリの説明
-            </button>
-          </section>
-
-          {/* アカウント */}
-          <section style={{ padding: "12px 16px" }}>
-            <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>アカウント</div>
-
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #d1d1d6",
-                borderRadius: 12,
-                overflow: "hidden",
-              }}
-            >
-              {/* ニックネーム */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "80px 1fr",
-                  gap: 8,
-                  padding: "12px 14px",
-                  borderBottom: "1px solid #e5e5ea",
-                  alignItems: "center",
-                  fontSize: 12,
-                }}
-              >
-                <div style={{ color: "#1c1c1e" }}>ニックネーム</div>
-                <input
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  placeholder="-"
-                  style={VALUE_INPUT}
-                />
-              </div>
-
-              {/* ID（メール） */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "80px 1fr",
-                  gap: 8,
-                  padding: "12px 14px",
-                  borderBottom: "1px solid #e5e5ea",
-                  alignItems: "center",
-                  fontSize: 12,
-                }}
-              >
-                <div style={{ color: "#1c1c1e" }}>ID</div>
-                <input
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="example@mail.com"
-                  style={VALUE_INPUT}
-                />
-              </div>
-
-              {/* 生まれ年 */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "80px 1fr",
-                  gap: 8,
-                  padding: "12px 14px",
-                  borderBottom: "1px solid #e5e5ea",
-                  alignItems: "center",
-                  fontSize: 12,
-                }}
-              >
-                <div style={{ color: "#1c1c1e" }}>生まれ年</div>
-                <select
-                  value={birthYear}
-                  onChange={(e) => setBirthYear(e.target.value)}
-                  style={{ ...VALUE_INPUT, appearance: "none" }}
-                >
-                  {Array.from({ length: 80 }, (_, i) => (2025 - i).toString()).map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 生まれ月 */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "80px 1fr",
-                  gap: 8,
-                  padding: "12px 14px",
-                  borderBottom: "1px solid #e5e5ea",
-                  alignItems: "center",
-                  fontSize: 12,
-                }}
-              >
-                <div style={{ color: "#1c1c1e" }}>生まれ月</div>
-                <select
-                  value={birthMonth}
-                  onChange={(e) => setBirthMonth(e.target.value)}
-                  style={{ ...VALUE_INPUT, appearance: "none" }}
-                >
-                  {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 性別 */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "80px 1fr",
-                  gap: 8,
-                  padding: "12px 14px",
-                  borderBottom: "1px solid #e5e5ea",
-                  alignItems: "center",
-                  fontSize: 12,
-                }}
-              >
-                <div style={{ color: "#1c1c1e" }}>性別</div>
-                <select
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                  style={{ ...VALUE_INPUT, appearance: "none" }}
-                >
-                  <option value="男性">男性</option>
-                  <option value="女性">女性</option>
-                  <option value="その他">その他</option>
-                </select>
-              </div>
-
-              {/* パスワード（表示は常に空） */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "80px 1fr",
-                  gap: 8,
-                  padding: "12px 14px",
-                  borderBottom: "1px solid #e5e5ea",
-                  alignItems: "center",
-                  fontSize: 12,
-                }}
-              >
-                <div style={{ color: "#1c1c1e" }}>パスワード変更</div>
-                <input
-                  type="password"
-                  value={pass1}
-                  onChange={(e) => setPass1(e.target.value)}
-                  placeholder="（未入力）"
-                  autoComplete="new-password"
-                  style={VALUE_INPUT}
-                />
-              </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "80px 1fr",
-                  gap: 8,
-                  padding: "12px 14px",
-                  alignItems: "center",
-                  fontSize: 12,
-                }}
-              >
-                <div style={{ color: "#1c1c1e" }}>再入力</div>
-                <input
-                  type="password"
-                  value={pass2}
-                  onChange={(e) => setPass2(e.target.value)}
-                  placeholder="（未入力）"
-                  autoComplete="new-password"
-                  style={VALUE_INPUT}
-                />
-              </div>
-            </div>
-
-            <div style={{ marginTop: 12, textAlign: "right", display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button
-                onClick={loadMockManually}
-                style={{
-                  padding: "8px 12px",
-                  background: "#fff",
-                  color: "#111",
-                  border: "1px solid #d1d1d6",
-                  borderRadius: 10,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-                title="public/stores.mock.json を読み込みます"
-              >
-                モック読込
-              </button>
-              <button
-                onClick={saveProfile}
-                style={{
-                  padding: "10px 16px",
-                  background: "#007aff",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 10,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                保存
-              </button>
-            </div>
-            {loadingStores && (
-              <div style={{ marginTop: 8, fontSize: 12, color: "#6e6e73" }}>
-                店舗情報を読み込み中…
-              </div>
-            )}
-            {storesError && (
-              <div style={{ marginTop: 8, fontSize: 12, color: "crimson" }}>
-                {storesError}
-              </div>
-            )}
-          </section>
-
-          {/* 近い店舗（最大10件、35km優先） */}
-          <section style={{ padding: "12px 16px" }}>
-            <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>
-              お気に入り店舗追加（35km以内／最大10件）
-            </div>
-
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #d1d1d6",
-                borderRadius: 12,
-                overflow: "hidden",
-              }}
-            >
-              {/* 固定の親店舗 */}
-              {primaryStore && (
-                <label
+          {showAbout ? (
+            /* ===== 説明サブページ ===== */
+            <section style={{ padding: "12px 16px" }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <button
+                  onClick={() => setShowAbout(false)}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "12px 14px",
-                    borderBottom: "1px solid #e5e5ea",
-                    gap: 12,
+                    padding: "8px 12px",
+                    background: "#f2f2f7",
+                    border: "1px solid #d1d1d6",
+                    borderRadius: 10,
+                    fontWeight: 600,
+                    cursor: "pointer",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <input type="checkbox" checked readOnly />
-                    <div>
-                      <div style={{ fontWeight: 600 }}>
-                        {(primaryStore.name || primaryStore.storeName) +
-                          " " +
-                          (primaryStore.branch || primaryStore.storeBranch)}
-                      </div>
-                      <div style={{ fontSize: 12, color: "#6e6e73" }}>
-                        {fmtKm(primaryStore.distanceKm)}
-                      </div>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 12, color: "#6e6e73" }}>固定</span>
-                </label>
-              )}
+                  ← 戻る
+                </button>
+                <div style={{ alignSelf: "center", fontWeight: 700 }}>このアプリの説明</div>
+              </div>
 
-              {/* 近い順 10件まで */}
-              {limitedStores
-                .filter((s) => !primaryStore || storeKey(s) !== storeKey(primaryStore))
-                .map((s, i) => {
-                  const k = storeKey(s);
-                  const checked = favSet.has(k);
-                  return (
+              <div
+                style={{
+                  background: "#fff",
+                  border: "1px solid #d1d1d6",
+                  borderRadius: 12,
+                  padding: "12px 14px",
+                  lineHeight: 1.6,
+                }}
+              >
+                <p style={{ margin: 0 }}>
+                  このアプリは、あなたの<strong>「基準のワイン」</strong>（味わいの好み）を起点に、
+                  近くの店舗やラインナップから相性の良いワインを探すためのユーティリティです。
+                </p>
+
+                <hr style={{ border: "none", borderTop: "1px solid #e5e5ea", margin: "12px 0" }} />
+
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>使い方</div>
+                <ol style={{ paddingLeft: 18, margin: 0 }}>
+                  <li style={{ marginBottom: 6 }}>
+                    <strong>基準のワイン</strong>でスライダーを動かして、あなたの好み（甘辛・酸味・渋み等）を保存。
+                  </li>
+                  <li style={{ marginBottom: 6 }}>
+                    <strong>店舗選択</strong>：Storeページで「近い店舗」から購入店舗を選ぶ（位置情報の許可で並び替え）。
+                  </li>
+                  <li style={{ marginBottom: 6 }}>
+                    <strong>お気に入り店舗</strong>：マイページで近い店舗を最大10件まで登録・固定。
+                  </li>
+                  <li>
+                    商品画面で、あなたの基準に近い順や、取り扱い店舗の在庫状況（将来API連携）をチェック。
+                  </li>
+                </ol>
+
+                <hr style={{ border: "none", borderTop: "1px solid #e5e5ea", margin: "12px 0" }} />
+
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>データの扱い</div>
+                <ul style={{ paddingLeft: 18, margin: 0 }}>
+                  <li style={{ marginBottom: 6 }}>
+                    現在は DB 未接続のため、プロフィール・店舗・お気に入りはブラウザの
+                    <code> localStorage </code>に保存します。
+                  </li>
+                  <li style={{ marginBottom: 6 }}>
+                    店舗一覧は <code> /api/stores </code> 失敗時に
+                    <code> /stores.mock.json</code>（ダミーデータ）へフォールバックします。
+                  </li>
+                  <li>
+                    本番は、杉浦さんの管理ページAPI（FastAPI想定）に差し替え予定です。
+                  </li>
+                </ul>
+
+                <hr style={{ border: "none", borderTop: "1px solid #e5e5ea", margin: "12px 0" }} />
+
+                <div style={{ fontWeight: 700, marginBottom: 8 }}>よくある質問</div>
+                <div style={{ fontSize: 12, color: "#6e6e73" }}>
+                  <p style={{ margin: "0 0 6px" }}>
+                    Q. 位置情報を許可しないと使えない？<br />
+                    A. 許可しなくても使えます。東京駅を基準に並び替えます。
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    Q. 店舗が出てこない／固定店舗が変わらない<br />
+                    A. <code>stores.mock.json</code> の配置と、マイページの「モック読込」を確認してください。
+                  </p>
+                </div>
+              </div>
+            </section>
+          ) : (
+            /* ===== 通常のマイページ ===== */
+            <>
+              {/* 基準ワイン */}
+              <section style={{ padding: "12px 16px" }}>
+                <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>基準のワイン</div>
+                <button
+                  onClick={() => {
+                    onClose?.();
+                    onOpenSlider?.();
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "#fff",
+                    border: "1px solid #d1d1d6",
+                    borderRadius: 10,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  スライダーを開く
+                </button>
+              </section>
+
+              {/* このアプリの説明（遷移ボタン） */}
+              <section style={{ padding: "0 16px 12px" }}>
+                <button
+                  onClick={() => setShowAbout(true)}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "#fff",
+                    border: "1px solid #d1d1d6",
+                    borderRadius: 10,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  このアプリの説明
+                </button>
+              </section>
+
+              {/* アカウント */}
+              <section style={{ padding: "12px 16px" }}>
+                <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>アカウント</div>
+
+                <div
+                  style={{
+                    background: "#fff",
+                    border: "1px solid #d1d1d6",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* ニックネーム */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "80px 1fr",
+                      gap: 8,
+                      padding: "12px 14px",
+                      borderBottom: "1px solid #e5e5ea",
+                      alignItems: "center",
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ color: "#1c1c1e" }}>ニックネーム</div>
+                    <input
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      placeholder="-"
+                      style={VALUE_INPUT}
+                    />
+                  </div>
+
+                  {/* ID（メール） */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "80px 1fr",
+                      gap: 8,
+                      padding: "12px 14px",
+                      borderBottom: "1px solid #e5e5ea",
+                      alignItems: "center",
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ color: "#1c1c1e" }}>ID</div>
+                    <input
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="example@mail.com"
+                      style={VALUE_INPUT}
+                    />
+                  </div>
+
+                  {/* 生まれ年 */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "80px 1fr",
+                      gap: 8,
+                      padding: "12px 14px",
+                      borderBottom: "1px solid #e5e5ea",
+                      alignItems: "center",
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ color: "#1c1c1e" }}>生まれ年</div>
+                    <select
+                      value={birthYear}
+                      onChange={(e) => setBirthYear(e.target.value)}
+                      style={{ ...VALUE_INPUT, appearance: "none" }}
+                    >
+                      {Array.from({ length: 80 }, (_, i) => (2025 - i).toString()).map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 生まれ月 */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "80px 1fr",
+                      gap: 8,
+                      padding: "12px 14px",
+                      borderBottom: "1px solid #e5e5ea",
+                      alignItems: "center",
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ color: "#1c1c1e" }}>生まれ月</div>
+                    <select
+                      value={birthMonth}
+                      onChange={(e) => setBirthMonth(e.target.value)}
+                      style={{ ...VALUE_INPUT, appearance: "none" }}
+                    >
+                      {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 性別 */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "80px 1fr",
+                      gap: 8,
+                      padding: "12px 14px",
+                      borderBottom: "1px solid #e5e5ea",
+                      alignItems: "center",
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ color: "#1c1c1e" }}>性別</div>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      style={{ ...VALUE_INPUT, appearance: "none" }}
+                    >
+                      <option value="男性">男性</option>
+                      <option value="女性">女性</option>
+                      <option value="その他">その他</option>
+                    </select>
+                  </div>
+
+                  {/* パスワード（表示は常に空） */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "80px 1fr",
+                      gap: 8,
+                      padding: "12px 14px",
+                      borderBottom: "1px solid #e5e5ea",
+                      alignItems: "center",
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ color: "#1c1c1e" }}>パスワード変更</div>
+                    <input
+                      type="password"
+                      value={pass1}
+                      onChange={(e) => setPass1(e.target.value)}
+                      placeholder="（未入力）"
+                      autoComplete="new-password"
+                      style={VALUE_INPUT}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "80px 1fr",
+                      gap: 8,
+                      padding: "12px 14px",
+                      alignItems: "center",
+                      fontSize: 12,
+                    }}
+                  >
+                    <div style={{ color: "#1c1c1e" }}>再入力</div>
+                    <input
+                      type="password"
+                      value={pass2}
+                      onChange={(e) => setPass2(e.target.value)}
+                      placeholder="（未入力）"
+                      autoComplete="new-password"
+                      style={VALUE_INPUT}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 12,
+                    textAlign: "right",
+                    display: "flex",
+                    gap: 8,
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <button
+                    onClick={loadMockManually}
+                    style={{
+                      padding: "8px 12px",
+                      background: "#fff",
+                      color: "#111",
+                      border: "1px solid #d1d1d6",
+                      borderRadius: 10,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                    title="public/stores.mock.json を読み込みます"
+                  >
+                    モック読込
+                  </button>
+                  <button
+                    onClick={saveProfile}
+                    style={{
+                      padding: "10px 16px",
+                      background: "#007aff",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    保存
+                  </button>
+                </div>
+                {loadingStores && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#6e6e73" }}>
+                    店舗情報を読み込み中…
+                  </div>
+                )}
+                {storesError && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: "crimson" }}>
+                    {storesError}
+                  </div>
+                )}
+              </section>
+
+              {/* 近い店舗（最大10件、35km優先） */}
+              <section style={{ padding: "12px 16px" }}>
+                <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>
+                  お気に入り店舗追加（35km以内／最大10件）
+                </div>
+
+                <div
+                  style={{
+                    background: "#fff",
+                    border: "1px solid #d1d1d6",
+                    borderRadius: 12,
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* 固定の親店舗 */}
+                  {primaryStore && (
                     <label
-                      key={`${k}-${i}`}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -733,25 +780,62 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleFav(s)}
-                        />
+                        <input type="checkbox" checked readOnly />
                         <div>
                           <div style={{ fontWeight: 600 }}>
-                            {(s.name || s.storeName) + " " + (s.branch || s.storeBranch)}
+                            {(primaryStore.name || primaryStore.storeName) +
+                              " " +
+                              (primaryStore.branch || primaryStore.storeBranch)}
                           </div>
                           <div style={{ fontSize: 12, color: "#6e6e73" }}>
-                            {fmtKm(s.distanceKm)}
+                            {fmtKm(primaryStore.distanceKm)}
                           </div>
                         </div>
                       </div>
+                      <span style={{ fontSize: 12, color: "#6e6e73" }}>固定</span>
                     </label>
-                  );
-                })}
-            </div>
-          </section>
+                  )}
+
+                  {/* 近い順 10件まで */}
+                  {limitedStores
+                    .filter((s) => !primaryStore || storeKey(s) !== storeKey(primaryStore))
+                    .map((s, i) => {
+                      const k = storeKey(s);
+                      const checked = favSet.has(k);
+                      return (
+                        <label
+                          key={`${k}-${i}`}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "12px 14px",
+                            borderBottom: "1px solid #e5e5ea",
+                            gap: 12,
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleFav(s)}
+                            />
+                            <div>
+                              <div style={{ fontWeight: 600 }}>
+                                {(s.name || s.storeName) + " " + (s.branch || s.storeBranch)}
+                              </div>
+                              <div style={{ fontSize: 12, color: "#6e6e73" }}>
+                                {fmtKm(s.distanceKm)}
+                              </div>
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                </div>
+              </section>
+            </>
+          )}
         </div>
       </Drawer>
     </>
