@@ -15,6 +15,11 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
   const scrollRef = React.useRef(null);
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [sortMode]);
 
+  const IOS_BLUE = "#007aff";           // iOS系リンクカラー
+  const CAP_PAD_Y = 6;                  // カプセル内ボタンの上下padding（以前より少し大きく）
+  const CAP_PAD_X = 12;                 // カプセル内ボタンの左右padding
+  const CAP_RADIUS = 10;                // カプセル角丸（気持ち大きく）
+
   const rankMap = React.useMemo(() => {
     const items = Object.entries(userRatings || {})
       .map(([jan, meta]) => ({
@@ -100,7 +105,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                 style={{
                   display: "inline-flex",
                   border: "1px solid #ccc",
-                  borderRadius: 8,
+                  borderRadius: CAP_RADIUS,
                   overflow: "hidden",
                   background: "#eee",
                 }}
@@ -110,7 +115,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
                   aria-pressed={sortMode === "date"}
                   style={{
-                    padding: "4px 8px",
+                    padding: `${CAP_PAD_Y}px ${CAP_PAD_X}px`,
                     fontSize: HEADER_SIZES.button,
                     lineHeight: 1.1,
                     border: "none",
@@ -119,7 +124,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                     appearance: "none",
                     whiteSpace: "nowrap",
                     background: sortMode === "date" ? "#e9e9e9" : "#eee",
-                    color: "#333",
+                    color: IOS_BLUE,
                     cursor: "pointer",
                   }}
                 >
@@ -130,7 +135,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
                   aria-pressed={sortMode === "rating"}
                   style={{
-                    padding: "4px 8px",
+                    padding: `${CAP_PAD_Y}px ${CAP_PAD_X}px`,
                     fontSize: HEADER_SIZES.button,
                     lineHeight: 1.1,
                     border: "none",
@@ -138,7 +143,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                     appearance: "none",
                     whiteSpace: "nowrap",
                     background: sortMode === "rating" ? "#e9e9e9" : "#eee",
-                    color: "#333",
+                    color: IOS_BLUE,
                     cursor: "pointer",
                   }}
                 >
@@ -159,7 +164,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   WebkitAppearance: "none",
                   appearance: "none",
                   whiteSpace: "nowrap",
-                  color: "#333",
+                  color: IOS_BLUE,
                 }}
               >
                 閉じる
