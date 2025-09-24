@@ -177,6 +177,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
   // 状態
   const [loadingStores, setLoadingStores] = useState(false);
   const [storesError, setStoresError] = useState("");
+  const [showAbout, setShowAbout] = useState(false);
 
   // オープン時に復元＆初期化
   useEffect(() => {
@@ -429,6 +430,24 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
               }}
             >
               スライダーを開く
+            </button>
+          </section>
+
+          {/* このアプリの説明（遷移ボタン） */}
+          <section style={{ padding: "0 16px 12px" }}>
+            <button
+              onClick={() => setShowAbout(true)}
+              style={{
+                width: "100%",
+                padding: "12px",
+                background: "#fff",
+                border: "1px solid #d1d1d6",
+                borderRadius: 10,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              このアプリの説明
             </button>
           </section>
 
