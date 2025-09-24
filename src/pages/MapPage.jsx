@@ -4,12 +4,12 @@ import Drawer from "@mui/material/Drawer";
 import { useLocation, useNavigate } from "react-router-dom";
 
 // パネル / Canvas
-import SearchPanel from "./components/SearchPanel";
-import BarcodeScanner from "./components/BarcodeScanner";
-import FavoritePanel from "./components/FavoritePanel";
-import RatedPanel from "./components/RatedPanel";
-import MyPagePanel from "./components/MyPagePanel";
-import MapCanvas from "./components/MapCanvas";
+import SearchPanel from "../components/SearchPanel";
+import BarcodeScanner from "../components/BarcodeScanner";
+import FavoritePanel from "../components/FavoritePanel";
+import RatedPanel from "../components/RatedPanel";
+import MyPagePanel from "../components/panels/MyPagePanel";
+import MapCanvas from "../components/MapCanvas";
 
 // 共通定数
 import {
@@ -19,7 +19,7 @@ import {
   ZOOM_LIMITS,
   INITIAL_ZOOM,
   CENTER_Y_OFFSET,
-} from "./ui/constants";
+} from "../ui/constants";
 
 const REREAD_LS_KEY = "tm_reread_until";
 

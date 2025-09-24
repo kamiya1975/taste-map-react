@@ -3,10 +3,10 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import IntroPage from "./IntroPage";
-import StorePage from "./StorePage";
-import SliderPage from "./SliderPage";
-import MapPage from "./MapPage";
-import ProductPage from "./ProductPage";
+import StorePage from "./pages/StorePage";
+import SliderPage from "./pages/SliderPage";
+import MapPage from "./pages/MapPage";
+import ProductPage from "./pages/ProductPage";
 import UserTastePage from "./UserTastePage";
 
 export default function App() {
