@@ -72,10 +72,10 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
       );
     }
     if (activeTab === "stores") {
-      return <StorePage />; // 既存ページをそのまま埋め込み
+      return <StorePage />;
     }
 
-    // デフォルトメニュー (iPhone設定風)
+    // デフォルトメニュー
     return (
       <List>
         <ListItemButton onClick={() => setActiveTab("slider")}>
@@ -103,7 +103,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
 
   return (
     <Drawer
-      anchor="left" // ← 左からスライド
+      anchor="left"
       open={isOpen}
       onClose={() => {
         setActiveTab(null);
@@ -111,45 +111,55 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
       }}
       PaperProps={{
         style: {
-          width: "80vw", // iPhoneの設定風に幅を狭く
+          width: "80vw",
           maxWidth: 400,
           borderRadius: "0 12px 12px 0",
+          display: "flex",
+          flexDirection: "column",
         },
       }}
     >
-      <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-        {/* ヘッダー */}
-        <div
+      {/* ヘッダー */}
+      <div
+        style={{
+          padding: "12px 16px",
+          borderBottom: "1px solid #ccc",
+          fontWeight: "bold",
+          fontSize: 16,
+        }}
+      >
+        {activeTab ? "設定" : "マイページ"}
+      </div>
+
+      {/* メインコンテンツ */}
+      <div style={{ flex: 1, overflowY: "auto" }}>{renderContent()}</div>
+
+      {/* フッター（左下に閉じるボタン） */}
+      <div
+        style={{
+          padding: "12px 16px",
+          borderTop: "1px solid #ccc",
+          display: "flex",
+          justifyContent: "flex-start", // 左寄せ
+        }}
+      >
+        <button
+          onClick={() => {
+            setActiveTab(null);
+            onClose();
+          }}
           style={{
-            padding: "12px 16px",
-            borderBottom: "1px solid #ccc",
-            fontWeight: "bold",
+            background: "transparent",
+            border: "none",
+            color: "#007aff",
             fontSize: 16,
-            display: "flex",
-            justifyContent: "space-between",
+            cursor: "pointer",
           }}
         >
-          {activeTab ? "設定" : "マイページ"}
-          <button
-            onClick={() => {
-              setActiveTab(null);
-              onClose();
-            }}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "#007aff",
-              fontSize: 14,
-              cursor: "pointer",
-            }}
-          >
-            閉じる
-          </button>
-        </div>
-
-        {/* コンテンツ */}
-        <div style={{ flex: 1, overflowY: "auto" }}>{renderContent()}</div>
+          閉じる
+        </button>
       </div>
     </Drawer>
   );
 }
+
