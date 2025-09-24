@@ -5,7 +5,7 @@ import { DRAWER_HEIGHT } from "../../ui/constants";
 export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
   // 好みのサイズに調整してください
   const HEADER_SIZES = {
-    title: 13,   // 「飲んだワイン」
+    title: 14,   // 「飲んだワイン」
     label: 11,   // 「並び替え」
     button: 12,  // 「日時順」「評価順」「閉じる」
   };
@@ -74,53 +74,90 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
             style={{
               padding: "12px 16px",
               borderBottom: "1px solid #ddd",
-              background: "#f9f9f9",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 12,
-              WebkitTextSizeAdjust: "100%", // ← iOSの自動文字拡大を抑止
-            }}
-          >
-            <h3 style={{ margin: 0, fontSize: HEADER_SIZES.title, lineHeight: 1.2, fontWeight: 700 }}>
-              飲んだワイン
-            </h3>
-
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ fontSize: HEADER_SIZES.label, color: "#666" }}>並び替え</span>
-
-              <div style={{
-                display: "inline-flex",
-                border: "1px solid #ccc",
-                borderRadius: 8,
-                overflow: "hidden"
-              }}>
-                <button
-                  onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
-                  onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
-                  aria-pressed={sortMode === "date"}
-                  style={{ padding: "8px 10px", fontSize: HEADER_SIZES.button, lineHeight: 1.2 }}
-                >
-                  日付順
-                </button>
-                <button
-                  onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); }}
-                  onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
-                  aria-pressed={sortMode === "rating"}
-                  style={{ padding: "8px 10px", fontSize: HEADER_SIZES.button, lineHeight: 1.2 }}
-                >
-                  評価順
-                </button>
-              </div>
-
-              <button
-                onClick={onClose}
-                style={{ background:"#eee", border:"1px solid #ccc", padding:"8px 10px", borderRadius:8, fontSize: HEADER_SIZES.button, lineHeight:1.2, marginLeft:8 }}
+                  background: "#f9f9f9",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  WebkitTextSizeAdjust: "100%", // iOSの自動文字拡大を抑止
+                }}
               >
-                閉じる
-              </button>
-            </div>
-          </div>
+                <h3 style={{ margin: 0, fontSize: HEADER_SIZES.title, lineHeight: 1.2, fontWeight: 700 }}>
+                  飲んだワイン
+                </h3>
+
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: HEADER_SIZES.label, color: "#666" }}>並び替え</span>
+
+                  {/* セグメント（以前の見た目） */}
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      border: "1px solid #ccc",
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      background: "#eee",
+                    }}
+                  >
+                   <button
+                      onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
+                      onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
+                      aria-pressed={sortMode === "date"}
+                      style={{
+                        padding: "8px 10px",
+                        fontSize: HEADER_SIZES.button,
+                        lineHeight: 1.2,
+                        border: "none",
+                        borderRight: "1px solid #ccc",
+                        // ▼ iOSの青文字ボタン化を防ぐ
+                        WebkitAppearance: "none",
+                        appearance: "none",
+                        // ▼ 以前の淡いグレー切替
+                        background: sortMode === "date" ? "#e9e9e9" : "#eee",
+                        color: "#333",
+                      }}
+                    >
+                      日付順
+                    </button>
+                    <button
+                      onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); }}
+                      onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
+                      aria-pressed={sortMode === "rating"}
+                      style={{
+                        padding: "8px 10px",
+                        fontSize: HEADER_SIZES.button,
+                        lineHeight: 1.2,
+                        border: "none",
+                        WebkitAppearance: "none",
+                        appearance: "none",
+                        background: sortMode === "rating" ? "#e9e9e9" : "#eee",
+                        color: "#333",
+                      }}
+                    >
+                      評価順
+                    </button>
+                  </div>
+
+                  {/* 閉じる（以前の薄いグレー角丸） */}
+                  <button
+                    onClick={onClose}
+                    style={{
+                      background: "#eee",
+                      border: "1px solid #ccc",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      fontSize: HEADER_SIZES.button,
+                      lineHeight: 1.2,
+                      marginLeft: 8,
+                      WebkitAppearance: "none",
+                      appearance: "none",
+                      color: "#333", // ← 青文字化を防ぐ
+                    }}
+                  >
+                    閉じる
+                  </button>
+                </div>
+              </div>
 
           {/* リスト */}
           <div
