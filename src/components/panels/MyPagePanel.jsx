@@ -32,6 +32,12 @@ const VALUE_INPUT = {
   background: "transparent",
   color: "#1c1c1e",
   lineHeight: "1.4",
+  textAlign: "left",        // ★ 左寄せ
+  flex: 1,                  // ★ 幅いっぱいに広げる
+  minWidth: 0,              // ★ flex子要素で省略防止
+  overflow: "hidden",       // ★ 溢れた時に…
+  textOverflow: "ellipsis", // ★ …末尾を「…」で省略
+  whiteSpace: "nowrap",     // ★ 改行せず1行表示
 };
 
 function haversineKm(lat1, lon1, lat2, lon2) {
