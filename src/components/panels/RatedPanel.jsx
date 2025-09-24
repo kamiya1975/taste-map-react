@@ -88,9 +88,6 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
             <h3
               style={{
                 margin: 0,
-                fontSize: HEADER_SIZES.title,
-                lineHeight: 1.2,
-                fontWeight: 700,
               }}
             >
               飲んだワイン
