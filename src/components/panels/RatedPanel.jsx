@@ -5,9 +5,9 @@ import { DRAWER_HEIGHT } from "../../ui/constants";
 export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
   // 好みのサイズに調整してください
   const HEADER_SIZES = {
-    title: 14,   // 「飲んだワイン」
-    label: 11,   // 「並び替え」
-    button: 10,  // 「日時順」「評価順」「閉じる」
+    title: 18,   // 「飲んだワイン」
+    label: 12,   // 「並び替え」
+    button: 8,  // 「日時順」「評価順」「閉じる」
   };
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
