@@ -27,10 +27,11 @@ const CIRCLE_BTN = {
 const VALUE_INPUT = {
   border: "none",
   outline: "none",
-  fontSize: 14,
+  fontSize: 16,
   padding: "6px 8px",
   background: "transparent",
   color: "#1c1c1e",
+  lineHeight: "1.4",
 };
 
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -196,7 +197,15 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
   return (
     <>
       {isOpen && (
-        <button onClick={onClose} aria-label="閉じる" title="閉じる" style={CIRCLE_BTN}>
+        <button 
+        onClick={() => {
+          if (document.activeElement && "blur" in document.activeElement) {
+            document.activeElement.blur();
+          }
+          window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+          onClose();
+         }} 
+        style={CIRCLE_BTN}>
           ×
         </button>
       )}
