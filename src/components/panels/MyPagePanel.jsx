@@ -433,32 +433,12 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
         </section>
       </div>
 
-      {/* 閉じるボタン（左下に常に固定、MapPageの「〓」と同じ位置イメージ） */}
+      {/* 左下：×（MapPageの〓と同じ位置・スタイル） */}
       <button
-        onClick={() => {
-          onClose();
-        }}
-        style={{
-          position: "absolute", // ← relativeではなくabsoluteにする
-          left: "12px",
-          bottom: "max(12px, env(safe-area-inset-bottom))",
-          top: "auto",
-          right: "auto",
-          zIndex: 10,
-          width: "40px",
-          height: "40px",
-          borderRadius: "50%",
-          background: "#eee",
-          border: "1px solid #ccc",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontWeight: "bold",
-          fontSize: "20px",
-        }}
+        onClick={onClose}
         aria-label="閉じる"
         title="閉じる"
+        style={BTN_CIRCLE}
       >
         ×
       </button>
