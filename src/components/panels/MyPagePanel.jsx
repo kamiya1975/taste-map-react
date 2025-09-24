@@ -281,7 +281,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
-                  fontSize: 14,
+                  fontSize: 12,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>ニックネーム</div>
@@ -302,7 +302,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
-                  fontSize: 14,
+                  fontSize: 12,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>ID</div>
@@ -326,7 +326,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
-                  fontSize: 14,
+                  fontSize: 12,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>生まれ年</div>
@@ -352,7 +352,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
-                  fontSize: 14,
+                  fontSize: 12,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>生まれ月</div>
@@ -378,7 +378,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
-                  fontSize: 14,
+                  fontSize: 12,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>性別</div>
@@ -402,7 +402,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
-                  fontSize: 14,
+                  fontSize: 12,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>Pass変更</div>
@@ -422,7 +422,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   gap: 8,
                   padding: "12px 14px",
                   alignItems: "center",
-                  fontSize: 14,
+                  fontSize: 12,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>再入力</div>
