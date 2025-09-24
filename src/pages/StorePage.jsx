@@ -164,14 +164,14 @@ export default function StorePage() {
               padding: "12px 16px",
               borderBottom: "1px solid #eee",
               cursor: "pointer",
-              alignItems: "center",
+              alignItems: "flex-start",
             }}
           >
-            <div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
               <div style={{ textDecoration: "underline", color: "#007bff", fontWeight: 600 }}>
                 {store.name} {store.branch || ""}
               </div>
-              <div style={{ fontSize: 12, color: "#6e6e73" }}>
+              <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
                 {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
               </div>
             </div>
