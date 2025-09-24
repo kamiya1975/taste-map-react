@@ -13,6 +13,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
   const CAP_PAD_Y = 8;                  // カプセル内ボタンの上下padding（以前より少し大きく）
   const CAP_PAD_X = 10;                 // カプセル内ボタンの左右padding
   const CAP_RADIUS = 10;                // カプセル角丸（気持ち大きく）
+  const HEADER_SIZES = { label: 13, button: 13 };
 
   const rankMap = React.useMemo(() => {
     const items = Object.entries(userRatings || {})
@@ -129,7 +130,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   aria-pressed={sortMode === "rating"}
                   style={{
                     padding: `${CAP_PAD_Y}px ${CAP_PAD_X}px`,
-                    fontSize: HEADER_SIZES.button,
+                    fontSize: 13,
                     lineHeight: 1.1,
                     border: "none",
                     WebkitAppearance: "none",
