@@ -436,7 +436,6 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
       {/* 閉じるボタン（左下に常に固定、MapPageの「〓」と同じ位置イメージ） */}
       <button
         onClick={() => {
-          setActiveTab(null);
           onClose();
         }}
         style={{
