@@ -16,7 +16,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [sortMode]);
 
   const IOS_BLUE = "#007aff";           // iOS系リンクカラー
-  const CAP_PAD_Y = 7;                  // カプセル内ボタンの上下padding（以前より少し大きく）
+  const CAP_PAD_Y = 8;                  // カプセル内ボタンの上下padding（以前より少し大きく）
   const CAP_PAD_X = 10;                 // カプセル内ボタンの左右padding
   const CAP_RADIUS = 10;                // カプセル角丸（気持ち大きく）
 
@@ -124,7 +124,6 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                     appearance: "none",
                     whiteSpace: "nowrap",
                     background: sortMode === "date" ? "#e9e9e9" : "#eee",
-                    color: IOS_BLUE,
                     cursor: "pointer",
                   }}
                 >
@@ -143,7 +142,6 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                     appearance: "none",
                     whiteSpace: "nowrap",
                     background: sortMode === "rating" ? "#e9e9e9" : "#eee",
-                    color: IOS_BLUE,
                     cursor: "pointer",
                   }}
                 >
@@ -164,7 +162,6 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   WebkitAppearance: "none",
                   appearance: "none",
                   whiteSpace: "nowrap",
-                  color: IOS_BLUE,
                 }}
               >
                 閉じる
