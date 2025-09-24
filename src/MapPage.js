@@ -649,12 +649,9 @@ function MapPage() {
         style={{
           position: "absolute",
           left: "12px",
-          bottom: productDrawerOpen
-            ? `calc(${DRAWER_HEIGHT} + 12px)` // ドロワー表示時は被らないよう少し上に
-            : "max(12px, env(safe-area-inset-bottom))", // iOSセーフエリア対応
+          bottom: "max(12px, env(safe-area-inset-bottom))", 
           top: "auto",
           right: "auto",
-
           zIndex: 10,
           width: "40px",
           height: "40px",
