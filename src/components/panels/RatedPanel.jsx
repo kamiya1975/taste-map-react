@@ -109,12 +109,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                         lineHeight: 1.1,
                         border: "none",
                         borderRight: "1px solid #ccc",
-                        // ▼ iOSの青文字ボタン化を防ぐ
-                        WebkitAppearance: "none",
-                        appearance: "none",
-                        // ▼ 以前の淡いグレー切替
                         background: sortMode === "date" ? "#e9e9e9" : "#eee",
-                        color: "#333",
                       }}
                     >
                       日付順
@@ -128,10 +123,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                         fontSize: HEADER_SIZES.button,
                         lineHeight: 1.1,
                         border: "none",
-                        WebkitAppearance: "none",
-                        appearance: "none",
                         background: sortMode === "rating" ? "#e9e9e9" : "#eee",
-                        color: "#333",
                       }}
                     >
                       評価順
@@ -149,9 +141,6 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                       fontSize: HEADER_SIZES.button,
                       lineHeight: 1.1,
                       marginLeft: 8,
-                      WebkitAppearance: "none",
-                      appearance: "none",
-                      color: "#333", // ← 青文字化を防ぐ
                     }}
                   >
                     閉じる
