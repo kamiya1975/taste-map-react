@@ -7,7 +7,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
   const HEADER_SIZES = {
     title: 14,   // 「飲んだワイン」
     label: 11,   // 「並び替え」
-    button: 12,  // 「日時順」「評価順」「閉じる」
+    button: 10,  // 「日時順」「評価順」「閉じる」
   };
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
@@ -104,9 +104,9 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                       onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
                       aria-pressed={sortMode === "date"}
                       style={{
-                        padding: "8px 10px",
+                        padding: "4px 8px",
                         fontSize: HEADER_SIZES.button,
-                        lineHeight: 1.2,
+                        lineHeight: 1.1,
                         border: "none",
                         borderRight: "1px solid #ccc",
                         // ▼ iOSの青文字ボタン化を防ぐ
@@ -124,9 +124,9 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                       onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
                       aria-pressed={sortMode === "rating"}
                       style={{
-                        padding: "8px 10px",
+                        padding: "4px 8px",
                         fontSize: HEADER_SIZES.button,
-                        lineHeight: 1.2,
+                        lineHeight: 1.1,
                         border: "none",
                         WebkitAppearance: "none",
                         appearance: "none",
@@ -144,10 +144,10 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                     style={{
                       background: "#eee",
                       border: "1px solid #ccc",
-                      padding: "8px 10px",
+                      padding: "4px 8px",
                       borderRadius: 8,
                       fontSize: HEADER_SIZES.button,
-                      lineHeight: 1.2,
+                      lineHeight: 1.1,
                       marginLeft: 8,
                       WebkitAppearance: "none",
                       appearance: "none",
