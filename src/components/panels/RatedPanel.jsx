@@ -3,12 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DRAWER_HEIGHT } from "../../ui/constants";
 
 export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
-  // 好みのサイズに調整してください
-  const HEADER_SIZES = {
-    title: 18,   // 「飲んだワイン」
-    label: 13,   // 「並び替え」
-    button: 13,  // 「日時順」「評価順」「閉じる」
-  };
+
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
@@ -95,7 +90,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
             </h3>
 
            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ fontSize: HEADER_SIZES.label, color: "#666" }}>並び替え</span>
+              <span style={{ fontSize: 13, color: "#666" }}>並び替え</span>
 
               {/* カプセル型トグル（以前の見た目） */}
               <div
@@ -115,7 +110,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   aria-pressed={sortMode === "date"}
                   style={{
                     padding: `${CAP_PAD_Y}px ${CAP_PAD_X}px`,
-                    fontSize: HEADER_SIZES.button,
+                    fontSize: 13,
                     lineHeight: 1.1,
                     border: "none",
                     borderRight: "1px solid #ccc",
