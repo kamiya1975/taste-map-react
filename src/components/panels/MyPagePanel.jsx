@@ -2,20 +2,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Drawer from "@mui/material/Drawer";
 
-/**
- * 仕様
- * - 左からドロワー
- * - 左下に×ボタン（位置・サイズは MapPage の 〓 と同等）
- * - 初回選択店舗（localStorage.selectedStore）は一番上に固定＆チェック解除不可
- * - それ以外の店舗は ON/OFF 可能。選択は localStorage.favoriteStores に保存
- * - 候補店舗は localStorage.allStores を優先。なければ primary のみ
- * - 位置情報を取得し距離を計算、近い順に並べて 35km 以内を表示
- * - プロフィール（ニックネーム/ID/生年/月/性別/パス）を表示・保存
- */
-
-// 画面左下丸ボタンの共通スタイル
+/** 共通：左下の丸ボタン（×） */
 const CIRCLE_BTN = {
-  position: "fixed",                    // ← スクロールしても固定
+  position: "fixed",
   left: "12px",
   bottom: "max(12px, env(safe-area-inset-bottom))",
   width: "40px",
@@ -29,12 +18,21 @@ const CIRCLE_BTN = {
   justifyContent: "center",
   fontWeight: "bold",
   fontSize: "20px",
-  zIndex: 1400,                         // Drawer(1200) より前へ
+  zIndex: 1400,
   boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
   userSelect: "none",
 };
 
-// 距離（km）
+/** 小さめ値入力の共通スタイル（iOS ズーム回避で 14px 以上） */
+const VALUE_INPUT = {
+  border: "none",
+  outline: "none",
+  fontSize: 14,
+  padding: "6px 8px",
+  background: "transparent",
+  color: "#1c1c1e",
+};
+
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const toRad = (d) => (d * Math.PI) / 180;
@@ -43,13 +41,12 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+  return R * (2 * Math.atan2(Math.sqrt(1 - a), Math.sqrt(a)));
 }
 
-// 便利
-const readJSON = (key, fb = null) => {
+const readJSON = (k, fb = null) => {
   try {
-    const s = localStorage.getItem(key);
+    const s = localStorage.getItem(k);
     return s ? JSON.parse(s) : fb;
   } catch {
     return fb;
@@ -58,94 +55,108 @@ const readJSON = (key, fb = null) => {
 const storeKey = (s) =>
   `${s?.name || s?.storeName || ""}@@${s?.branch || s?.storeBranch || ""}`;
 
-// メイン
 export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
-  // プロフィール（IntroPage とキーを合わせる）
-  const [nickname, setNickname]   = useState("");
-  const [email, setEmail]         = useState("");  // ID
+  // プロフィール（IntroPage とキー連携）
+  const [nickname, setNickname] = useState("");
+  const [email, setEmail] = useState(""); // ID
   const [birthYear, setBirthYear] = useState("1990");
   const [birthMonth, setBirthMonth] = useState("01");
-  const [gender, setGender]       = useState("男性");
-  const [pass1, setPass1]         = useState("");
-  const [pass2, setPass2]         = useState("");
+  const [gender, setGender] = useState("男性");
+  const [pass1, setPass1] = useState("");
+  const [pass2, setPass2] = useState("");
 
   // 店舗
-  const [primaryStore, setPrimaryStore] = useState(null); // 固定（初回選択）
-  const [allStores, setAllStores]       = useState([]);   // 候補（全体）
-  const [favSet, setFavSet]             = useState(new Set()); // 追加選択
+  const [primaryStore, setPrimaryStore] = useState(null);
+  const [allStores, setAllStores] = useState([]);
+  const [favSet, setFavSet] = useState(new Set());
 
-  // 位置（現在地）
+  // 現在地
   const [geo, setGeo] = useState(null);
 
-  // 初期ロード（開いたときに復元＆位置取得）
+  // オープン時に復元＆初期化
   useEffect(() => {
     if (!isOpen) return;
 
-    // ユーザー情報
+    // 値入力は小さめ表示にするだけなので、LS から復元しつつ…
     setNickname(localStorage.getItem("user.nickname") || "");
     setEmail(localStorage.getItem("user.id") || "");
     setBirthYear(localStorage.getItem("user.birthYear") || "1990");
     setBirthMonth(localStorage.getItem("user.birthMonth") || "01");
     setGender(localStorage.getItem("user.gender") || "男性");
 
-    // 初回選択の固定店舗
+    // パスワード欄は毎回クリア（黒丸が表示されないようにする）
+    setPass1("");
+    setPass2("");
+
     const sel = readJSON("selectedStore", null);
     setPrimaryStore(sel);
 
-    // 候補店舗（allStores があればそれ、なければ primary のみ）
     const fromLS = readJSON("allStores", null);
     if (Array.isArray(fromLS) && fromLS.length) setAllStores(fromLS);
     else if (sel) setAllStores([sel]);
     else setAllStores([]);
 
-    // 追加選択（favoriteStores = 配列で保持）
     const favArr = readJSON("favoriteStores", []);
     setFavSet(new Set((favArr || []).map(storeKey)));
 
-    // 位置情報取得（失敗しても続行）
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
-        ({ coords }) => {
-          setGeo({ lat: coords.latitude, lng: coords.longitude });
-        },
-        () => {
-          // 失敗時は未設定のまま（距離なしソート）
-          setGeo(null);
-        },
+        ({ coords }) => setGeo({ lat: coords.latitude, lng: coords.longitude }),
+        () => setGeo(null),
         { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
       );
     }
   }, [isOpen]);
 
-  // ソート＆35km以内に絞り込み（primary は常にリストに含める）
-  const sortedWithin = useMemo(() => {
+  // 近い順（35km以内を優先、最大10件。足りなければ距離上限なしで補完）
+  const limitedStores = useMemo(() => {
     const list = Array.isArray(allStores) ? allStores.slice() : [];
-    // 距離計算
+
     const withDist = list.map((s) => {
       const hasCoord = Number.isFinite(s?.lat) && Number.isFinite(s?.lng);
       const d = geo && hasCoord ? haversineKm(geo.lat, geo.lng, s.lat, s.lng) : null;
       return { ...s, distanceKm: d };
     });
 
-    // 近い順
     withDist.sort((a, b) => {
       const da = a.distanceKm ?? Infinity;
       const db = b.distanceKm ?? Infinity;
       return da - db;
     });
 
-    // 35km 以内に制限。ただし primary は必ず含める
-    const maxKm = 35;
-    const filtered = withDist.filter((s) => {
-      if (primaryStore && storeKey(s) === storeKey(primaryStore)) return true;
-      if (s.distanceKm == null) return false; // 距離不明は除外（primary 以外）
-      return s.distanceKm <= maxKm + 1e-9;
-    });
+    const MAX_KM = 35;
+    // 35km以内
+    let filtered = withDist.filter((s) => s.distanceKm != null && s.distanceKm <= MAX_KM);
 
-    return filtered;
+    // primary は必ず先頭に
+    if (primaryStore) {
+      const pk = storeKey(primaryStore);
+      const idx = withDist.findIndex((s) => storeKey(s) === pk);
+      const primary = idx >= 0 ? withDist[idx] : primaryStore;
+      filtered = [primary, ...filtered.filter((s) => storeKey(s) !== pk)];
+    }
+
+    // 最大10件に制限。足りなければ近い順で補完（重複除去）
+    const picked = [];
+    const seen = new Set();
+    const pushUnique = (s) => {
+      const k = storeKey(s);
+      if (!seen.has(k)) {
+        seen.add(k);
+        picked.push(s);
+      }
+    };
+
+    filtered.forEach(pushUnique);
+    if (picked.length < 10) {
+      withDist.forEach((s) => {
+        if (picked.length < 10) pushUnique(s);
+      });
+    }
+    return picked.slice(0, 10);
   }, [allStores, geo, primaryStore]);
 
-  // チェック切り替え（primary は外せない）
+  // チェック切替（primary は外せない）
   const toggleFav = (s) => {
     if (primaryStore && storeKey(s) === storeKey(primaryStore)) return;
     setFavSet((prev) => {
@@ -153,11 +164,9 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
       const k = storeKey(s);
       if (next.has(k)) next.delete(k);
       else next.add(k);
-
-      // 保存：表示中の filtered を基準に、ON のものを配列で
       try {
-        const arr = sortedWithin.filter((st) => next.has(storeKey(st)));
-        localStorage.setItem("favoriteStores", JSON.stringify(arr));
+        const toSave = limitedStores.filter((st) => next.has(storeKey(st)));
+        localStorage.setItem("favoriteStores", JSON.stringify(toSave));
       } catch {}
       return next;
     });
@@ -186,14 +195,8 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
 
   return (
     <>
-      {/* 左下に常時固定の「×」 */}
       {isOpen && (
-        <button
-          onClick={onClose}
-          aria-label="閉じる"
-          title="閉じる"
-          style={CIRCLE_BTN}
-        >
+        <button onClick={onClose} aria-label="閉じる" title="閉じる" style={CIRCLE_BTN}>
           ×
         </button>
       )}
@@ -209,7 +212,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
             borderRadius: "0 12px 12px 0",
             display: "flex",
             flexDirection: "column",
-            paddingBottom: 72, // 下部の×と重ならないよう余白
+            paddingBottom: 72,
           },
         }}
       >
@@ -224,13 +227,11 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
           マイページ
         </div>
 
-        {/* コンテンツ（スクロール領域） */}
+        {/* コンテンツ */}
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {/* 基準のワイン 再設定 */}
+          {/* 基準ワイン */}
           <section style={{ padding: "12px 16px" }}>
-            <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>
-              基準のワイン
-            </div>
+            <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>基準のワイン</div>
             <button
               onClick={() => {
                 onClose?.();
@@ -250,11 +251,9 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
             </button>
           </section>
 
-          {/* アカウント（iOS 設定風） */}
+          {/* アカウント */}
           <section style={{ padding: "12px 16px" }}>
-            <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>
-              アカウント
-            </div>
+            <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>アカウント</div>
 
             <div
               style={{
@@ -273,6 +272,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
+                  fontSize: 14,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>ニックネーム</div>
@@ -280,13 +280,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
                   placeholder="-"
-                  style={{
-                    border: "none",
-                    outline: "none",
-                    fontSize: 16,
-                    padding: "6px 8px",
-                    background: "transparent",
-                  }}
+                  style={VALUE_INPUT}
                 />
               </div>
 
@@ -299,6 +293,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
+                  fontSize: 14,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>ID</div>
@@ -309,13 +304,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="example@mail.com"
-                  style={{
-                    border: "none",
-                    outline: "none",
-                    fontSize: 16,
-                    padding: "6px 8px",
-                    background: "transparent",
-                  }}
+                  style={VALUE_INPUT}
                 />
               </div>
 
@@ -328,27 +317,20 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
+                  fontSize: 14,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>生まれ年</div>
                 <select
                   value={birthYear}
                   onChange={(e) => setBirthYear(e.target.value)}
-                  style={{
-                    border: "none",
-                    outline: "none",
-                    fontSize: 16,
-                    padding: "6px 8px",
-                    background: "transparent",
-                  }}
+                  style={{ ...VALUE_INPUT, appearance: "none" }}
                 >
-                  {Array.from({ length: 80 }, (_, i) => (2025 - i).toString()).map(
-                    (y) => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    )
-                  )}
+                  {Array.from({ length: 80 }, (_, i) => (2025 - i).toString()).map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -361,23 +343,16 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
+                  fontSize: 14,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>生まれ月</div>
                 <select
                   value={birthMonth}
                   onChange={(e) => setBirthMonth(e.target.value)}
-                  style={{
-                    border: "none",
-                    outline: "none",
-                    fontSize: 16,
-                    padding: "6px 8px",
-                    background: "transparent",
-                  }}
+                  style={{ ...VALUE_INPUT, appearance: "none" }}
                 >
-                  {Array.from({ length: 12 }, (_, i) =>
-                    String(i + 1).padStart(2, "0")
-                  ).map((m) => (
+                  {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
@@ -394,19 +369,14 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
+                  fontSize: 14,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>性別</div>
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
-                  style={{
-                    border: "none",
-                    outline: "none",
-                    fontSize: 16,
-                    padding: "6px 8px",
-                    background: "transparent",
-                  }}
+                  style={{ ...VALUE_INPUT, appearance: "none" }}
                 >
                   <option value="男性">男性</option>
                   <option value="女性">女性</option>
@@ -414,7 +384,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                 </select>
               </div>
 
-              {/* パスワード（任意で更新） */}
+              {/* パスワード（表示は常に空） */}
               <div
                 style={{
                   display: "grid",
@@ -423,6 +393,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   padding: "12px 14px",
                   borderBottom: "1px solid #e5e5ea",
                   alignItems: "center",
+                  fontSize: 14,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>Pass変更</div>
@@ -430,14 +401,9 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   type="password"
                   value={pass1}
                   onChange={(e) => setPass1(e.target.value)}
-                  placeholder="●●●●●●●●●●"
-                  style={{
-                    border: "none",
-                    outline: "none",
-                    fontSize: 16,
-                    padding: "6px 8px",
-                    background: "transparent",
-                  }}
+                  placeholder="（未入力）"
+                  autoComplete="new-password"
+                  style={VALUE_INPUT}
                 />
               </div>
               <div
@@ -447,6 +413,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   gap: 8,
                   padding: "12px 14px",
                   alignItems: "center",
+                  fontSize: 14,
                 }}
               >
                 <div style={{ color: "#1c1c1e" }}>再入力</div>
@@ -454,14 +421,9 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   type="password"
                   value={pass2}
                   onChange={(e) => setPass2(e.target.value)}
-                  placeholder="●●●●●●●●●●"
-                  style={{
-                    border: "none",
-                    outline: "none",
-                    fontSize: 16,
-                    padding: "6px 8px",
-                    background: "transparent",
-                  }}
+                  placeholder="（未入力）"
+                  autoComplete="new-password"
+                  style={VALUE_INPUT}
                 />
               </div>
             </div>
@@ -484,10 +446,10 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
             </div>
           </section>
 
-          {/* お気に入り店舗追加（35km以内、近い順） */}
+          {/* 近い店舗（最大10件、35km優先） */}
           <section style={{ padding: "12px 16px" }}>
             <div style={{ fontSize: 12, color: "#6e6e73", marginBottom: 8 }}>
-              お気に入り店舗追加（35km以内）
+              お気に入り店舗追加（35km以内／最大10件）
             </div>
 
             <div
@@ -498,7 +460,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                 overflow: "hidden",
               }}
             >
-              {/* 最上段：固定（解除不可） */}
+              {/* 固定の親店舗 */}
               {primaryStore && (
                 <label
                   style={{
@@ -514,7 +476,9 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                     <input type="checkbox" checked readOnly />
                     <div>
                       <div style={{ fontWeight: 600 }}>
-                        {(primaryStore.name || primaryStore.storeName) + " " + (primaryStore.branch || primaryStore.storeBranch)}
+                        {(primaryStore.name || primaryStore.storeName) +
+                          " " +
+                          (primaryStore.branch || primaryStore.storeBranch)}
                       </div>
                       <div style={{ fontSize: 12, color: "#6e6e73" }}>
                         {fmtKm(primaryStore.distanceKm)}
@@ -525,8 +489,8 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                 </label>
               )}
 
-              {/* その他：ON/OFF可（近い順・35km以内） */}
-              {sortedWithin
+              {/* 近い順 10件まで */}
+              {limitedStores
                 .filter((s) => !primaryStore || storeKey(s) !== storeKey(primaryStore))
                 .map((s, i) => {
                   const k = storeKey(s);
