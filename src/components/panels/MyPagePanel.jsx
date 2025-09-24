@@ -142,20 +142,26 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
           onClose();
         }}
         style={{
-          position: "fixed", // ← 固定配置
-          bottom: 16,
-          left: 16,
-          width: 40,
-          height: 40,
+          position: "absolute", // ← relativeではなくabsoluteにする
+          left: "12px",
+          bottom: "max(12px, env(safe-area-inset-bottom))",
+          top: "auto",
+          right: "auto",
+          zIndex: 10,
+          width: "40px",
+          height: "40px",
           borderRadius: "50%",
+          background: "#eee",
           border: "1px solid #ccc",
-          background: "#fff",
-          fontSize: 20,
-          lineHeight: "38px",
-          textAlign: "center",
           cursor: "pointer",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: "bold",
+          fontSize: "20px",
         }}
+        aria-label="閉じる"
+        title="閉じる"
       >
         ×
       </button>
