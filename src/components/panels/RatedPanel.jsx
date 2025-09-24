@@ -3,6 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DRAWER_HEIGHT } from "../../ui/constants";
 
 export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
+  // 好みのサイズに調整してください
+  const HEADER_SIZES = {
+    title: 13,   // 「飲んだワイン」
+    label: 11,   // 「並び替え」
+    button: 12,  // 「日時順」「評価順」「閉じる」
+  };
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
@@ -76,12 +82,12 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
               WebkitTextSizeAdjust: "100%", // ← iOSの自動文字拡大を抑止
             }}
           >
-            <h3 style={{ margin: 0, fontSize: 14, lineHeight: 1.2, fontWeight: 700 }}>
+            <h3 style={{ margin: 0, fontSize: HEADER_SIZES.title, lineHeight: 1.2, fontWeight: 700 }}>
               飲んだワイン
             </h3>
 
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#666" }}>並び替え</span>
+              <span style={{ fontSize: HEADER_SIZES.label, color: "#666" }}>並び替え</span>
 
               <div style={{
                 display: "inline-flex",
@@ -93,13 +99,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
                   onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
                   aria-pressed={sortMode === "date"}
-                  style={{
-                    padding: "8px 10px",
-                    fontSize: 12, lineHeight: 1.2,
-                    background: sortMode === "date" ? "#e9e9e9" : "#eee",
-                    border: "none",
-                    borderRight: "1px solid #ccc",
-                  }}
+                  style={{ padding: "8px 10px", fontSize: HEADER_SIZES.button, lineHeight: 1.2, ... }}
                 >
                   日付順
                 </button>
@@ -107,12 +107,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); }}
                   onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
                   aria-pressed={sortMode === "rating"}
-                  style={{
-                    padding: "8px 10px",
-                    fontSize: 12, lineHeight: 1.2,
-                    background: sortMode === "rating" ? "#e9e9e9" : "#eee",
-                    border: "none",
-                  }}
+                  style={{ padding: "8px 10px", fontSize: HEADER_SIZES.button, lineHeight: 1.2, ... }}
                 >
                   評価順
                 </button>
@@ -120,14 +115,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
 
               <button
                 onClick={onClose}
-                style={{
-                  background: "#eee",
-                  border: "1px solid #ccc",
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  fontSize: 12, lineHeight: 1.2,
-                  marginLeft: 8
-                }}
+                style={{ background:"#eee", border:"1px solid #ccc", padding:"8px 10px", borderRadius:8, fontSize: HEADER_SIZES.button, lineHeight:1.2, marginLeft:8 }}
               >
                 閉じる
               </button>

@@ -105,7 +105,8 @@ function HeartButton({ jan, size = 22 }) {
       }
       if (type === "STATE_SNAPSHOT") {
         // 親の真値で最終上書き
-        setFav(!!favorite);
+        setRating(ratingPayload?.rating ?? 0);
+        if (typeof hideHeart === "boolean") setHideHeart(hideHeart);
       }
     };
     window.addEventListener("message", onMsg);

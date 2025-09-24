@@ -54,6 +54,7 @@ function MapPage() {
   const [highlight2D, setHighlight2D] = useState("");
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
+  const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
 
   // 設定・再検索スライダー
   const [isMyPageOpen, setIsMyPageOpen] = useState(false);
@@ -422,6 +423,7 @@ function MapPage() {
         const canvasCoord = [userPin[0], -userPin[1]];
         const nearest = findNearestWine(canvasCoord);
         if (nearest?.JAN) {
+          setHideHeartForJAN(null); // ← 追加：自動オープン時も解除
           setSelectedJAN(nearest.JAN);
           setSelectedJANFromSearch(null);
           setProductDrawerOpen(true);
@@ -497,26 +499,19 @@ function MapPage() {
       if (type === "REQUEST_STATE") {
         const isFav = !!favorites[janStr];
         const ratingPayload = userRatings[janStr] || null;
+        const shouldHide = hideHeartForJAN === janStr; // ← ここでも明示
         try {
           iframeRef.current?.contentWindow?.postMessage(
-            { type: "STATE_SNAPSHOT", jan: janStr, favorite: isFav, rating: ratingPayload },
+            { type: "STATE_SNAPSHOT", jan: janStr, favorite: isFav, rating: ratingPayload, hideHeart: shouldHide },
             "*"
           );
-          const fromRated =
-            fromRatedRef.current ||
-            (sessionStorage.getItem('tm_from_rated_jan') === janStr) ||
-            openFromRated;
-          if (fromRated) {
+          if (shouldHide) {
             iframeRef.current?.contentWindow?.postMessage(
               { type: "HIDE_HEART", jan: janStr, value: true },
               "*"
             );
           }
-         } catch {}
-         // 掃除
-         fromRatedRef.current = false;
-         try { sessionStorage.removeItem('tm_from_rated_jan'); } catch {}
-         setOpenFromRated(false);
+         } catch {} 
          return;
        }
 
@@ -557,7 +552,7 @@ function MapPage() {
 
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [toggleFavorite, favorites, userRatings, openFromRated]);
+  }, [toggleFavorite, favorites, userRatings, openFromRated, hideHeartForJAN]);
 
   // 評価の有無
   const hasAnyRating = useMemo(
@@ -626,6 +621,7 @@ function MapPage() {
         setViewState={setViewState}
         onPickWine={(item) => {
           if (!item) return;
+          setHideHeartForJAN(null); // ← 追加：◎経由以外は解除
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
           // 初期ズームに戻しつつフォーカス
@@ -768,7 +764,8 @@ function MapPage() {
         data={data}
         onPick={(item) => {
           if (!item) return;
-          setOpenFromRated(false);   // ← ◎以外からは必ず false
+          setOpenFromRated(false);
+          setHideHeartForJAN(null);  // ← 検索からは隠さない
           setSelectedJANFromSearch(null);
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
@@ -831,6 +828,7 @@ function MapPage() {
           // データヒット判定
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
+            setHideHeartForJAN(null); // ← 追加：スキャナ経由は解除
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
             // 採用記録（勝手な再出現を防ぐ）
@@ -865,7 +863,8 @@ function MapPage() {
         data={data}
         userRatings={userRatings}
         onSelectJAN={(jan) => {
-          setOpenFromRated(false);   // ← ◎以外からは必ず false
+          setOpenFromRated(false);
+          setHideHeartForJAN(null);  // ← 隠さない
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
@@ -893,6 +892,7 @@ function MapPage() {
           setOpenFromRated(true);    // ◎から開いたフラグ
           fromRatedRef.current = true;
           try { sessionStorage.setItem('tm_from_rated_jan', String(jan)); } catch {}
+          setHideHeartForJAN(String(jan)); // ← このJANは♡を隠す
 
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
@@ -919,6 +919,7 @@ function MapPage() {
           setProductDrawerOpen(false);
           setSelectedJAN(null);
           setSelectedJANFromSearch(null); // 検索ハイライトを消す
+          setHideHeartForJAN(null);       // ← 追加：閉じたら掃除
         }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: paperBaseStyle }}
@@ -940,6 +941,7 @@ function MapPage() {
               setProductDrawerOpen(false);
               setSelectedJAN(null);
               setSelectedJANFromSearch(null);
+              setHideHeartForJAN(null); // ← 追加
             }}
             style={{
               background: "#eee",
@@ -958,11 +960,7 @@ function MapPage() {
             title={`product-${selectedJAN}`}
             src={(() => {
               const jan = String(selectedJAN ?? '');
-              let fromRated = fromRatedRef.current;
-              try {
-                const s = sessionStorage.getItem('tm_from_rated_jan');
-                fromRated = fromRated || (s === jan);
-              } catch {}
+              const fromRated = hideHeartForJAN === jan; // ← state を唯一の真実に
               return `${process.env.PUBLIC_URL || ''}/products/${jan}${fromRated ? '?fromRated=1' : ''}`;
             })()}
             style={{ border: "none", width: "100%", height: `calc(${DRAWER_HEIGHT} - 48px)` }}
@@ -975,11 +973,7 @@ function MapPage() {
                   { type: "SET_FAVORITE", jan, value: isFav },
                   "*"
                 );
-                // ref/SS も見る（state が false でも走らせる）
-                const fromRated =
-                  fromRatedRef.current ||
-                  (sessionStorage.getItem('tm_from_rated_jan') === jan);
-                if (fromRated) {
+                if (hideHeartForJAN === jan) {
                   iframeRef.current?.contentWindow?.postMessage(
                     { type: "HIDE_HEART", jan, value: true },
                     "*"
