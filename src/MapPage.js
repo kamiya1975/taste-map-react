@@ -9,6 +9,7 @@ import BarcodeScanner from "./components/BarcodeScanner";
 import FavoritePanel from "./components/FavoritePanel";
 import RatedPanel from "./components/RatedPanel";
 import MapCanvas from "./components/MapCanvas";
+import MyPage from "./components/MyPage";
 
 // 共通定数
 import {
@@ -27,6 +28,7 @@ function MapPage() {
   const navigate = useNavigate();
   const [openFromRated, setOpenFromRated] = useState(false);
   const fromRatedRef = useRef(false);
+  const [myPageOpen, setMyPageOpen] = React.useState(false);
 
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
@@ -643,11 +645,36 @@ function MapPage() {
       </select>
 
       {/* 右上: スライダーへ遷移（●） */}
+       <button
+        onClick={() => setMyPageOpen(true)}
+        title="MyPage（設定）"
+        style={{
+          position: "absolute",
+          top: "10px",
+          right: "10px",
+          zIndex: 10,
+          width: "40px",
+          height: "40px",
+          borderRadius: "50%",
+          background: "#eee",
+          border: "1px solid #ccc",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontWeight: "bold",
+          fontSize: "20px",
+        }}
+        aria-label="Myページ"
+      >
+        〓
+      </button>
+
       <button
         onClick={openSliderExclusive}
         style={{
           position: "absolute",
-          top: "10px",
+          top: "60px",
           right: "10px",
           zIndex: 10,
           width: "40px",
@@ -671,7 +698,7 @@ function MapPage() {
         onClick={openSearchExclusive}
         style={{
           position: "absolute",
-          top: "60px",
+          top: "110px",
           right: "10px",
           zIndex: 10,
           width: "40px",
@@ -696,7 +723,7 @@ function MapPage() {
         onClick={openFavoriteExclusive}
         style={{
           position: "absolute",
-          top: "110px",
+          top: "160px",
           right: "10px",
           zIndex: 10,
           width: "40px",
@@ -720,7 +747,7 @@ function MapPage() {
         onClick={openRatedExclusive}
         style={{
           position: "absolute",
-          top: "160px",
+          top: "210px",
           right: "10px",
           zIndex: 10,
           width: "40px",
