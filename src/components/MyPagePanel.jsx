@@ -1,4 +1,4 @@
-// src/components/MyPage.jsx
+// src/components/MyPagePanel.jsx
 import React from "react";
 import Drawer from "@mui/material/Drawer";
 import { motion, AnimatePresence } from "framer-motion";
