@@ -120,30 +120,6 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
         },
       }}
     >
-      {/* 閉じるボタン（右上に浮かせる、MapPageと同じデザインで×） */}
-      <button
-        onClick={() => {
-          setActiveTab(null);
-          onClose();
-        }}
-        style={{
-          position: "absolute",
-          top: 12,
-          right: 12,
-          width: 32,
-          height: 32,
-          borderRadius: "50%",
-          border: "1px solid #ccc",
-          background: "#fff",
-          fontSize: 18,
-          lineHeight: "30px",
-          textAlign: "center",
-          cursor: "pointer",
-        }}
-      >
-        ×
-      </button>
-
       {/* ヘッダー */}
       <div
         style={{
@@ -158,6 +134,31 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
 
       {/* メインコンテンツ */}
       <div style={{ flex: 1, overflowY: "auto" }}>{renderContent()}</div>
+
+      {/* 閉じるボタン（左下に常に固定、MapPageの「〓」と同じ位置イメージ） */}
+      <button
+        onClick={() => {
+          setActiveTab(null);
+          onClose();
+        }}
+        style={{
+          position: "fixed", // ← 固定配置
+          bottom: 16,
+          left: 16,
+          width: 40,
+          height: 40,
+          borderRadius: "50%",
+          border: "1px solid #ccc",
+          background: "#fff",
+          fontSize: 20,
+          lineHeight: "38px",
+          textAlign: "center",
+          cursor: "pointer",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+        }}
+      >
+        ×
+      </button>
     </Drawer>
   );
 }
