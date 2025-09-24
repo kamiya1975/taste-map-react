@@ -12,9 +12,6 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
-  // 追加：iOS系ブルー（好みで #0A84FF でもOK）
-  const IOS_BLUE = "#007aff";
-
   const scrollRef = React.useRef(null);
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [sortMode]);
 
