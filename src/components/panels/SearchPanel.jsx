@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import Drawer from "@mui/material/Drawer";
 import { makeIndexed, searchItems, normalizeJP } from "../../utils/search";
-import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
+import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants"
 
 export default function SearchPanel({
   open,

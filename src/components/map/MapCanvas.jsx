@@ -7,7 +7,7 @@ import {
   GRID_CELL_SIZE, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX, HEAT_GAMMA, HEAT_CLIP_PCT,
   HEAT_COLOR_LOW, HEAT_COLOR_HIGH,
   TYPE_COLOR_MAP, ORANGE,
-} from "../ui/constants";
+} from "../../ui/constants"
 
 // 小ユーティリティ
 const EPS = 1e-9;

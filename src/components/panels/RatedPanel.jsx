@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DRAWER_HEIGHT } from "../ui/constants";
+import { DRAWER_HEIGHT } from "../../ui/constants"
 
 export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
   const [sortMode, setSortMode] = React.useState("date");

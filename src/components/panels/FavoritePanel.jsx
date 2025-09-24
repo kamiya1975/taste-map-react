@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DRAWER_HEIGHT } from "../ui/constants";
+import { DRAWER_HEIGHT } from "../../ui/constants"
 
 export default function FavoritePanel({
   isOpen,
