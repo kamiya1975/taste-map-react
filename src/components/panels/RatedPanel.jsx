@@ -7,7 +7,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
   const HEADER_SIZES = {
     title: 18,   // 「飲んだワイン」
     label: 12,   // 「並び替え」
-    button: 10,  // 「日時順」「評価順」「閉じる」
+    button: 6,  // 「日時順」「評価順」「閉じる」
   };
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
