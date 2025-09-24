@@ -10,6 +10,7 @@ import FavoritePanel from "../components/FavoritePanel";
 import RatedPanel from "../components/RatedPanel";
 import MyPagePanel from "../components/panels/MyPagePanel";
 import MapCanvas from "../components/MapCanvas";
+import SearchPanel from "../components/panels/SearchPanel";
 
 // 共通定数
 import {

@@ -2,12 +2,13 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
-import IntroPage from "./IntroPage";
-import StorePage from "./pages/StorePage";
-import SliderPage from "./pages/SliderPage";
 import MapPage from "./pages/MapPage";
 import ProductPage from "./pages/ProductPage";
-import UserTastePage from "./UserTastePage";
+import SliderPage from "./pages/SliderPage";
+import StorePage from "./pages/StorePage";
+import IntroPage from "./pages/IntroPage";
+import UserTastePage from "./pages/UserTastePage";
+import ScanAndProductFlow from "./pages/ScanAndProductFlow";
 
 export default function App() {
   return (

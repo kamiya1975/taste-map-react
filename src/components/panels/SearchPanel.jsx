@@ -1,8 +1,8 @@
-// src/components/SearchPanel.jsx
+// src/components/panels/SearchPanel.jsx
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import Drawer from "@mui/material/Drawer";
-import { makeIndexed, searchItems, normalizeJP } from "../utils/search";
-import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../ui/constants";
+import { makeIndexed, searchItems, normalizeJP } from "../../utils/search";
+import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
 
 export default function SearchPanel({
   open,
@@ -245,14 +245,8 @@ export default function SearchPanel({
                   ? `¥${Number(item.希望小売価格).toLocaleString()}`
                   : "不明"}
                 <br />
-                Sweet:{" "}
-                {Number.isFinite(item.PC2)
-                  ? item.PC2.toFixed(2)
-                  : "—"}
-                , Body:{" "}
-                {Number.isFinite(item.PC2)
-                  ? item.PC2.toFixed(2)
-                  : "—"}
+                Sweet: {Number.isFinite(item.PC2) ? item.PC2.toFixed(2) : "—"},
+                Body:  {Number.isFinite(item.PC1) ? item.PC1.toFixed(2) : "—"}
                 {/* <br />JAN: {item.JAN || "—"} */}
               </small>
             </li>
