@@ -133,7 +133,7 @@ export default function StorePage() {
         }}
       >
         <div style={{ padding: 16, textAlign: "center" }}>
-          <h2 style={{ margin: 0 }}>購入した店舗を選んでください。</h2>
+          <h2 style={{ margin: 0 }}>「基準のワイン」を購入した店舗を選んでください。</h2>
           <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 4 }}>
             近い順に最大100件を表示（ダミーデータ）
           </div>
