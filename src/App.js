@@ -1,7 +1,9 @@
 // src/App.js
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import "./App.css";
 
+// Pages
 import MapPage from "./pages/MapPage";
 import ProductPage from "./pages/ProductPage";
 import SliderPage from "./pages/SliderPage";
@@ -30,6 +32,9 @@ export default function App() {
 
       {/* ユーザー評価ログ */}
       <Route path="/taste-log" element={<UserTastePage />} />
+
+      {/* スキャン＆商品フロー（使う場合のみ） */}
+      <Route path="/scan-flow" element={<ScanAndProductFlow />} />
 
       {/* それ以外は地図へリダイレクト */}
       <Route path="*" element={<Navigate to="/map" replace />} />
