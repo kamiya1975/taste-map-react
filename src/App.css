@@ -228,7 +228,7 @@ html, body, #root {
 
 /* iOS Safari で入力フォーカス時の自動ズームを避ける保険 */
 @supports (-webkit-touch-callout: none) {
-  input, select, textarea, button {
+  input, select, textarea {
     font-size: 16px !important;
   }
 }
