@@ -99,7 +99,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
                   onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
                   aria-pressed={sortMode === "date"}
-                  style={{ padding: "8px 10px", fontSize: HEADER_SIZES.button, lineHeight: 1.2, ... }}
+                  style={{ padding: "8px 10px", fontSize: HEADER_SIZES.button, lineHeight: 1.2 }}
                 >
                   日付順
                 </button>
@@ -107,7 +107,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); }}
                   onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
                   aria-pressed={sortMode === "rating"}
-                  style={{ padding: "8px 10px", fontSize: HEADER_SIZES.button, lineHeight: 1.2, ... }}
+                  style={{ padding: "8px 10px", fontSize: HEADER_SIZES.button, lineHeight: 1.2 }}
                 >
                   評価順
                 </button>
