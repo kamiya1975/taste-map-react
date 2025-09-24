@@ -32,14 +32,17 @@ const VALUE_INPUT = {
   background: "transparent",
   color: "#1c1c1e",
   lineHeight: "1.4",
-  textAlign: "left",        // ★ 左寄せ
-  flex: 1,                  // ★ 幅いっぱいに広げる
-  minWidth: 0,              // ★ flex子要素で省略防止
-  overflow: "hidden",       // ★ 溢れた時に…
-  textOverflow: "ellipsis", // ★ …末尾を「…」で省略
-  whiteSpace: "nowrap",     // ★ 改行せず1行表示
+  textAlign: "left",
+  flex: 1,
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
+/* =========================
+ * ユーティリティ
+ * ========================= */
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const toRad = (d) => (d * Math.PI) / 180;
@@ -48,7 +51,7 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * (2 * Math.atan2(Math.sqrt(1 - a), Math.sqrt(a)));
+  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 const readJSON = (k, fb = null) => {
@@ -59,8 +62,99 @@ const readJSON = (k, fb = null) => {
     return fb;
   }
 };
+const writeJSON = (k, v) => {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch {}
+};
+
 const storeKey = (s) =>
   `${s?.name || s?.storeName || ""}@@${s?.branch || s?.storeBranch || ""}`;
+
+/** 位置をできるだけ取得（Geolocation → IPinfo → 東京駅） */
+async function resolveLocation() {
+  // 1) Geolocation（許可されれば最優先）
+  const geo = await new Promise((resolve) => {
+    if (!("geolocation" in navigator)) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => resolve({ lat: coords.latitude, lon: coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
+    );
+  });
+  if (geo) return geo;
+
+  // 2) IPinfo（環境変数トークンがあれば）
+  try {
+    const token = process.env.REACT_APP_IPINFO_TOKEN;
+    if (token) {
+      const r = await fetch(`https://ipinfo.io/json?token=${token}`);
+      const j = await r.json();
+      const [la, lo] = (j.loc || "").split(",").map(Number);
+      if (Number.isFinite(la) && Number.isFinite(lo)) return { lat: la, lon: lo };
+    }
+  } catch {}
+
+  // 3) フォールバック：東京駅
+  return { lat: 35.681236, lon: 139.767125 };
+}
+
+/** ストア一覧の取得：/api/stores → 失敗時に /stores.mock.json */
+async function fetchStores({ q = "", lat = null, lon = null, limit = 50 } = {}) {
+  const qs = new URLSearchParams();
+  if (q) qs.set("q", q);
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    qs.set("lat", String(lat));
+    qs.set("lon", String(lon));
+  }
+  if (limit) qs.set("limit", String(limit));
+
+  // 1) 将来の本番API
+  try {
+    const res = await fetch(`/api/stores?${qs.toString()}`, { credentials: "include" });
+    if (res.ok) {
+      return await res.json(); // [{ id, name, branch, address, lat, lon, ... }]
+    }
+  } catch {}
+
+  // 2) public モック
+  const res2 = await fetch("/stores.mock.json");
+  if (!res2.ok) throw new Error("stores.mock.json not found");
+  const all = await res2.json();
+
+  // q で簡易絞り込み
+  let rows = Array.isArray(all) ? all : [];
+  if (q) {
+    const qq = q.trim().toLowerCase();
+    rows = rows.filter((d) =>
+      (d.name || "").toLowerCase().includes(qq) ||
+      (d.branch || "").toLowerCase().includes(qq) ||
+      (d.address || "").toLowerCase().includes(qq) ||
+      (d.genre || "").toLowerCase().includes(qq)
+    );
+  }
+
+  // 距離順ソート
+  if (Number.isFinite(lat) && Number.isFinite(lon)) {
+    const me = { lat: Number(lat), lon: Number(lon) };
+    rows = rows
+      .map((d) => ({
+        ...d,
+        // lat/lng or lat/lon どちらでも許容
+        lat: Number.isFinite(d.lat) ? d.lat : d.latitude,
+        lon: Number.isFinite(d.lon) ? d.lon : d.lng,
+      }))
+      .map((d) => ({
+        ...d,
+        _dist: Number.isFinite(d.lat) && Number.isFinite(d.lon)
+          ? haversineKm(me.lat, me.lon, d.lat, d.lon)
+          : Infinity,
+      }))
+      .sort((a, b) => a._dist - b._dist);
+  }
+
+  return limit ? rows.slice(0, limit) : rows;
+}
 
 export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
   // プロフィール（IntroPage とキー連携）
@@ -80,6 +174,10 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
   // 現在地
   const [geo, setGeo] = useState(null);
 
+  // 状態
+  const [loadingStores, setLoadingStores] = useState(false);
+  const [storesError, setStoresError] = useState("");
+
   // オープン時に復元＆初期化
   useEffect(() => {
     if (!isOpen) return;
@@ -96,20 +194,60 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
     setPass2("");
 
     const sel = readJSON("selectedStore", null);
-    setPrimaryStore(sel);
-
-    const fromLS = readJSON("allStores", null);
-    if (Array.isArray(fromLS) && fromLS.length) setAllStores(fromLS);
-    else if (sel) setAllStores([sel]);
-    else setAllStores([]);
+    setPrimaryStore(sel || null);
 
     const favArr = readJSON("favoriteStores", []);
     setFavSet(new Set((favArr || []).map(storeKey)));
 
+    // 既存の allStores があれば採用。なければ取得する。
+    const fromLS = readJSON("allStores", null);
+    if (Array.isArray(fromLS) && fromLS.length) {
+      setAllStores(fromLS);
+    } else {
+      // ここで位置解決 → ストア取得（API → モック）
+      (async () => {
+        setLoadingStores(true);
+        setStoresError("");
+        try {
+          const loc = await resolveLocation();
+          setGeo({ lat: loc.lat, lng: loc.lon });
+
+          const rows = await fetchStores({ lat: loc.lat, lon: loc.lon, limit: 50 });
+          // lat/lng 欄に正規化
+          const normalized = rows.map((d) => ({
+            ...d,
+            lat: Number.isFinite(d.lat) ? d.lat : d.latitude,
+            lng: Number.isFinite(d.lng) ? d.lng : d.lon,
+          }));
+          setAllStores(normalized);
+          writeJSON("allStores", normalized);
+
+          // primaryStore が未設定なら「最寄り」を初期選択にしてもOK（必要なら有効化）
+          // if (!sel && normalized.length) {
+          //   const nearest = normalized
+          //     .map((s) => ({
+          //       ...s,
+          //       _d: Number.isFinite(s.lat) && Number.isFinite(s.lng)
+          //         ? haversineKm(loc.lat, loc.lon, s.lat, s.lng)
+          //         : Infinity,
+          //     }))
+          //     .sort((a, b) => a._d - b._d)[0];
+          //   setPrimaryStore(nearest);
+          //   writeJSON("selectedStore", nearest);
+          // }
+        } catch (e) {
+          setStoresError("店舗情報の取得に失敗しました（API/モックとも）。");
+        } finally {
+          setLoadingStores(false);
+        }
+      })();
+    }
+
+    // 位置情報（別途・念のため）
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         ({ coords }) => setGeo({ lat: coords.latitude, lng: coords.longitude }),
-        () => setGeo(null),
+        () => {},
         { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
       );
     }
@@ -132,7 +270,6 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
     });
 
     const MAX_KM = 35;
-    // 35km以内
     let filtered = withDist.filter((s) => s.distanceKm != null && s.distanceKm <= MAX_KM);
 
     // primary は必ず先頭に
@@ -171,10 +308,12 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
       const k = storeKey(s);
       if (next.has(k)) next.delete(k);
       else next.add(k);
+
       try {
         const toSave = limitedStores.filter((st) => next.has(storeKey(st)));
         localStorage.setItem("favoriteStores", JSON.stringify(toSave));
       } catch {}
+
       return next;
     });
   };
@@ -200,18 +339,45 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
 
   const fmtKm = (d) => (Number.isFinite(d) ? `（${d.toFixed(1)}km）` : "");
 
+  // 手動でモックを投入（public/stores.mock.json → allStores）
+  const loadMockManually = async () => {
+    setLoadingStores(true);
+    setStoresError("");
+    try {
+      const loc = geo
+        ? { lat: geo.lat, lon: geo.lng }
+        : await resolveLocation();
+      if (!geo) setGeo({ lat: loc.lat, lng: loc.lon });
+
+      const rows = await fetchStores({ lat: loc.lat, lon: loc.lon, limit: 50 });
+      const normalized = rows.map((d) => ({
+        ...d,
+        lat: Number.isFinite(d.lat) ? d.lat : d.latitude,
+        lng: Number.isFinite(d.lng) ? d.lng : d.lon,
+      }));
+      setAllStores(normalized);
+      writeJSON("allStores", normalized);
+      alert("モック店舗データを読み込みました。");
+    } catch (e) {
+      setStoresError("モックの読み込みに失敗しました。/stores.mock.json を確認してください。");
+    } finally {
+      setLoadingStores(false);
+    }
+  };
+
   return (
     <>
       {isOpen && (
-        <button 
-        onClick={() => {
-          if (document.activeElement && "blur" in document.activeElement) {
-            document.activeElement.blur();
-          }
-          window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-          onClose();
-         }} 
-        style={CIRCLE_BTN}>
+        <button
+          onClick={() => {
+            if (document.activeElement && "blur" in document.activeElement) {
+              document.activeElement.blur();
+            }
+            window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+            onClose();
+          }}
+          style={CIRCLE_BTN}
+        >
           ×
         </button>
       )}
@@ -411,7 +577,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                   fontSize: 12,
                 }}
               >
-                <div style={{ color: "#1c1c1e" }}>Pass変更</div>
+                <div style={{ color: "#1c1c1e" }}>パスワード変更</div>
                 <input
                   type="password"
                   value={pass1}
@@ -443,7 +609,22 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
               </div>
             </div>
 
-            <div style={{ marginTop: 12, textAlign: "right" }}>
+            <div style={{ marginTop: 12, textAlign: "right", display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                onClick={loadMockManually}
+                style={{
+                  padding: "8px 12px",
+                  background: "#fff",
+                  color: "#111",
+                  border: "1px solid #d1d1d6",
+                  borderRadius: 10,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+                title="public/stores.mock.json を読み込みます"
+              >
+                モック読込
+              </button>
               <button
                 onClick={saveProfile}
                 style={{
@@ -459,6 +640,16 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                 保存
               </button>
             </div>
+            {loadingStores && (
+              <div style={{ marginTop: 8, fontSize: 12, color: "#6e6e73" }}>
+                店舗情報を読み込み中…
+              </div>
+            )}
+            {storesError && (
+              <div style={{ marginTop: 8, fontSize: 12, color: "crimson" }}>
+                {storesError}
+              </div>
+            )}
           </section>
 
           {/* 近い店舗（最大10件、35km優先） */}
