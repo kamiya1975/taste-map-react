@@ -1,7 +1,7 @@
 // src/components/MyPagePanel.jsx
 import React, { useState } from "react";
 import Drawer from "@mui/material/Drawer";
-import StorePage from from "../../ui/constants"
+import StorePage from "../../pages/StorePage";
 
 export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
   const [activeTab, setActiveTab] = useState(null);
