@@ -12,6 +12,9 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
+  // 追加：iOS系ブルー（好みで #0A84FF でもOK）
+  const IOS_BLUE = "#007aff";
+
   const scrollRef = React.useRef(null);
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [sortMode]);
 
@@ -120,8 +123,9 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                     borderRight: "1px solid #ccc",
                     WebkitAppearance: "none",
                     appearance: "none",
+                    whiteSpace: "nowrap",
                     background: sortMode === "date" ? "#e9e9e9" : "#eee",
-                    color: "#333",
+                    color: IOS_BLUE,
                     cursor: "pointer",
                   }}
                 >
@@ -138,8 +142,9 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                     border: "none",
                     WebkitAppearance: "none",
                     appearance: "none",
+                    whiteSpace: "nowrap",
                     background: sortMode === "rating" ? "#e9e9e9" : "#eee",
-                    color: "#333",
+                    color: IOS_BLUE,
                     cursor: "pointer",
                   }}
                 >
@@ -161,7 +166,8 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   cursor: "pointer",
                   WebkitAppearance: "none",
                   appearance: "none",
-                  color: "#333",
+                  whiteSpace: "nowrap",
+                  color: IOS_BLUE,
                 }}
               >
                 閉じる
