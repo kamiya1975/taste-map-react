@@ -19,7 +19,7 @@ import {
   ZOOM_LIMITS,
   INITIAL_ZOOM,
   CENTER_Y_OFFSET,
-} from "../../ui/constants"
+} from "../ui/constants"
 
 const REREAD_LS_KEY = "tm_reread_until";
 
