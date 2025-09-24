@@ -96,17 +96,12 @@ function HeartButton({ jan, size = 22 }) {
 
     // 親からのメッセージを受信（SET_FAVORITE / STATE_SNAPSHOT）
     const onMsg = (e) => {
-      const { type, jan: targetJan, value, favorite } = e.data || {};
+      const { type, jan: targetJan, value } = e.data || {};
       const match = String(targetJan) === String(jan);
       if (!match) return;
 
       if (type === "SET_FAVORITE") {
         setFav(!!value);
-      }
-      if (type === "STATE_SNAPSHOT") {
-        // 親の真値で最終上書き
-        setRating(ratingPayload?.rating ?? 0);
-        if (typeof hideHeart === "boolean") setHideHeart(hideHeart);
       }
     };
     window.addEventListener("message", onMsg);
