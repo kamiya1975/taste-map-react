@@ -55,6 +55,9 @@ function MapPage() {
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
 
+  // 設定・再検索スライダー
+  const [isMyPageOpen, setIsMyPageOpen] = useState(false);
+
   // 検索・スキャン
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
@@ -82,6 +85,13 @@ function MapPage() {
     if (isRatedOpen) { setIsRatedOpen(false); willClose = true; }
 
     if (willClose) await wait(PANEL_ANIM_MS);
+  };
+
+  // マイページ（●）
+  const openMyPageExclusive = async () => {
+    if (isMyPageOpen) { setIsMyPageOpen(false); return; }
+    await closeUIsThen();
+    setIsMyPageOpen(true);
   };
 
   // スライダー（●）
@@ -643,9 +653,9 @@ function MapPage() {
         <option value="PC3">PC3</option>
       </select>
 
-      {/* 右上: スライダーへ遷移（●） */}
+      {/* 左下: マイページ（設定）ボタン */}
       <button
-        onClick={openSliderExclusive}
+        onClick={openMyPageExclusive}
         style={{
           position: "absolute",
           left: "12px",
@@ -665,10 +675,17 @@ function MapPage() {
           fontWeight: "bold",
           fontSize: "20px",
         }}
-        aria-label="嗜好スライダー"
+        aria-label="マイページ"
+        title="マイページ"
       >
-        ●
+        〓
       </button>
+
+      <MyPagePanel
+        isOpen={isMyPageOpen}
+        onClose={() => setIsMyPageOpen(false)}
+        onOpenSlider={openSliderExclusive}
+      />
 
       <button
         onClick={openSearchExclusive}
