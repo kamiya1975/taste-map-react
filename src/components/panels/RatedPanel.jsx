@@ -125,7 +125,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                     appearance: "none",
                     whiteSpace: "nowrap",
                     background: sortMode === "date" ? "#e9e9e9" : "#eee",
-                    color: IOS_BLUE,
+                    color: "#333",
                     cursor: "pointer",
                   }}
                 >
@@ -144,7 +144,7 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                     appearance: "none",
                     whiteSpace: "nowrap",
                     background: sortMode === "rating" ? "#e9e9e9" : "#eee",
-                    color: IOS_BLUE,
+                    color: "#333",
                     cursor: "pointer",
                   }}
                 >
@@ -156,18 +156,16 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
               <button
                 onClick={onClose}
                 style={{
-                  background: "#fff",
+                  background: "#eee",
                   border: "1px solid #ccc",
                   padding: "6px 10px",
-                  borderRadius: 6,
-                  fontSize: HEADER_SIZES.button,
-                  lineHeight: 1.1,
+                  borderRadius: 4,
                   marginLeft: 8,
                   cursor: "pointer",
                   WebkitAppearance: "none",
                   appearance: "none",
                   whiteSpace: "nowrap",
-                  color: IOS_BLUE,
+                  color: "#333",
                 }}
               >
                 閉じる
