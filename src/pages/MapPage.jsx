@@ -4,13 +4,12 @@ import Drawer from "@mui/material/Drawer";
 import { useLocation, useNavigate } from "react-router-dom";
 
 // パネル / Canvas
-import SearchPanel from "../components/SearchPanel";
-import BarcodeScanner from "../components/BarcodeScanner";
-import FavoritePanel from "../components/FavoritePanel";
-import RatedPanel from "../components/RatedPanel";
-import MyPagePanel from "../components/panels/MyPagePanel";
-import MapCanvas from "../components/MapCanvas";
 import SearchPanel from "../components/panels/SearchPanel";
+import BarcodeScanner from "../components/BarcodeScanner";
+import FavoritePanel from "../components/panels/FavoritePanel";
+import RatedPanel from "../components/panels/RatedPanel";
+import MyPagePanel from "../components/panels/MyPagePanel";
+import MapCanvas from "../components/map/MapCanvas";
 
 // 共通定数
 import {
