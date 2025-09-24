@@ -6,8 +6,8 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
   // 好みのサイズに調整してください
   const HEADER_SIZES = {
     title: 18,   // 「飲んだワイン」
-    label: 12,   // 「並び替え」
-    button: 6,  // 「日時順」「評価順」「閉じる」
+    label: 13,   // 「並び替え」
+    button: 13,  // 「日時順」「評価順」「閉じる」
   };
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
@@ -74,79 +74,100 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
             style={{
               padding: "12px 16px",
               borderBottom: "1px solid #ddd",
-                  background: "#f9f9f9",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  WebkitTextSizeAdjust: "100%", // iOSの自動文字拡大を抑止
+              background: "#f9f9f9",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 12,
+              WebkitTextSizeAdjust: "100%", // iOSの自動文字拡大を抑止
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                fontSize: HEADER_SIZES.title,
+                lineHeight: 1.2,
+                fontWeight: 700,
+              }}
+            >
+              飲んだワイン
+            </h3>
+
+           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontSize: HEADER_SIZES.label, color: "#666" }}>並び替え</span>
+
+              {/* カプセル型トグル（以前の見た目） */}
+              <div
+                role="group"
+                aria-label="並び替え"
+                style={{
+                  display: "inline-flex",
+                  border: "1px solid #ccc",
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  background: "#eee",
                 }}
               >
-                <h3 style={{ margin: 0, fontSize: HEADER_SIZES.title, lineHeight: 1.2, fontWeight: 700 }}>
-                  飲んだワイン
-                </h3>
-
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ fontSize: HEADER_SIZES.label, color: "#666" }}>並び替え</span>
-
-                  {/* セグメント（以前の見た目） */}
-                  <div
-                    style={{
-                      display: "inline-flex",
-                      border: "1px solid #ccc",
-                      borderRadius: 8,
-                      overflow: "hidden",
-                      background: "#eee",
-                    }}
-                  >
-                   <button
-                      onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
-                      onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
-                      aria-pressed={sortMode === "date"}
-                      style={{
-                        padding: "4px 8px",
-                        fontSize: HEADER_SIZES.button,
-                        lineHeight: 1.1,
-                        border: "none",
-                        borderRight: "1px solid #ccc",
-                        background: sortMode === "date" ? "#e9e9e9" : "#eee",
-                      }}
-                    >
-                      日付順
-                    </button>
-                    <button
-                      onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); }}
-                      onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
-                      aria-pressed={sortMode === "rating"}
-                      style={{
-                        padding: "4px 8px",
-                        fontSize: HEADER_SIZES.button,
-                        lineHeight: 1.1,
-                        border: "none",
-                        background: sortMode === "rating" ? "#e9e9e9" : "#eee",
-                      }}
-                    >
-                      評価順
-                    </button>
-                  </div>
-
-                  {/* 閉じる（以前の薄いグレー角丸） */}
-                  <button
-                    onClick={onClose}
-                    style={{
-                      background: "#eee",
-                      border: "1px solid #ccc",
-                      padding: "4px 8px",
-                      borderRadius: 8,
-                      fontSize: HEADER_SIZES.button,
-                      lineHeight: 1.1,
-                      marginLeft: 8,
-                    }}
-                  >
-                    閉じる
-                  </button>
-                </div>
+                <button
+                  onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
+                  onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
+                  aria-pressed={sortMode === "date"}
+                  style={{
+                    padding: "4px 8px",
+                    fontSize: HEADER_SIZES.button,
+                    lineHeight: 1.1,
+                    border: "none",
+                    borderRight: "1px solid #ccc",
+                    WebkitAppearance: "none",
+                    appearance: "none",
+                    background: sortMode === "date" ? "#e9e9e9" : "#eee",
+                    color: "#333",
+                    cursor: "pointer",
+                  }}
+                >
+                  日付順
+                </button>
+                <button
+                  onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); }}
+                  onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
+                  aria-pressed={sortMode === "rating"}
+                  style={{
+                    padding: "4px 8px",
+                    fontSize: HEADER_SIZES.button,
+                    lineHeight: 1.1,
+                    border: "none",
+                    WebkitAppearance: "none",
+                    appearance: "none",
+                    background: sortMode === "rating" ? "#e9e9e9" : "#eee",
+                    color: "#333",
+                    cursor: "pointer",
+                  }}
+                >
+                  評価順
+                </button>
               </div>
+
+              {/* 閉じる（白地＋薄いボーダー／以前トーン） */}
+              <button
+                onClick={onClose}
+                style={{
+                  background: "#fff",
+                  border: "1px solid #ccc",
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  fontSize: HEADER_SIZES.button,
+                  lineHeight: 1.1,
+                  marginLeft: 8,
+                  cursor: "pointer",
+                  WebkitAppearance: "none",
+                  appearance: "none",
+                  color: "#333",
+                }}
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
 
           {/* リスト */}
           <div
