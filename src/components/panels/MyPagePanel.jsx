@@ -116,9 +116,34 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
           borderRadius: "0 12px 12px 0",
           display: "flex",
           flexDirection: "column",
+          position: "relative",
         },
       }}
     >
+      {/* 閉じるボタン（右上に浮かせる、MapPageと同じデザインで×） */}
+      <button
+        onClick={() => {
+          setActiveTab(null);
+          onClose();
+        }}
+        style={{
+          position: "absolute",
+          top: 12,
+          right: 12,
+          width: 32,
+          height: 32,
+          borderRadius: "50%",
+          border: "1px solid #ccc",
+          background: "#fff",
+          fontSize: 18,
+          lineHeight: "30px",
+          textAlign: "center",
+          cursor: "pointer",
+        }}
+      >
+        ×
+      </button>
+
       {/* ヘッダー */}
       <div
         style={{
@@ -133,33 +158,6 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
 
       {/* メインコンテンツ */}
       <div style={{ flex: 1, overflowY: "auto" }}>{renderContent()}</div>
-
-      {/* フッター（左下に閉じるボタン） */}
-      <div
-        style={{
-          padding: "12px 16px",
-          borderTop: "1px solid #ccc",
-          display: "flex",
-          justifyContent: "flex-start", // 左寄せ
-        }}
-      >
-        <button
-          onClick={() => {
-            setActiveTab(null);
-            onClose();
-          }}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#007aff",
-            fontSize: 16,
-            cursor: "pointer",
-          }}
-        >
-          閉じる
-        </button>
-      </div>
     </Drawer>
   );
 }
-
