@@ -186,11 +186,16 @@ function slides({
                   style={styles.input}
                 >
                   <option value="">-</option>
-                  {Array.from({ length: 80 }, (_, i) => (2025 - i).toString()).map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
+                  {(() => {
+                       const currentYear = new Date().getFullYear();
+                       const maxYear = currentYear - 19; // 20歳未満は選べない
+                       const years = Array.from({ length: 80 }, (_, i) => (maxYear - i).toString());
+                       return years.map((year) => (
+                         <option key={year} value={year}>
+                           {year}
+                         </option>
+                      ));
+                     })()}
                 </select>
               </div>
 
