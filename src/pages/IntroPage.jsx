@@ -65,7 +65,16 @@ const isEmail = (s) => /^\S+@\S+\.\S+$/.test(String(s || '').trim());
 // ==============================
 // スライド生成（関数に切り出し）
 // ==============================
-function slides(formData, setFormData, handleChange, handleSubmit, handleStartAsGuest) {
+function slides(
+  formData,
+  setFormData,
+  handleChange,
+  handleSubmit,
+  handleStartAsGuest,
+  agreeRef,
+  agreeError,
+  setAgreeError
+) {
   const togglePassword = () =>
     setFormData((prev) => ({ ...prev, showPassword: !prev.showPassword }));
 
@@ -297,6 +306,7 @@ export default function IntroPage() {
   const navigate = useNavigate();
   const agreeRef = useRef(null);
   const [agreeError, setAgreeError] = useState('');
+
   const handleStartAsGuest = () => {
     if (!formData.agreed) {
       setAgreeError('利用規約をお読みのうえ、同意にチェックしてください。');
@@ -366,8 +376,16 @@ export default function IntroPage() {
     navigate('/store');    // 既存の遷移先に合わせています（Mapが'/'なら'/'に）
   };
 
-  const allSlides = slides(formData, setFormData, handleChange, handleSubmit, handleStartAsGuest);
-
+  const allSlides = slides(
+  formData,
+  setFormData,
+  handleChange,
+  handleSubmit,
+  handleStartAsGuest,
+  agreeRef,
+  agreeError,
+  setAgreeError
+);
   return (
     <div className="intro-wrapper">
       <div className="slides-container" onScroll={handleScroll}>
