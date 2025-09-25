@@ -65,7 +65,7 @@ const isEmail = (s) => /^\S+@\S+\.\S+$/.test(String(s || '').trim());
 // ==============================
 // スライド生成（関数に切り出し）
 // ==============================
-function slides(formData, setFormData, handleChange, handleSubmit, navigate) {
+function slides(formData, setFormData, handleChange, handleSubmit, handleStartAsGuest) {
   const togglePassword = () =>
     setFormData((prev) => ({ ...prev, showPassword: !prev.showPassword }));
 
@@ -355,7 +355,7 @@ export default function IntroPage() {
     navigate('/store');    // 既存の遷移先に合わせています（Mapが'/'なら'/'に）
   };
 
-  const allSlides = slides(formData, setFormData, handleChange, handleSubmit, navigate);
+  const allSlides = slides(formData, setFormData, handleChange, handleSubmit, handleStartAsGuest);
 
   return (
     <div className="intro-wrapper">
@@ -392,3 +392,4 @@ export default function IntroPage() {
     </div>
   );
 }
+
