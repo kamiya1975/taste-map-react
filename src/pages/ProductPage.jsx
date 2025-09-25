@@ -1,7 +1,7 @@
 // src/ProductPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { requireRatingOrRedirect } from "./utils/auth";
+import { requireRatingOrRedirect } from "../utils/auth";
 
 /** =========================
  *  ユーティリティ
