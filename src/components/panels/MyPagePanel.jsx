@@ -161,9 +161,9 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
   // プロフィール（IntroPage とキー連携）
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState(""); // ID
-  const [birthYear, setBirthYear] = useState("1990");
-  const [birthMonth, setBirthMonth] = useState("01");
-  const [gender, setGender] = useState("男性");
+  const [birthYear, setBirthYear] = useState("");
+  const [birthMonth, setBirthMonth] = useState("");
+  const [gender, setGender] = useState("");
   const [pass1, setPass1] = useState("");
   const [pass2, setPass2] = useState("");
 
@@ -189,9 +189,9 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
     // 値入力は小さめ表示にするだけなので、LS から復元しつつ…
     setNickname(localStorage.getItem("user.nickname") || "");
     setEmail(localStorage.getItem("user.id") || "");
-    setBirthYear(localStorage.getItem("user.birthYear") || "1990");
-    setBirthMonth(localStorage.getItem("user.birthMonth") || "01");
-    setGender(localStorage.getItem("user.gender") || "男性");
+    setBirthYear(localStorage.getItem("user.birthYear") || "");
+    setBirthMonth(localStorage.getItem("user.birthMonth") || "");
+    setGender(localStorage.getItem("user.gender") || "");
 
     // パスワード欄は毎回クリア（黒丸が表示されないようにする）
     setPass1("");
@@ -600,6 +600,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                       onChange={(e) => setBirthYear(e.target.value)}
                       style={{ ...VALUE_INPUT, appearance: "none" }}
                     >
+                      <option value="">-</option>
                       {Array.from({ length: 80 }, (_, i) => (2025 - i).toString()).map((y) => (
                         <option key={y} value={y}>
                           {y}
@@ -626,6 +627,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                       onChange={(e) => setBirthMonth(e.target.value)}
                       style={{ ...VALUE_INPUT, appearance: "none" }}
                     >
+                      <option value="">-</option>
                       {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
                         <option key={m} value={m}>
                           {m}
@@ -652,6 +654,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
                       onChange={(e) => setGender(e.target.value)}
                       style={{ ...VALUE_INPUT, appearance: "none" }}
                     >
+                      <option value="">-</option>
                       <option value="男性">男性</option>
                       <option value="女性">女性</option>
                       <option value="その他">その他</option>
