@@ -499,19 +499,20 @@ function MapPage() {
   useEffect(() => {
     const onMsg = (e) => {
       const { type, jan, payload, reason } = e.data || {};
-      if (!type || !jan) return;
-      const janStr = String(jan); // ← 常に文字列キーで扱う
+      if (!type) return;
 
-      // ★ 追加：商品iframeから「MyPage開いて」の依頼
+      // ★ 追加：商品iframeから「MyPage開いて」
       if (type === "OPEN_MYPAGE") {
         (async () => {
-          // まず商品ドロワー等を閉じる（閉じアニメ待ち）
-          await closeUIsThen();
-          // 排他でMyPagePanelを開く
-          openMyPageExclusive();
+          await closeUIsThen();          // 商品ドロワー等を閉じる（待機込み）
+          openMyPageExclusive();         // 排他で MyPagePanel を開く
         })();
         return;
       }
+
+      // ここから下は、従来のメッセージ（janが必要なもの）だけを処理
+      if (!jan) return;
+      const janStr = String(jan);
 
       // 1) ハートのトグル
       if (type === "TOGGLE_FAVORITE") {
