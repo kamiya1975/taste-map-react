@@ -1,5 +1,5 @@
 // src/pages/IntroPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setGuest, setUserId } from '../utils/auth';
 
@@ -224,9 +224,12 @@ function slides(formData, setFormData, handleChange, handleSubmit, handleStartAs
                 type="checkbox"
                 id="agree"
                 checked={formData.agreed}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, agreed: e.target.checked }))
-                }
+                ref={agreeRef}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setFormData((prev) => ({ ...prev, agreed: checked }));
+                  if (checked) setAgreeError('');
+                }}
                 style={{ marginRight: '8px' }}
               />
               <label htmlFor="agree" style={{ fontSize: '14px', color: '#333' }}>
@@ -240,12 +243,17 @@ function slides(formData, setFormData, handleChange, handleSubmit, handleStartAs
                 </a>
                 に同意します
               </label>
+              {agreeError && (
+                <div style={{ marginTop: 8, fontSize: 12, color: 'crimson' }}>
+                  {agreeError}
+                </div>
+              )}
             </div>
 
             <button
-              type="submit"
-              style={{ ...buttonStyle, opacity: formData.agreed ? 1 : 0.5 }}
-              disabled={!formData.agreed}
+              type="button"
+              style={{ ...secondaryButtonStyle, opacity: 1 }}
+              onClick={handleStartAsGuest}
             >
               登録してはじめる
             </button>
@@ -287,25 +295,19 @@ function slides(formData, setFormData, handleChange, handleSubmit, handleStartAs
 export default function IntroPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
+  const agreeRef = useRef(null);
+  const [agreeError, setAgreeError] = useState('');
   const handleStartAsGuest = () => {
     if (!formData.agreed) {
-      alert('利用規約に同意してください');
+      setAgreeError('利用規約をお読みのうえ、同意にチェックしてください。');
+      // チェックボックスへスクロール＆強調
+      agreeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
+    setAgreeError('');
     setGuest();          // ゲストフラグON（tm_guest=1）
     navigate('/store');  // Map（または既定のトップ）へ
   };
-
-  const [formData, setFormData] = useState({
-    nickname: '',
-    email: '',         // ← 追加：ID（メール）
-    password: '',
-    showPassword: false,
-    birthYear: '',
-    birthMonth: '',
-    gender: '',
-    agreed: false,
-  });
 
   // 既存保存値があれば初期表示に反映
   useEffect(() => {
