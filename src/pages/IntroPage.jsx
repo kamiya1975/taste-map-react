@@ -252,11 +252,16 @@ function slides(formData, setFormData, handleChange, handleSubmit, handleStartAs
 
             <button
               type="button"
-              style={{ ...secondaryButtonStyle }}
-              onClick={handleStartAsGuest}
-            >
-              ゲストとして試す（記録は保存されません）
-            </button>
+                 style={{
+                   ...secondaryButtonStyle,
+                   opacity: formData.agreed ? 0.9 : 0.4,
+                   cursor: formData.agreed ? 'pointer' : 'not-allowed',
+                 }}
+                 disabled={!formData.agreed}
+                 onClick={handleStartAsGuest}
+               >
+                 ゲストとして試す（記録は保存されません）
+              </button>
           </form>
 
           <p
@@ -283,6 +288,10 @@ export default function IntroPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
   const handleStartAsGuest = () => {
+    if (!formData.agreed) {
+      alert('利用規約に同意してください');
+      return;
+    }
     setGuest();          // ゲストフラグON（tm_guest=1）
     navigate('/store');  // Map（または既定のトップ）へ
   };
