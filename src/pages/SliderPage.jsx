@@ -342,10 +342,10 @@ export default function SliderPage() {
         style={{
           alignSelf: "center",
           marginTop: 14,
-          marginBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
+          marginBottom: 8,
           width: "min(calc(100svw - 32px), calc(100svh - 34svh))",
           maxWidth: 560,
-          padding: "8px 16px calc(env(safe-area-inset-bottom, 0px) + 12px)",
+          padding: "8px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)",
           background: "rgba(245,233,221,0.98)",
           color: "#000",
           border: "none",
