@@ -95,6 +95,19 @@ function MapPage() {
     setIsMyPageOpen(true);
   };
 
+  // ★ クエリで MyPage を開く（/ ?open=mypage）
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(location.search);
+      if (p.get("open") === "mypage") {
+        // ほかのUIを閉じてから MyPage を開く（既存の排他処理を利用）
+        openMyPageExclusive();
+        // クエリを除去して再トリガを防止（戻る履歴は汚さない）
+        navigate(location.pathname, { replace: true });
+      }
+    } catch {}
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // スライダー（●）
   const openSliderExclusive = async () => {
     await closeUIsThen();

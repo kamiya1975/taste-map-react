@@ -1,5 +1,7 @@
 // src/ProductPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { requireRatingOrRedirect } from "./utils/auth";
 
 /** =========================
  *  ユーティリティ
@@ -200,6 +202,7 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
  *  ProductPage
  * ========================= */
 export default function ProductPage() {
+  const navigate = useNavigate();
   const jan = useMemo(() => getJANFromURL(), []);
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
@@ -267,6 +270,8 @@ export default function ProductPage() {
   }, [jan]);
 
   const handleCircleClick = async (value) => {
+    // ★ 未登録(ゲスト)は評価不可：警告→MyPagePanelオープンへ誘導
+    if (!requireRatingOrRedirect(navigate, "open=mypage")) return;
     const newRating = value === rating ? 0 : value;
     setRating(newRating);
 

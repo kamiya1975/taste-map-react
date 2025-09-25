@@ -1,6 +1,7 @@
 // src/pages/IntroPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { setGuest, setUserId } from '../utils/auth';
 
 // ✅ スタイル定義（必要最小限）
 const styles = {
@@ -252,7 +253,7 @@ function slides(formData, setFormData, handleChange, handleSubmit, navigate) {
             <button
               type="button"
               style={{ ...secondaryButtonStyle }}
-              onClick={() => navigate('/store')}
+              onClick={handleStartAsGuest}
             >
               ゲストとして試す（記録は保存されません）
             </button>
@@ -281,6 +282,10 @@ function slides(formData, setFormData, handleChange, handleSubmit, navigate) {
 export default function IntroPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
+  const handleStartAsGuest = () => {
+    setGuest();          // ゲストフラグON（tm_guest=1）
+    navigate('/store');  // Map（または既定のトップ）へ
+  };
 
   const [formData, setFormData] = useState({
     nickname: '',
@@ -345,7 +350,9 @@ export default function IntroPage() {
       localStorage.setItem('user.pass', password);
     } catch {}
 
-    navigate('/store');
+    // ★ ここで登録済みに昇格（以後、評価機能が使える）
+    setUserId(email);      // 発番ロジックが別なら、そのID文字列を渡す
+    navigate('/store');    // 既存の遷移先に合わせています（Mapが'/'なら'/'に）
   };
 
   const allSlides = slides(formData, setFormData, handleChange, handleSubmit, navigate);
