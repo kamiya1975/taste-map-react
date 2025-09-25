@@ -498,9 +498,20 @@ function MapPage() {
   // 商品ページ（iframe）からの postMessage
   useEffect(() => {
     const onMsg = (e) => {
-      const { type, jan, payload } = e.data || {};
+      const { type, jan, payload, reason } = e.data || {};
       if (!type || !jan) return;
       const janStr = String(jan); // ← 常に文字列キーで扱う
+
+      // ★ 追加：商品iframeから「MyPage開いて」の依頼
+      if (type === "OPEN_MYPAGE") {
+        (async () => {
+          // まず商品ドロワー等を閉じる（閉じアニメ待ち）
+          await closeUIsThen();
+          // 排他でMyPagePanelを開く
+          openMyPageExclusive();
+        })();
+        return;
+      }
 
       // 1) ハートのトグル
       if (type === "TOGGLE_FAVORITE") {

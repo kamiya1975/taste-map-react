@@ -35,6 +35,22 @@ export const requireRatingOrRedirect = (navigate, openParam = "open=mypage") => 
   if (canUseRating()) return true;
   // ※ 表記は「使用」が正です
   alert("評価機能を使用するにはID登録が必要です。");
-  navigate(`/?${openParam}`);
+  try {
+    // ★ iframe内なら、親に「MyPage開いて」と依頼
+    if (window.top && window.top !== window.self) {
+      window.parent?.postMessage(
+        { type: "OPEN_MYPAGE", reason: "rating_redirect" },
+        "*"
+      );
+    } else if (typeof navigate === "function") {
+      // 通常ページならクエリで開かせる
+      navigate(`/?${openParam}`);
+    } else {
+      // navigate が無いときの保険
+      window.location.href = `/?${openParam}`;
+    }
+  } catch {
+    if (typeof navigate === "function") navigate(`/?${openParam}`);
+  } 
   return false;
 };
