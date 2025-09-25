@@ -1,9 +1,9 @@
 // src/pages/IntroPage.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setGuest, setUserId } from '../utils/auth';
 
-// ✅ スタイル定義（必要最小限）
+// ✅ スタイル定義
 const styles = {
   label: {
     fontWeight: 'bold',
@@ -59,13 +59,13 @@ const secondaryButtonStyle = {
   opacity: 0.9,
 };
 
-// メールの超軽量バリデータ
+// メール簡易バリデータ
 const isEmail = (s) => /^\S+@\S+\.\S+$/.test(String(s || '').trim());
 
 // ==============================
-// スライド生成（関数に切り出し）
+// スライド生成
 // ==============================
-function slides({
+function slides(
   formData,
   setFormData,
   handleChange,
@@ -73,8 +73,8 @@ function slides({
   handleStartAsGuest,
   agreeRef,
   agreeError,
-  setAgreeError,
-}) {
+  setAgreeError
+) {
   const togglePassword = () =>
     setFormData((prev) => ({ ...prev, showPassword: !prev.showPassword }));
 
@@ -175,9 +175,8 @@ function slides({
               </span>
             </div>
 
-            {/* 横並びラッパー */}
+            {/* 横並び：生年・月・性別 */}
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {/* 生まれた年 */}
               <div style={{ flex: '1 1 30%' }}>
                 <label style={styles.label}>生まれた年</label>
                 <select
@@ -185,21 +184,17 @@ function slides({
                   onChange={handleChange('birthYear')}
                   style={styles.input}
                 >
-                  <option value="">-</option>
-                  {(() => {
-                       const currentYear = new Date().getFullYear();
-                       const maxYear = currentYear - 20; // 20歳未満は選べない
-                       const years = Array.from({ length: 80 }, (_, i) => (maxYear - i).toString());
-                       return years.map((year) => (
-                         <option key={year} value={year}>
-                           {year}
-                         </option>
-                      ));
-                     })()}
+                  {Array.from(
+                    { length: 80 },
+                    (_, i) => (new Date().getFullYear() - 20 - i).toString()
+                  ).map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* 生まれた月 */}
               <div style={{ flex: '1 1 30%' }}>
                 <label style={styles.label}>生まれた月</label>
                 <select
@@ -207,22 +202,23 @@ function slides({
                   onChange={handleChange('birthMonth')}
                   style={styles.input}
                 >
-                  <option value="">-</option>
-                  {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(
-                    (month) => (
-                      <option key={month} value={month}>
-                        {month}
-                      </option>
-                    )
-                  )}
+                  {Array.from({ length: 12 }, (_, i) =>
+                    String(i + 1).padStart(2, '0')
+                  ).map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* 性別 */}
               <div style={{ flex: '1 1 30%' }}>
                 <label style={styles.label}>性別</label>
-                <select value={formData.gender} onChange={handleChange('gender')} style={styles.input}>
-                  <option value="">-</option>
+                <select
+                  value={formData.gender}
+                  onChange={handleChange('gender')}
+                  style={styles.input}
+                >
                   <option value="男性">男性</option>
                   <option value="女性">女性</option>
                   <option value="その他">その他</option>
@@ -230,7 +226,7 @@ function slides({
               </div>
             </div>
 
-            {/* 規約同意 */}
+            {/* 規約チェック */}
             <div style={{ textAlign: 'center', margin: '20px 0' }}>
               <input
                 type="checkbox"
@@ -255,14 +251,28 @@ function slides({
                 </a>
                 に同意します
               </label>
-              {agreeError && (
-                <div style={{ marginTop: 8, fontSize: 12, color: 'crimson' }}>
-                  {agreeError}
+
+              {/* 注意文（常に高さ確保で画面が動かない） */}
+              <div
+                aria-live="polite"
+                style={{ height: 18, marginTop: 8, overflow: 'hidden' }}
+              >
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: 'crimson',
+                    lineHeight: '18px',
+                    opacity: agreeError ? 1 : 0,
+                    transition: 'opacity 160ms',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  {agreeError || '\u00A0'}
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* 登録ボタン（規約同意が必須） */}
+            {/* 登録ボタン */}
             <button
               type="submit"
               style={{ ...buttonStyle, opacity: formData.agreed ? 1 : 0.5 }}
@@ -271,10 +281,14 @@ function slides({
               登録してはじめる
             </button>
 
-            {/* ゲストボタン（常に明瞭表示、未同意なら注意文を出して止める） */}
+            {/* ゲストボタン */}
             <button
               type="button"
-              style={{ ...secondaryButtonStyle, opacity: 1 }}
+              style={{
+                ...secondaryButtonStyle,
+                opacity: 1,
+                cursor: 'pointer',
+              }}
               onClick={handleStartAsGuest}
             >
               ゲストとして試す（記録は保存されません）
@@ -304,8 +318,9 @@ function slides({
 export default function IntroPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
+  const agreeRef = useRef(null);
+  const [agreeError, setAgreeError] = useState('');
 
-  // 入力状態
   const [formData, setFormData] = useState({
     nickname: '',
     email: '',
@@ -317,20 +332,21 @@ export default function IntroPage() {
     agreed: false,
   });
 
-  // 規約同意の UI 用
-  const agreeRef = useRef(null);
-  const [agreeError, setAgreeError] = useState('');
-
-  // 既存保存値があれば初期表示に反映（ゲスト想定なので既定は空に）
+  // 初期保存値を復元
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
       nickname: localStorage.getItem('user.nickname') || '',
       email: localStorage.getItem('user.id') || '',
-      birthYear: localStorage.getItem('user.birthYear') || '',
-      birthMonth: localStorage.getItem('user.birthMonth') || '',
-      gender: localStorage.getItem('user.gender') || '',
+      birthYear: localStorage.getItem('user.birthYear') || '1990',
+      birthMonth: localStorage.getItem('user.birthMonth') || '01',
+      gender: localStorage.getItem('user.gender') || '男性',
     }));
+  }, []);
+
+  // ページ遷移後スクロール保持対策
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, []);
 
   const handleScroll = (e) => {
@@ -342,19 +358,29 @@ export default function IntroPage() {
     setFormData((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
-  // ゲストで始める（規約同意必須・ボタンは常に明瞭表示）
+  // 利用規約チェックが無い場合のスクロール補助
+  const scrollAgreeIntoViewIfNeeded = () => {
+    const el = agreeRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const inView = r.top >= 0 && r.bottom <= vh;
+    if (!inView) {
+      el.scrollIntoView({ behavior: 'auto', block: 'center' });
+    }
+  };
+
   const handleStartAsGuest = () => {
     if (!formData.agreed) {
       setAgreeError('利用規約をお読みのうえ、同意にチェックしてください。');
-      agreeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      scrollAgreeIntoViewIfNeeded();
       return;
     }
     setAgreeError('');
-    setGuest();          // ゲストフラグON（tm_guest=1）
-    navigate('/store');  // Map（または既定のトップ）へ
+    setGuest();
+    navigate('/store');
   };
 
-  // 通常登録
   const handleSubmit = (e) => {
     e.preventDefault();
     const { nickname, email, password, birthYear, birthMonth, gender, agreed } = formData;
@@ -364,7 +390,8 @@ export default function IntroPage() {
       return;
     }
     if (!agreed) {
-      alert('利用規約に同意してください');
+      setAgreeError('利用規約をお読みのうえ、同意にチェックしてください。');
+      scrollAgreeIntoViewIfNeeded();
       return;
     }
     if (!isEmail(email)) {
@@ -376,7 +403,6 @@ export default function IntroPage() {
       return;
     }
 
-    // 保存（MyPagePanel と同じキー）
     try {
       localStorage.setItem('user.nickname', nickname);
       localStorage.setItem('user.id', email);
@@ -386,12 +412,11 @@ export default function IntroPage() {
       localStorage.setItem('user.pass', password);
     } catch {}
 
-    // ★ ここで登録済みに昇格（以後、評価機能が使える）
-    setUserId(email);      // 発番ロジックが別なら、そのID文字列を渡す
-    navigate('/store');    // 既存の遷移先に合わせています（Mapが'/'なら'/'に）
+    setUserId(email);
+    navigate('/store');
   };
 
-  const allSlides = slides({
+  const allSlides = slides(
     formData,
     setFormData,
     handleChange,
@@ -399,8 +424,8 @@ export default function IntroPage() {
     handleStartAsGuest,
     agreeRef,
     agreeError,
-    setAgreeError,
-  });
+    setAgreeError
+  );
 
   return (
     <div className="intro-wrapper">
