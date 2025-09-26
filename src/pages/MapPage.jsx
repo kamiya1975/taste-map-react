@@ -648,7 +648,16 @@ function MapPage() {
           setHideHeartForJAN(null); // ← 追加：◎経由以外は解除
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
-          focusOnWine(item);
+          // 初期ズームに戻しつつフォーカス
+          const tx = Number(item.UMAP1);
+          const ty = Number(item.UMAP2);
+          if (Number.isFinite(tx) && Number.isFinite(ty)) {
+            setViewState((prev) => ({
+              ...prev,
+              target: [tx, -ty - CENTER_Y_OFFSET, 0],
+              zoom: prev.zoom,
+            }));
+          }
         }}
       />
 
