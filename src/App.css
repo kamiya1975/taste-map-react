@@ -6,7 +6,7 @@
 html, body, #root {
   margin: 0;
   padding: 0;
-  height: 100dvh;                 /* Safariでも“見えている高さ”で合わせる */
+  height: 100dvh;                 /* Safariでも“見えている高さ”に追従 */
   min-height: 100dvh;
   background: #fff;
   -webkit-text-size-adjust: 100%;
@@ -23,30 +23,7 @@ html, body, #root {
 .safe-top    { padding-top:    max(12px, env(safe-area-inset-top)); }
 .safe-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 
-/* =========================
-   App (CRAテンプレの名残)
-   ========================= */
-.App { text-align: center; }
-.App-logo { height: 40vmin; pointer-events: none; }
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo { animation: App-logo-spin infinite 20s linear; }
-}
-@keyframes App-logo-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
-.App-header {
-  background-color: #282c34;
-  min-height: 100dvh;              /* 100vh → 100dvh */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: #fff;
-}
-.App-link { color: #61dafb; }
-
-/* =========================
-   共通フォント（MUI含む）
-   ========================= */
+/* 共通フォント（MUI含む） */
 body,
 .MuiDrawer-root *,
 .MuiButton-root *,
@@ -66,9 +43,9 @@ body,
   height: 100%;
   contain: strict;
 
-  /* ← Mapページだけに“固定っぽい”制御を限定適用 */
+  /* ← Mapページだけに“固定っぽい”制御を限定適用（グローバルでは付けない） */
   overscroll-behavior: none;
-  touch-action: pan-x pan-y;   /* ピンチはアプリ側で制御する場合はこのまま */
+  touch-action: pan-x pan-y;   /* ピンチはアプリ側で制御するならこのまま */
 }
 
 /* 右下固定ボタン等（例） */
@@ -78,9 +55,44 @@ body,
   bottom: max(12px, env(safe-area-inset-bottom));
 }
 
-/* MUI Drawer（JSで高さ管理しているなら高さ指定は不要） */
+/* =========================
+   Drawer / Product（スクロール可にする要点）
+   ========================= */
+/* MUI Drawer 本体を縦Flexに。中身（iframe）を伸ばせるようにする */
+.MuiDrawer-paper, .MuiDrawer-paperAnchorBottom {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden;                 /* 枠外は隠す */
+  max-height: 100dvh;               /* 露骨なはみ出し防止 */
+}
+
+/* Drawer 内のヘッダー（ボタン行など） */
+.drawer-header {
+  flex: 0 0 auto;
+}
+
+/* Drawer 内のスクロール領域（iframeを包むdivに付けると安定） */
+.drawer-scroll {
+  flex: 1 1 auto;
+  min-height: 0;                    /* ← Flex内での子コンテンツ高さ計算の肝 */
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 直接 iframe を入れている場合：iframe自体をFlexで伸ばす */
+.product-iframe,
+.product-frame,
+.MuiDrawer-paper iframe {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+  display: block;
+}
+
+/* もし Drawer の Paper にカスタムクラスを付けるなら（任意） */
 .drawer-paper {
-  height: 60vh;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
 }
@@ -91,7 +103,7 @@ body,
 .intro-wrapper {
   position: relative;           /* インジケータ/ボタンの基準 */
   width: 100vw;
-  height: 100dvh;               /* 100vh → 100dvh */
+  height: 100dvh;
   overflow: hidden;             /* 縦方向は固定 */
   background: #fff;
 
@@ -205,10 +217,9 @@ body,
 }
 
 /* =========================
-   スライダー UI
+   スライダー UI（見た目）
    ========================= */
 .taste-slider {
-  /* 好みに応じてここだけ触ればOK */
   --track-h: 6px;   /* バーの太さ */
   --thumb:   28px;  /* ●の直径   */
   --nudge:   -3px;  /* 追加の上方向微調整（-1〜-4pxあたりで調整） */
@@ -260,23 +271,4 @@ body,
    ========================= */
 @supports (-webkit-touch-callout: none) {
   input, select, textarea { font-size: 16px !important; }
-}
-
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-#root {
-  min-height: 100%;   /* height固定ではなくmin-heightにする */
-  display: flex;
-  flex-direction: column;
-}
-
-/* 商品ページのコンテナ（例: .product-page） */
-.product-page {
-  flex: 1;
-  overflow-y: auto;   /* スクロールを許可 */
-  -webkit-overflow-scrolling: touch; /* iOS Safari で慣性スクロール */
 }
