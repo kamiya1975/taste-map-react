@@ -59,7 +59,7 @@ function clampViewState(nextVS, panBounds, sizePx) {
   // 係数（体感調整）：Xは控えめ、Yを広めに（Safariの見かけ高さ差を緩和）
   const isSafari = typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
   const SLACK_FACTOR_X = 0.9;
-  let   SLACK_FACTOR_Y = isSafari ? 12.0 : 18.0; // Safariは広め、他はやや控えめ
+  let   SLACK_FACTOR_Y = isSafari ? 15.0 : 20.0; // Safariは広め、他はやや控えめ
 
   // 過剰な“遊び”の上限（可動域比率）
   const MAX_SLACK_RATIO_X = 0.6;
