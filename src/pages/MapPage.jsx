@@ -464,7 +464,7 @@ function MapPage() {
       setViewState((prev) => ({
         ...prev,
         target: [tx, -tyUMAP - CENTER_Y_OFFSET, 0],
-        zoom: zoomTarget,
+        zoom: prev.zoom,
       }));
     },
     []
