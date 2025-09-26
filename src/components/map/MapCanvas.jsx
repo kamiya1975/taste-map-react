@@ -15,6 +15,13 @@ const EPS = 1e-9;
 const toIndex  = (v) => Math.floor((v + EPS) / GRID_CELL_SIZE);
 const toCorner = (i) => i * GRID_CELL_SIZE;
 const keyOf    = (ix, iy) => `${ix},${iy}`;
+const interactingRef = useRef(false); // いまユーザー操作中かを保持
+const clampRAF = useRef(0);           // rAF用
+const clampZoomOnly = (vs) => ({
+ ...vs,
+ zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom)),
+});
+
 
 // ===== 実際に見えているビューポートの px サイズ（Safari URLバーを除外） =====
 function getEffectiveSizePx(sizePx) {
@@ -59,7 +66,7 @@ function clampViewState(nextVS, panBounds, sizePx) {
   // 係数（体感調整）：Xは控えめ、Yを広めに（Safariの見かけ高さ差を緩和）
   const isSafari = typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
   const SLACK_FACTOR_X = 0.9;
-  let   SLACK_FACTOR_Y = isSafari ? 18.0 : 24.0;
+  let   SLACK_FACTOR_Y = isSafari ? 15.0 : 20.0; // Safariは広め、他はやや控えめ
 
   // 過剰な“遊び”の上限（可動域比率）
   const MAX_SLACK_RATIO_X = 0.6;
@@ -139,26 +146,27 @@ export default function MapCanvas({
   // ===== visualViewport（URLバー出入り）でサイズを追随 → 再クランプ =====
   useEffect(() => {
     if (!window.visualViewport) return;
+    let t = 0;
     const onVV = () => {
-      const vv = window.visualViewport;
-      sizeRef.current = {
-        width:  Math.floor(vv?.width  || sizeRef.current.width),
-        height: Math.floor(vv?.height || sizeRef.current.height),
-      };
-      const clamped = clampViewState(viewState, panBounds, sizeRef.current);
-      if (clamped.zoom !== viewState.zoom ||
-          clamped.target[0] !== viewState.target[0] ||
-          clamped.target[1] !== viewState.target[1]) {
-        setViewState(clamped);
-      }
+      if (interactingRef.current) return;             // ← ピンチ/ドラッグ中は触らない
+      clearTimeout(t);
+      t = setTimeout(() => {                          // ← 連発をまとめる
+        const vv = window.visualViewport;
+        sizeRef.current = {
+          width:  Math.floor(vv?.width  || sizeRef.current.width),
+          height: Math.floor(vv?.height || sizeRef.current.height),
+        };
+        setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
+      }, 60);
     };
-    window.visualViewport.addEventListener("resize", onVV);
-    window.visualViewport.addEventListener("scroll", onVV);
+    window.visualViewport.addEventListener("resize", onVV, { passive: true });
+    window.visualViewport.addEventListener("scroll", onVV, { passive: true });
     return () => {
+      clearTimeout(t);
       window.visualViewport.removeEventListener("resize", onVV);
       window.visualViewport.removeEventListener("scroll", onVV);
     };
-  }, [viewState, panBounds, setViewState]);
+  }, [panBounds, setViewState]);
 
   // ===== bfcache 復帰 / 画面の向き変更でも再クランプ =====
   useEffect(() => {
@@ -336,40 +344,55 @@ export default function MapCanvas({
     return best;
   }, [data]);
 
+  // 操作開始/終了のフック（DeckGL はこれを持っています）
+  const onInteractionStateChange = useCallback((state) => {
+    interactingRef.current =
+      !!state?.isDragging || !!state?.isPanning || !!state?.isZooming;
+    if (!interactingRef.current) {
+      cancelAnimationFrame(clampRAF.current);
+      clampRAF.current = requestAnimationFrame(() => {
+        setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
+      });
+    }
+  }, [panBounds, setViewState]);
+
+
   return (
     <DeckGL
       views={new OrthographicView({ near: -1, far: 1 })}
       viewState={viewState}
+      onInteractionStateChange={onInteractionStateChange}
       style={{ position: "absolute", inset: 0 }}
       useDevicePixels
       // キャンバスサイズを保持（クランプ計算に使用）
       onResize={({ width, height }) => {
-        // DeckGLの通知サイズに visualViewport 補正を適用
         sizeRef.current = getEffectiveSizePx({ width, height });
-        // リサイズ時も見切れないよう即時クランプ
-        const clamped = clampViewState(viewState, panBounds, sizeRef.current);
-        if (clamped.zoom !== viewState.zoom ||
-            clamped.target[0] !== viewState.target[0] ||
-            clamped.target[1] !== viewState.target[1]) {
-          setViewState(clamped);
-        }
+        if (interactingRef.current) return; // ← 操作中はここではクランプしない
+        setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
       }}
       // ユーザー操作・プログラム変更の両方をクランプ
-      onViewStateChange={({ viewState: vs }) => {
-        const clamped = clampViewState(vs, panBounds, sizeRef.current);
-        // Y軸を少し上に持ち上げる（値はお好みで調整）
-        const Y_SHIFT = 0.8; 
-        setViewState({
-           ...clamped,
-           target: [clamped.target[0], clamped.target[1] + Y_SHIFT, clamped.target[2]],
-        });
+      onViewStateChange={({ viewState: vs, interactionState }) => {
+        const isInteracting =
+          !!interactionState?.isDragging ||
+          !!interactionState?.isPanning ||
+          !!interactionState?.isZooming;
+        interactingRef.current = isInteracting;
+        if (isInteracting) {
+          setViewState(clampZoomOnly(vs));                 // ← 触るのは zoom だけ
+        } else {
+          setViewState(clampViewState(vs, panBounds, sizeRef.current)); // ← 最終確定
+        }
       }}
+
       controller={{
         dragPan: true,
         dragRotate: false,
         minZoom: ZOOM_LIMITS.min,
         maxZoom: ZOOM_LIMITS.max,
-        inertia: false, // 惰性スクロール無効化で“暴れ”を軽減
+        inertia: false,
+        doubleClickZoom: false, // 誤タップでズームジャンプを抑止
+        touchZoom: true,        // 明示
+        scrollZoom: true,       // 明示
       }}
       onClick={(info) => {
         const picked = info?.object;
