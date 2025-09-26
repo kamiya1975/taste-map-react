@@ -27,7 +27,7 @@ function halfSizeWorld(zoom, sizePx) {
   return { halfW: w / (2 * scale), halfH: h / (2 * scale) };
 }
 
-/** ===== panBounds と画面サイズに応じて target/zoom をクランプ ===== */
+// 置き換え：MapCanvas.jsx 内の clampViewState
 function clampViewState(nextVS, panBounds, sizePx) {
   const zoom = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, nextVS.zoom));
   const { halfW, halfH } = halfSizeWorld(zoom, sizePx);
@@ -40,21 +40,46 @@ function clampViewState(nextVS, panBounds, sizePx) {
   const worldW = xmax - xmin;
   const worldH = ymax - ymin;
 
-  // 画面が境界より大きい場合は、中心を境界の中央に固定
-  let cx, cy;
-  if (!Number.isFinite(worldW) || worldW <= halfW * 2) {
-    cx = (xmin + xmax) / 2;
+  // “可動域 < 画面” のときも、中央 ± slack/2 で少し動けるようにする
+  const centerX = (xmin + xmax) / 2;
+  const centerY = (ymin + ymax) / 2;
+
+  // 理論上のスラック量（px換算ではなく world 座標）
+  const slackX = Math.max(0, 2 * halfW - worldW);
+  const slackY = Math.max(0, 2 * halfH - worldH);
+
+  // 体感を良くするためにスラックを少し残す（100%でもOK。好みで 0.8〜1.0）
+  const SLACK_FACTOR = 0.9;
+
+  // X
+  let minX, maxX;
+  if (worldW >= 2 * halfW) {
+    // 画面が可動域より小さい（通常ケース）：見切れない範囲にクランプ
+    minX = xmin + halfW;
+    maxX = xmax - halfW;
   } else {
-    cx = Math.max(xmin + halfW, Math.min(xmax - halfW, nextVS.target[0]));
+    // 画面が可動域より大きい：中央の周りで slackX/2 だけ動ける
+    const sx = slackX * SLACK_FACTOR;
+    minX = centerX - sx / 2;
+    maxX = centerX + sx / 2;
   }
 
-  if (!Number.isFinite(worldH) || worldH <= halfH * 2) {
-    cy = (ymin + ymax) / 2;
+  // Y
+  let minY, maxY;
+  if (worldH >= 2 * halfH) {
+    minY = ymin + halfH;
+    maxY = ymax - halfH;
   } else {
-    cy = Math.max(ymin + halfH, Math.min(ymax - halfH, nextVS.target[1]));
+    const sy = slackY * SLACK_FACTOR;
+    minY = centerY - sy / 2;
+    maxY = centerY + sy / 2;
   }
 
-  return { ...nextVS, zoom, target: [cx, cy, 0] };
+  // nextVS.target は [x, y, z] 想定
+  const x = Math.max(minX, Math.min(maxX, nextVS.target[0]));
+  const y = Math.max(minY, Math.min(maxY, nextVS.target[1]));
+
+  return { ...nextVS, zoom, target: [x, y, 0] };
 }
 
 export default function MapCanvas({
