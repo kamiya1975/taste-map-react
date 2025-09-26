@@ -448,26 +448,29 @@ function MapPage() {
     });
   }, [location.key, userPin, data, findNearestWine]); // ← 依存に findNearestWine を追加
 
-  // ====== 共通：商品へフォーカス（毎回“初期ズーム”に戻す）
+  // ====== 共通：商品へフォーカス
   const focusOnWine = useCallback((item, opts = {}) => {
-  if (!item) return;
-  const tx = Number(item.UMAP1);
-  const tyUMAP = Number(item.UMAP2);
-  if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
+    if (!item) return;
+    const tx = Number(item.UMAP1);
+    const tyUMAP = Number(item.UMAP2);
+    if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
 
-  setViewState((prev) => {
-    const wantZoom = opts.zoom; // undefined のときはズームを変えない
-    const zoomTarget = (wantZoom == null)
-      ? prev.zoom
-      : Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, wantZoom));
+    setViewState((prev) => {
+      // ① ズームは opts.zoom 未指定なら据え置き
+      const wantZoom = opts.zoom;
+      const zoomTarget = (wantZoom == null)
+        ? prev.zoom
+        : Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, wantZoom));
 
-    return {
-      ...prev,
-      target: [tx, -tyUMAP - CENTER_Y_OFFSET, 0],
-      zoom: zoomTarget,
-    };
-  });
-}, []);
+      // ② ターゲットは opts.recenter === false のとき据え置き
+      const keepTarget = opts.recenter === false;
+      const nextTarget = keepTarget
+        ? prev.target
+        : [tx, -tyUMAP - CENTER_Y_OFFSET, 0];
+
+      return { ...prev, target: nextTarget, zoom: zoomTarget };
+    });
+  }, []);
 
   // ====== 子iframeへ♡状態を送るヘルパー
   const sendFavoriteToChild = (jan, value) => {
@@ -648,16 +651,7 @@ function MapPage() {
           setHideHeartForJAN(null); // ← 追加：◎経由以外は解除
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
-          // 初期ズームに戻しつつフォーカス
-          const tx = Number(item.UMAP1);
-          const ty = Number(item.UMAP2);
-          if (Number.isFinite(tx) && Number.isFinite(ty)) {
-            setViewState((prev) => ({
-              ...prev,
-              target: [tx, -ty - CENTER_Y_OFFSET, 0],
-              zoom: prev.zoom,
-            }));
-          }
+          focusOnWine(item, { recenter: false });
         }}
       />
 
