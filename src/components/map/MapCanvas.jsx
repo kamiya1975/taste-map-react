@@ -48,7 +48,7 @@ function clampViewState(nextVS, panBounds, sizePx) {
   const slackY = Math.max(0, 2 * halfH - worldH);
 
   // 係数（体感調整）：Xは控えめ、Yを広めに
-  const SLACK_FACTOR_X = 3.0;
+  const SLACK_FACTOR_X = 5.0;
   const SLACK_FACTOR_Y = 10.0;
 
   // X 範囲
