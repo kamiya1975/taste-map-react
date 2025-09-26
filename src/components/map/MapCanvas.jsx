@@ -1,5 +1,5 @@
 // src/components/map/MapCanvas.jsx
-import React, { useMemo, useRef, useCallback } from "react";
+import React, { useMemo, useRef, useCallback, useEffect } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrthographicView } from "@deck.gl/core";
 import { ScatterplotLayer, LineLayer, GridCellLayer, PathLayer, IconLayer } from "@deck.gl/layers";
@@ -16,14 +16,21 @@ const toIndex  = (v) => Math.floor((v + EPS) / GRID_CELL_SIZE);
 const toCorner = (i) => i * GRID_CELL_SIZE;
 const keyOf    = (ix, iy) => `${ix},${iy}`;
 
-/** ===== 画面サイズ（px）とズームから世界座標での半幅・半高を計算（Orthographic） =====
- * Orthographic の scale は 2^zoom、1px あたりの世界座標幅は 1/scale。
- * よって半幅[world] = width(px) / (2 * scale)
- */
+// 追加：見えている実高さを取得（Safari URLバーを除外）
+function getEffectiveSizePx(sizePx) {
+  let width = Math.max(1, sizePx?.width || 1);
+  let height = Math.max(1, sizePx?.height || 1);
+  if (typeof window !== "undefined" && window.visualViewport) {
+    const vvH = Math.floor(window.visualViewport.height || 0);
+    if (vvH > 0) height = vvH;
+  }
+  return { width, height };
+}
+
+/** ===== 画面サイズ（px）とズームから世界座標での半幅・半高を計算（Orthographic） ===== */
 function halfSizeWorld(zoom, sizePx) {
   const scale = Math.pow(2, Number(zoom) || 0);
-  const w = Math.max(1, sizePx?.width  || 1);
-  const h = Math.max(1, sizePx?.height || 1);
+  const { width: w, height: h } = getEffectiveSizePx(sizePx);
   return { halfW: w / (2 * scale), halfH: h / (2 * scale) };
 }
 
@@ -47,9 +54,10 @@ function clampViewState(nextVS, panBounds, sizePx) {
   const slackX = Math.max(0, 2 * halfW - worldW);
   const slackY = Math.max(0, 2 * halfH - worldH);
 
-  // 係数（体感調整）：Xは控えめ、Yを広めに
-  const SLACK_FACTOR_X = 5.0;
-  const SLACK_FACTOR_Y = 10.0;
+  // 係数（体感調整）：Xは控えめ、Yを広めに（Safariの見かけ高さ差を緩和）
+  const isSafari = typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const SLACK_FACTOR_X = 0.9;
+  const SLACK_FACTOR_Y = isSafari ? 2.4 : 2.0;
 
   // X 範囲
   let minX, maxX;
@@ -97,6 +105,29 @@ export default function MapCanvas({
 }) {
   // DeckGL のキャンバスサイズを保持（onResize で更新）
   const sizeRef = useRef({ width: 1, height: 1 });
+
+  // iOS Safari の URLバー出入りで高さが変わる → visualViewport 監視でクランプ
+  useEffect(() => {
+    if (!window.visualViewport) return;
+    const onVV = () => {
+      sizeRef.current = {
+        width: sizeRef.current.width,
+        height: Math.floor(window.visualViewport.height || sizeRef.current.height),
+      };
+      const clamped = clampViewState(viewState, panBounds, sizeRef.current);
+      if (clamped.zoom !== viewState.zoom ||
+          clamped.target[0] !== viewState.target[0] ||
+          clamped.target[1] !== viewState.target[1]) {
+        setViewState(clamped);
+      }
+    };
+    window.visualViewport.addEventListener("resize", onVV);
+    window.visualViewport.addEventListener("scroll", onVV);
+    return () => {
+      window.visualViewport.removeEventListener("resize", onVV);
+      window.visualViewport.removeEventListener("scroll", onVV);
+    };
+  }, [viewState, panBounds, setViewState]);
 
   // ============ グリッド線 ============
   const { thinLines, thickLines } = useMemo(() => {
