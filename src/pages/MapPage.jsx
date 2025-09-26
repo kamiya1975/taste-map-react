@@ -799,7 +799,7 @@ function MapPage() {
             setViewState((prev) => ({
               ...prev,
               target: [tx, -ty - CENTER_Y_OFFSET, 0],
-              zoom: INITIAL_ZOOM,
+              zoom: prev.zoom,
             }));
           }
         }}
