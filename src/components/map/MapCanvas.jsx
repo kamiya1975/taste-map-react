@@ -12,6 +12,8 @@ import {
 
 // 小ユーティリティ
 const EPS = 1e-9;
+const x = Math.max(minX + EPS_EDGE, Math.min(maxX - EPS_EDGE, nextVS.target[0]));
+const y = Math.max(minY + EPS_EDGE, Math.min(maxY - EPS_EDGE, nextVS.target[1]));
 const toIndex  = (v) => Math.floor((v + EPS) / GRID_CELL_SIZE);
 const toCorner = (i) => i * GRID_CELL_SIZE;
 const keyOf    = (ix, iy) => `${ix},${iy}`;
@@ -49,7 +51,8 @@ function clampViewState(nextVS, panBounds, sizePx) {
   const slackY = Math.max(0, 2 * halfH - worldH);
 
   // 体感を良くするためにスラックを少し残す（100%でもOK。好みで 0.8〜1.0）
-  const SLACK_FACTOR = 0.9;
+  const SLACK_FACTOR_X = 0.9;
+  const SLACK_FACTOR_Y = 2.0;
 
   // X
   let minX, maxX;
@@ -59,7 +62,7 @@ function clampViewState(nextVS, panBounds, sizePx) {
     maxX = xmax - halfW;
   } else {
     // 画面が可動域より大きい：中央の周りで slackX/2 だけ動ける
-    const sx = slackX * SLACK_FACTOR;
+    const sx = slackX * SLACK_FACTOR_X;
     minX = centerX - sx / 2;
     maxX = centerX + sx / 2;
   }
@@ -70,7 +73,7 @@ function clampViewState(nextVS, panBounds, sizePx) {
     minY = ymin + halfH;
     maxY = ymax - halfH;
   } else {
-    const sy = slackY * SLACK_FACTOR;
+    const sy = slackY * SLACK_FACTOR_Y;
     minY = centerY - sy / 2;
     maxY = centerY + sy / 2;
   }
