@@ -3,34 +3,45 @@
   <head>
     <meta charset="utf-8" />
 
-    <!-- PWA/モバイル向け基本設定 -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- ===== PWA / モバイル向け基本設定 ===== -->
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="format-detection" content="telephone=no" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 
-    <!-- SEO -->
+    <!-- ===== SEO ===== -->
     <meta name="description" content="Taste Map — ワインの味わいを可視化するインタラクティブマップ" />
 
-    <!-- アイコン / マニフェスト -->
+    <!-- ===== アイコン / マニフェスト ===== -->
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
-    <!-- 重要: ルートを常に全高にする（DeckGLのキャンバスが確実に全画面表示されるように） -->
+    <!-- ===== ルートを“実表示高”で全画面に（Safari差対策） ===== -->
     <style>
+      :root { color-scheme: light; }
       html, body, #root {
-        height: 100%;
-      }
-      /* iOS Safariのバウンズ時の背景色のにじみ対策（任意） */
-      body {
-        background: #ffffff;
         margin: 0;
+        padding: 0;
+        height: 100dvh;          /* ← 100vh ではなく 100dvh */
+        min-height: 100dvh;
+        background: #ffffff;
+        overscroll-behavior: none;
+        touch-action: pan-x pan-y; /* ピンチズームをアプリ側で扱うならこのまま */
+        -webkit-text-size-adjust: 100%;
       }
+      @supports not (height: 100dvh) {
+        html, body, #root {
+          height: -webkit-fill-available;      /* 古い iOS Safari 用 */
+          min-height: -webkit-fill-available;
+        }
+      }
+      /* セーフエリア用ユーティリティ（必要に応じて要素に付与） */
+      .safe-top    { padding-top:    max(12px, env(safe-area-inset-top)); }
+      .safe-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
     </style>
 
     <title>Taste Map</title>
@@ -38,6 +49,6 @@
   <body>
     <noscript>このアプリを使用するには JavaScript を有効にしてください。</noscript>
     <div id="root"></div>
-    <!-- CRA ではバンドルは build 時に自動挿入されます -->
+    <!-- CRA / Vite などではビルド時にバンドルが挿入されます -->
   </body>
 </html>
