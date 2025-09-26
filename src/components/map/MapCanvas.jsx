@@ -63,7 +63,7 @@ function clampViewState(nextVS, panBounds, sizePx) {
 
   // 過剰な“遊び”の上限（可動域比率）
   const MAX_SLACK_RATIO_X = 0.6;
-  const MAX_SLACK_RATIO_Y = 0.6;
+  const MAX_SLACK_RATIO_Y = 0.9;
 
   // X 範囲
   let minX, maxX;
