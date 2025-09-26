@@ -49,7 +49,7 @@ function clampViewState(nextVS, panBounds, sizePx) {
 
   // 係数（体感調整）：Xは控えめ、Yを広めに
   const SLACK_FACTOR_X = 0.9;
-  const SLACK_FACTOR_Y = 2.0;
+  const SLACK_FACTOR_Y = 5.0;
 
   // X 範囲
   let minX, maxX;
