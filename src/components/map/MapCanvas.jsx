@@ -1,4 +1,5 @@
-import React, { useMemo } from "react";
+// src/components/map/MapCanvas.jsx
+import React, { useMemo, useRef, useCallback } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrthographicView } from "@deck.gl/core";
 import { ScatterplotLayer, LineLayer, GridCellLayer, PathLayer, IconLayer } from "@deck.gl/layers";
@@ -7,13 +8,54 @@ import {
   GRID_CELL_SIZE, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX, HEAT_GAMMA, HEAT_CLIP_PCT,
   HEAT_COLOR_LOW, HEAT_COLOR_HIGH,
   TYPE_COLOR_MAP, ORANGE,
-} from "../../ui/constants"
+} from "../../ui/constants";
 
 // 小ユーティリティ
 const EPS = 1e-9;
 const toIndex  = (v) => Math.floor((v + EPS) / GRID_CELL_SIZE);
 const toCorner = (i) => i * GRID_CELL_SIZE;
 const keyOf    = (ix, iy) => `${ix},${iy}`;
+
+/** ===== 画面サイズ（px）とズームから世界座標での半幅・半高を計算（Orthographic） =====
+ * Orthographic の scale は 2^zoom、1px あたりの世界座標幅は 1/scale。
+ * よって半幅[world] = width(px) / (2 * scale)
+ */
+function halfSizeWorld(zoom, sizePx) {
+  const scale = Math.pow(2, Number(zoom) || 0);
+  const w = Math.max(1, sizePx?.width  || 1);
+  const h = Math.max(1, sizePx?.height || 1);
+  return { halfW: w / (2 * scale), halfH: h / (2 * scale) };
+}
+
+/** ===== panBounds と画面サイズに応じて target/zoom をクランプ ===== */
+function clampViewState(nextVS, panBounds, sizePx) {
+  const zoom = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, nextVS.zoom));
+  const { halfW, halfH } = halfSizeWorld(zoom, sizePx);
+
+  const xmin = panBounds?.xmin ?? -Infinity;
+  const xmax = panBounds?.xmax ??  Infinity;
+  const ymin = panBounds?.ymin ?? -Infinity;
+  const ymax = panBounds?.ymax ??  Infinity;
+
+  const worldW = xmax - xmin;
+  const worldH = ymax - ymin;
+
+  // 画面が境界より大きい場合は、中心を境界の中央に固定
+  let cx, cy;
+  if (!Number.isFinite(worldW) || worldW <= halfW * 2) {
+    cx = (xmin + xmax) / 2;
+  } else {
+    cx = Math.max(xmin + halfW, Math.min(xmax - halfW, nextVS.target[0]));
+  }
+
+  if (!Number.isFinite(worldH) || worldH <= halfH * 2) {
+    cy = (ymin + ymax) / 2;
+  } else {
+    cy = Math.max(ymin + halfH, Math.min(ymax - halfH, nextVS.target[1]));
+  }
+
+  return { ...nextVS, zoom, target: [cx, cy, 0] };
+}
 
 export default function MapCanvas({
   data,
@@ -27,7 +69,10 @@ export default function MapCanvas({
   setViewState,
   onPickWine,        // (item) => void
 }) {
-  // グリッド線
+  // DeckGL のキャンバスサイズを保持（onResize で更新）
+  const sizeRef = useRef({ width: 1, height: 1 });
+
+  // ============ グリッド線 ============
   const { thinLines, thickLines } = useMemo(() => {
     const interval = GRID_CELL_SIZE;
     const thin = [], thick = [];
@@ -40,7 +85,7 @@ export default function MapCanvas({
     return { thinLines: thin, thickLines: thick };
   }, []);
 
-  // セル集計（評価フラグ）
+  // ============ セル集計（評価フラグ） ============
   const cells = useMemo(() => {
     const map = new Map();
     data.forEach((d) => {
@@ -56,7 +101,7 @@ export default function MapCanvas({
     return Array.from(map.values());
   }, [data, userRatings]);
 
-  // ハイライト（平均値のヒート）
+  // ============ ハイライト（平均値のヒート） ============
   const { heatCells, vMin, vMax, avgHash } = useMemo(() => {
     if (!highlight2D) return { heatCells: [], vMin: 0, vMax: 1, avgHash: "empty" };
     const sumMap = new Map(), cntMap = new Map();
@@ -86,7 +131,7 @@ export default function MapCanvas({
     return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
   }, [data, highlight2D]);
 
-  // レイヤ：打点
+  // ============ レイヤ：打点 ============
   const mainLayer = useMemo(() => new ScatterplotLayer({
     id: "scatter",
     data,
@@ -101,7 +146,7 @@ export default function MapCanvas({
     onClick: null,
   }), [data, selectedJAN]);
 
-  // レイヤ：評価リング
+  // ============ レイヤ：評価リング ============
   const ratingCircleLayers = useMemo(() => {
     const lineColor = [255, 0, 0, 255];
     return Object.entries(userRatings).flatMap(([jan, ratingObj]) => {
@@ -134,14 +179,17 @@ export default function MapCanvas({
     });
   }, [data, userRatings]);
 
-  // レイヤ：嗜好コンパス/ユーザーピン
+  // ============ レイヤ：嗜好コンパス/ユーザーピン ============
   const compassLayer = useMemo(() => {
     if (!compassPoint) return null;
     return new IconLayer({
       id: "preference-compass",
       data: [{ position: [compassPoint[0], -compassPoint[1], 0] }],
       getPosition: (d) => d.position,
-      getIcon: () => ({ url: `${process.env.PUBLIC_URL || ""}/img/compass.png`, width: 310, height: 310, anchorX: 155, anchorY: 155 }),
+      getIcon: () => ({
+        url: `${process.env.PUBLIC_URL || ""}/img/compass.png`,
+        width: 310, height: 310, anchorX: 155, anchorY: 155
+      }),
       sizeUnits: "meters",
       getSize: 0.4,
       billboard: true,
@@ -156,7 +204,10 @@ export default function MapCanvas({
       id: "user-pin-compass",
       data: [{ position: [userPin[0], -userPin[1], 0] }],
       getPosition: (d) => d.position,
-      getIcon: () => ({ url: `${process.env.PUBLIC_URL || ""}/img/compass.png`, width: 310, height: 310, anchorX: 155, anchorY: 155 }),
+      getIcon: () => ({
+        url: `${process.env.PUBLIC_URL || ""}/img/compass.png`,
+        width: 310, height: 310, anchorX: 155, anchorY: 155
+      }),
       sizeUnits: "meters",
       getSize: 0.5,
       billboard: true,
@@ -165,8 +216,8 @@ export default function MapCanvas({
     });
   }, [userPin]);
 
-  // 近傍探索（クリック時）
-  const findNearestWine = React.useCallback((coord) => {
+  // ============ 近傍探索（クリック時） ============
+  const findNearestWine = useCallback((coord) => {
     if (!coord || !Array.isArray(data) || data.length === 0) return null;
     const [cx, cy] = coord;
     let best = null, bestD2 = Infinity;
@@ -185,16 +236,29 @@ export default function MapCanvas({
       viewState={viewState}
       style={{ position: "absolute", inset: 0 }}
       useDevicePixels
-      onViewStateChange={({ viewState: vs }) => {
-        const z = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom));
-        const limitedTarget = [
-          Math.max(panBounds.xmin, Math.min(panBounds.xmax, vs.target[0])),
-          Math.max(panBounds.ymin, Math.min(panBounds.ymax, vs.target[1])),
-          vs.target[2],
-        ];
-        setViewState({ ...vs, zoom: z, target: limitedTarget });
+      // キャンバスサイズを保持（クランプ計算に使用）
+      onResize={({ width, height }) => {
+        sizeRef.current = { width, height };
+        // リサイズ時も見切れないよう即時クランプ
+        const clamped = clampViewState(viewState, panBounds, sizeRef.current);
+        if (clamped.zoom !== viewState.zoom ||
+            clamped.target[0] !== viewState.target[0] ||
+            clamped.target[1] !== viewState.target[1]) {
+          setViewState(clamped);
+        }
       }}
-      controller={{ dragPan: true, dragRotate: false, minZoom: ZOOM_LIMITS.min, maxZoom: ZOOM_LIMITS.max, inertia: false }}
+      // ユーザー操作・プログラム変更の両方をクランプ
+      onViewStateChange={({ viewState: vs }) => {
+        const clamped = clampViewState(vs, panBounds, sizeRef.current);
+        setViewState(clamped);
+      }}
+      controller={{
+        dragPan: true,
+        dragRotate: false,
+        minZoom: ZOOM_LIMITS.min,
+        maxZoom: ZOOM_LIMITS.max,
+        inertia: false, // 惰性スクロール無効化で“暴れ”を軽減
+      }}
       onClick={(info) => {
         const picked = info?.object;
         if (picked?.JAN) { onPickWine?.(picked); return; }
@@ -240,8 +304,24 @@ export default function MapCanvas({
               updateTriggers: { getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash] },
             })
           : null,
-        new LineLayer({ id: "grid-lines-thin",  data: thinLines,  getSourcePosition: d=>d.sourcePosition, getTargetPosition: d=>d.targetPosition, getColor: [200,200,200,100], getWidth: 1,    widthUnits: "pixels" }),
-        new LineLayer({ id: "grid-lines-thick", data: thickLines, getSourcePosition: d=>d.sourcePosition, getTargetPosition: d=>d.targetPosition, getColor: [180,180,180,120], getWidth: 1.25, widthUnits: "pixels" }),
+        new LineLayer({
+          id: "grid-lines-thin",
+          data: thinLines,
+          getSourcePosition: d => d.sourcePosition,
+          getTargetPosition: d => d.targetPosition,
+          getColor: [200, 200, 200, 100],
+          getWidth: 1,
+          widthUnits: "pixels",
+        }),
+        new LineLayer({
+          id: "grid-lines-thick",
+          data: thickLines,
+          getSourcePosition: d => d.sourcePosition,
+          getTargetPosition: d => d.targetPosition,
+          getColor: [180, 180, 180, 120],
+          getWidth: 1.25,
+          widthUnits: "pixels",
+        }),
         userPinCompassLayer,
         compassLayer,
         mainLayer,
