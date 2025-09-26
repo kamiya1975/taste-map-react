@@ -81,8 +81,8 @@ function clampViewState(nextVS, panBounds, sizePx) {
   let minY, maxY;
   if (worldH >= 2 * halfH) {
     // 画面サイズや世界サイズに応じた“はみ出し余白”を加える
-    const OVERPAN_Y_BY_HALF = 0.20;    // 画面半高の20%ぶんオーバー（好みで 0.1〜0.4）
-    const OVERPAN_Y_BY_WORLD = 0.05;   // 世界高の5%ぶんオーバー（好みで 0.02〜0.1）
+    const OVERPAN_Y_BY_HALF = 0.30;    // 画面半高の20%ぶんオーバー（好みで 0.1〜0.4）
+    const OVERPAN_Y_BY_WORLD = 0.10;   // 世界高の5%ぶんオーバー（好みで 0.02〜0.1）
     const overY = Math.max(halfH * OVERPAN_Y_BY_HALF, worldH * OVERPAN_Y_BY_WORLD);
     minY = ymin + halfH - overY;
     maxY = ymax - halfH + overY;
