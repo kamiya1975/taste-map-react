@@ -19,7 +19,7 @@ html, body, #root {
   }
 }
 
-/* 安全領域ユーティリティ（必要な要素に付与して使う） */
+/* 安全領域ユーティリティ */
 .safe-top    { padding-top:    max(12px, env(safe-area-inset-top)); }
 .safe-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 
@@ -35,20 +35,17 @@ body,
 /* =========================
    Map（DeckGL）まわり
    ========================= */
-/* DeckGLを包むラッパのセレクタは実プロジェクトに合わせてどれか使う */
 #map-root, .map-root, .deck-container {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   contain: strict;
-
-  /* ← Mapページだけに“固定っぽい”制御を限定適用（グローバルでは付けない） */
-  overscroll-behavior: none;
-  touch-action: pan-x pan-y;   /* ピンチはアプリ側で制御するならこのまま */
+  overscroll-behavior: none;  /* ← Mapだけに適用 */
+  touch-action: pan-x pan-y;
 }
 
-/* 右下固定ボタン等（例） */
+/* 右下固定ボタン（例） */
 .fab-bottom-right {
   position: absolute;
   right: 10px;
@@ -56,30 +53,37 @@ body,
 }
 
 /* =========================
-   Drawer / Product（スクロール可にする要点）
+   Drawer / Product（スクロール復活の肝）
    ========================= */
-/* MUI Drawer 本体を縦Flexに。中身（iframe）を伸ばせるようにする */
+/* 1) Paperは縦Flex。中身を伸ばせるようにする */
 .MuiDrawer-paper, .MuiDrawer-paperAnchorBottom {
   display: flex !important;
   flex-direction: column !important;
-  overflow: hidden;                 /* 枠外は隠す */
-  max-height: 100dvh;               /* 露骨なはみ出し防止 */
+  max-height: 100dvh;
+  /* ここで overflow: hidden にしてもOKだが、子に min-height:0 を必ず付ける */
+  overflow: hidden;
+  pointer-events: auto;                 /* 透過を無効化（背面Mapに奪われない） */
 }
 
-/* Drawer 内のヘッダー（ボタン行など） */
+/* 2) Drawer配下はタッチスクロールを許可 */
+.MuiDrawer-paper, .MuiDrawer-paper * {
+  touch-action: auto !important;
+}
+
+/* 3) ヘッダー行（閉じるボタン等）は固定高 */
 .drawer-header {
   flex: 0 0 auto;
 }
 
-/* Drawer 内のスクロール領域（iframeを包むdivに付けると安定） */
+/* 4) スクロール領域のラッパ（iframeをこの中に入れる） */
 .drawer-scroll {
   flex: 1 1 auto;
-  min-height: 0;                    /* ← Flex内での子コンテンツ高さ計算の肝 */
+  min-height: 0;                        /* ← これが無いと子がはみ出してスクロール不能に */
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-/* 直接 iframe を入れている場合：iframe自体をFlexで伸ばす */
+/* 5) iframe 自体は“領域にフィットさせるだけ”。スクロールは中身で起こす */
 .product-iframe,
 .product-frame,
 .MuiDrawer-paper iframe {
@@ -89,43 +93,29 @@ body,
   height: 100% !important;
   border: 0;
   display: block;
+  touch-action: auto;                    /* iOSでの縦スクロールを確実に許可 */
+  overscroll-behavior: contain;
 }
 
-/* ===== iframe 内（商品ページ自身のCSS）に入れると良い最小セット ===== */
-html, body {
-  margin: 0;
-  padding: 0;
-  height: auto;                  /* ← 固定しない：中身が長ければスクロール */
-  min-height: 100%;
-  background: #fff;
-}
-body {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch; /* iOS慣性スクロール */
-}
-
-/* もし Drawer の Paper にカスタムクラスを付けるなら（任意） */
+/* 6) もし Paper に独自クラスを付けるなら（任意） */
 .drawer-paper {
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
 }
 
 /* =========================
-   Intro（横スワイプのページ）
+   Intro（横スワイプ）
    ========================= */
 .intro-wrapper {
-  position: relative;           /* インジケータ/ボタンの基準 */
+  position: relative;
   width: 100vw;
   height: 100dvh;
-  overflow: hidden;             /* 縦方向は固定 */
+  overflow: hidden;
   background: #fff;
-
-  /* Introは横スクロールを許可（Mapと住み分け） */
   overscroll-behavior-x: contain;
   overscroll-behavior-y: none;
-  touch-action: pan-x;          /* 横スワイプ優先 */
+  touch-action: pan-x;
 }
-
 .slides-container {
   display: flex;
   width: 100vw;
@@ -138,7 +128,6 @@ body {
   scrollbar-width: none;
 }
 .slides-container::-webkit-scrollbar { display: none; }
-
 .slide {
   flex: 0 0 100vw;
   width: 100vw;
@@ -159,8 +148,8 @@ body {
   display: flex;
   justify-content: center;
   gap: 8px;
-  z-index: 50;                 /* 他UIより前面へ */
-  pointer-events: none;        /* タップを邪魔しない */
+  z-index: 50;
+  pointer-events: none;
 }
 .dot {
   width: 10px;
@@ -176,7 +165,7 @@ body {
   opacity: 1;
 }
 
-/* フッターボタン（Intro用） */
+/* Introフッターボタン */
 .footer-button {
   position: absolute;
   left: 0;
@@ -202,7 +191,7 @@ body {
    ========================= */
 .bottom-panel {
   position: fixed;
-  bottom: -250px;              /* 初期は隠す */
+  bottom: -250px;
   left: 0;
   width: 100%;
   height: 250px;
@@ -221,8 +210,6 @@ body {
   margin: 8px auto;
 }
 .panel-content { padding: 8px 16px; font-size: 14px; }
-
-/* スクロールする内部パネル（例：リスト） */
 .panel-scroll {
   overflow: auto;
   overscroll-behavior: contain;
@@ -235,7 +222,7 @@ body {
 .taste-slider {
   --track-h: 6px;   /* バーの太さ */
   --thumb:   28px;  /* ●の直径   */
-  --nudge:   -3px;  /* 追加の上方向微調整（-1〜-4pxあたりで調整） */
+  --nudge:   -3px;  /* 追加の上方向微調整 */
 
   appearance: none;
   -webkit-appearance: none;
@@ -255,7 +242,6 @@ body {
   border-radius: 9999px;
   background: var(--range, #e9e9e9);
 }
-/* Thumb(WebKit) */
 .taste-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: var(--thumb);
@@ -264,11 +250,9 @@ body {
   background: #fff;
   border: 0;
   box-shadow: 0 2px 6px rgba(0,0,0,.25);
-  /* 中央寄せ = -(thumb - track)/2 + 追加微調整 */
   margin-top: calc((var(--thumb) - var(--track-h)) / -2 + var(--nudge));
   cursor: pointer;
 }
-/* Thumb(Firefox) */
 .taste-slider::-moz-range-thumb {
   width: var(--thumb);
   height: var(--thumb);
