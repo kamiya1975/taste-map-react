@@ -357,7 +357,12 @@ export default function MapCanvas({
       // ユーザー操作・プログラム変更の両方をクランプ
       onViewStateChange={({ viewState: vs }) => {
         const clamped = clampViewState(vs, panBounds, sizeRef.current);
-        setViewState(clamped);
+        // Y軸を少し上に持ち上げる（値はお好みで調整）
+        const Y_SHIFT = 0.5; 
+        setViewState({
+           ...clamped,
+           target: [clamped.target[0], clamped.target[1] + Y_SHIFT, clamped.target[2]],
+        });
       }}
       controller={{
         dragPan: true,
