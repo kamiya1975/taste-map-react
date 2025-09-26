@@ -4,7 +4,7 @@ import DeckGL from "@deck.gl/react";
 import { OrthographicView } from "@deck.gl/core";
 import { ScatterplotLayer, LineLayer, GridCellLayer, PathLayer, IconLayer } from "@deck.gl/layers";
 import {
-  ZOOM_LIMITS, INITIAL_ZOOM,
+  ZOOM_LIMITS,
   GRID_CELL_SIZE, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX, HEAT_GAMMA, HEAT_CLIP_PCT,
   HEAT_COLOR_LOW, HEAT_COLOR_HIGH,
   TYPE_COLOR_MAP, ORANGE,
@@ -12,8 +12,6 @@ import {
 
 // 小ユーティリティ
 const EPS = 1e-9;
-const x = Math.max(minX + EPS_EDGE, Math.min(maxX - EPS_EDGE, nextVS.target[0]));
-const y = Math.max(minY + EPS_EDGE, Math.min(maxY - EPS_EDGE, nextVS.target[1]));
 const toIndex  = (v) => Math.floor((v + EPS) / GRID_CELL_SIZE);
 const toCorner = (i) => i * GRID_CELL_SIZE;
 const keyOf    = (ix, iy) => `${ix},${iy}`;
@@ -29,7 +27,7 @@ function halfSizeWorld(zoom, sizePx) {
   return { halfW: w / (2 * scale), halfH: h / (2 * scale) };
 }
 
-// 置き換え：MapCanvas.jsx 内の clampViewState
+// ===== 可動域クランプ（余白スラックつき） =====
 function clampViewState(nextVS, panBounds, sizePx) {
   const zoom = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, nextVS.zoom));
   const { halfW, halfH } = halfSizeWorld(zoom, sizePx);
@@ -42,32 +40,29 @@ function clampViewState(nextVS, panBounds, sizePx) {
   const worldW = xmax - xmin;
   const worldH = ymax - ymin;
 
-  // “可動域 < 画面” のときも、中央 ± slack/2 で少し動けるようにする
   const centerX = (xmin + xmax) / 2;
   const centerY = (ymin + ymax) / 2;
 
-  // 理論上のスラック量（px換算ではなく world 座標）
+  // 可動域より画面が大きいときの“遊び”量（world単位）
   const slackX = Math.max(0, 2 * halfW - worldW);
   const slackY = Math.max(0, 2 * halfH - worldH);
 
-  // 体感を良くするためにスラックを少し残す（100%でもOK。好みで 0.8〜1.0）
+  // 係数（体感調整）：Xは控えめ、Yを広めに
   const SLACK_FACTOR_X = 0.9;
   const SLACK_FACTOR_Y = 2.0;
 
-  // X
+  // X 範囲
   let minX, maxX;
   if (worldW >= 2 * halfW) {
-    // 画面が可動域より小さい（通常ケース）：見切れない範囲にクランプ
     minX = xmin + halfW;
     maxX = xmax - halfW;
   } else {
-    // 画面が可動域より大きい：中央の周りで slackX/2 だけ動ける
     const sx = slackX * SLACK_FACTOR_X;
     minX = centerX - sx / 2;
     maxX = centerX + sx / 2;
   }
 
-  // Y
+  // Y 範囲
   let minY, maxY;
   if (worldH >= 2 * halfH) {
     minY = ymin + halfH;
@@ -78,9 +73,12 @@ function clampViewState(nextVS, panBounds, sizePx) {
     maxY = centerY + sy / 2;
   }
 
-  // nextVS.target は [x, y, z] 想定
-  const x = Math.max(minX, Math.min(maxX, nextVS.target[0]));
-  const y = Math.max(minY, Math.min(maxY, nextVS.target[1]));
+  // 端での“張り付き感”を和らげる微小余白
+  const EPS_EDGE = 1e-6;
+
+  // nextVS.target は [x, y, z]
+  const x = Math.max(minX + EPS_EDGE, Math.min(maxX - EPS_EDGE, nextVS.target[0]));
+  const y = Math.max(minY + EPS_EDGE, Math.min(maxY - EPS_EDGE, nextVS.target[1]));
 
   return { ...nextVS, zoom, target: [x, y, 0] };
 }
