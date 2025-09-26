@@ -84,16 +84,14 @@ body,
 }
 
 /* 5) iframe 自体は“領域にフィットさせるだけ”。スクロールは中身で起こす */
-.product-iframe,
-.product-frame,
-.MuiDrawer-paper iframe {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
+.product-iframe {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  height: 100%;              /* ラッパが高さを管理。!important は付けない */
   border: 0;
   display: block;
-  touch-action: auto;                    /* iOSでの縦スクロールを確実に許可 */
+  touch-action: auto;
   overscroll-behavior: contain;
 }
 

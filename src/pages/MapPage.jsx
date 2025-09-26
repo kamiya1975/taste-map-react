@@ -936,9 +936,9 @@ function MapPage() {
         onClose={() => {
           setProductDrawerOpen(false);
           setSelectedJAN(null);
-          setSelectedJANFromSearch(null); // 検索ハイライトを消す
-          setHideHeartForJAN(null);       // ← 追加：閉じたら掃除
-        }}
+          setSelectedJANFromSearch(null);
+          setHideHeartForJAN(null);
+       }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: paperBaseStyle }}
       >
@@ -947,7 +947,7 @@ function MapPage() {
             height: "48px",
             padding: "8px 12px",
             borderBottom: "1px solid #eee",
-            display: "flex",
+           display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             background: "#f9f9f9",
@@ -959,51 +959,55 @@ function MapPage() {
               setProductDrawerOpen(false);
               setSelectedJAN(null);
               setSelectedJANFromSearch(null);
-              setHideHeartForJAN(null); // ← 追加
+              setHideHeartForJAN(null);
             }}
             style={{
               background: "#eee",
               border: "1px solid #ccc",
               padding: "6px 10px",
               borderRadius: "4px",
-              cursor: "pointer",
+             cursor: "pointer",
             }}
           >
             閉じる
           </button>
         </div>
-        {selectedJAN ? (
-          <iframe
-            ref={iframeRef}
-            title={`product-${selectedJAN}`}
-            src={(() => {
-              const jan = String(selectedJAN ?? '');
-              const fromRated = hideHeartForJAN === jan; // ← state を唯一の真実に
-              return `${process.env.PUBLIC_URL || ''}/products/${jan}${fromRated ? '?fromRated=1' : ''}`;
-            })()}
-            style={{ border: "none", width: "100%", height: `calc(${DRAWER_HEIGHT} - 48px)` }}
-            onLoad={() => {
-              const jan = String(selectedJAN);
-              const isFav = !!favorites[jan];
-              try {
-                // ハート状態
-                iframeRef.current?.contentWindow?.postMessage(
-                  { type: "SET_FAVORITE", jan, value: isFav },
-                  "*"
-                );
-                if (hideHeartForJAN === jan) {
+
+        {/* ▼ スクロール領域（ラッパ） */}
+        <div className="drawer-scroll">
+          {selectedJAN ? (
+            <iframe
+             ref={iframeRef}
+              className="product-iframe"
+              title={`product-${selectedJAN}`}
+              src={(() => {
+               const jan = String(selectedJAN ?? "");
+                const fromRated = hideHeartForJAN === jan;
+                return `${process.env.PUBLIC_URL || ""}/products/${jan}${
+                  fromRated ? "?fromRated=1" : ""
+                }`;
+              })()}
+              onLoad={() => {
+                const jan = String(selectedJAN);
+                const isFav = !!favorites[jan];
+                try {
                   iframeRef.current?.contentWindow?.postMessage(
-                    { type: "HIDE_HEART", jan, value: true },
+                    { type: "SET_FAVORITE", jan, value: isFav },
                     "*"
                   );
-                }
-              } catch {}
-              // REQUEST_STATE 側で確実にフラグを下ろす
-            }}
-          />
-        ) : (
-          <div style={{ padding: 16 }}>商品を選択してください。</div>
-        )}
+                  if (hideHeartForJAN === jan) {
+                    iframeRef.current?.contentWindow?.postMessage(
+                      { type: "HIDE_HEART", jan, value: true },
+                      "*"
+                    );
+                  }
+                } catch {}
+              }}
+            />
+          ) : (
+            <div style={{ padding: 16 }}>商品を選択してください。</div>
+          )}
+        </div>
       </Drawer>
     </div>
   );
