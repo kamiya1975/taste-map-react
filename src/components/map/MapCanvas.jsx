@@ -80,10 +80,13 @@ function clampViewState(nextVS, panBounds, sizePx) {
   // Y 範囲
   let minY, maxY;
   if (worldH >= 2 * halfH) {
-    // 画面サイズや世界サイズに応じた“はみ出し余白”を加える
-    const OVERPAN_Y_BY_HALF = 0.30;    // 画面半高の20%ぶんオーバー（好みで 0.1〜0.4）
-    const OVERPAN_Y_BY_WORLD = 0.10;   // 世界高の5%ぶんオーバー（好みで 0.02〜0.1）
-    const overY = Math.max(halfH * OVERPAN_Y_BY_HALF, worldH * OVERPAN_Y_BY_WORLD);
+    // 画面が世界に占める比率（0=ズームイン大、1=世界と同等サイズに近い）
+    const r = Math.max(0, Math.min(1, (2 * halfH) / (worldH || 1)));
+    // ズームイン時は小さく、引くほど大きく：0.05→0.35 を線形補間
+    const OVERPAN_MIN = 0.05;  // ズームイン時（r≈0）の半高比
+    const OVERPAN_MAX = 0.35;  // r≈1 付近の半高比
+    const k = OVERPAN_MIN + (OVERPAN_MAX - OVERPAN_MIN) * r;
+    const overY = halfH * k;   // 半高ベースに依存させるのが直感的
     minY = ymin + halfH - overY;
     maxY = ymax - halfH + overY;
   } else {
