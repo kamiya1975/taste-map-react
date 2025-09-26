@@ -57,7 +57,7 @@ function clampViewState(nextVS, panBounds, sizePx) {
   // 係数（体感調整）：Xは控えめ、Yを広めに（Safariの見かけ高さ差を緩和）
   const isSafari = typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
   const SLACK_FACTOR_X = 0.9;
-  const SLACK_FACTOR_Y = isSafari ? 10.0 : 30.0;
+  const SLACK_FACTOR_Y = isSafari ? 10.0 : 20.0;
 
   // X 範囲
   let minX, maxX;
