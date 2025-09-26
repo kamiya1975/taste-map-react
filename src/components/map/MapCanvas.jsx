@@ -59,7 +59,7 @@ function clampViewState(nextVS, panBounds, sizePx) {
   // 係数（体感調整）：Xは控えめ、Yを広めに（Safariの見かけ高さ差を緩和）
   const isSafari = typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
   const SLACK_FACTOR_X = 0.9;
-  let   SLACK_FACTOR_Y = isSafari ? 20.0 : 20.0; // Safariは広め、他はやや控えめ
+  let   SLACK_FACTOR_Y = isSafari ? 15.0 : 20.0; // Safariは広め、他はやや控えめ
 
   // 過剰な“遊び”の上限（可動域比率）
   const MAX_SLACK_RATIO_X = 0.6;
@@ -80,8 +80,12 @@ function clampViewState(nextVS, panBounds, sizePx) {
   // Y 範囲
   let minY, maxY;
   if (worldH >= 2 * halfH) {
-    minY = ymin + halfH;
-    maxY = ymax - halfH;
+    // 画面サイズや世界サイズに応じた“はみ出し余白”を加える
+    const OVERPAN_Y_BY_HALF = 0.20;    // 画面半高の20%ぶんオーバー（好みで 0.1〜0.4）
+    const OVERPAN_Y_BY_WORLD = 0.05;   // 世界高の5%ぶんオーバー（好みで 0.02〜0.1）
+    const overY = Math.max(halfH * OVERPAN_Y_BY_HALF, worldH * OVERPAN_Y_BY_WORLD);
+    minY = ymin + halfH - overY;
+    maxY = ymax - halfH + overY;
   } else {
     let sy = slackY * SLACK_FACTOR_Y;
     if (Number.isFinite(worldH)) sy = Math.min(sy, worldH * MAX_SLACK_RATIO_Y);
