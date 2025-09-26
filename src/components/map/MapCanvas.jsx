@@ -16,15 +16,17 @@ const toIndex  = (v) => Math.floor((v + EPS) / GRID_CELL_SIZE);
 const toCorner = (i) => i * GRID_CELL_SIZE;
 const keyOf    = (ix, iy) => `${ix},${iy}`;
 
-// 追加：見えている実高さを取得（Safari URLバーを除外）
+// ===== 実際に見えているビューポートの px サイズ（Safari URLバーを除外） =====
 function getEffectiveSizePx(sizePx) {
-  let width = Math.max(1, sizePx?.width || 1);
-  let height = Math.max(1, sizePx?.height || 1);
+  let w = Math.max(1, sizePx?.width  || 1);
+  let h = Math.max(1, sizePx?.height || 1);
   if (typeof window !== "undefined" && window.visualViewport) {
+    const vvW = Math.floor(window.visualViewport.width  || 0);
     const vvH = Math.floor(window.visualViewport.height || 0);
-    if (vvH > 0) height = vvH;
+    if (vvW > 0) w = vvW;
+    if (vvH > 0) h = vvH;
   }
-  return { width, height };
+  return { width: w, height: h };
 }
 
 /** ===== 画面サイズ（px）とズームから世界座標での半幅・半高を計算（Orthographic） ===== */
@@ -34,7 +36,7 @@ function halfSizeWorld(zoom, sizePx) {
   return { halfW: w / (2 * scale), halfH: h / (2 * scale) };
 }
 
-// ===== 可動域クランプ（余白スラックつき） =====
+// ===== 可動域クランプ（余白スラックつき & 上限キャップ） =====
 function clampViewState(nextVS, panBounds, sizePx) {
   const zoom = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, nextVS.zoom));
   const { halfW, halfH } = halfSizeWorld(zoom, sizePx);
@@ -57,7 +59,11 @@ function clampViewState(nextVS, panBounds, sizePx) {
   // 係数（体感調整）：Xは控えめ、Yを広めに（Safariの見かけ高さ差を緩和）
   const isSafari = typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
   const SLACK_FACTOR_X = 0.9;
-  const SLACK_FACTOR_Y = isSafari ? 10.0 : 20.0;
+  let   SLACK_FACTOR_Y = isSafari ? 12.0 : 18.0; // Safariは広め、他はやや控えめ
+
+  // 過剰な“遊び”の上限（可動域比率）
+  const MAX_SLACK_RATIO_X = 0.6;
+  const MAX_SLACK_RATIO_Y = 0.6;
 
   // X 範囲
   let minX, maxX;
@@ -65,7 +71,8 @@ function clampViewState(nextVS, panBounds, sizePx) {
     minX = xmin + halfW;
     maxX = xmax - halfW;
   } else {
-    const sx = slackX * SLACK_FACTOR_X;
+    let sx = slackX * SLACK_FACTOR_X;
+    if (Number.isFinite(worldW)) sx = Math.min(sx, worldW * MAX_SLACK_RATIO_X);
     minX = centerX - sx / 2;
     maxX = centerX + sx / 2;
   }
@@ -76,7 +83,8 @@ function clampViewState(nextVS, panBounds, sizePx) {
     minY = ymin + halfH;
     maxY = ymax - halfH;
   } else {
-    const sy = slackY * SLACK_FACTOR_Y;
+    let sy = slackY * SLACK_FACTOR_Y;
+    if (Number.isFinite(worldH)) sy = Math.min(sy, worldH * MAX_SLACK_RATIO_Y);
     minY = centerY - sy / 2;
     maxY = centerY + sy / 2;
   }
@@ -106,13 +114,29 @@ export default function MapCanvas({
   // DeckGL のキャンバスサイズを保持（onResize で更新）
   const sizeRef = useRef({ width: 1, height: 1 });
 
-  // iOS Safari の URLバー出入りで高さが変わる → visualViewport 監視でクランプ
+  // ===== Safari 初期レイアウトの高さブレ対策：初回1フレーム遅延で再クランプ =====
+  useEffect(() => {
+    let raf = requestAnimationFrame(() => {
+      const clamped = clampViewState(viewState, panBounds, sizeRef.current);
+      if (clamped.zoom !== viewState.zoom ||
+          clamped.target[0] !== viewState.target[0] ||
+          clamped.target[1] !== viewState.target[1]) {
+        setViewState(clamped);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+    // panBounds が確定したタイミングで一度
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panBounds?.xmin, panBounds?.xmax, panBounds?.ymin, panBounds?.ymax]);
+
+  // ===== visualViewport（URLバー出入り）でサイズを追随 → 再クランプ =====
   useEffect(() => {
     if (!window.visualViewport) return;
     const onVV = () => {
+      const vv = window.visualViewport;
       sizeRef.current = {
-        width: sizeRef.current.width,
-        height: Math.floor(window.visualViewport.height || sizeRef.current.height),
+        width:  Math.floor(vv?.width  || sizeRef.current.width),
+        height: Math.floor(vv?.height || sizeRef.current.height),
       };
       const clamped = clampViewState(viewState, panBounds, sizeRef.current);
       if (clamped.zoom !== viewState.zoom ||
@@ -126,6 +150,24 @@ export default function MapCanvas({
     return () => {
       window.visualViewport.removeEventListener("resize", onVV);
       window.visualViewport.removeEventListener("scroll", onVV);
+    };
+  }, [viewState, panBounds, setViewState]);
+
+  // ===== bfcache 復帰 / 画面の向き変更でも再クランプ =====
+  useEffect(() => {
+    const onPageShow = () => {
+      const clamped = clampViewState(viewState, panBounds, sizeRef.current);
+      setViewState(clamped);
+    };
+    const onOrientation = () => {
+      const clamped = clampViewState(viewState, panBounds, sizeRef.current);
+      setViewState(clamped);
+    };
+    window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("orientationchange", onOrientation);
+    return () => {
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("orientationchange", onOrientation);
     };
   }, [viewState, panBounds, setViewState]);
 
@@ -295,7 +337,8 @@ export default function MapCanvas({
       useDevicePixels
       // キャンバスサイズを保持（クランプ計算に使用）
       onResize={({ width, height }) => {
-        sizeRef.current = { width, height };
+        // DeckGLの通知サイズに visualViewport 補正を適用
+        sizeRef.current = getEffectiveSizePx({ width, height });
         // リサイズ時も見切れないよう即時クランプ
         const clamped = clampViewState(viewState, panBounds, sizeRef.current);
         if (clamped.zoom !== viewState.zoom ||
