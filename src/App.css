@@ -91,6 +91,19 @@ body,
   display: block;
 }
 
+/* ===== iframe 内（商品ページ自身のCSS）に入れると良い最小セット ===== */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: auto;                  /* ← 固定しない：中身が長ければスクロール */
+  min-height: 100%;
+  background: #fff;
+}
+body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* iOS慣性スクロール */
+}
+
 /* もし Drawer の Paper にカスタムクラスを付けるなら（任意） */
 .drawer-paper {
   border-top-left-radius: 12px;
