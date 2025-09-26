@@ -23,7 +23,7 @@ export const paperBaseStyle = {
 // === 追加: Map共通定数 ===
 export const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 export const CENTER_Y_OFFSET = -3.5;
-export const ZOOM_LIMITS = { min: 5.5, max: 7.0 };
+export const ZOOM_LIMITS = { min: 5.5, max: 7.25 };
 export const INITIAL_ZOOM = 6;
 
 export const TYPE_COLOR_MAP = {
