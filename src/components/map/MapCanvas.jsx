@@ -358,7 +358,7 @@ export default function MapCanvas({
       onViewStateChange={({ viewState: vs }) => {
         const clamped = clampViewState(vs, panBounds, sizeRef.current);
         // Y軸を少し上に持ち上げる（値はお好みで調整）
-        const Y_SHIFT = 0.5; 
+        const Y_SHIFT = 0.8; 
         setViewState({
            ...clamped,
            target: [clamped.target[0], clamped.target[1] + Y_SHIFT, clamped.target[2]],
