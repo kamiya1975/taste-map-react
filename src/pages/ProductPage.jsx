@@ -350,6 +350,9 @@ export default function ProductPage() {
   return (
     <div
       style={{
+        height: "100%",
+        overflow: "auto",
+        WebkitOverflowScrolling: "touch",
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
         maxWidth: "500px",
