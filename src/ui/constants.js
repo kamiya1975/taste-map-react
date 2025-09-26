@@ -24,7 +24,7 @@ export const paperBaseStyle = {
 export const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 export const CENTER_Y_OFFSET = -3.5;
 export const ZOOM_LIMITS = { min: 5.5, max: 7.25 };
-export const INITIAL_ZOOM = 6;
+export const INITIAL_ZOOM = 5.5;
 
 export const TYPE_COLOR_MAP = {
   White: [150, 150, 150],
