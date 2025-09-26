@@ -1,106 +1,166 @@
-/* ========== ルート: 実表示高ベース ========== */
+/* =========================
+   Global / Root
+   ========================= */
+:root { color-scheme: light; }
+
 html, body, #root {
   margin: 0;
   padding: 0;
-  height: 100dvh;          /* ← 100vh ではなく 100dvh */
+  height: 100dvh;                 /* Safariでも“見えている高さ”で合わせる */
   min-height: 100dvh;
-  overscroll-behavior: none;
-  touch-action: pan-x pan-y;  /* DeckGLがピンチを扱うならこのまま */
   background: #fff;
-  /* iOSの自動文字拡大を抑止（任意） */
   -webkit-text-size-adjust: 100%;
 }
 
 @supports not (height: 100dvh) {
   html, body, #root {
-    height: -webkit-fill-available;   /* 古いiOS Safari向けフォールバック */
+    height: -webkit-fill-available;     /* 古いiOS Safari用フォールバック */
     min-height: -webkit-fill-available;
   }
 }
 
-/* ========== 安全領域ユーティリティ ========== */
-.safe-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+/* 安全領域ユーティリティ（必要な要素に付与して使う） */
 .safe-top    { padding-top:    max(12px, env(safe-area-inset-top)); }
+.safe-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 
-/* ========== DeckGL コンテナ ========== */
+/* =========================
+   App (CRAテンプレの名残)
+   ========================= */
+.App { text-align: center; }
+.App-logo { height: 40vmin; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo { animation: App-logo-spin infinite 20s linear; }
+}
+@keyframes App-logo-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+.App-header {
+  background-color: #282c34;
+  min-height: 100dvh;              /* 100vh → 100dvh */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: #fff;
+}
+.App-link { color: #61dafb; }
+
+/* =========================
+   共通フォント（MUI含む）
+   ========================= */
+body,
+.MuiDrawer-root *,
+.MuiButton-root *,
+.MuiList-root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif !important;
+}
+
+/* =========================
+   Map（DeckGL）まわり
+   ========================= */
+/* DeckGLを包むラッパのセレクタは実プロジェクトに合わせてどれか使う */
 #map-root, .map-root, .deck-container {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  contain: strict;           /* レイアウト再計算を抑制（任意） */
+  contain: strict;
+
+  /* ← Mapページだけに“固定っぽい”制御を限定適用 */
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y;   /* ピンチはアプリ側で制御する場合はこのまま */
 }
 
-/* ========== 一般UIの微調整 ========== */
-* {
-  -webkit-touch-callout: none;       /* 長押しメニュー無効化（任意） */
-  -webkit-tap-highlight-color: transparent;
-}
-:root { color-scheme: light; }
-
-/* 固定ボタンなど */
+/* 右下固定ボタン等（例） */
 .fab-bottom-right {
   position: absolute;
   right: 10px;
   bottom: max(12px, env(safe-area-inset-bottom));
 }
 
-/* Drawer（JSで高さ管理なら不要） */
+/* MUI Drawer（JSで高さ管理しているなら高さ指定は不要） */
 .drawer-paper {
   height: 60vh;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
 }
 
-/* スクロールするパネル */
-.panel-scroll {
-  overflow: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ========== Intro / Slides は 100dvh に ========== */
-.intro-wrapper,
-.slides-container,
-.slide {
+/* =========================
+   Intro（横スワイプのページ）
+   ========================= */
+.intro-wrapper {
+  position: relative;           /* インジケータ/ボタンの基準 */
   width: 100vw;
-  height: 100dvh;            /* ← 100vh から置換 */
+  height: 100dvh;               /* 100vh → 100dvh */
+  overflow: hidden;             /* 縦方向は固定 */
   background: #fff;
+
+  /* Introは横スクロールを許可（Mapと住み分け） */
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: none;
+  touch-action: pan-x;          /* 横スワイプ優先 */
 }
 
 .slides-container {
   display: flex;
-  overflow-x: scroll;
+  width: 100vw;
+  height: 100dvh;
+  overflow-x: auto;
+  overflow-y: hidden;
   scroll-snap-type: x mandatory;
-  margin: 0;
-  padding: 0;
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.slides-container::-webkit-scrollbar { display: none; }
 
 .slide {
   flex: 0 0 100vw;
+  width: 100vw;
+  height: 100dvh;
   scroll-snap-align: start;
   display: flex;
   justify-content: center;
   align-items: center;
+  background: #fff;
 }
 
-/* インジケータ／ボタン（セーフエリア考慮） */
+/* ページインジケータ（●●●） */
 .indicator {
   position: absolute;
-  bottom: max(120px, env(safe-area-inset-bottom));
-  width: 100%;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + 24px);
   display: flex;
   justify-content: center;
   gap: 8px;
+  z-index: 50;                 /* 他UIより前面へ */
+  pointer-events: none;        /* タップを邪魔しない */
 }
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: lightgray;
+  opacity: .8;
+  transition: transform .2s ease, background .2s ease, opacity .2s ease;
+}
+.dot.active {
+  background: #111;
+  transform: scale(1.15);
+  opacity: 1;
+}
+
+/* フッターボタン（Intro用） */
 .footer-button {
   position: absolute;
-  bottom: max(50px, env(safe-area-inset-bottom));
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + 50px);
   width: 100%;
   display: flex;
   justify-content: center;
-  z-index: 10;
+  z-index: 60;
 }
 .footer-button button {
   padding: 12px 32px;
@@ -112,29 +172,12 @@ html, body, #root {
   box-shadow: 0 4px 10px rgba(0,0,0,.2);
 }
 
-/* ========== App系（必要なら維持） ========== */
-.App { text-align: center; }
-.App-logo { height: 40vmin; pointer-events: none; }
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo { animation: App-logo-spin infinite 20s linear; }
-}
-.App-header {
-  background-color: #282c34;
-  min-height: 100dvh;        /* ← 100vh から置換 */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: #fff;
-}
-.App-link { color: #61dafb; }
-@keyframes App-logo-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
-
-/* ====== Bottom Panel（既存のまま） ====== */
+/* =========================
+   Bottom Panel（既存UI）
+   ========================= */
 .bottom-panel {
   position: fixed;
-  bottom: -250px;
+  bottom: -250px;              /* 初期は隠す */
   left: 0;
   width: 100%;
   height: 250px;
@@ -146,15 +189,30 @@ html, body, #root {
 }
 .bottom-panel.open { bottom: 0; }
 .panel-handle {
-  width: 40px; height: 4px; background: #ccc; border-radius: 2px; margin: 8px auto;
+  width: 40px;
+  height: 4px;
+  background: #ccc;
+  border-radius: 2px;
+  margin: 8px auto;
 }
 .panel-content { padding: 8px 16px; font-size: 14px; }
 
-/* ========== スライダーの外観（そのままOK） ========== */
-.taste-slider{
-  --track-h: 6px;
-  --thumb:   28px;
-  --nudge:   -3px;
+/* スクロールする内部パネル（例：リスト） */
+.panel-scroll {
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* =========================
+   スライダー UI
+   ========================= */
+.taste-slider {
+  /* 好みに応じてここだけ触ればOK */
+  --track-h: 6px;   /* バーの太さ */
+  --thumb:   28px;  /* ●の直径   */
+  --nudge:   -3px;  /* 追加の上方向微調整（-1〜-4pxあたりで調整） */
+
   appearance: none;
   -webkit-appearance: none;
   width: 100%;
@@ -163,26 +221,43 @@ html, body, #root {
   margin-top: 8px;
   outline: none;
 }
-.taste-slider::-webkit-slider-runnable-track{
-  height: var(--track-h); border-radius: 9999px; background: var(--range, #e9e9e9);
+.taste-slider::-webkit-slider-runnable-track {
+  height: var(--track-h);
+  border-radius: 9999px;
+  background: var(--range, #e9e9e9);
 }
-.taste-slider::-moz-range-track{
-  height: var(--track-h); border-radius: 9999px; background: var(--range, #e9e9e9);
+.taste-slider::-moz-range-track {
+  height: var(--track-h);
+  border-radius: 9999px;
+  background: var(--range, #e9e9e9);
 }
-.taste-slider::-webkit-slider-thumb{
+/* Thumb(WebKit) */
+.taste-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: var(--thumb); height: var(--thumb); border-radius: 50%;
-  background: #fff; border: 0; box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  width: var(--thumb);
+  height: var(--thumb);
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+  /* 中央寄せ = -(thumb - track)/2 + 追加微調整 */
   margin-top: calc((var(--thumb) - var(--track-h)) / -2 + var(--nudge));
   cursor: pointer;
 }
-.taste-slider::-moz-range-thumb{
-  width: var(--thumb); height: var(--thumb); border-radius: 50%;
-  background: #fff; border: 0; box-shadow: 0 2px 6px rgba(0,0,0,.25);
+/* Thumb(Firefox) */
+.taste-slider::-moz-range-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
   cursor: pointer;
 }
 
-/* iOS Safari フォーカス時のズーム抑止 */
+/* =========================
+   iOS Safari: フォーカス時の自動ズーム抑止
+   ========================= */
 @supports (-webkit-touch-callout: none) {
   input, select, textarea { font-size: 16px !important; }
 }
