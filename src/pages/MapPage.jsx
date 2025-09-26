@@ -449,26 +449,25 @@ function MapPage() {
   }, [location.key, userPin, data, findNearestWine]); // ← 依存に findNearestWine を追加
 
   // ====== 共通：商品へフォーカス（毎回“初期ズーム”に戻す）
-  const focusOnWine = useCallback(
-    (item, opts = {}) => {
-      if (!item) return;
-      const tx = Number(item.UMAP1);
-      const tyUMAP = Number(item.UMAP2);
-      if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
+  const focusOnWine = useCallback((item, opts = {}) => {
+  if (!item) return;
+  const tx = Number(item.UMAP1);
+  const tyUMAP = Number(item.UMAP2);
+  if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
 
-      const zoomTarget = Math.max(
-        ZOOM_LIMITS.min,
-        Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM)
-      );
+  setViewState((prev) => {
+    const wantZoom = opts.zoom; // undefined のときはズームを変えない
+    const zoomTarget = (wantZoom == null)
+      ? prev.zoom
+      : Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, wantZoom));
 
-      setViewState((prev) => ({
-        ...prev,
-        target: [tx, -tyUMAP - CENTER_Y_OFFSET, 0],
-        zoom: prev.zoom,
-      }));
-    },
-    []
-  );
+    return {
+      ...prev,
+      target: [tx, -tyUMAP - CENTER_Y_OFFSET, 0],
+      zoom: zoomTarget,
+    };
+  });
+}, []);
 
   // ====== 子iframeへ♡状態を送るヘルパー
   const sendFavoriteToChild = (jan, value) => {
