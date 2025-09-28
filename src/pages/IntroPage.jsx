@@ -119,7 +119,7 @@ function slides(
           </div>
 
           {/* テキスト */}
-          <div style={{ marginTop: '70px' }}>
+          <div style={{ marginTop: '90px' }}>
             <p
               style={{
                 lineHeight: '1.9em',
@@ -135,7 +135,7 @@ function slides(
             </p>
             <p
               style={{
-                marginTop: '60px',
+                marginTop: '80px',
                 color: PALETTE.ink,
                 textAlign: 'center',
               }}

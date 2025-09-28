@@ -352,3 +352,26 @@ header, .app-header, .MuiAppBar-root, .mui-fixed {
   font-size: 12px;
   color: rgb(206,206,206);
 }
+
+/* 入力中の文字の色を薄く */
+.intro-wrapper input {
+  color: rgb(206,206,206);   /* R206 G206 B206 */
+}
+
+/* placeholder の色も合わせる */
+.intro-wrapper input::placeholder {
+  font-size: 14px;
+  color: rgb(206,206,206);
+}
+.intro-wrapper input::-webkit-input-placeholder {
+  font-size: 14px;
+  color: rgb(206,206,206);
+}
+.intro-wrapper input::-moz-placeholder {
+  font-size: 14px;
+  color: rgb(206,206,206);
+}
+.intro-wrapper input:-ms-input-placeholder {
+  font-size: 14px;
+  color: rgb(206,206,206);
+}
