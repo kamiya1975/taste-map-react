@@ -126,7 +126,7 @@ function slides(
             style={{
               lineHeight: '1.9em',
               color: PALETTE.ink,
-              fontSize: '15px',
+              fontSize: '9tp',
               textAlign: 'center',
             }}
           >
@@ -182,7 +182,7 @@ function slides(
             style={{
               lineHeight: '1.9em',
               color: PALETTE.ink,
-              fontSize: '15px',
+              fontSize: '9tp',
               textAlign: 'center',
             }}
           >
