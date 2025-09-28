@@ -331,3 +331,24 @@ header, .app-header, .MuiAppBar-root, .mui-fixed {
 .intro-wrapper ::placeholder {
   color: #9aa0a6;
 }
+
+/* IntroPage 内だけ適用する場合 */
+.intro-wrapper input::placeholder {
+  font-size: 14px;                  /* 小さめ */
+  color: rgb(206,206,206);          /* R206 G206 B206 */
+}
+
+.intro-wrapper input::-webkit-input-placeholder {
+  font-size: 14px;
+  color: rgb(206,206,206);
+}
+
+.intro-wrapper input::-moz-placeholder {
+  font-size: 14px;
+  color: rgb(206,206,206);
+}
+
+.intro-wrapper input:-ms-input-placeholder {
+  font-size: 14px;
+  color: rgb(206,206,206);
+}
