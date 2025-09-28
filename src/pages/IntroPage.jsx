@@ -31,6 +31,8 @@ const styles = {
     backgroundImage: 'none',
     boxSizing: 'border-box',
     marginBottom: '10px',
+    color: PALETTE.ink,
+    WebkitTextFillColor: PALETTE.ink,
   },
   eyeIcon: {
     position: 'absolute',
@@ -122,7 +124,7 @@ function slides(
               style={{
                 lineHeight: '1.9em',
                 color: PALETTE.ink,
-                fontSize: '12pt',
+                fontSize: '11pt',
                 textAlign: 'center',
               }}
             >
@@ -178,7 +180,7 @@ function slides(
               style={{
                 lineHeight: '1.9em',
                 color: PALETTE.ink,
-                fontSize: '12pt',
+                fontSize: '11pt',
                 textAlign: 'center',
               }}
             >

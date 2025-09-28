@@ -314,3 +314,20 @@ header, .app-header, .MuiAppBar-root, .mui-fixed {
   box-shadow: none;
   border-color: rgb(206,206,206); /* R206 */
 }
+
+/* Select の表示文字色を iOS/各ブラウザで強制的にグレーに統一 */
+.intro-wrapper select {
+  color: rgb(81,81,81) !important;          /* R81 */
+  -webkit-text-fill-color: rgb(81,81,81);   /* iOS Safari */
+  background-color: #fff;                   /* 背景は白のまま */
+}
+
+/* 選択肢ドロップダウン内の文字色も統一 */
+.intro-wrapper select option {
+  color: rgb(81,81,81);
+}
+
+/* プレースホルダ色は薄めのまま（任意） */
+.intro-wrapper ::placeholder {
+  color: #9aa0a6;
+}
