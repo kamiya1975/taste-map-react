@@ -109,7 +109,7 @@ function slides(
             自分の好みを知ることができます。
           </p>
           <p style={{ marginTop: '10px', color: PALETTE.ink, textAlign: 'center' }}>
-            その基準があなたの<strong>コンパス</strong>です。
+            その基準があなたの<span style={{ fontWeight: 600 }}>コンパス</span>です。
           </p>
         </>
       ),
