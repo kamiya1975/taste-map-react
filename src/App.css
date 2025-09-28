@@ -278,3 +278,21 @@ body,
 @supports (-webkit-touch-callout: none) {
   input, select, textarea { font-size: 16px !important; }
 }
+
+/* ===== Header / AppBar をR250に統一 ===== */
+header, .app-header, .MuiAppBar-root, .mui-fixed {
+  background: rgb(250,250,250) !important; /* R250 */
+  color: rgb(81,81,81);
+  box-shadow: none;
+}
+
+/* ===== iOS のノッチ上（ステータスバー）もR250で塗る ===== */
+.intro-wrapper::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: env(safe-area-inset-top);
+  background: rgb(250,250,250);          /* R250 */
+  z-index: 100;                           /* 画面最前で塗りつぶし */
+  pointer-events: none;
+}
