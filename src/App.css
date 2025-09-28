@@ -296,3 +296,21 @@ header, .app-header, .MuiAppBar-root, .mui-fixed {
   z-index: 100;                           /* 画面最前で塗りつぶし */
   pointer-events: none;
 }
+
+/* Intro 内のリンク色を統一（visited/hover も） */
+.intro-wrapper a,
+.intro-wrapper a:visited,
+.intro-wrapper a:active,
+.intro-wrapper a:hover {
+  color: rgb(81,81,81) !important; /* R81 */
+  text-decoration: underline;
+}
+
+/* 入力フォーカス時もR206のまま */
+.intro-wrapper input:focus,
+.intro-wrapper select:focus,
+.intro-wrapper textarea:focus {
+  outline: none;
+  box-shadow: none;
+  border-color: rgb(206,206,206); /* R206 */
+}
