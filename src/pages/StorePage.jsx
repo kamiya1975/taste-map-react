@@ -136,8 +136,8 @@ export default function StorePage() {
           borderBottom: "1px solid #ccc",
         }}
       >
-        <div style={{ padding: 16, textAlign: "center" }}>
-          <h2 style={{ margin: 0 }}>
+        <div style={{ padding: 16 }}>
+          <h2 className="store-header">
             「基準のワイン」を購入した店舗を選んでください。
           </h2>
           <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 4 }}>
@@ -176,7 +176,7 @@ export default function StorePage() {
               }}
             >
               <div style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ textDecoration: "underline", color: "#007bff", fontWeight: 600 }}>
+                <div className="store-link">
                   {store.name} {store.branch || ""}
                 </div>
                 <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
