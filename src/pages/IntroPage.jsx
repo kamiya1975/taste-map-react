@@ -102,7 +102,7 @@ function slides(
             alt="基準のワイン"
             style={{ maxWidth: '60%', margin: '80px auto 30px auto' }}
           />
-          <p style={{ lineHeight: '1.9em', color: PALETTE.ink, fontSize: '13px', textAlign: 'center' }}>
+          <p style={{ lineHeight: '1.9em', color: PALETTE.ink, fontSize: '15px', textAlign: 'center' }}>
             ワインの真ん中の味である<br />
             基準のワインを飲み<br />
             その味を基準に<br />
@@ -123,7 +123,7 @@ function slides(
             alt="TasteMap"
             style={{ maxWidth: '60%', margin: '80px auto 30px auto' }}
           />
-          <p style={{ lineHeight: '1.9em', color: PALETTE.ink, fontSize: '13px', textAlign: 'center' }}>
+          <p style={{ lineHeight: '1.9em', color: PALETTE.ink, fontSize: '15px', textAlign: 'center' }}>
             コンパスである基準のワインから発見した<br />
             あなたの好みに近いワインを飲んで評価し、<br />
             あなただけの地図を作りましょう。
