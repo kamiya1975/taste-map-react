@@ -97,10 +97,11 @@ function slides(
       color: PALETTE.bg,
       content: (
         <>
+        <div style={{ height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '80px auto 30px auto' }}></div>
           <img
             src="/img/slide1.png"
             alt="基準のワイン"
-            style={{ maxWidth: '60%', margin: '80px auto 30px auto' }}
+            style={{ maxWidth: '60%', maxHeight: '100%', objectFit: 'contain' }}
           />
           <div style={{ marginTop: '20px' }}>
           <p style={{ lineHeight: '1.9em', color: PALETTE.ink, fontSize: '15px', textAlign: 'center' }}>
@@ -121,10 +122,11 @@ function slides(
       color: PALETTE.bg,
       content: (
         <>
+        <div style={{ height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '80px auto 30px auto' }}></div>
           <img
             src="/img/slide2.png"
             alt="TasteMap"
-            style={{ maxWidth: '60%', margin: '80px auto 30px auto' }}
+            style={{ maxWidth: '60%', maxHeight: '100%', objectFit: 'contain' }}
           />
           <div style={{ marginTop: '20px' }}>
           <p style={{ lineHeight: '1.9em', color: PALETTE.ink, fontSize: '15px', textAlign: 'center' }}>
