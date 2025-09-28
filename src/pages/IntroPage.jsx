@@ -135,7 +135,7 @@ function slides(
             </p>
             <p
               style={{
-                marginTop: '80px',
+                marginTop: '10px',
                 color: PALETTE.ink,
                 textAlign: 'center',
               }}
