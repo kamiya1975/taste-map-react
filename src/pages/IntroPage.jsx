@@ -92,54 +92,116 @@ function slides(
     setFormData((prev) => ({ ...prev, showPassword: !prev.showPassword }));
 
   return [
-    {
-      id: 1,
-      color: PALETTE.bg,
-      content: (
-        <>
-        <div style={{ height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '80px auto 30px auto' }}></div>
+  {
+    id: 1,
+    color: PALETTE.bg,
+    content: (
+      <>
+        {/* 画像ラッパ：ここで高さを統一 */}
+        <div
+          style={{
+            height: 'clamp(160px, 24vh, 220px)', // 端末に応じて可変（固定にしたいなら 200px 等でOK）
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            margin: '80px auto 30px auto',
+          }}
+        >
           <img
             src="/img/slide1.png"
             alt="基準のワイン"
-            style={{ maxWidth: '60%', maxHeight: '100%', objectFit: 'contain' }}
+            style={{
+              maxWidth: '60%',
+              maxHeight: '100%',
+              objectFit: 'contain',
+              display: 'block',
+            }}
           />
-          <div style={{ marginTop: '20px' }}>
-          <p style={{ lineHeight: '1.9em', color: PALETTE.ink, fontSize: '15px', textAlign: 'center' }}>
+        </div>
+
+        {/* テキスト（画像直下の開始位置が2ページで揃う） */}
+        <div style={{ marginTop: '20px' }}>
+          <p
+            style={{
+              lineHeight: '1.9em',
+              color: PALETTE.ink,
+              fontSize: '15px',
+              textAlign: 'center',
+            }}
+          >
             ワインの真ん中の味である<br />
             基準のワインを飲み<br />
             その味を基準に<br />
             自分の好みを知ることができます。
           </p>
-          <p style={{ marginTop: '10px', color: PALETTE.ink, textAlign: 'center' }}>
+          <p
+            style={{
+              marginTop: '10px',
+              color: PALETTE.ink,
+              textAlign: 'center',
+            }}
+          >
             その基準があなたの<span style={{ fontWeight: 600 }}>コンパス</span>です。
           </p>
-          </div>
-        </>
-      ),
-    },
-    {
-      id: 2,
-      color: PALETTE.bg,
-      content: (
-        <>
-        <div style={{ height: '200px', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '80px auto 30px auto' }}></div>
+        </div>
+      </>
+    ),
+  },
+  {
+    id: 2,
+    color: PALETTE.bg,
+    content: (
+      <>
+        {/* 画像ラッパ：1ページ目と全く同じ設定 */}
+        <div
+          style={{
+            height: 'clamp(160px, 24vh, 220px)',
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            margin: '80px auto 30px auto',
+          }}
+        >
           <img
             src="/img/slide2.png"
             alt="TasteMap"
-            style={{ maxWidth: '60%', maxHeight: '100%', objectFit: 'contain' }}
+            style={{
+              maxWidth: '60%',
+              maxHeight: '100%',
+              objectFit: 'contain',
+              display: 'block',
+            }}
           />
-          <div style={{ marginTop: '20px' }}>
-          <p style={{ lineHeight: '1.9em', color: PALETTE.ink, fontSize: '15px', textAlign: 'center' }}>
+        </div>
+
+        {/* テキスト（上と同じ余白設計） */}
+        <div style={{ marginTop: '20px' }}>
+          <p
+            style={{
+              lineHeight: '1.9em',
+              color: PALETTE.ink,
+              fontSize: '15px',
+              textAlign: 'center',
+            }}
+          >
             コンパスである基準のワインから発見した<br />
             あなたの好みに近いワインを飲んで評価し、<br />
           </p>
-          <p style={{ marginTop: '10px', color: PALETTE.ink, textAlign: 'center' }}>
+          <p
+            style={{
+              marginTop: '10px',
+              color: PALETTE.ink,
+              textAlign: 'center',
+            }}
+          >
             あなただけの<span style={{ fontWeight: 600 }}>地図</span>を作りましょう。
           </p>
-          </div>
-        </>
-      ),
-    },
+        </div>
+      </>
+    ),
+  },
     {
       id: 3,
       color: PALETTE.bg,
