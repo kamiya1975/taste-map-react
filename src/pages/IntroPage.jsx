@@ -109,7 +109,7 @@ function slides(
             自分の好みを知ることができます。
           </p>
           <p style={{ marginTop: '10px', color: PALETTE.ink, textAlign: 'center' }}>
-            その基準があなたのコンパスです。
+            その基準があなたの<strong>コンパス</strong>です。
           </p>
         </>
       ),
@@ -125,12 +125,11 @@ function slides(
             style={{ maxWidth: '60%', margin: '80px auto 30px auto' }}
           />
           <p style={{ lineHeight: '1.9em', color: PALETTE.ink, fontSize: '15px', textAlign: 'center' }}>
-            コンパスである基準のワインから<br />
-            発見したあなたの好みに近いワインを<br />
-            飲んで評価し、<br />
+            コンパスである基準のワインから発見した<br />
+            あなたの好みに近いワインを飲んで評価し、<br />
           </p>
           <p style={{ marginTop: '10px', color: PALETTE.ink, textAlign: 'center' }}>
-            あなただけの地図を作りましょう。
+            あなただけの<strong>地図</strong>を作りましょう。
           </p>
         </>
       ),
