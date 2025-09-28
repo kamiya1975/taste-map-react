@@ -140,9 +140,6 @@ export default function StorePage() {
           <h2 className="store-header">
             「基準のワイン」を購入した店舗を選んでください。
           </h2>
-          <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 4 }}>
-            近い順に最大100件を表示（ダミーデータ）
-          </div>
         </div>
       </div>
 
