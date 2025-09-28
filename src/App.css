@@ -339,12 +339,12 @@ header, .app-header, .MuiAppBar-root, .mui-fixed {
 }
 
 .intro-wrapper input::-webkit-input-placeholder {
-  font-size: 14px;
+  font-size: 10px;
   color: rgb(206,206,206);
 }
 
 .intro-wrapper input::-moz-placeholder {
-  font-size: 14px;
+  font-size: 12px;
   color: rgb(206,206,206);
 }
 
