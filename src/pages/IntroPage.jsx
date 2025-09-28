@@ -3,22 +3,32 @@ import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setGuest, setUserId } from '../utils/auth';
 
+// ===== Color Palette (from spec) =====
+const PALETTE = {
+  bg:  'rgb(250,250,250)', // R250 G250 B250
+  ink: 'rgb(81,81,81)',    // R81  G81  B81
+  line:'rgb(206,206,206)', // R206 G206 B206
+};
+
 // ✅ スタイル定義
 const styles = {
   label: {
     fontWeight: 'bold',
     marginTop: '10px',
     display: 'block',
+    color: PALETTE.ink,
   },
   input: {
     padding: '10px',
     fontSize: '16px',
     width: '100%',
+    border: `1px solid ${PALETTE.line}`,
     border: '1px solid #ccc',
     borderRadius: '10px',
     appearance: 'none',
     WebkitAppearance: 'none',
     MozAppearance: 'none',
+    backgroundColor: 'rgb(255,255,255)',
     backgroundColor: '#fff',
     backgroundImage: 'none',
     boxSizing: 'border-box',
@@ -31,12 +41,14 @@ const styles = {
     cursor: 'pointer',
     fontSize: '16px',
     userSelect: 'none',
+    color: PALETTE.ink,
   },
 };
 
 const buttonStyle = {
   padding: '12px',
   fontSize: '16px',
+  backgroundColor: PALETTE.line,
   backgroundColor: '#e5e3db',
   color: '#000',
   border: 'none',
@@ -49,6 +61,7 @@ const buttonStyle = {
 const secondaryButtonStyle = {
   padding: '12px',
   fontSize: '14px',
+  backgroundColor: 'rgb(230,230,230)',
   backgroundColor: '#bbb',
   color: '#fff',
   border: 'none',
@@ -81,7 +94,7 @@ function slides(
   return [
     {
       id: 1,
-      color: 'white',
+      color: PALETTE.bg,
       content: (
         <>
           <img
@@ -89,7 +102,7 @@ function slides(
             alt="基準のワイン"
             style={{ maxWidth: '60%', margin: '80px auto 30px auto' }}
           />
-          <p style={{ lineHeight: '1.8em' }}>
+          <p style={{ lineHeight: '1.9em', color: PALETTE.ink, fontSize: '13px' }}>
             ワインの真ん中の味である<br />
             基準のワインを飲み<br />
             その味を基準に<br />
@@ -109,7 +122,7 @@ function slides(
             alt="TasteMap"
             style={{ maxWidth: '60%', margin: '80px auto 30px auto' }}
           />
-          <p style={{ lineHeight: '1.8em' }}>
+          <p style={{ lineHeight: '1.9em', color: PALETTE.ink, fontSize: '13px' }}>
             コンパスである基準のワインから発見した<br />
             あなたの好みに近いワインを飲んで評価し、<br />
             あなただけの地図を作りましょう。

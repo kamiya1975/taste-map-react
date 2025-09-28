@@ -8,7 +8,7 @@ html, body, #root {
   padding: 0;
   height: 100dvh;                 /* Safariでも“見えている高さ”に追従 */
   min-height: 100dvh;
-  background: #fff;
+  background: rgb(250,250,250);   /* R250 G250 B250 */
   -webkit-text-size-adjust: 100%;
 }
 
@@ -18,6 +18,9 @@ html, body, #root {
     min-height: -webkit-fill-available;
   }
 }
+
+/* 既定の文字色（本文） */
+body { color: rgb(81,81,81); }          /* R81 G81 B81 */
 
 /* 安全領域ユーティリティ */
 .safe-top    { padding-top:    max(12px, env(safe-area-inset-top)); }
@@ -63,6 +66,9 @@ body,
   /* ここで overflow: hidden にしてもOKだが、子に min-height:0 を必ず付ける */
   overflow: hidden;
   pointer-events: auto;                 /* 透過を無効化（背面Mapに奪われない） */
+  background: rgb(255,255,255);
+  color: rgb(81,81,81);
+  border-top: 1px solid rgb(206,206,206);  /* R206 ライン */
 }
 
 /* 2) Drawer配下はタッチスクロールを許可 */
@@ -109,11 +115,12 @@ body,
   width: 100vw;
   height: 100dvh;
   overflow: hidden;
-  background: #fff;
+  background: rgb(250,250,250);   /* R250 背景 */
   overscroll-behavior-x: contain;
   overscroll-behavior-y: none;
   touch-action: pan-x;
 }
+
 .slides-container {
   display: flex;
   width: 100vw;
@@ -126,6 +133,7 @@ body,
   scrollbar-width: none;
 }
 .slides-container::-webkit-scrollbar { display: none; }
+
 .slide {
   flex: 0 0 100vw;
   width: 100vw;
@@ -134,7 +142,7 @@ body,
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #fff;
+  background: rgb(250,250,250);   /* R250 背景 */
 }
 
 /* ページインジケータ（●●●） */
@@ -153,17 +161,17 @@ body,
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: lightgray;
-  opacity: .8;
+  background: rgb(206,206,206);  /* 非アクティブ：R206 */
+  opacity: .9;
   transition: transform .2s ease, background .2s ease, opacity .2s ease;
 }
 .dot.active {
-  background: #111;
+  background: rgb(81,81,81);     /* アクティブ：R81 */
   transform: scale(1.15);
   opacity: 1;
 }
 
-/* Introフッターボタン */
+/* Introフッターボタン（中立配色） */
 .footer-button {
   position: absolute;
   left: 0;
@@ -177,11 +185,11 @@ body,
 .footer-button button {
   padding: 12px 32px;
   font-size: 18px;
-  border: 2px solid #00aaff;
-  background-color: #fff;
-  color: #00aaff;
+  border: 1px solid rgb(206,206,206);   /* R206 ライン */
+  background-color: rgb(255,255,255);
+  color: rgb(81,81,81);                 /* 文字：R81 */
   border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0,0,0,.2);
+  box-shadow: 0 4px 10px rgba(0,0,0,.1);
 }
 
 /* =========================
@@ -193,20 +201,23 @@ body,
   left: 0;
   width: 100%;
   height: 250px;
-  background: #fff;
-  border-top: 1px solid #ccc;
-  box-shadow: 0 -2px 8px rgba(0,0,0,0.2);
+  background: rgb(255,255,255);
+  border-top: 1px solid rgb(206,206,206);   /* R206 ライン */
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.15);
   transition: bottom 0.3s ease;
   z-index: 10;
+  color: rgb(81,81,81);
 }
 .bottom-panel.open { bottom: 0; }
+
 .panel-handle {
   width: 40px;
   height: 4px;
-  background: #ccc;
+  background: rgb(206,206,206);         /* R206 ハンドル */
   border-radius: 2px;
   margin: 8px auto;
 }
+
 .panel-content { padding: 8px 16px; font-size: 14px; }
 .panel-scroll {
   overflow: auto;
@@ -233,19 +244,19 @@ body,
 .taste-slider::-webkit-slider-runnable-track {
   height: var(--track-h);
   border-radius: 9999px;
-  background: var(--range, #e9e9e9);
+  background: var(--range, rgb(206,206,206)); /* R206 基準ライン */
 }
 .taste-slider::-moz-range-track {
   height: var(--track-h);
   border-radius: 9999px;
-  background: var(--range, #e9e9e9);
+  background: var(--range, rgb(206,206,206)); /* R206 基準ライン */
 }
 .taste-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: var(--thumb);
   height: var(--thumb);
   border-radius: 50%;
-  background: #fff;
+  background: rgb(255,255,255);
   border: 0;
   box-shadow: 0 2px 6px rgba(0,0,0,.25);
   margin-top: calc((var(--thumb) - var(--track-h)) / -2 + var(--nudge));
@@ -255,7 +266,7 @@ body,
   width: var(--thumb);
   height: var(--thumb);
   border-radius: 50%;
-  background: #fff;
+  background: rgb(255,255,255);
   border: 0;
   box-shadow: 0 2px 6px rgba(0,0,0,.25);
   cursor: pointer;
