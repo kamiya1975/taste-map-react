@@ -208,7 +208,14 @@ function slides(
       content: (
         <>
           {/* コンテナ：見出しとフォームを同じ幅に */}
-          <div style={{ width: '100%', maxWidth: 400, margin: '0 auto' }}>
+          <div
+            style={{
+             width: '100%',
+             maxWidth: 400,
+             margin: '0 auto',
+             paddingBottom: 'calc(env(safe-area-inset-bottom) + 120px)', // ← ここで調整
+            }}
+          >
             <p
               style={{
                 margin: '24px 0 12px',
@@ -540,32 +547,29 @@ export default function IntroPage() {
       <div className="slides-container" onScroll={handleScroll}>
         {allSlides.map((slide) => {
           const isTight = slide.id === 3;   // ✅ ここでスライドごとに定義
-
-            return (
-              <div
-                key={slide.id}
-                className="slide"
-                style={{
-                  backgroundColor: slide.color,
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "flex-start",
-                  alignItems: "center",
-                  width: "100vw",
-                  height: "100vh",
-                  padding: isTight
-                    ? "8px 16px calc(env(safe-area-inset-bottom) + 80px)" // 3ページ目だけ
-                    : "20px",
-                  boxSizing: "border-box",
-                  scrollSnapAlign: "start",
-                  flexShrink: 0,
-                  overflowY: "auto",
+          return (
+            <div
+              key={slide.id}
+              className="slide"
+              style={{
+                 backgroundColor: slide.color,
+                 display: "flex",
+                 flexDirection: "column",
+                 justifyContent: "flex-start",
+                 alignItems: "center",
+                 width: "100vw",
+                 height: "100vh",
+                 padding: isTight ? '8px 16px 16px' : '20px', // ← 上を詰めるだけ
+                 boxSizing: "border-box",
+                 scrollSnapAlign: "start",
+                 flexShrink: 0,
+                 overflowY: "auto",
                 }}
               >
                 {slide.content}
-              </div>
-            );
-          })}
+            </div>
+          );
+        })}
     </div>
 
       <div className="indicator">
