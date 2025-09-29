@@ -559,7 +559,7 @@ export default function IntroPage() {
                  alignItems: "center",
                  width: "100vw",
                  height: "100vh",
-                 padding: isTight ? '8px 16px 16px' : '50px', // ← 上を詰めるだけ
+                 padding: isTight ? '8px 16px 16px' : '20px', // ← 上を詰めるだけ
                  boxSizing: "border-box",
                  scrollSnapAlign: "start",
                  flexShrink: 0,
