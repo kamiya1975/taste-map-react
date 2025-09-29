@@ -554,7 +554,7 @@ export default function IntroPage() {
                   width: "100vw",
                   height: "100vh",
                   padding: isTight
-                    ? "8px 16px calc(env(safe-area-inset-bottom) + 96px)" // 3ページ目だけ
+                    ? "8px 16px calc(env(safe-area-inset-bottom) + 120px)" // 3ページ目だけ
                     : "20px",
                   boxSizing: "border-box",
                   scrollSnapAlign: "start",
