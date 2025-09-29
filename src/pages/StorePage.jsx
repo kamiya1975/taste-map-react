@@ -53,6 +53,19 @@ export default function StorePage() {
   }, []);
 
   useEffect(() => {
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      console.log("位置情報取得成功:", pos.coords);
+    },
+    (err) => {
+      console.warn("位置情報取得失敗:", err);
+    },
+    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+  );
+}, []);
+
+
+  useEffect(() => {
     const run = async () => {
       if (askedRef.current) return;
       askedRef.current = true;
