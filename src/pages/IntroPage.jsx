@@ -126,7 +126,7 @@ function slides(
             alt="基準のワイン"
             maxWidthPct={65}
             boxHeight="clamp(56px, 9vh, 84px)"
-            margin="0 auto 0 auto"
+            margin="24px auto 0 auto"
           />
           {/* ▶ 説明文（下） */}
           <div style={{ marginTop: "64px" }}>
