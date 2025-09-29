@@ -116,7 +116,7 @@ function slides(
           <HeroImage
             filename="compass.svg"
             alt="コンパス"
-            maxWidthPct={40}
+            maxWidthPct={60}
             boxHeight="clamp(104px, 14vh, 140px)"
             margin="64px auto 12px auto"
           />
@@ -124,7 +124,7 @@ function slides(
           <HeroImage
             filename="基準のワイン.svg"
             alt="基準のワイン"
-            maxWidthPct={60}
+            maxWidthPct={65}
             boxHeight="clamp(56px, 9vh, 84px)"
             margin="0 auto 0 auto"
           />
