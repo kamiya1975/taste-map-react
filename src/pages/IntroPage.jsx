@@ -112,8 +112,24 @@ function slides(
       color: PALETTE.bg,
       content: (
         <>
-          <HeroImage filename="基準のワイン.svg" alt="基準のワイン" />
-          <div style={{ marginTop: "80px" }}>
+          {/* ▶ コンパス（上） */}
+          <HeroImage
+            filename="コンパス.svg"
+            alt="コンパス"
+            maxWidthPct={34}
+            boxHeight="clamp(104px, 14vh, 140px)"
+            margin="64px auto 12px auto"
+          />
+          {/* ▶ タイトル「基準のワイン」（中） */}
+          <HeroImage
+            filename="基準のワイン.svg"
+            alt="基準のワイン"
+            maxWidthPct={72}
+            boxHeight="clamp(56px, 9vh, 84px)"
+            margin="0 auto 0 auto"
+          />
+          {/* ▶ 説明文（下） */}
+          <div style={{ marginTop: "64px" }}>
             <p
               style={{
                 lineHeight: "1.9em",
