@@ -538,31 +538,35 @@ export default function IntroPage() {
   return (
     <div className="intro-wrapper">
       <div className="slides-container" onScroll={handleScroll}>
-        {allSlides.map((slide) => (
-          <div
-            key={slide.id}
-            className="slide"
-            style={{
-              backgroundColor: slide.color,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-start',
-              alignItems: 'center',
-              width: '100vw',
-              height: '100vh',
-              // ▼ id=3 は上を狭く、ドットぶん下を広げる（重なり防止）
-              padding: isTight ? '8px 16px calc(env(safe-area-inset-bottom) + 96px)'
-                               : '20px',
-              boxSizing: 'border-box',
-              scrollSnapAlign: 'start',
-              flexShrink: 0,
-              overflowY: 'auto',
-            }}
-          >
-            {slide.content}
-          </div>
-        ))}
-      </div>
+        {allSlides.map((slide) => {
+          const isTight = slide.id === 3;   // ✅ ここでスライドごとに定義
+
+            return (
+              <div
+                key={slide.id}
+                className="slide"
+                style={{
+                  backgroundColor: slide.color,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "flex-start",
+                  alignItems: "center",
+                  width: "100vw",
+                  height: "100vh",
+                  padding: isTight
+                    ? "8px 16px calc(env(safe-area-inset-bottom) + 96px)" // 3ページ目だけ
+                    : "20px",
+                  boxSizing: "border-box",
+                  scrollSnapAlign: "start",
+                  flexShrink: 0,
+                  overflowY: "auto",
+                }}
+              >
+                {slide.content}
+              </div>
+            );
+          })}
+    </div>
 
       <div className="indicator">
         {allSlides.map((_, index) => (
