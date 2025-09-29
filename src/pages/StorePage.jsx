@@ -138,7 +138,7 @@ export default function StorePage() {
       >
         <div style={{ padding: 16 }}>
           <h2 className="store-header">
-            「基準のワイン」を購入した店舗を選んでください。
+            購入した店舗を選んでください。
           </h2>
         </div>
       </div>
@@ -146,7 +146,7 @@ export default function StorePage() {
       {/* リスト（paddingTop をヘッダーの実高さに合わせる） */}
       <div
         style={{
-          paddingTop: headerH + 30,            // ← 固定値 92 をやめて動的に
+          paddingTop: headerH + 50,            // ← 固定値 92 をやめて動的に
           overflowY: "auto",
           height: "100vh",
           maxWidth: 500,
