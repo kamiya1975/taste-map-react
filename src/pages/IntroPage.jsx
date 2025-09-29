@@ -17,7 +17,7 @@ const buttonStyle = {
   border: "none",
   borderRadius: "10px",
   cursor: "pointer",
-  marginTop: "20px",
+  marginTop: "12px",
   width: "100%",
 };
 
@@ -29,7 +29,7 @@ const secondaryButtonStyle = {
   border: "none",
   borderRadius: "10px",
   cursor: "pointer",
-  marginTop: "10px",
+  marginTop: "8px",
   width: "100%",
   opacity: 0.9,
 };
@@ -183,7 +183,7 @@ function slides(
               width: "100%",
               maxWidth: 400,
               margin: "10px auto 0 auto",
-              paddingBottom: "calc(env(safe-area-inset-bottom) + 80px)",
+              paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)",
             }}
           >
             <p
