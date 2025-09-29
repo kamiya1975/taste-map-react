@@ -176,7 +176,7 @@ export default function StorePage() {
                 <div className="store-link">
                   {store.name} {store.branch || ""}
                 </div>
-                <div style={{ fontSize: 10, color: "#6e6e73", whiteSpace: "normal" }}>
+                <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
                   {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
                 </div>
               </div>
