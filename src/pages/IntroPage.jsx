@@ -116,8 +116,8 @@ function slides(
           <HeroImage
             filename="compass.svg"
             alt="コンパス"
-            maxWidthPct={60}
-            boxHeight="clamp(104px, 14vh, 140px)"
+            maxWidthPct={80}
+            boxHeight="clamp(104px, 24vh, 240px)"
             margin="64px auto 12px auto"
           />
           {/* ▶ タイトル「基準のワイン」（中） */}
