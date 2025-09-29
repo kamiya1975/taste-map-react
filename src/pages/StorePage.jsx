@@ -131,7 +131,7 @@ export default function StorePage() {
           top: 0,
           width: "100%",
           maxWidth: 500,
-          background: "#fff",
+          background: "rgb(250,250,250)",
           zIndex: 100,
           borderBottom: "1px solid #ccc",
         }}
@@ -151,7 +151,7 @@ export default function StorePage() {
           height: "100vh",
           maxWidth: 500,
           margin: "0 auto",
-          background: "#fff",
+           background: "rgb(250,250,250)", 
         }}
       >
         {loading && <div style={{ padding: 16 }}>読み込み中…</div>}
@@ -176,7 +176,7 @@ export default function StorePage() {
                 <div className="store-link">
                   {store.name} {store.branch || ""}
                 </div>
-                <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
+                <div style={{ fontSize: 10, color: "#6e6e73", whiteSpace: "normal" }}>
                   {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
                 </div>
               </div>
