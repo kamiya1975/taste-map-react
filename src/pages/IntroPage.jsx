@@ -162,8 +162,24 @@ function slides(
       color: PALETTE.bg,
       content: (
         <>
-          <HeroImage filename={SECOND_SLIDE_IMAGE} alt="TasteMap / 地図" />
-          <div style={{ marginTop: "80px" }}>
+          {/* ▶ コンパス（上） */}
+          <HeroImage
+            filename="地図.svg"
+            alt="地図"
+            maxWidthPct={48}
+            boxHeight="clamp(80px, 16vh, 160px)"
+            margin="64px auto 12px auto"
+          />
+          {/* ▶ タイトル「TasteMap」（中） */}
+          <HeroImage
+            filename="TasteMap.svg"
+            alt="TasteMap"
+            maxWidthPct={65}
+            boxHeight="clamp(56px, 9vh, 84px)"
+            margin="24px auto 0 auto"
+          />
+          {/* ▶ 説明文（下） */}
+          <div style={{ marginTop: "64px" }}>
             <p
               style={{
                 lineHeight: "1.9em",
