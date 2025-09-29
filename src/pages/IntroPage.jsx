@@ -213,7 +213,7 @@ function slides(
              width: '100%',
              maxWidth: 400,
              margin: '0 auto',
-             paddingBottom: 'calc(env(safe-area-inset-bottom) + 120px)', // ← ここで調整
+             paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)', // ← ここで調整
             }}
           >
             <p
