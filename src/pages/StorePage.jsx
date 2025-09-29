@@ -146,7 +146,7 @@ export default function StorePage() {
       {/* リスト（paddingTop をヘッダーの実高さに合わせる） */}
       <div
         style={{
-          paddingTop: headerH + 50,            // ← 固定値 92 をやめて動的に
+          paddingTop: headerH + 100,            // ← 固定値 92 をやめて動的に
           overflowY: "auto",
           height: "100vh",
           maxWidth: 500,
