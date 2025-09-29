@@ -116,7 +116,7 @@ function slides(
           <HeroImage
             filename="compass.svg"
             alt="コンパス"
-            maxWidthPct={80}
+            maxWidthPct={70}
             boxHeight="clamp(104px, 24vh, 240px)"
             margin="64px auto 12px auto"
           />
