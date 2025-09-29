@@ -211,7 +211,7 @@ function slides(
           <div style={{ width: '100%', maxWidth: 400, margin: '0 auto' }}>
             <p
               style={{
-                margin: '80px 0 20px 0',
+                margin: '24px 0 12px',
                 fontSize: '16px',
                 color: PALETTE.ink,
                 textAlign: 'left',
@@ -550,7 +550,9 @@ export default function IntroPage() {
               alignItems: 'center',
               width: '100vw',
               height: '100vh',
-              padding: '20px',
+              // ▼ id=3 は上を狭く、ドットぶん下を広げる（重なり防止）
+              padding: isTight ? '8px 16px calc(env(safe-area-inset-bottom) + 96px)'
+                               : '20px',
               boxSizing: 'border-box',
               scrollSnapAlign: 'start',
               flexShrink: 0,
