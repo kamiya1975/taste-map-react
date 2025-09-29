@@ -182,7 +182,7 @@ function slides(
             style={{
               width: "100%",
               maxWidth: 400,
-              margin: "20px auto 0 auto",
+              margin: "10px auto 0 auto",
               paddingBottom: "calc(env(safe-area-inset-bottom) + 80px)",
             }}
           >
