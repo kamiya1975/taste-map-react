@@ -51,8 +51,48 @@ const VALUE_INPUT = {
 const isEmail = (s) => /^\S+@\S+\.\S+$/.test(String(s || "").trim());
 
 // ==============================
+// 画像ヘルパー & ヒーローイメージ
+// ==============================
+const imgSrc = (filename) => `/img/${encodeURIComponent(filename)}`;
+
+function HeroImage({
+  filename,
+  alt,
+  maxWidthPct = 70,
+  boxHeight = "clamp(180px, 26vh, 240px)",
+  margin = "80px auto 30px auto",
+}) {
+  return (
+    <div
+      style={{
+        height: boxHeight,
+        width: "100%",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        margin,
+      }}
+    >
+      <img
+        src={imgSrc(filename)}
+        alt={alt}
+        style={{
+          maxWidth: `${maxWidthPct}%`,
+          maxHeight: "100%",
+          objectFit: "contain",
+          display: "block",
+        }}
+        loading="eager"
+      />
+    </div>
+  );
+}
+
+// ==============================
 // スライド生成
 // ==============================
+const SECOND_SLIDE_IMAGE = "TasteMap.svg"; // ← 地図版にしたい場合は "地図.svg" に変更
+
 function slides(
   formData,
   setFormData,
@@ -72,26 +112,7 @@ function slides(
       color: PALETTE.bg,
       content: (
         <>
-          <div
-            style={{
-              height: "clamp(160px, 24vh, 220px)",
-              width: "100%",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              margin: "80px auto 30px auto",
-            }}
-          >
-            <img
-              src="/img/slide1.png"
-              alt="基準のワイン"
-              style={{
-                maxWidth: "60%",
-                maxHeight: "100%",
-                objectFit: "contain",
-              }}
-            />
-          </div>
+          <HeroImage filename="基準のワイン.svg" alt="基準のワイン" />
           <div style={{ marginTop: "80px" }}>
             <p
               style={{
@@ -125,26 +146,7 @@ function slides(
       color: PALETTE.bg,
       content: (
         <>
-          <div
-            style={{
-              height: "clamp(160px, 24vh, 220px)",
-              width: "100%",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              margin: "80px auto 30px auto",
-            }}
-          >
-            <img
-              src="/img/slide2.png"
-              alt="TasteMap"
-              style={{
-                maxWidth: "60%",
-                maxHeight: "100%",
-                objectFit: "contain",
-              }}
-            />
-          </div>
+          <HeroImage filename={SECOND_SLIDE_IMAGE} alt="TasteMap / 地図" />
           <div style={{ marginTop: "80px" }}>
             <p
               style={{
@@ -272,6 +274,8 @@ function slides(
                       cursor: "pointer",
                     }}
                     onClick={togglePassword}
+                    aria-label="パスワード表示切替"
+                    title="パスワード表示切替"
                   >
                     {formData.showPassword ? "●" : "◯"}
                   </span>
