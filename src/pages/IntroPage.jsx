@@ -114,7 +114,7 @@ function slides(
         <>
           {/* ▶ コンパス（上） */}
           <HeroImage
-            filename="コンパス.svg"
+            filename="compass.svg"
             alt="コンパス"
             maxWidthPct={34}
             boxHeight="clamp(104px, 14vh, 140px)"
