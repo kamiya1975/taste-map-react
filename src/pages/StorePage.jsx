@@ -133,20 +133,20 @@ export default function StorePage() {
           maxWidth: 500,
           background: "rgb(250,250,250)",
           zIndex: 100,
-          borderBottom: "1px solid #ccc",
         }}
       >
-        <div style={{ padding: 16 }}>
-          <h2 className="store-header">
+        <div style={{ padding: "28px 16px 24px" }}>
+          <h2 className="store-header" style={{ margin: 0 }}>
             購入した店舗を選んでください。
           </h2>
         </div>
+        <div style={{ height: 1, background: "#ccc" }} />
       </div>
 
       {/* リスト（paddingTop をヘッダーの実高さに合わせる） */}
       <div
         style={{
-          paddingTop: headerH + 100,            // ← 固定値 92 をやめて動的に
+          paddingTop: headerH,
           overflowY: "auto",
           height: "100vh",
           maxWidth: 500,
