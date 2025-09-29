@@ -1,5 +1,5 @@
 // src/pages/IntroPage.jsx
-import React, { useEffect, useLayoutEffect } from "react";
+import React, { useEffect, useLayoutEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getGuestId } from "../utils/auth";
 
@@ -9,128 +9,216 @@ const PALETTE = {
   line: "rgb(206,206,206)",   // R206
 };
 
+/* ==============================
+   スライド生成（ご指定そのまま）
+   ============================== */
+// eslint-disable-next-line no-unused-vars
+function slides(
+  formData,
+  setFormData,
+  handleChange,
+  handleSubmit,
+  handleStartAsGuest,
+  agreeRef,
+  agreeError,
+  setAgreeError
+) {
+  const togglePassword = () =>
+    setFormData((prev) => ({ ...prev, showPassword: !prev.showPassword }));
+
+  return [
+    {
+      id: 1,
+      color: PALETTE.bg,
+      content: (
+        <>
+          <div
+            style={{
+              height: "clamp(160px, 24vh, 220px)",
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              margin: "80px auto 30px auto",
+            }}
+          >
+            <img
+              src="/img/slide1.png"
+              alt="基準のワイン"
+              style={{
+                maxWidth: "60%",
+                maxHeight: "100%",
+                objectFit: "contain",
+              }}
+            />
+          </div>
+          <div style={{ marginTop: "80px" }}>
+            <p
+              style={{
+                lineHeight: "1.9em",
+                color: PALETTE.ink,
+                fontSize: "11pt",
+                textAlign: "center",
+              }}
+            >
+              ワインの真ん中の味である<br />
+              基準のワインを飲み<br />
+              その味を基準に<br />
+              自分の好みを知ることができます。
+            </p>
+            <p
+              style={{
+                marginTop: "20px",
+                color: PALETTE.ink,
+                textAlign: "center",
+              }}
+            >
+              その基準があなたの
+              <span style={{ fontWeight: 600 }}>コンパス</span>です。
+            </p>
+          </div>
+        </>
+      ),
+    },
+    {
+      id: 2,
+      color: PALETTE.bg,
+      content: (
+        <>
+          <div
+            style={{
+              height: "clamp(160px, 24vh, 220px)",
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              margin: "80px auto 30px auto",
+            }}
+          >
+            <img
+              src="/img/slide2.png"
+              alt="TasteMap"
+              style={{
+                maxWidth: "60%",
+                maxHeight: "100%",
+                objectFit: "contain",
+              }}
+            />
+          </div>
+          <div style={{ marginTop: "80px" }}>
+            <p
+              style={{
+                lineHeight: "1.9em",
+                color: PALETTE.ink,
+                fontSize: "11pt",
+                textAlign: "center",
+              }}
+            >
+              コンパスである基準のワインから<br />
+              発見したあなたの好みに近いワインを<br />
+              飲んで評価し、<br />
+              <br />
+            </p>
+            <p
+              style={{
+                marginTop: "20px",
+                color: PALETTE.ink,
+                textAlign: "center",
+              }}
+            >
+              あなただけの<span style={{ fontWeight: 600 }}>地図</span>
+              を作りましょう。
+            </p>
+          </div>
+        </>
+      ),
+    },
+  ];
+}
+
 export default function IntroPage() {
   const navigate = useNavigate();
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const scrollerRef = useRef(null);
 
-  // 画面表示時は一旦トップへ
+  // 画面をトップへ・ゲストID用意
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, []);
-
-  // ゲストIDを端末に用意（なければ発行）
   useEffect(() => {
     getGuestId();
   }, []);
 
-  const goNext = () => navigate("/store");
+  // スライド配列（今回フォーム等は使わないのでダミーを渡す）
+  const allSlides = slides(
+    {}, () => {}, () => {}, () => {}, () => {}, { current: null }, "", () => {}
+  );
+
+  const handleScroll = (e) => {
+    const index = Math.round(e.target.scrollLeft / window.innerWidth);
+    setCurrentIndex(index);
+  };
+
+  const goStore = () => navigate("/store");
 
   return (
-    <div
-      className="intro-wrapper"
-      style={{
-        background: PALETTE.bg,
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "stretch",
-        justifyContent: "center",
-      }}
-    >
+    <div className="intro-wrapper" style={{ background: PALETTE.bg }}>
+      {/* 横スクロールスライダー */}
       <div
-        className="slide"
-        style={{
-          backgroundColor: PALETTE.bg,
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          padding: "20px 16px",
-          boxSizing: "border-box",
-          overflowY: "auto",
-        }}
+        ref={scrollerRef}
+        className="slides-container"
+        onScroll={handleScroll}
       >
-        <div style={{ width: "100%", maxWidth: 500, margin: "0 auto" }}>
-          {/* ヘッダー説明 */}
-          <h2
-            style={{
-              margin: "24px 0 12px",
-              color: PALETTE.ink,
-              fontWeight: 700,
-              fontSize: 20,
-              lineHeight: 1.5,
-              textAlign: "left",
-            }}
-          >
-            はじめに
-          </h2>
-
-          <p
-            style={{
-              margin: "0 0 24px",
-              color: PALETTE.ink,
-              lineHeight: 1.9,
-              fontSize: 14,
-              textAlign: "left",
-            }}
-          >
-            まずは「基準のワイン」を購入した店舗を選びます。<br />
-            その後、スライダーで味の印象を調整してマップを表示します。<br />
-            評価を保存するタイミングで、ユーザー登録のご案内をします。
-          </p>
-
-          {/* イメージ（任意） */}
+        {allSlides.map((slide) => (
           <div
+            key={slide.id}
+            className="slide"
             style={{
-              height: "clamp(140px, 22vh, 220px)",
+              backgroundColor: slide.color,
               display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-start",
               alignItems: "center",
-              justifyContent: "center",
-              margin: "12px 0 24px",
-              border: `1px dashed ${PALETTE.line}`,
-              borderRadius: 12,
+              width: "100vw",
+              height: "100vh",
+              padding: "20px",
+              boxSizing: "border-box",
+              scrollSnapAlign: "start",
+              flexShrink: 0,
+              overflowY: "auto",
             }}
           >
-            <span style={{ color: "#9aa0a6", fontSize: 12 }}>
-              （ここに紹介画像を置く場合は /public/img に入れて差し替え）
-            </span>
+            <div style={{ width: "100%", maxWidth: 500, margin: "0 auto" }}>
+              {slide.content}
+            </div>
           </div>
+        ))}
+      </div>
 
-          {/* 次へボタン */}
-          <button
-            type="button"
-            onClick={goNext}
-            style={{
-              width: "100%",
-              padding: "14px 18px",
-              fontSize: 16,
-              fontWeight: 600,
-              background: "#e5e3db",
-              color: "#000",
-              border: "1px solid " + PALETTE.line,
-              borderRadius: 12,
-              cursor: "pointer",
-              boxShadow: "0 4px 10px rgba(0,0,0,.05)",
-            }}
-          >
-            店舗を選ぶへ
-          </button>
+      {/* ページインジケータ（既存CSS .indicator / .dot を利用） */}
+      <div className="indicator">
+        {allSlides.map((_, idx) => (
+          <div key={idx} className={`dot ${idx === currentIndex ? "active" : ""}`} />
+        ))}
+      </div>
 
-          {/* 参考情報（任意） */}
-          <p
-            style={{
-              margin: "12px 0 0",
-              color: "#666",
-              fontSize: 12,
-              textAlign: "center",
-            }}
-          >
-            登録は後からでOK。評価の保存時にご案内します。
-          </p>
-
-          {/* フッターの余白（下部バーとドットのための安全域） */}
-          <div style={{ height: "calc(env(safe-area-inset-bottom) + 32px)" }} />
-        </div>
+      {/* 下部の「店舗を選ぶへ」ボタン（既存CSS .footer-button を利用） */}
+      <div className="footer-button">
+        <button
+          type="button"
+          onClick={goStore}
+          style={{
+            padding: "12px 32px",
+            fontSize: 18,
+            border: `1px solid ${PALETTE.line}`,
+            backgroundColor: "#fff",
+            color: PALETTE.ink,
+            borderRadius: 10,
+            boxShadow: "0 4px 10px rgba(0,0,0,.1)",
+          }}
+        >
+          店舗を選ぶへ
+        </button>
       </div>
     </div>
   );
