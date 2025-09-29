@@ -135,7 +135,7 @@ export default function StorePage() {
           zIndex: 100,
         }}
       >
-        <div style={{ padding: "28px 16px 24px" }}>
+        <div style={{ padding: "28px 16px 100px" }}>
           <h2 className="store-header" style={{ margin: 0 }}>
             購入した店舗を選んでください。
           </h2>
