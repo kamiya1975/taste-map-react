@@ -1,16 +1,27 @@
+// src/components/panels/RatedPanel.jsx
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DRAWER_HEIGHT, PANEL_HEADER_H, PANEL_HEADER_BORDER } from "../../ui/constants";
 import PanelHeader from "../ui/PanelHeader";
 
-export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
+export default function RatedPanel({
+  isOpen,
+  onClose,
+  userRatings,
+  data,
+  onSelectJAN,
+}) {
   const [sortMode, setSortMode] = React.useState("date");
-  React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
+  React.useEffect(() => {
+    if (isOpen) setSortMode("date");
+  }, [isOpen]);
 
   const scrollRef = React.useRef(null);
-  React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [sortMode]);
+  React.useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [sortMode]);
 
-  // ランク番号（採点した順の通し番号）
+  // ===== ランク番号（採点した順の通し番号を算出）
   const rankMap = React.useMemo(() => {
     const items = Object.entries(userRatings || {})
       .map(([jan, meta]) => ({
@@ -20,12 +31,13 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
       }))
       .filter((x) => x.rating > 0)
       .sort((a, b) => (a.t - b.t) || a.jan.localeCompare(b.jan));
+
     const m = new Map();
     items.forEach((x, idx) => m.set(x.jan, idx + 1));
     return m;
   }, [userRatings]);
 
-  // 表示リスト
+  // ===== 表示リスト
   const list = React.useMemo(() => {
     const arr = Object.entries(userRatings || {})
       .map(([jan, meta]) => {
@@ -43,64 +55,54 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
       .filter(Boolean);
 
     if (sortMode === "rating") {
-      arr.sort((a, b) => (b.rating !== a.rating)
-        ? b.rating - a.rating
-        : (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0)));
+      arr.sort((a, b) =>
+        (b.rating !== a.rating)
+          ? b.rating - a.rating
+          : (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0))
+      );
     } else {
       arr.sort((a, b) => new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
     }
     return arr;
   }, [data, userRatings, sortMode, rankMap]);
 
-  // ヘッダー右側：並び替えカプセル
-  const SortCapsule = (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ fontSize: 13, color: "#666" }}>並び替え</span>
-      <div
-        role="group"
-        aria-label="並び替え"
+  // ===== ヘッダー右側（並び替えボタン：枠無し・フラット）
+  const SortButtons = (
+    <div style={{ display: "flex", gap: 8 }}>
+      <button
+        onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
+        onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
+        aria-pressed={sortMode === "date"}
         style={{
-          display: "inline-flex",
-          border: "1px solid #ccc",
-          borderRadius: 10,
-          overflow: "hidden",
-          background: "#eee",
+          padding: "6px 12px",
+          fontSize: 13,
+          lineHeight: 1.1,
+          border: "none",
+          background: sortMode === "date" ? "#ddd" : "transparent",
+          borderRadius: 6,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
         }}
       >
-        <button
-          onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
-          onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
-          aria-pressed={sortMode === "date"}
-          style={{
-            padding: "8px 10px",
-            fontSize: 13,
-            lineHeight: 1.1,
-            border: "none",
-            borderRight: "1px solid #ccc",
-            background: sortMode === "date" ? "#e9e9e9" : "#eee",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
-        >
-          日付順
-        </button>
-        <button
-          onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); }}
-          onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
-          aria-pressed={sortMode === "rating"}
-          style={{
-            padding: "8px 10px",
-            fontSize: 13,
-            lineHeight: 1.1,
-            border: "none",
-            background: sortMode === "rating" ? "#e9e9e9" : "#eee",
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
-        >
-          評価順
-        </button>
-      </div>
+        日付順
+      </button>
+      <button
+        onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); }}
+        onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
+        aria-pressed={sortMode === "rating"}
+        style={{
+          padding: "6px 12px",
+          fontSize: 13,
+          lineHeight: 1.1,
+          border: "none",
+          background: sortMode === "rating" ? "#ddd" : "transparent",
+          borderRadius: 6,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        評価順
+      </button>
     </div>
   );
 
@@ -124,18 +126,18 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
             display: "flex",
             flexDirection: "column",
             pointerEvents: "auto",
+            overflow: "hidden",
           }}
         >
-          {/* 共通ヘッダー（完全一致） */}
+          {/* ===== 共通ヘッダー（他ページと完全一致） ===== */}
           <PanelHeader
+            icon="rate2.svg"        // /public/img/rate2.svg を配置済み想定
             title="飲んだワイン"
-            icon="rate2.svg"            // /public/img/rate2.svg を配置
-            iconFallback="rate.svg"     // フォールバック任意
             onClose={onClose}
-            right={SortCapsule}
+            right={SortButtons}     // 「×」は PanelHeader デフォルトが右端に出る
           />
 
-          {/* リスト */}
+          {/* ===== リスト ===== */}
           <div
             ref={scrollRef}
             style={{
@@ -151,7 +153,11 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                 <li
                   key={`${item.JAN}-${idx}`}
                   onClick={() => onSelectJAN?.(item.JAN, { fromRated: true })}
-                  style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}
+                  style={{
+                    padding: "10px 0",
+                    borderBottom: "1px solid #eee",
+                    cursor: "pointer",
+                  }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                     <div>
@@ -175,7 +181,9 @@ export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelec
                   </small>
                 </li>
               ))}
-              {list.length === 0 && <li style={{ color: "#666" }}>まだ「飲んだワイン」がありません。</li>}
+              {list.length === 0 && (
+                <li style={{ color: "#666" }}>まだ「飲んだワイン」がありません。</li>
+              )}
             </ul>
           </div>
         </motion.div>
