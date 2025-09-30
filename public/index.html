@@ -5,10 +5,7 @@
 
     <!-- ===== PWA / モバイル向け基本設定 ===== -->
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <!-- ステータスバー背景色をR250,G250,B250 (#FAFAFA) に統一 -->
     <meta name="theme-color" content="#FAFAFA" />
-    <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="format-detection" content="telephone=no" />
@@ -17,30 +14,29 @@
     <meta name="description" content="Taste Map — ワインの味わいを可視化するインタラクティブマップ" />
 
     <!-- ===== アイコン / マニフェスト ===== -->
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="icon" href="/compass.png" />
+    <link rel="apple-touch-icon" href="/compass.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
-    <!-- ===== ルートを“実表示高”で全画面に（Safari差対策） ===== -->
+    <!-- ===== ルートを“実表示高”で全画面に（Safari対策） ===== -->
     <style>
       :root { color-scheme: light; }
       html, body, #root {
         margin: 0;
         padding: 0;
-        height: 100dvh;          /* ← 100vh ではなく 100dvh */
+        height: 100dvh;
         min-height: 100dvh;
-        background: #FAFAFA;     /* ← R250,G250,B250 */
+        background: #FAFAFA;
         overscroll-behavior: none;
         touch-action: pan-x pan-y;
         -webkit-text-size-adjust: 100%;
       }
       @supports not (height: 100dvh) {
         html, body, #root {
-          height: -webkit-fill-available;      /* 古い iOS Safari 用 */
+          height: -webkit-fill-available;
           min-height: -webkit-fill-available;
         }
       }
-      /* セーフエリア用ユーティリティ（必要に応じて要素に付与） */
       .safe-top    { padding-top:    max(12px, env(safe-area-inset-top)); }
       .safe-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
     </style>
@@ -50,6 +46,5 @@
   <body>
     <noscript>このアプリを使用するには JavaScript を有効にしてください。</noscript>
     <div id="root"></div>
-    <!-- CRA / Vite などではビルド時にバンドルが挿入されます -->
   </body>
 </html>
