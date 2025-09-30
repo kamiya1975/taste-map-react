@@ -995,13 +995,13 @@ function MapPage() {
          {/* ▼ ヘッダーを置き換え */}
           <div
             style={{
-              height: 44,
+              height: 50,
               padding: "0 8px 0 12px",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              background: "#DDDDC6",          // ← 枠色（指定色）
-              borderBottom: "1px solid #c9c9b0"
+              background: "rgb(221, 221, 198)",         // ← 枠色（指定色）
+              borderBottom: "1px solid rgb(201, 201, 176)",
             }}
           >
             {/* 左側：枠アイコンとタイトル */}
