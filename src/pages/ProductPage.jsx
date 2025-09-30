@@ -406,7 +406,13 @@ export default function ProductPage() {
       </h2>
 
       {/* タイプマーク＋価格 */}
-      <p style={{ display: "flex", alignItems: "center", margin: "4px 0 12px 0" }}>
+      <div
+        style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          margin: "4px 0 12px 0" 
+        }}
+      >
         <span
           style={{
             width: 16,
@@ -414,20 +420,23 @@ export default function ProductPage() {
             backgroundColor: typeColor,
             borderRadius: 4,
             marginRight: 8,
+            display: "inline-block",
           }}
         />
-        ¥{Number(price).toLocaleString()}
-      </p>
+       {/* 価格 */}
+       <span>¥{Number(price).toLocaleString()}</span>
+
+       {/* 原産地・年 */}
+       <span>
+        {product.産地 || product.生産地 || "シチリア / イタリア"} /{" "}
+        {product.生産年 || product.収穫年 || "2022"}
+       </span>
+      </div>
 
       {/* 味データ */}
       <p style={{ margin: "4px 0" }}>
-        Sweet: {Number(product.PC2).toFixed(2)}, body: {Number(product.PC1).toFixed(2)}
-      </p>
-
-      {/* 原産地・年 */}
-      <p style={{ margin: "4px 0" }}>
-        {product.産地 || product.生産地 || "シチリア / イタリア"} /{" "}
-        {product.生産年 || product.収穫年 || "2022"}
+        Sweet: {Number(product.PC2).toFixed(2)}/ 
+        body: {Number(product.PC1).toFixed(2)}
       </p>
 
       {/* 評価（◎） */}
