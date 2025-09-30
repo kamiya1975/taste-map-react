@@ -7,7 +7,7 @@ import {
   ZOOM_LIMITS,
   GRID_CELL_SIZE, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX, HEAT_GAMMA, HEAT_CLIP_PCT,
   HEAT_COLOR_LOW, HEAT_COLOR_HIGH,
-  TYPE_COLOR_MAP, ORANGE,
+  MAP_POINT_COLOR, ORANGE,
 } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
@@ -257,10 +257,10 @@ export default function MapCanvas({
     getPosition: (d) => [d.UMAP1, -d.UMAP2, 0],
     getFillColor: (d) => {
       const jan = String(d.JAN);
-      if (jan === String(selectedJAN)) return ORANGE;
-      if (Number(userRatings?.[jan]?.rating) > 0) return BLACK;
-      if (favorites && favorites[jan]) return FAVORITE_RED;
-      return (TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other);
+      if (jan === String(selectedJAN)) return ORANGE;        // 選択＝オレンジ
+      if (favorites && favorites[jan]) return FAVORITE_RED;  // お気に入り＝赤
+      if (Number(userRatings?.[jan]?.rating) > 0) return BLACK; // 評価済み＝黒
+      return MAP_POINT_COLOR;                                 // それ以外＝固定グレー
     },
     updateTriggers: {
       getFillColor: [
