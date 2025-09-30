@@ -507,60 +507,67 @@ function MapPage() {
   // 商品ページ（iframe）からの postMessage
   useEffect(() => {
     const onMsg = (e) => {
-      const { type, jan, payload, reason } = e.data || {};
+      const msg = e?.data || {};
+      const { type } = msg || {};
       if (!type) return;
 
-      // ★ 追加：商品iframeから「MyPage開いて」
+      // --- 共通ユーティリティ ---
+      const sendSnapshotToChild = (janStr, nextRatingObj) => {
+        try {
+          const isFav = !!favorites[janStr];
+          iframeRef.current?.contentWindow?.postMessage(
+            {
+              type: "STATE_SNAPSHOT",
+              jan: janStr,
+              favorite: isFav,
+              rating: nextRatingObj || userRatings[janStr] || null,
+              hideHeart: hideHeartForJAN === janStr,
+            },
+            "*"
+          );
+          if (hideHeartForJAN === janStr) {
+            iframeRef.current?.contentWindow?.postMessage(
+              { type: "HIDE_HEART", jan: janStr, value: true },
+              "*"
+           );
+          }
+        } catch {}
+      };
+
+      // === 1) ガイドを開いてほしい（iframe内からの要求）
       if (type === "OPEN_MYPAGE") {
         (async () => {
-          await closeUIsThen();          // 商品ドロワー等を閉じる（待機込み）
-          openMyPageExclusive();         // 排他で MyPagePanel を開く
+          await closeUIsThen();
+          openMyPageExclusive();
         })();
         return;
       }
 
-      // ここから下は、従来のメッセージ（janが必要なもの）だけを処理
-      if (!jan) return;
-      const janStr = String(jan);
+      // 以降は jan が必要
+      const janStr = String(msg.jan || "");
+      if (!janStr) return;
 
-      // 1) ハートのトグル
+      // === 2) 旧方式：お気に入りトグル
       if (type === "TOGGLE_FAVORITE") {
-        toggleFavorite(janStr);
+        // 既存のユーティリティで切替（子にも反映）
+       toggleFavorite(janStr);
+        // スナップショット返信
+        sendSnapshotToChild(janStr);
         return;
       }
 
-      // 2) 子から「いまの状態を教えて」
-      if (type === "REQUEST_STATE") {
-        const isFav = !!favorites[janStr];
-        const ratingPayload = userRatings[janStr] || null;
-        const shouldHide = hideHeartForJAN === janStr; // ← ここでも明示
-        try {
-          iframeRef.current?.contentWindow?.postMessage(
-            { type: "STATE_SNAPSHOT", jan: janStr, favorite: isFav, rating: ratingPayload, hideHeart: shouldHide },
-            "*"
-          );
-          if (shouldHide) {
-            iframeRef.current?.contentWindow?.postMessage(
-              { type: "HIDE_HEART", jan: janStr, value: true },
-              "*"
-            );
-          }
-         } catch {} 
-         return;
-       }
-
-      // 3) 評価が更新された
+      // === 3) 旧方式：評価更新（payload: {rating, date, ...}）
       if (type === "RATING_UPDATED") {
-        // userRatings を更新
+        const payload = msg.payload || null;
         setUserRatings((prev) => {
           const next = { ...prev };
-          if (!payload || !payload.rating) { delete next[janStr]; }
-          else { next[janStr] = payload; }
-          localStorage.setItem("userRatings", JSON.stringify(next));
+          if (!payload || !payload.rating) delete next[janStr];
+          else next[janStr] = payload;
+          try { localStorage.setItem("userRatings", JSON.stringify(next)); } catch {}
           return next;
         });
 
-        // 評価 > 0 なら自動的に♡を外す
+        // 評価>0なら「赤」より「黒」を優先：お気に入りから外す（仕様に合わせる）
         if (payload && Number(payload.rating) > 0) {
           setFavorites((prev) => {
             if (!prev[janStr]) return prev;
@@ -569,24 +576,87 @@ function MapPage() {
             try { localStorage.setItem("favorites", JSON.stringify(next)); } catch {}
             return next;
           });
-          try { sendFavoriteToChild(jan, false); } catch {}
+          // 子iframeのハートUIも同期
+          try {
+            iframeRef.current?.contentWindow?.postMessage(
+              { type: "SET_FAVORITE", jan: janStr, value: false },
+              "*"
+            );
+          } catch {}
         }
 
-        // 最新スナップショットを返信（UI同期用）
-        const effectiveFav = payload && Number(payload.rating) > 0 ? false : !!favorites[janStr];
-        try {
-          iframeRef.current?.contentWindow?.postMessage(
-            { type: "STATE_SNAPSHOT", jan: janStr, favorite: effectiveFav, rating: payload || null },
-            "*"
-          );
-        } catch {}
+        sendSnapshotToChild(janStr, msg.payload || null);
+        return;
+      }
+
+      // === 4) 新方式：お気に入り更新（即時反映）
+      if (type === "tm:fav-updated") {
+       const isFavorite = !!msg.isFavorite;
+        setFavorites((prev) => {
+          const next = { ...prev };
+          if (isFavorite) next[janStr] = { addedAt: new Date().toISOString() };
+          else delete next[janStr];
+          try { localStorage.setItem("favorites", JSON.stringify(next)); } catch {}
+          return next;
+        });
+
+        // お気に入りだけでは色は赤、ただし評価が既にあるなら黒優先（後段の色判定に委ねる）
+       sendSnapshotToChild(janStr);
+        return;
+      }
+
+      // === 5) 新方式：評価更新（即時反映）
+      if (type === "tm:rating-updated") {
+        const rating = Number(msg.rating) || 0;
+        const date = msg.date || new Date().toISOString();
+
+        setUserRatings((prev) => {
+          const next = { ...prev };
+          if (rating <= 0) delete next[janStr];
+          else next[janStr] = { ...(next[janStr] || {}), rating, date };
+          try { localStorage.setItem("userRatings", JSON.stringify(next)); } catch {}
+          return next;
+        });
+
+        // 評価>0 を入れたら「赤より黒」を優先 → お気に入りから外す
+        if (rating > 0) {
+          setFavorites((prev) => {
+            if (!prev[janStr]) return prev;
+            const next = { ...prev };
+            delete next[janStr];
+            try { localStorage.setItem("favorites", JSON.stringify(next)); } catch {}
+            return next;
+          });
+          // 子iframeのハートUIも同期
+          try {
+            iframeRef.current?.contentWindow?.postMessage(
+              { type: "SET_FAVORITE", jan: janStr, value: false },
+              "*"
+            );
+          } catch {}
+        }
+
+        sendSnapshotToChild(janStr, rating > 0 ? { rating, date } : null);
+        return;
+      }
+
+      // === 6) 子からの状態要求（互換維持）
+      if (type === "REQUEST_STATE") {
+        sendSnapshotToChild(janStr);
         return;
       }
     };
 
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [toggleFavorite, favorites, userRatings, openFromRated, hideHeartForJAN]);
+  }, [
+    toggleFavorite,
+    favorites,
+    userRatings,
+    hideHeartForJAN,
+    closeUIsThen,
+    openMyPageExclusive,
+  ]);
 
   // 評価の有無
   const hasAnyRating = useMemo(

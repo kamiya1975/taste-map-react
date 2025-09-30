@@ -258,8 +258,8 @@ export default function MapCanvas({
     getFillColor: (d) => {
       const jan = String(d.JAN);
       if (jan === String(selectedJAN)) return ORANGE;        // 選択＝オレンジ
-      if (favorites && favorites[jan]) return FAVORITE_RED;  // お気に入り＝赤
       if (Number(userRatings?.[jan]?.rating) > 0) return BLACK; // 評価済み＝黒
+      if (favorites && favorites[jan]) return FAVORITE_RED;  // お気に入り＝赤
       return MAP_POINT_COLOR;                                 // それ以外＝固定グレー
     },
     updateTriggers: {
