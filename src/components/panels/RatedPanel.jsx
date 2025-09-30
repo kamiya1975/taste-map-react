@@ -1,7 +1,8 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DRAWER_HEIGHT, PANEL_HEADER_H, PANEL_HEADER_BORDER } from "../../ui/constants";
+import { DRAWER_HEIGHT, PANEL_HEADER_H, PANEL_HEADER_BORDER, TYPE_COLOR_MAP } from "../../ui/constants";
 import PanelHeader from "../ui/PanelHeader";
+import ListRow from "./ListRow";
 
 export default function RatedPanel({
   isOpen,
@@ -18,7 +19,7 @@ export default function RatedPanel({
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [sortMode]);
 
-  // ランク番号（採点した順の通し番号）
+  // 採点した順の通し番号（1始まり）
   const rankMap = React.useMemo(() => {
     const items = Object.entries(userRatings || {})
       .map(([jan, meta]) => ({
@@ -63,7 +64,7 @@ export default function RatedPanel({
     return arr;
   }, [data, userRatings, sortMode, rankMap]);
 
-  // 並び替えカプセル（右側・×の直前）
+  // 右上：並び替えカプセル
   const SortCapsule = (
     <div
       role="group"
@@ -72,7 +73,7 @@ export default function RatedPanel({
         display: "inline-flex",
         alignItems: "center",
         background: "transparent",
-        border: "1px solid rgb(221,211,198)", // 背景と同色＝枠が目立たない
+        border: "1px solid rgb(221,211,198)",
         borderRadius: 8,
         overflow: "hidden",
         height: 28,
@@ -95,9 +96,9 @@ export default function RatedPanel({
               fontSize: 13,
               lineHeight: 1,
               border: "none",
-              background: "transparent",       // 常に透過
-              color: "#000",                    // 黒文字
-              opacity: active ? 1 : 0.45,       // 非アクティブは薄く
+              background: "transparent",
+              color: "#000",
+              opacity: active ? 1 : 0.45,
               cursor: "pointer",
               whiteSpace: "nowrap",
               ...(i === 0 ? { borderRight: "1px solid rgb(221,211,198)" } : null),
@@ -109,6 +110,30 @@ export default function RatedPanel({
       })}
     </div>
   );
+
+  // ◎の“単体表示”バッジ
+  const RatingBadge = ({ value = 0 }) => {
+    const v = Math.max(0, Math.min(5, Math.floor(Number(value) || 0)));
+    if (v <= 0) return null;
+    return (
+      <div
+        aria-label={`評価 ${v}`}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          fontWeight: 700,
+          fontSize: 18,
+          lineHeight: 1,
+          letterSpacing: 0.5,
+          color: "#000",
+        }}
+      >
+        <span aria-hidden>◎</span>
+        <span style={{ fontSize: 13, opacity: 0.85 }}>×{v}</span>
+      </div>
+    );
+  };
 
   return (
     <AnimatePresence>
@@ -152,38 +177,25 @@ export default function RatedPanel({
             }}
           >
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {list.map((item, idx) => (
-                <li
-                  key={`${item.JAN}-${idx}`}
-                  onClick={() => onSelectJAN?.(item.JAN, { fromRated: true })}
-                  style={{
-                    padding: "10px 0",
-                    borderBottom: "1px solid #eee",
-                    cursor: "pointer",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <div>
-                      <strong style={{ marginRight: 4 }}>{item.displayIndex ?? "—"}.</strong>
-                      <span style={{ fontSize: 13, color: "#555" }}>
-                        {item.ratedAt ? new Date(item.ratedAt).toLocaleString() : "（日時不明）"}
-                      </span>
-                      <br />
-                      {item.商品名 || "（名称不明）"}
-                    </div>
-                    <div style={{ fontSize: 18, fontWeight: 700 }}>
-                      {"◎".repeat(Math.max(0, Math.min(5, Math.floor(item.rating))))}
-                    </div>
-                  </div>
-                  <small>
-                    Type: {item.Type || "不明"} / 価格:{" "}
-                    {Number.isFinite(item.希望小売価格) ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
-                    <br />
-                    Sweet: {Number.isFinite(item.PC2) ? item.PC2.toFixed(2) : "—"}, Body:{" "}
-                    {Number.isFinite(item.PC1) ? item.PC1.toFixed(2) : "—"}
-                  </small>
-                </li>
-              ))}
+              {list.map((item, idx) => {
+                const typeColor =
+                  TYPE_COLOR_MAP?.[item?.Type] ??
+                  "rgb(180,180,180)"; // 未定義Typeはグレー
+
+                return (
+                  <ListRow
+                    key={`${item.JAN}-${idx}`}
+                    index={item.displayIndex ?? idx + 1}
+                    item={item}
+                    onPick={() => onSelectJAN?.(item.JAN, { fromRated: true })}
+                    showDate
+                    dateValue={item.ratedAt}
+                    // ListRow側では TypeBadge を使うため accentColor は未使用でもOK
+                    accentColor={typeColor}
+                    extraRight={<RatingBadge value={item.rating} />}
+                  />
+                );
+              })}
               {list.length === 0 && (
                 <li style={{ color: "#666" }}>まだ「飲んだワイン」がありません。</li>
               )}
