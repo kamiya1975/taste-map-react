@@ -70,7 +70,7 @@ export default function SearchPanel({
   }, [open]);
 
   // 共通ヘッダー定義（商品ページと同一トーン）
-  const HEADER_H = 55;
+  const HEADER_H = 40;
   const HEADER_BG = "rgb(221, 211, 198)";
   const HEADER_BORDER = "1px solid rgb(201, 201, 176)";
 
