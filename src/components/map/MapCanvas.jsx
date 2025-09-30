@@ -2,7 +2,7 @@
 import React, { useMemo, useRef, useCallback, useEffect } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrthographicView } from "@deck.gl/core";
-import { ScatterplotLayer, LineLayer, GridCellLayer, PathLayer, IconLayer } from "@deck.gl/layers";
+import { ScatterplotLayer, LineLayer, GridCellLayer, PathLayer, IconLayer, BitmapLayer } from "@deck.gl/layers";
 import {
   ZOOM_LIMITS,
   GRID_CELL_SIZE, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX, HEAT_GAMMA, HEAT_CLIP_PCT,
@@ -390,6 +390,15 @@ export default function MapCanvas({
       }}
       pickingRadius={8}
       layers={[
+        // ★ 一番下：紙テクスチャ（UMAP空間に敷く）
+        new BitmapLayer({
+          id: "paper-bg",
+          image: `${process.env.PUBLIC_URL || ""}/img/paper-bg.png`,
+          // UMAPの可動域に広げて敷く（panBoundsに追随）
+          bounds: [panBounds.xmin, panBounds.ymin, panBounds.xmax, panBounds.ymax],
+          opacity: 1,
+          parameters: { depthTest: false },
+        }),
         // 評価リング（常に最前面に来るよう depthTest: false）
         ...ratingCircleLayers,
         // グリッド or ヒート

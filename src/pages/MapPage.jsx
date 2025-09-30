@@ -639,7 +639,21 @@ function MapPage() {
 
   // ====== レンダリング
   return (
-    <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}>
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        // ↓ 背景テクスチャ
+        backgroundImage: `url(${process.env.PUBLIC_URL || ""}/img/paper-bg.png)`,
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
+        backgroundSize: "cover", // 細かくしたければ "auto 100%" や "contain" に
+        // iOSの挙動安定のために固定指定は避けています（必要なら backgroundAttachment: "fixed"）
+      }}
+    >
       {/* デッキGLは分離済み */}
       <MapCanvas
         data={data}
