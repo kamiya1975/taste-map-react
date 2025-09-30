@@ -70,7 +70,7 @@ export default function RatedPanel({
           display: "inline-flex",
           alignItems: "center",
           background: "transparent",
-          border: "1px solid rgb(201,201,176)",   // モックのライン色
+          border: "1px solid rgb(221,211,198)",
           borderRadius: 8,
           overflow: "hidden",
           height: 28,
@@ -98,7 +98,7 @@ export default function RatedPanel({
                 opacity: active ? 1 : 0.45,       // 非アクティブは薄く
                 cursor: "pointer",
                 whiteSpace: "nowrap",
-                ...(i === 0 ? { borderRight: "1px solid rgb(201,201,176)" } : null),
+                ...(i === 0 ? { borderRight: "1px solid rgb(221,211,198)" } : null),
               }}
             >
               {b.label}
