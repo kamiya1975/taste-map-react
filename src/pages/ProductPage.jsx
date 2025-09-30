@@ -189,7 +189,8 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
               border: `1.5px solid ${value === currentRating ? "#000" : "#bbb"}`,
               borderRadius: "50%",
               boxSizing: "border-box",
-              backgroundColor: i === 0 ? "rgb(150,150,150)" : "transparent",
+              backgroundColor:
+                i === 0 ? (isSelected ? centerColor : "rgb(150,150,150)") : "transparent",
             }}
           />
         );
