@@ -87,6 +87,9 @@ export default function SearchPanel({
       <div
         style={{
           height: HEADER_H,
+          minHeight: HEADER_H,
+          maxHeight: HEADER_H,
+          boxSizing: "border-box",
           padding: "0 8px 0 12px",
           display: "flex",
           alignItems: "center",
@@ -117,6 +120,7 @@ export default function SearchPanel({
             border: "none",
             padding: "6px 8px",
             fontSize: 18,
+            lineHeight: 1,
             lineHeight: 1,
             cursor: "pointer",
             color: "#000",
