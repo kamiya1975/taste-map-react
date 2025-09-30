@@ -9,6 +9,7 @@ import {
   HEAT_COLOR_LOW, HEAT_COLOR_HIGH,
   TYPE_COLOR_MAP, ORANGE,
 } from "../../ui/constants";
+const BLACK = [0, 0, 0, 255];
 const FAVORITE_RED = [178, 53, 103, 255];  // お気に入りの打点色（R178,G53,B103）
 
 // --- 小ユーティリティ ---
@@ -238,24 +239,22 @@ export default function MapCanvas({
     getPosition: (d) => [d.UMAP1, -d.UMAP2, 0],
     getFillColor: (d) => {
       const jan = String(d.JAN);
-      if (jan === String(selectedJAN)) return ORANGE;                 // 選択中は従来どおりオレンジ最優先
-      if (ratings[jan] && ratings[jan].rating > 0) {
-         return [0, 0, 0, 255]; 
-      }
-      if (favorites && favorites[jan]) return FAVORITE_RED;           // お気に入りは赤
+      if (jan === String(selectedJAN)) return ORANGE;
+      if (Number(userRatings?.[jan]?.rating) > 0) return BLACK;
+      if (favorites && favorites[jan]) return FAVORITE_RED;
       return (TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other);        // それ以外はタイプ色
     },
-    // favorites の変化で色更新。オブジェクトを stringify してトリガーに
-    updateTriggers: { 
-      getFillColor: [selectedJAN, 
+    updateTriggers: {
+      getFillColor: [
+        selectedJAN,
         JSON.stringify(favorites || {}),
-        localStorage.getItem("userRatings")
-      ]
+        JSON.stringify(userRatings || {}),
+      ],
     },
     radiusUnits: "meters",
     getRadius: 0.03,
     pickable: true,
-  }), [data, selectedJAN]);
+  }), [data, selectedJAN, favorites, userRatings]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
