@@ -96,7 +96,6 @@ export default function SearchPanel({
           justifyContent: "space-between",
           background: HEADER_BG,
           borderBottom: HEADER_BORDER,
-          gap: 8,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -121,7 +120,6 @@ export default function SearchPanel({
             padding: "6px 8px",
             fontSize: 18,
             lineHeight: 1,
-            lineHeight: 1,
             cursor: "pointer",
             color: "#000",
             marginRight: 15,
@@ -133,10 +131,10 @@ export default function SearchPanel({
 
       {/* ===== 検索ボックス行 ===== */}
       <div
-        style={{
-          padding: "10px 12px 8px",
-          borderBottom: "1px solid #eee",
-          background: "#f9f9f9",
+        style={{ 
+          padding: "8px 12px 6px",  
+          borderBottom:"1px solid #eee", 
+          background:"#f9f9f9" ,
         }}
       >
         <div
@@ -147,7 +145,7 @@ export default function SearchPanel({
             border: "1px solid #ccc",
             borderRadius: 8,
             background: "#fff",
-            padding: "8px 10px",
+            padding: "6px 10px",
           }}
         >
           <input
@@ -163,8 +161,9 @@ export default function SearchPanel({
               border: "none",
               outline: "none",
               width: "100%",
-              fontSize: 14,
+              fontSize: 16,
               paddingRight: 44, // 右端のバーコードボタン分
+              lineHeight: 1,
             }}
           />
 
@@ -178,8 +177,8 @@ export default function SearchPanel({
               right: 6,
               top: "50%",
               transform: "translateY(-50%)",
-              width: 36,
-              height: 24,
+              width: 34,
+              height: 22,
               borderRadius: 6,
               border: "1px solid #d0d0d0",
               background: "#fff",
@@ -203,7 +202,7 @@ export default function SearchPanel({
         ref={scrollRef}
         style={{
           // 60px(ヘッダー) + ~58px(検索行) を引く
-          height: `calc(${DRAWER_HEIGHT} - ${HEADER_H}px - 58px)`,
+          height: `calc(${DRAWER_HEIGHT} - ${HEADER_H}px - 52px)`,
           overflowY: "auto",
           padding: "6px 10px 12px",
           background: "#fff",
