@@ -239,11 +239,19 @@ export default function MapCanvas({
     getFillColor: (d) => {
       const jan = String(d.JAN);
       if (jan === String(selectedJAN)) return ORANGE;                 // 選択中は従来どおりオレンジ最優先
+      if (ratings[jan] && ratings[jan].rating > 0) {
+         return [0, 0, 0, 255]; 
+      }
       if (favorites && favorites[jan]) return FAVORITE_RED;           // お気に入りは赤
       return (TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other);        // それ以外はタイプ色
     },
     // favorites の変化で色更新。オブジェクトを stringify してトリガーに
-    updateTriggers: { getFillColor: [selectedJAN, JSON.stringify(favorites || {})] },
+    updateTriggers: { 
+      getFillColor: [selectedJAN, 
+        JSON.stringify(favorites || {}),
+        localStorage.getItem("userRatings")
+      ]
+    },
     radiusUnits: "meters",
     getRadius: 0.03,
     pickable: true,
