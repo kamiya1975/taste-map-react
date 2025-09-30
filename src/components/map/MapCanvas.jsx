@@ -9,10 +9,14 @@ import {
   HEAT_COLOR_LOW, HEAT_COLOR_HIGH,
   TYPE_COLOR_MAP, ORANGE,
 } from "../../ui/constants";
+
 const BLACK = [0, 0, 0, 255];
-const FAVORITE_RED = [178, 53, 103, 255];  // お気に入りの打点色（R178,G53,B103）
+const FAVORITE_RED = [178, 53, 103, 255];  // お気に入りの打点色
 const TILE_GRAY  = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
+
+// ✅ パンのクランプ切替（false = パンは戻さない／ズームのみ上下限クランプ）
+const PAN_CLAMP = false;
 
 // --- 小ユーティリティ ---
 const EPS = 1e-9;
@@ -43,6 +47,9 @@ function halfSizeWorld(zoom, sizePx) {
 // 可動域クランプ（余白スラックつき）
 function clampViewState(nextVS, panBounds, sizePx) {
   const zoom = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, nextVS.zoom));
+  // ⭐️ パンのクランプ無効時はズームのみ
+  if (!PAN_CLAMP) return { ...nextVS, zoom };
+
   const { halfW, halfH } = halfSizeWorld(zoom, sizePx);
 
   const xmin = panBounds?.xmin ?? -Infinity;
@@ -59,7 +66,7 @@ function clampViewState(nextVS, panBounds, sizePx) {
   const slackY = Math.max(0, 2 * halfH - worldH);
 
   const SLACK_FACTOR_X = 0.9;
-  const SLACK_FACTOR_Y = 15.0;   // iOS対策でやや広め
+  const SLACK_FACTOR_Y = 15.0;   // iOS対策で広め
   const MAX_SLACK_RATIO_X = 0.6;
   const MAX_SLACK_RATIO_Y = 0.9;
 
@@ -92,7 +99,7 @@ function clampViewState(nextVS, panBounds, sizePx) {
     maxY = centerY + sy / 2;
   }
 
-  const EPS_EDGE = 1e-6; // 端の張り付き感を緩和
+  const EPS_EDGE = 1e-6; // 端の張り付きを緩和
   const x = Math.max(minX + EPS_EDGE, Math.min(maxX - EPS_EDGE, nextVS.target[0]));
   const y = Math.max(minY + EPS_EDGE, Math.min(maxY - EPS_EDGE, nextVS.target[1]));
 
@@ -112,7 +119,7 @@ export default function MapCanvas({
   setViewState,
   onPickWine,        // (item) => void
 }) {
-  // --- refs（Hooksはコンポーネント内に置く） ---
+  // --- refs ---
   const sizeRef = useRef({ width: 1, height: 1 });
   const interactingRef = useRef(false);
   const clampRAF = useRef(0);
@@ -122,15 +129,16 @@ export default function MapCanvas({
     zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom)),
   });
 
-  // Safari 初期レイアウトの高さブレ対策：初回1フレーム遅延で再クランプ
+  // 初期レイアウトの“戻し”は PAN_CLAMP=true のときのみ
   useEffect(() => {
+    if (!PAN_CLAMP) return;
     const raf = requestAnimationFrame(() => {
       setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
     });
     return () => cancelAnimationFrame(raf);
   }, [panBounds, setViewState]);
 
-  // visualViewport（URLバー出入り）：操作中は無視、操作後にデバウンスしてクランプ
+  // visualViewport（URLバー出入り）
   useEffect(() => {
     if (!window.visualViewport) return;
     let timeoutId = 0;
@@ -145,11 +153,12 @@ export default function MapCanvas({
           width:  Math.floor(vv?.width  || sizeRef.current.width),
           height: Math.floor(vv?.height || sizeRef.current.height),
         };
+        if (!PAN_CLAMP) return;
         cancelAnimationFrame(animationId);
         animationId = requestAnimationFrame(() => {
           setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
         });
-      }, 80); // ちょい長めデバウンス
+      }, 80);
     };
 
     window.visualViewport.addEventListener("resize", onVV, { passive: true });
@@ -163,8 +172,9 @@ export default function MapCanvas({
     };
   }, [panBounds, setViewState]);
 
-  // bfcache 復帰 / 画面の向き変更でも再クランプ
+  // bfcache復帰 / 画面の向き変更
   useEffect(() => {
+    if (!PAN_CLAMP) return;
     const onPageShow = () => setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
     const onOrientation = () => setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
     window.addEventListener("pageshow", onPageShow);
@@ -198,9 +208,7 @@ export default function MapCanvas({
       if (!map.has(key)) {
         map.set(key, {
           ix, iy,
-          // GridCellLayer 用に残している left-bottom っぽい座標
           position: [toCorner(ix), toCorner(iy)],
-          // IconLayer 用：セル中心（画像をセルの真ん中に置く）
           center: [toCorner(ix) + GRID_CELL_SIZE / 2, toCorner(iy) + GRID_CELL_SIZE / 2, 0],
           count: 0,
           hasRating: false
@@ -252,7 +260,7 @@ export default function MapCanvas({
       if (jan === String(selectedJAN)) return ORANGE;
       if (Number(userRatings?.[jan]?.rating) > 0) return BLACK;
       if (favorites && favorites[jan]) return FAVORITE_RED;
-      return (TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other);        // それ以外はタイプ色
+      return (TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other);
     },
     updateTriggers: {
       getFillColor: [
@@ -350,10 +358,11 @@ export default function MapCanvas({
     return best;
   }, [data]);
 
-  // --- 操作終了時に“最後に1回だけ”クランプ ---
+  // --- 操作終了時クランプ（PAN_CLAMP=true のときだけ）
   const onInteractionStateChange = useCallback((state) => {
     interactingRef.current =
       !!state?.isDragging || !!state?.isPanning || !!state?.isZooming;
+    if (!PAN_CLAMP) return;
     if (!interactingRef.current) {
       cancelAnimationFrame(clampRAF.current);
       clampRAF.current = requestAnimationFrame(() => {
@@ -368,36 +377,44 @@ export default function MapCanvas({
       viewState={viewState}
       style={{ position: "absolute", inset: 0 }}
       useDevicePixels
-      // キャンバスサイズを保持（クランプ計算に使用）
+
+      // キャンバスサイズ保持
       onResize={({ width, height }) => {
         sizeRef.current = getEffectiveSizePx({ width, height });
-        if (interactingRef.current) return; // 操作中はここでクランプしない
+        if (!PAN_CLAMP) return;
+        if (interactingRef.current) return;
         setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
       }}
-      // ユーザー操作中はズームだけクランプ、終了したら最終クランプ
+
+      // ユーザー操作中/後：ズームだけクランプ
       onViewStateChange={({ viewState: vs, interactionState }) => {
         const isInteracting =
           !!interactionState?.isDragging ||
           !!interactionState?.isPanning ||
           !!interactionState?.isZooming;
         interactingRef.current = isInteracting;
-        if (isInteracting) {
-          setViewState(clampZoomOnly(vs));
+
+        const next = clampZoomOnly(vs);
+        if (!PAN_CLAMP) {
+          setViewState(next);          // パンは戻さない
         } else {
-          setViewState(clampViewState(vs, panBounds, sizeRef.current));
+          setViewState(isInteracting ? next : clampViewState(next, panBounds, sizeRef.current));
         }
       }}
+
       onInteractionStateChange={onInteractionStateChange}
+
       controller={{
         dragPan: true,
         dragRotate: false,
         minZoom: ZOOM_LIMITS.min,
         maxZoom: ZOOM_LIMITS.max,
         inertia: false,
-        doubleClickZoom: false, // 誤タップのズームジャンプ抑止
+        doubleClickZoom: false,
         touchZoom: true,
         scrollZoom: true,
       }}
+
       onClick={(info) => {
         const picked = info?.object;
         if (picked?.JAN) { onPickWine?.(picked); return; }
@@ -405,34 +422,32 @@ export default function MapCanvas({
         const nearest = findNearestWine(coord);
         if (nearest?.JAN) onPickWine?.(nearest);
       }}
+
       pickingRadius={8}
+
       layers={[
-        // ★ 一番下：紙テクスチャ（UMAP空間に敷く）
+        // 背景（紙テクスチャ）：枠外へ出ても白地にならないよう panBounds で敷く
         new BitmapLayer({
           id: "paper-bg",
           image: `${process.env.PUBLIC_URL || ""}/img/paper-bg.png`,
-          // UMAPの可動域に広げて敷く（panBoundsに追随）
           bounds: [panBounds.xmin, panBounds.ymin, panBounds.xmax, panBounds.ymax],
           opacity: 1,
           parameters: { depthTest: false },
         }),
-        // セル塗り：ハイライト無 → 画像タイルに置き換え
+
+        // セル塗り：ハイライト無し→タイル、あり→ヒート
         !highlight2D
           ? new IconLayer({
               id: "cell-tiles",
               data: cells,
-              getPosition: (d) => d.center, // セル中心
+              getPosition: (d) => d.center,
               getIcon: (d) => ({
                 url: d.hasRating ? TILE_OCHRE : TILE_GRAY,
-                // 画像の元サイズ（ピクセル）—任意。アンカー中心にしたいので正方形前提でOK
-                width: 32,
-                height: 32,
-                anchorX: 16,
-                anchorY: 16,
+                width: 32, height: 32, anchorX: 16, anchorY: 16,
               }),
-              sizeUnits: "meters",       // ワールド座標（UMAP空間）の大きさで指定
-              getSize: GRID_CELL_SIZE,   // セル一辺＝画像一辺
-              billboard: true,           // 直交投影なので true/false どちらでも見た目は同じ
+              sizeUnits: "meters",
+              getSize: GRID_CELL_SIZE,
+              billboard: true,
               pickable: false,
               parameters: { depthTest: false },
               updateTriggers: {
@@ -463,6 +478,7 @@ export default function MapCanvas({
               pickable: false,
               updateTriggers: { getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash] },
             }),
+
         // グリッド線
         new LineLayer({
           id: "grid-lines-thin",
@@ -482,11 +498,15 @@ export default function MapCanvas({
           getWidth: 1,
           widthUnits: "pixels",
         }),
+
         // ピン/コンパス
         userPinCompassLayer,
         compassLayer,
+
         // 打点
         mainLayer,
+
+        // 評価リング
         ...ratingCircleLayers,
       ]}
     />
