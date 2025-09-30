@@ -1033,7 +1033,7 @@ function MapPage() {
                 lineHeight: 1,
                 cursor: "pointer",
                 color: "#000",
-                marginRight: 12,
+                marginRight: 20,
               }}
             >
               ×

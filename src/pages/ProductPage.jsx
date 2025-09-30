@@ -401,7 +401,7 @@ export default function ProductPage() {
       </div>
 
       {/* 商品名 */}
-      <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 20 }}>
+      <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 18 }}>
         {product.商品名 || "（名称不明）"}
       </h2>
 
