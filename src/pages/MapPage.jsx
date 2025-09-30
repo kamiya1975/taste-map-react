@@ -976,46 +976,71 @@ function MapPage() {
       {/* 商品ページドロワー */}
       <Drawer
         anchor="bottom"
-        open={productDrawerOpen}
-        onClose={() => {
-          setProductDrawerOpen(false);
-          setSelectedJAN(null);
-          setSelectedJANFromSearch(null);
-          setHideHeartForJAN(null);
-       }}
-        ModalProps={drawerModalProps}
-        PaperProps={{ style: paperBaseStyle }}
-      >
-        <div
-          style={{
-            height: "48px",
-            padding: "8px 12px",
-            borderBottom: "1px solid #eee",
-           display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: "#f9f9f9",
+          open={productDrawerOpen}
+          onClose={() => {
+            setProductDrawerOpen(false);
+            setSelectedJAN(null);
+            setSelectedJANFromSearch(null);
+            setHideHeartForJAN(null);
+          }}
+          ModalProps={drawerModalProps}
+          PaperProps={{
+            style: {
+             ...paperBaseStyle,
+              // 上端の細枠を追加（お好みで）
+              borderTop: "1px solid #c9c9b0"
+            }
           }}
         >
-          <div style={{ fontWeight: 600 }}>商品ページ</div>
-          <button
-            onClick={() => {
-              setProductDrawerOpen(false);
-              setSelectedJAN(null);
-              setSelectedJANFromSearch(null);
-              setHideHeartForJAN(null);
-            }}
+         {/* ▼ ヘッダーを置き換え */}
+          <div
             style={{
-              background: "#eee",
-              border: "1px solid #ccc",
-              padding: "6px 10px",
-              borderRadius: "4px",
-             cursor: "pointer",
+              height: 44,
+              padding: "0 8px 0 12px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: "#DDDDC6",          // ← 枠色（指定色）
+              borderBottom: "1px solid #c9c9b0"
             }}
           >
-            閉じる
-          </button>
-        </div>
+            {/* 左側：黒丸とタイトル */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                aria-hidden
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  background: "#000",
+                  display: "inline-block",
+               }}
+              />
+              <span style={{ fontWeight: 600 }}>商品ページ</span>
+            </div>
+
+            {/* 右側：閉じる（X）— ボタン風の枠は消す */}
+            <button
+              onClick={() => {
+                setProductDrawerOpen(false);
+                setSelectedJAN(null);
+                setSelectedJANFromSearch(null);
+                setHideHeartForJAN(null);
+              }}
+              aria-label="閉じる"
+              title="閉じる"
+              style={{
+                background: "transparent",     // ← 透明
+                border: "none",                // ← 枠なし
+                padding: "6px 8px",
+                fontSize: 18,
+               lineHeight: 1,
+                cursor: "pointer",
+              }}
+            >
+              ×
+            </button>
+          </div>
 
         {/* ▼ スクロール領域（ラッパ） */}
         <div className="drawer-scroll">
