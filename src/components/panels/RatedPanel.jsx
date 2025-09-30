@@ -64,46 +64,49 @@ export default function RatedPanel({
   // ===== 並び替えカプセル（左側に配置）
   const SortCapsule = (
     <div
-      role="group"
-      aria-label="並び替え"
-      style={{
-        display: "inline-flex",
-        borderRadius: 6,
-        overflow: "hidden",
-        background: "#eee",
-      }}
-    >
-      <button
-        onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
-        onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
-        aria-pressed={sortMode === "date"}
+        role="group"
+        aria-label="並び替え"
         style={{
-          padding: "6px 10px",
-          fontSize: 13,
-          border: "none",
-          borderRight: "1px solid #ccc",
-          background: sortMode === "date" ? "#e9e9e9" : "#eee",
-          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+          background: "transparent",
+          border: "1px solid rgb(201,201,176)",   // モックのライン色
+          borderRadius: 8,
+          overflow: "hidden",
+          height: 28,
         }}
       >
-        日付順
-      </button>
-      <button
-        onPointerDown={(e) => { e.preventDefault(); setSortMode("rating"); }}
-        onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
-        aria-pressed={sortMode === "rating"}
-        style={{
-          padding: "6px 10px",
-          fontSize: 13,
-          border: "none",
-          background: sortMode === "rating" ? "#e9e9e9" : "#eee",
-          cursor: "pointer",
-        }}
-      >
-        評価順
-      </button>
-    </div>
-  );
+        {[
+          { key: "date",   label: "日付順"   },
+          { key: "rating", label: "評価順"   },
+        ].map((b, i) => {
+          const active = sortMode === b.key;
+          return (
+            <button
+              key={b.key}
+              onPointerDown={(e) => { e.preventDefault(); setSortMode(b.key); }}
+              onClick={(e) => { e.preventDefault(); setSortMode(b.key); }}
+              aria-pressed={active}
+              style={{
+                WebkitTapHighlightColor: "transparent",
+                padding: "6px 10px",
+                fontSize: 13,
+                lineHeight: 1,
+                border: "none",
+                background: "transparent",       // 背景は常に透過
+                color: "#000",                    // 文字は黒
+                opacity: active ? 1 : 0.45,       // 非アクティブは薄く
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                ...(i === 0 ? { borderRight: "1px solid rgb(201,201,176)" } : null),
+              }}
+            >
+              {b.label}
+            </button>
+          );
+        })}
+     </div>
+    );
 
   return (
     <AnimatePresence>

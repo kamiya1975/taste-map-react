@@ -12,7 +12,7 @@ export default function PanelHeader({
   iconFallback,         // 例: "search.svg"
   onClose,
   right,                // 右側アクション（デフォルトは ×）
-  leftExtra,            // ← 追加: タイトルの右に並べる要素
+  leftExtra,            // タイトルの右に並べる要素
 }) {
   const base = (process.env.PUBLIC_URL || "") + "/img/";
 
@@ -33,7 +33,7 @@ export default function PanelHeader({
       }}
     >
       {/* 左：アイコン＋タイトル＋拡張 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         {icon && (
           <img
             src={`${base}${icon}`}
@@ -46,12 +46,7 @@ export default function PanelHeader({
           />
         )}
         <span style={{ fontWeight: 600, lineHeight: 1 }}>{title}</span>
-
-        {leftExtra && (
-          <div style={{ marginLeft: 8, display: "flex", alignItems: "center", gap: 8 }}>
-            {leftExtra}
-          </div>
-        )}
+        {leftExtra /* ← 余計な <div> を使わず直に差し込む */}
       </div>
 
       {/* 右：アクション or × */}
