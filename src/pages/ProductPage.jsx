@@ -413,6 +413,7 @@ export default function ProductPage() {
           margin: "4px 0 12px 0" 
         }}
       >
+        {/* タイプマーク */}
         <span
           style={{
             width: 16,
@@ -424,12 +425,14 @@ export default function ProductPage() {
           }}
         />
        {/* 価格 */}
-       <span>¥{Number(price).toLocaleString()}</span>
+       <span style={{ marginLeft: 8 }}>
+         ¥{Number(price).toLocaleString()}
+       </span>
 
        {/* 原産地・年 */}
-       <span>
-        {product.産地 || product.生産地 || "シチリア / イタリア"} /{" "}
-        {product.生産年 || product.収穫年 || "2022"}
+       <span style={{ marginLeft: 24 }}>
+         {product.産地 || product.生産地 || "シチリア / イタリア"} /{" "}
+         {product.生産年 || product.収穫年 || "2022"}
        </span>
       </div>
 
