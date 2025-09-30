@@ -11,6 +11,8 @@ import {
 } from "../../ui/constants";
 const BLACK = [0, 0, 0, 255];
 const FAVORITE_RED = [178, 53, 103, 255];  // お気に入りの打点色（R178,G53,B103）
+const TILE_GRAY  = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
+const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
 // --- 小ユーティリティ ---
 const EPS = 1e-9;
@@ -194,7 +196,15 @@ export default function MapCanvas({
       const iy = toIndex(-d.UMAP2);
       const key = keyOf(ix, iy);
       if (!map.has(key)) {
-        map.set(key, { ix, iy, position: [toCorner(ix), toCorner(iy)], count: 0, hasRating: false });
+        map.set(key, {
+          ix, iy,
+          // GridCellLayer 用に残している left-bottom っぽい座標
+          position: [toCorner(ix), toCorner(iy)],
+          // IconLayer 用：セル中心（画像をセルの真ん中に置く）
+          center: [toCorner(ix) + GRID_CELL_SIZE / 2, toCorner(iy) + GRID_CELL_SIZE / 2, 0],
+          count: 0,
+          hasRating: false
+        });
       }
       if ((userRatings[d.JAN]?.rating ?? 0) > 0) map.get(key).hasRating = true;
       map.get(key).count += 1;
@@ -406,18 +416,30 @@ export default function MapCanvas({
           opacity: 1,
           parameters: { depthTest: false },
         }),
-        // 評価リング（常に最前面に来るよう depthTest: false）
-        ...ratingCircleLayers,
-        // グリッド or ヒート
+        // セル塗り：ハイライト無 → 画像タイルに置き換え
         !highlight2D
-          ? new GridCellLayer({
-              id: "grid-cells-base",
+          ? new IconLayer({
+              id: "cell-tiles",
               data: cells,
-              cellSize: GRID_CELL_SIZE,
-              getPosition: (d) => d.position,
-              getFillColor: (d) => d.hasRating ? [180, 100, 50, 150] : [200, 200, 200, 40],
-              getElevation: 0,
+              getPosition: (d) => d.center, // セル中心
+              getIcon: (d) => ({
+                url: d.hasRating ? TILE_OCHRE : TILE_GRAY,
+                // 画像の元サイズ（ピクセル）—任意。アンカー中心にしたいので正方形前提でOK
+                width: 32,
+                height: 32,
+                anchorX: 16,
+                anchorY: 16,
+              }),
+              sizeUnits: "meters",       // ワールド座標（UMAP空間）の大きさで指定
+              getSize: GRID_CELL_SIZE,   // セル一辺＝画像一辺
+              billboard: true,           // 直交投影なので true/false どちらでも見た目は同じ
               pickable: false,
+              parameters: { depthTest: false },
+              updateTriggers: {
+                getIcon: [JSON.stringify(cells.map(c => c.hasRating))],
+                getPosition: [GRID_CELL_SIZE],
+                getSize: [GRID_CELL_SIZE],
+              },
             })
           : new GridCellLayer({
               id: `grid-cells-heat-${highlight2D}`,
@@ -465,6 +487,7 @@ export default function MapCanvas({
         compassLayer,
         // 打点
         mainLayer,
+        ...ratingCircleLayers,
       ]}
     />
   );
