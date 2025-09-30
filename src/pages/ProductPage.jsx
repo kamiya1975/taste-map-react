@@ -432,7 +432,7 @@ export default function ProductPage() {
        {/* 原産地・年 */}
        <span style={{ marginLeft: 24 }}>
          {product.産地 || product.生産地 || "シチリア / イタリア"} /{" "}
-         {product.生産年 || product.収穫年 || "2022"}
+         {product.国 || product.国 || "2022"}
        </span>
       </div>
 
