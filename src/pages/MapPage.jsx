@@ -1009,7 +1009,7 @@ function MapPage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              background: "rgb(221, 221, 198)",         // ← 枠色（指定色）
+              background: "rgb(221, 211, 198)",         // ← 枠色（指定色）
               borderBottom: "1px solid rgb(201, 201, 176)",
             }}
           >
