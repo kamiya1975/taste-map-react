@@ -11,10 +11,31 @@ export default function PanelHeader({
   icon,                 // 例: "search2.svg" / "dot.svg"
   iconFallback,         // 例: "search.svg"
   onClose,
-  right,                // 右側アクション（デフォルトは ×）
-  leftExtra,            // タイトルの右に並べる要素
+  right,                // 右側を完全にカスタムしたい時に使う（×も含めて自前）
+  leftExtra,            // タイトルの右隣に置く要素（任意）
+  rightExtra,           // ← 追加：右側（×の左）に置く要素
 }) {
   const base = (process.env.PUBLIC_URL || "") + "/img/";
+
+  const CloseBtn = (
+    <button
+      onClick={onClose}
+      aria-label="閉じる"
+      title="閉じる"
+      style={{
+        background: "transparent",
+        border: "none",
+        padding: "6px 8px",
+        fontSize: 18,
+        lineHeight: 1,
+        cursor: "pointer",
+        color: "#000",
+        marginRight: 15, // 端との余白はここで管理
+      }}
+    >
+      ×
+    </button>
+  );
 
   return (
     <div
@@ -32,7 +53,7 @@ export default function PanelHeader({
         borderBottom: PANEL_HEADER_BORDER,
       }}
     >
-      {/* 左：アイコン＋タイトル＋拡張 */}
+      {/* 左：アイコン＋タイトル（＋任意の拡張） */}
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         {icon && (
           <img
@@ -46,28 +67,17 @@ export default function PanelHeader({
           />
         )}
         <span style={{ fontWeight: 600, lineHeight: 1 }}>{title}</span>
-        {leftExtra /* ← 余計な <div> を使わず直に差し込む */}
+        {leftExtra /* ← ラッパ無しで直差し */}
       </div>
 
-      {/* 右：アクション or × */}
-      {right ?? (
-        <button
-          onClick={onClose}
-          aria-label="閉じる"
-          title="閉じる"
-          style={{
-            background: "transparent",
-            border: "none",
-            padding: "6px 8px",
-            fontSize: 18,
-            lineHeight: 1,
-            cursor: "pointer",
-            color: "#000",
-            marginRight: 15,
-          }}
-        >
-          ×
-        </button>
+      {/* 右：カスタム or 右側追加要素 + × */}
+      {right != null ? (
+        right
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {rightExtra}
+          {onClose && CloseBtn}
+        </div>
       )}
     </div>
   );

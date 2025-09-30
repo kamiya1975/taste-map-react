@@ -14,9 +14,11 @@ export default function RatedPanel({
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
   const scrollRef = React.useRef(null);
-  React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [sortMode]);
+  React.useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [sortMode]);
 
-  // ===== ランク番号（採点した順の通し番号）
+  // ランク番号（採点した順の通し番号）
   const rankMap = React.useMemo(() => {
     const items = Object.entries(userRatings || {})
       .map(([jan, meta]) => ({
@@ -32,7 +34,7 @@ export default function RatedPanel({
     return m;
   }, [userRatings]);
 
-  // ===== 表示リスト
+  // 表示リスト
   const list = React.useMemo(() => {
     const arr = Object.entries(userRatings || {})
       .map(([jan, meta]) => {
@@ -61,53 +63,52 @@ export default function RatedPanel({
     return arr;
   }, [data, userRatings, sortMode, rankMap]);
 
-  // ===== 並び替えカプセル（左側に配置）
+  // 並び替えカプセル（右側・×の直前）
   const SortCapsule = (
     <div
-        role="group"
-        aria-label="並び替え"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          background: "transparent",
-          border: "1px solid rgb(221,211,198)",
-          borderRadius: 8,
-          overflow: "hidden",
-          height: 28,
-          marginLeft: 15,
-        }}
-      >
-        {[
-          { key: "date",   label: "日付順"   },
-          { key: "rating", label: "評価順"   },
-        ].map((b, i) => {
-          const active = sortMode === b.key;
-          return (
-            <button
-              key={b.key}
-              onPointerDown={(e) => { e.preventDefault(); setSortMode(b.key); }}
-              onClick={(e) => { e.preventDefault(); setSortMode(b.key); }}
-              aria-pressed={active}
-              style={{
-                WebkitTapHighlightColor: "transparent",
-                padding: "6px 10px",
-                fontSize: 13,
-                lineHeight: 1,
-                border: "none",
-                background: "transparent",       // 背景は常に透過
-                color: "#000",                    // 文字は黒
-                opacity: active ? 1 : 0.45,       // 非アクティブは薄く
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                ...(i === 0 ? { borderRight: "1px solid rgb(221,211,198)" } : null),
-              }}
-            >
-              {b.label}
-            </button>
-          );
-        })}
-     </div>
-    );
+      role="group"
+      aria-label="並び替え"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        background: "transparent",
+        border: "1px solid rgb(221,211,198)", // 背景と同色＝枠が目立たない
+        borderRadius: 8,
+        overflow: "hidden",
+        height: 28,
+      }}
+    >
+      {[
+        { key: "date",   label: "日付順" },
+        { key: "rating", label: "評価順" },
+      ].map((b, i) => {
+        const active = sortMode === b.key;
+        return (
+          <button
+            key={b.key}
+            onPointerDown={(e) => { e.preventDefault(); setSortMode(b.key); }}
+            onClick={(e) => { e.preventDefault(); setSortMode(b.key); }}
+            aria-pressed={active}
+            style={{
+              WebkitTapHighlightColor: "transparent",
+              padding: "6px 10px",
+              fontSize: 13,
+              lineHeight: 1,
+              border: "none",
+              background: "transparent",       // 常に透過
+              color: "#000",                    // 黒文字
+              opacity: active ? 1 : 0.45,       // 非アクティブは薄く
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              ...(i === 0 ? { borderRight: "1px solid rgb(221,211,198)" } : null),
+            }}
+          >
+            {b.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <AnimatePresence>
@@ -131,15 +132,15 @@ export default function RatedPanel({
             pointerEvents: "auto",
           }}
         >
-          {/* ===== 共通ヘッダー ===== */}
+          {/* 共通ヘッダー：右側にソート／その右に × */}
           <PanelHeader
             icon="rate2.svg"
             title="飲んだワイン"
             onClose={onClose}
-            leftExtra={SortCapsule}
+            rightExtra={SortCapsule}
           />
 
-          {/* ===== リスト ===== */}
+          {/* リスト */}
           <div
             ref={scrollRef}
             style={{
