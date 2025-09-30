@@ -676,7 +676,7 @@ function MapPage() {
           backgroundColor: "#fff",
         }}
       >
-        <option value="">ー</option>
+        <option value="">-</option>
         <option value="PC2">Sweet</option>
         <option value="PC1">Body</option>
         <option value="PC3">PC3</option>

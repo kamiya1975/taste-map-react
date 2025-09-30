@@ -2,7 +2,8 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import Drawer from "@mui/material/Drawer";
 import { makeIndexed, searchItems, normalizeJP } from "../../utils/search";
-import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants"
+import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
+import ListRow from "../ui/ListRow";
 
 export default function SearchPanel({
   open,
@@ -12,13 +13,13 @@ export default function SearchPanel({
   onScanClick, // () => void
 }) {
   const [q, setQ] = useState("");
-  const [active, setActive] = useState(0);
+  const [active, setActive] = useState(-1);
 
-  // 「閉じる」でパネルが閉じたら検索語を消す
+  // パネルが閉じたら検索語と状態をクリア
   useEffect(() => {
     if (!open) {
       setQ("");
-      setActive(0);
+      setActive(-1);
     }
   }, [open]);
 
@@ -30,18 +31,15 @@ export default function SearchPanel({
   const results = useMemo(() => searchItems(indexed, q, 200), [indexed, q]);
 
   const pick = (i) => {
-    const it = results[i];
-    if (it) onPick?.(it); // ← 一覧は閉じない（MapPage側でも閉じないように！）
+    const it = results[i] ?? results[0];
+    if (it) onPick?.(it); // 一覧は閉じない（MapPage側も同様の運用）
   };
 
-  // お気に入りと同じ表示モデルに整形（番号は検索内で 1,2,3…）
-  const listed = useMemo(() => {
-    return results.map((x, i) => ({
-      ...x,
-      addedAt: null,
-      displayIndex: i + 1,
-    }));
-  }, [results]);
+  // 表示用モデル（番号は 1,2,3...）
+  const listed = useMemo(
+    () => results.map((x, i) => ({ ...x, addedAt: null, displayIndex: i + 1 })),
+    [results]
+  );
 
   // Drawerを開いたらスクロール位置を復元
   useEffect(() => {
@@ -56,7 +54,7 @@ export default function SearchPanel({
     }
   }, [open]);
 
-  // スクロール位置を保存（軽めスロットル）
+  // スクロール位置を保存（軽スロットル）
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -71,64 +69,102 @@ export default function SearchPanel({
     return () => el.removeEventListener("scroll", onScroll);
   }, [open]);
 
+  // 共通ヘッダー定義（商品ページと同一トーン）
+  const HEADER_H = 60;
+  const HEADER_BG = "rgb(221, 211, 198)";
+  const HEADER_BORDER = "1px solid rgb(201, 201, 176)";
+
   return (
     <Drawer
       anchor="bottom"
       open={open}
-      onClose={onClose} // ← 「閉じる」ボタンを押した時だけ自分で閉じる
-      // 検索一覧は「開いたまま」運用にするための保険
-      hideBackdrop       // 背面操作可&誤バックドロップ閉じ防止
-      ModalProps={{ ...drawerModalProps, keepMounted: true }} // DOM維持でスクロールも安定
+      onClose={onClose}           // 明示的に閉じたときだけ閉じる
+      hideBackdrop                // 背面操作可＆誤閉じ防止
+      ModalProps={{ ...drawerModalProps, keepMounted: true }}
       PaperProps={{ style: paperBaseStyle }}
     >
-      {/* ヘッダ：検索枠 / スキャン / 閉じる */}
+      {/* ===== ヘッダー ===== */}
       <div
         style={{
-          height: "60px",
-          padding: "8px 12px",
-          borderBottom: "1px solid #eee",
+          height: HEADER_H,
+          padding: "0 8px 0 12px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          background: "#f9f9f9",
+          background: HEADER_BG,
+          borderBottom: HEADER_BORDER,
           gap: 8,
         }}
       >
-        {/* 検索枠 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <img
+            src={`${process.env.PUBLIC_URL || ""}/img/search2.svg`}
+            onError={(e) => { e.currentTarget.src = `${process.env.PUBLIC_URL || ""}/img/search.svg`; }}
+            alt=""
+            style={{ width: 16, height: 16, display: "block" }}
+            draggable={false}
+          />
+        <span style={{ fontWeight: 600 }}>検索</span>
+        </div>
+
+        {/* 右：閉じる（×） */}
+        <button
+          onClick={() => { setQ(""); setActive(-1); onClose?.(); }}
+          aria-label="閉じる"
+          title="閉じる"
+          style={{
+            background: "transparent",
+            border: "none",
+            padding: "6px 8px",
+            fontSize: 18,
+            lineHeight: 1,
+            cursor: "pointer",
+            color: "#000",
+            marginRight: 15,
+          }}
+        >
+          ×
+        </button>
+      </div>
+
+      {/* ===== 検索ボックス行 ===== */}
+      <div
+        style={{
+          padding: "10px 12px 8px",
+          borderBottom: "1px solid #eee",
+          background: "#f9f9f9",
+        }}
+      >
         <div
           style={{
-            flex: 1,
-            border: "1px solid #ccc",
-            borderRadius: 8,
-            padding: "8px 10px",
+            position: "relative",
             display: "flex",
             alignItems: "center",
+            border: "1px solid #ccc",
+            borderRadius: 8,
             background: "#fff",
-            position: "relative",
+            padding: "8px 10px",
           }}
         >
           <input
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
-              setActive(0);
-              // クエリ変更時はスクロールを先頭に（維持したければこの行を消す）
-              sessionStorage.setItem(SCROLL_KEY, "0");
+              setActive(-1);
+              sessionStorage.setItem(SCROLL_KEY, "0"); // クエリ変更時は先頭へ
             }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") pick(0);
-            }}
-            placeholder="キーワード"
+            onKeyDown={(e) => { if (e.key === "Enter") pick(0); }}
+            placeholder="ワインをキーワードまたはJANコードから検索できます。"
             style={{
               border: "none",
               outline: "none",
               width: "100%",
-              fontSize: 16,
-              paddingRight: 52,
-              boxSizing: "border-box",
+              fontSize: 14,
+              paddingRight: 44, // 右端のバーコードボタン分
             }}
           />
-          {/* 内包バーコードボタン */}
+
+          {/* 右端：バーコード読み取り */}
           <button
             onClick={onScanClick}
             title="バーコード読み取り"
@@ -139,8 +175,8 @@ export default function SearchPanel({
               top: "50%",
               transform: "translateY(-50%)",
               width: 36,
-              height: 28,
-              borderRadius: 8,
+              height: 24,
+              borderRadius: 6,
               border: "1px solid #d0d0d0",
               background: "#fff",
               display: "inline-flex",
@@ -149,107 +185,44 @@ export default function SearchPanel({
               cursor: "pointer",
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                gap: 2,
-                height: 16,
-                alignItems: "stretch",
-              }}
-            >
+            <div style={{ display: "flex", gap: 2, height: 14, alignItems: "stretch" }}>
               {[3, 1, 2, 1, 2, 1].map((w, i) => (
-                <span
-                  key={i}
-                  style={{
-                    width: w,
-                    background: "#444",
-                    borderRadius: 1,
-                  }}
-                />
+                <span key={i} style={{ width: w, background: "#444", borderRadius: 1 }} />
               ))}
             </div>
           </button>
         </div>
-
-        {/* 閉じるボタン（ユーザーが明示的に閉じたい時のみ） */}
-        <button
-          onClick={() => {
-            setQ("");
-            setActive(0);
-            onClose?.();
-            }}
-          style={{
-            background: "#eee",
-            border: "1px solid #ccc",
-            padding: "6px 10px",
-            borderRadius: 4,
-            whiteSpace: "nowrap",
-          }}
-        >
-          閉じる
-        </button>
       </div>
 
-      {/* リスト（“お気に入り” と同じ表示） */}
+      {/* ===== リスト ===== */}
       <div
         ref={scrollRef}
         style={{
-          height: `calc(${DRAWER_HEIGHT} - 60px)`,
+          // 60px(ヘッダー) + ~58px(検索行) を引く
+          height: `calc(${DRAWER_HEIGHT} - ${HEADER_H}px - 58px)`,
           overflowY: "auto",
-          padding: "12px 16px",
+          padding: "6px 10px 12px",
+          background: "#fff",
         }}
       >
         {normalizeJP(q) && listed.length === 0 && (
-          <div style={{ color: "#666", padding: "8px 4px" }}>
+          <div style={{ color: "#666", padding: "12px 6px" }}>
             該当する商品が見つかりません。
           </div>
         )}
+
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
           {listed.map((item, idx) => (
-            <li
+            <ListRow
               key={`${item.JAN}-${idx}`}
-              onClick={() => pick(idx)}           // ← 一覧は閉じない
-              onMouseEnter={() => setActive(idx)}
-              style={{
-                padding: "10px 0",
-                borderBottom: "1px solid #eee",
-                cursor: "pointer",
-                background: idx === active ? "#f6f9ff" : "#fff",
-                borderRadius: 6,
-              }}
-            >
-              <div>
-                <strong
-                  style={{
-                    display: "inline-block",
-                    color: "rgb(50, 50, 50)",
-                    fontSize: "16px",
-                    fontWeight: "bold",
-                    marginRight: "4px",
-                    fontFamily: '"Helvetica Neue", Arial, sans-serif',
-                  }}
-                >
-                  {item.displayIndex}.
-                </strong>
-                <span style={{ fontSize: "15px", color: "#555" }}>
-                  {item.addedAt
-                    ? new Date(item.addedAt).toLocaleDateString()
-                    : ""}
-                </span>
-                <br />
-                {item.商品名 || "（名称不明）"}
-              </div>
-              <small>
-                Type: {item.Type || "不明"} / 価格:{" "}
-                {Number.isFinite(item.希望小売価格)
-                  ? `¥${Number(item.希望小売価格).toLocaleString()}`
-                  : "不明"}
-                <br />
-                Sweet: {Number.isFinite(item.PC2) ? item.PC2.toFixed(2) : "—"},
-                Body:  {Number.isFinite(item.PC1) ? item.PC1.toFixed(2) : "—"}
-                {/* <br />JAN: {item.JAN || "—"} */}
-              </small>
-            </li>
+              index={item.displayIndex}
+              item={item}
+              onPick={() => pick(idx)}
+              showDate={false}            // 検索は日付非表示（レイアウトは確保）
+              accentColor="#6b2e2e"       // ワイン色の小ドット
+              hoverHighlight={true}
+              onMouseEnter={() => setActive(idx)} // 既存の active を残すなら必要に応じて利用
+            />
           ))}
         </ul>
       </div>
