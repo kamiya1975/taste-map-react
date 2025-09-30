@@ -393,7 +393,7 @@ export default function ProductPage() {
         <img
           src={`/img/${jan}.png`}
           alt="商品画像"
-          style={{ maxHeight: 250, objectFit: "contain" }}
+          style={{ maxHeight: 225, objectFit: "contain" }}
           onError={(e) => {
             e.currentTarget.style.opacity = 0.3;
           }}
@@ -401,7 +401,7 @@ export default function ProductPage() {
       </div>
 
       {/* 商品名 */}
-      <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 18 }}>
+      <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 16 }}>
         {product.商品名 || "（名称不明）"}
       </h2>
 
