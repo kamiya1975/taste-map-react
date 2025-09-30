@@ -174,7 +174,7 @@ function slides(
           <HeroImage
             filename="TasteMap.svg"
             alt="TasteMap"
-            maxWidthPct={60}
+            maxWidthPct={55}
             boxHeight="clamp(56px, 9vh, 84px)"
             margin="24px auto 0 auto"
           />
