@@ -11,7 +11,8 @@ export default function PanelHeader({
   icon,                 // 例: "search2.svg" / "dot.svg"
   iconFallback,         // 例: "search.svg"
   onClose,
-  right,                // 追加アクションがあればここに JSX を渡せる
+  right,                // 右側アクション（デフォルトは ×）
+  leftExtra,            // ← 追加: タイトルの右に並べる要素
 }) {
   const base = (process.env.PUBLIC_URL || "") + "/img/";
 
@@ -31,7 +32,7 @@ export default function PanelHeader({
         borderBottom: PANEL_HEADER_BORDER,
       }}
     >
-      {/* 左：アイコン＋タイトル */}
+      {/* 左：アイコン＋タイトル＋拡張 */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {icon && (
           <img
@@ -45,6 +46,12 @@ export default function PanelHeader({
           />
         )}
         <span style={{ fontWeight: 600, lineHeight: 1 }}>{title}</span>
+
+        {leftExtra && (
+          <div style={{ marginLeft: 8, display: "flex", alignItems: "center", gap: 8 }}>
+            {leftExtra}
+          </div>
+        )}
       </div>
 
       {/* 右：アクション or × */}

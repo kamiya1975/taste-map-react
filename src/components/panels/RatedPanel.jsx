@@ -1,4 +1,3 @@
-// src/components/panels/RatedPanel.jsx
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DRAWER_HEIGHT, PANEL_HEADER_H, PANEL_HEADER_BORDER } from "../../ui/constants";
@@ -12,16 +11,12 @@ export default function RatedPanel({
   onSelectJAN,
 }) {
   const [sortMode, setSortMode] = React.useState("date");
-  React.useEffect(() => {
-    if (isOpen) setSortMode("date");
-  }, [isOpen]);
+  React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
   const scrollRef = React.useRef(null);
-  React.useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [sortMode]);
+  React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [sortMode]);
 
-  // ===== ランク番号（採点した順の通し番号を算出）
+  // ===== ランク番号（採点した順の通し番号）
   const rankMap = React.useMemo(() => {
     const items = Object.entries(userRatings || {})
       .map(([jan, meta]) => ({
@@ -66,22 +61,29 @@ export default function RatedPanel({
     return arr;
   }, [data, userRatings, sortMode, rankMap]);
 
-  // ===== ヘッダー右側（並び替えボタン：枠無し・フラット）
-  const SortButtons = (
-    <div style={{ display: "flex", gap: 8 }}>
+  // ===== 並び替えカプセル（左側に配置）
+  const SortCapsule = (
+    <div
+      role="group"
+      aria-label="並び替え"
+      style={{
+        display: "inline-flex",
+        borderRadius: 6,
+        overflow: "hidden",
+        background: "#eee",
+      }}
+    >
       <button
         onPointerDown={(e) => { e.preventDefault(); setSortMode("date"); }}
         onClick={(e) => { e.preventDefault(); setSortMode("date"); }}
         aria-pressed={sortMode === "date"}
         style={{
-          padding: "6px 12px",
+          padding: "6px 10px",
           fontSize: 13,
-          lineHeight: 1.1,
           border: "none",
-          background: sortMode === "date" ? "#ddd" : "transparent",
-          borderRadius: 6,
+          borderRight: "1px solid #ccc",
+          background: sortMode === "date" ? "#e9e9e9" : "#eee",
           cursor: "pointer",
-          whiteSpace: "nowrap",
         }}
       >
         日付順
@@ -91,14 +93,11 @@ export default function RatedPanel({
         onClick={(e) => { e.preventDefault(); setSortMode("rating"); }}
         aria-pressed={sortMode === "rating"}
         style={{
-          padding: "6px 12px",
+          padding: "6px 10px",
           fontSize: 13,
-          lineHeight: 1.1,
           border: "none",
-          background: sortMode === "rating" ? "#ddd" : "transparent",
-          borderRadius: 6,
+          background: sortMode === "rating" ? "#e9e9e9" : "#eee",
           cursor: "pointer",
-          whiteSpace: "nowrap",
         }}
       >
         評価順
@@ -126,15 +125,14 @@ export default function RatedPanel({
             display: "flex",
             flexDirection: "column",
             pointerEvents: "auto",
-            overflow: "hidden",
           }}
         >
-          {/* ===== 共通ヘッダー（他ページと完全一致） ===== */}
+          {/* ===== 共通ヘッダー ===== */}
           <PanelHeader
-            icon="rate2.svg"        // /public/img/rate2.svg を配置済み想定
+            icon="rate2.svg"
             title="飲んだワイン"
             onClose={onClose}
-            right={SortButtons}     // 「×」は PanelHeader デフォルトが右端に出る
+            leftExtra={SortCapsule}
           />
 
           {/* ===== リスト ===== */}
