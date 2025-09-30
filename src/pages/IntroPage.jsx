@@ -162,7 +162,7 @@ function slides(
       color: PALETTE.bg,
       content: (
         <>
-          {/* ▶ コンパス（上） */}
+          {/* ▶ 地図（上） */}
           <HeroImage
             filename="地図.svg"
             alt="地図"
