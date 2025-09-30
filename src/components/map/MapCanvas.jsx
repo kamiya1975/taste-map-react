@@ -9,6 +9,7 @@ import {
   HEAT_COLOR_LOW, HEAT_COLOR_HIGH,
   TYPE_COLOR_MAP, ORANGE,
 } from "../../ui/constants";
+const FAVORITE_RED = [178, 53, 103, 255];  // お気に入りの打点色（R178,G53,B103）
 
 // --- 小ユーティリティ ---
 const EPS = 1e-9;
@@ -99,6 +100,7 @@ export default function MapCanvas({
   data,
   userRatings,
   selectedJAN,
+  favorites,
   highlight2D,
   userPin,           // [xUMAP, yUMAP] or null
   compassPoint,      // [xUMAP, yUMAP] or null
@@ -234,10 +236,14 @@ export default function MapCanvas({
     id: "scatter",
     data,
     getPosition: (d) => [d.UMAP1, -d.UMAP2, 0],
-    getFillColor: (d) => String(d.JAN) === String(selectedJAN)
-      ? ORANGE
-      : (TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other),
-    updateTriggers: { getFillColor: [selectedJAN] },
+    getFillColor: (d) => {
+      const jan = String(d.JAN);
+      if (jan === String(selectedJAN)) return ORANGE;                 // 選択中は従来どおりオレンジ最優先
+      if (favorites && favorites[jan]) return FAVORITE_RED;           // お気に入りは赤
+      return (TYPE_COLOR_MAP[d.Type] || TYPE_COLOR_MAP.Other);        // それ以外はタイプ色
+    },
+    // favorites の変化で色更新。オブジェクトを stringify してトリガーに
+    updateTriggers: { getFillColor: [selectedJAN, JSON.stringify(favorites || {})] },
     radiusUnits: "meters",
     getRadius: 0.03,
     pickable: true,

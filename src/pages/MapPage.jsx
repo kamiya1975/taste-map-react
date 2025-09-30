@@ -645,6 +645,7 @@ function MapPage() {
         data={data}
         userRatings={userRatings}
         selectedJAN={selectedJAN}
+        favorites={favorites}
         highlight2D={highlight2D}
         userPin={hasAnyRating ? null : userPin}
         compassPoint={compass?.point || null}
