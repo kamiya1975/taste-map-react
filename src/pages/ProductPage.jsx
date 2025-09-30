@@ -179,6 +179,7 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
     >
       {[...Array(ringCount)].map((_, i) => {
         const size = baseSize + ringGap * 2 * i;
+        const selected = value === currentRating; // ← ここで毎回判定
         return (
           <div
             key={i}
@@ -186,11 +187,11 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
               position: "absolute",
               width: `${size}px`,
               height: `${size}px`,
-              border: `1.5px solid ${value === currentRating ? "#000" : "#bbb"}`,
+              border: `1.5px solid ${selected ? "#000" : "#bbb"}`,
               borderRadius: "50%",
               boxSizing: "border-box",
               backgroundColor:
-                i === 0 ? (isSelected ? centerColor : "rgb(150,150,150)") : "transparent",
+                i === 0 ? (selected ? centerColor : "rgb(150,150,150)") : "transparent",
             }}
           />
         );
