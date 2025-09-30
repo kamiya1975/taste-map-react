@@ -179,7 +179,7 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
     >
       {[...Array(ringCount)].map((_, i) => {
         const size = baseSize + ringGap * 2 * i;
-        const selected = value === currentRating; // ← ここで毎回判定
+        const selected = value === currentRating;
         return (
           <div
             key={i}
@@ -209,12 +209,12 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // ◎一覧から来たか（来ていれば♡を隠す）— クエリを初期値として state 化
+  // ◎一覧から来たか（来ていれば♡を隠す）
   const hideHeartFromQuery = useHideHeartFromQuery();
   const [hideHeart, setHideHeart] = useState(hideHeartFromQuery);
   useEffect(() => { setHideHeart(hideHeartFromQuery); }, [hideHeartFromQuery]);
 
-  // マウント→OPEN通知、アンマウント→CLOSED通知 + 親へ状態問い合わせ
+  // マウント/アンマウント時
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan });
     postToParent({ type: "REQUEST_STATE", jan });
@@ -242,27 +242,18 @@ export default function ProductPage() {
     } catch {}
   }, [jan]);
 
-  // 親からの STATE_SNAPSHOT
+  // 親からの STATE_SNAPSHOT / HIDE_HEART
   useEffect(() => {
     const onMsg = (e) => {
-      const { type, jan: targetJan, rating: ratingPayload, hideHeart } = e.data || {};
-      if (type !== "STATE_SNAPSHOT") return;
+      const { type, jan: targetJan, rating: ratingPayload, hideHeart, value } = e.data || {};
       if (String(targetJan) !== String(jan)) return;
 
-      try {
-        setRating(ratingPayload?.rating ?? 0);
-        if (typeof hideHeart === "boolean") setHideHeart(hideHeart);
-      } catch {}
-    };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
-  }, [jan]);
-
-  // 親からの HIDE_HEART
-  useEffect(() => {
-    const onMsg = (e) => {
-      const { type, jan: targetJan, value } = e.data || {};
-      if (String(targetJan) !== String(jan)) return;
+      if (type === "STATE_SNAPSHOT") {
+        try {
+          setRating(ratingPayload?.rating ?? 0);
+          if (typeof hideHeart === "boolean") setHideHeart(hideHeart);
+        } catch {}
+      }
       if (type === "HIDE_HEART") {
         setHideHeart(Boolean(value));
       }
@@ -271,8 +262,16 @@ export default function ProductPage() {
     return () => window.removeEventListener("message", onMsg);
   }, [jan]);
 
+  // 閉じる処理
+  const closePanel = () => {
+    postToParent({ type: "CLOSE_PRODUCT_PANEL", jan });
+    if (window.history.length > 1) {
+      navigate(-1);
+    }
+  };
+
+  // 評価クリック
   const handleCircleClick = async (value) => {
-    // ★ 未登録(ゲスト)は評価不可：警告→MyPagePanelオープンへ誘導
     if (!requireRatingOrRedirect(navigate, "open=mypage")) return;
     const newRating = value === rating ? 0 : value;
     setRating(newRating);
@@ -283,49 +282,7 @@ export default function ProductPage() {
     if (newRating === 0) {
       delete ratings[jan];
     } else {
-      let weather = {};
-      try {
-        const token = process.env.REACT_APP_IPINFO_TOKEN;
-        const ipRes = await fetch(`https://ipinfo.io/json?token=${token}`);
-        const ipData = await ipRes.json();
-        const [lat, lon] = (ipData.loc || ",").split(",");
-
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, "0");
-        const dd = String(now.getDate()).padStart(2, "0");
-        const HH = String(now.getHours()).padStart(2, "0");
-        const dateStr = `${yyyy}-${mm}-${dd}`;
-        const targetTime = `${dateStr}T${HH}:00`;
-
-        const meteoUrl =
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-          `&start_date=${dateStr}&end_date=${dateStr}` +
-          `&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,surface_pressure,cloudcover,precipitation,wind_speed_10m,weathercode` +
-          `&timezone=Asia%2FTokyo`;
-
-        const weatherRes = await fetch(meteoUrl);
-        const weatherData = await weatherRes.json();
-        const hourly = weatherData.hourly || {};
-        const idx = Array.isArray(hourly.time) ? hourly.time.indexOf(targetTime) : -1;
-
-        if (idx !== -1) {
-          weather = {
-            temperature: hourly.temperature_2m?.[idx],
-            apparentTemperature: hourly.apparent_temperature?.[idx],
-            humidity: hourly.relative_humidity_2m?.[idx],
-            pressure: hourly.surface_pressure?.[idx],
-            cloudcover: hourly.cloudcover?.[idx],
-            precipitation: hourly.precipitation?.[idx],
-            windSpeed: hourly.wind_speed_10m?.[idx],
-            weatherCode: hourly.weathercode?.[idx],
-          };
-        }
-      } catch (err) {
-        console.warn("気象情報の取得に失敗しました:", err);
-      }
-
-      payload = { rating: newRating, date: new Date().toISOString(), weather };
+      payload = { rating: newRating, date: new Date().toISOString() };
       ratings[jan] = payload;
     }
 
@@ -363,6 +320,48 @@ export default function ProductPage() {
         position: "relative",
       }}
     >
+      {/* ★ ヘッダー */}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+          margin: "-16px -16px 12px",
+          padding: "8px 12px",
+          background: "rgb(221,221,198)",
+          borderBottom: "1px solid #bbb",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <img
+            src={`${process.env.PUBLIC_URL || ""}/img/dot.svg`}
+            alt=""
+            style={{ width: 16, height: 16, display: "block" }}
+            draggable={false}
+          />
+          <span style={{ fontWeight: 700, fontSize: 14 }}>商品ページ</span>
+        </div>
+
+        <button
+          onClick={closePanel}
+          aria-label="閉じる"
+          title="閉じる"
+          style={{
+            background: "transparent",
+            border: 0,
+            fontSize: 18,
+            lineHeight: 1,
+            cursor: "pointer",
+            padding: 4,
+          }}
+        >
+          ×
+        </button>
+      </div>
+
       {/* 左上に固定の♡ */}
       {!hideHeart && (
         <div
@@ -410,8 +409,7 @@ export default function ProductPage() {
 
       {/* 味データ */}
       <p style={{ margin: "4px 0" }}>
-        Sweet: {Number(product.PC2).toFixed(2)}, 
-        body:{" "}{Number(product.PC1).toFixed(2)}
+        Sweet: {Number(product.PC2).toFixed(2)}, body: {Number(product.PC1).toFixed(2)}
       </p>
 
       {/* 原産地・年 */}
@@ -475,21 +473,6 @@ export default function ProductPage() {
         ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
         また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
         昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
       </div>
     </div>
   );
