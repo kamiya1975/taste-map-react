@@ -1030,8 +1030,10 @@ function MapPage() {
                 border: "none",                // ← 枠なし
                 padding: "6px 8px",
                 fontSize: 18,
-               lineHeight: 1,
+                lineHeight: 1,
                 cursor: "pointer",
+                color: "#000",
+                marginRight: 12,
               }}
             >
               ×

@@ -393,7 +393,7 @@ export default function ProductPage() {
         <img
           src={`/img/${jan}.png`}
           alt="商品画像"
-          style={{ maxHeight: 200, objectFit: "contain" }}
+          style={{ maxHeight: 250, objectFit: "contain" }}
           onError={(e) => {
             e.currentTarget.style.opacity = 0.3;
           }}
