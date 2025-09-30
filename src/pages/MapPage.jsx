@@ -995,7 +995,7 @@ function MapPage() {
          {/* ▼ ヘッダーを置き換え */}
           <div
             style={{
-              height: 70,
+              height: 60,
               padding: "0 8px 0 12px",
               display: "flex",
               alignItems: "center",
