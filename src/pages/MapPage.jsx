@@ -1004,18 +1004,14 @@ function MapPage() {
               borderBottom: "1px solid #c9c9b0"
             }}
           >
-            {/* 左側：黒丸とタイトル */}
+            {/* 左側：枠アイコンとタイトル */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span
-                aria-hidden
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: "50%",
-                  background: "#000",
-                  display: "inline-block",
-               }}
-              />
+              <img
+                src={`${process.env.PUBLIC_URL || ""}/img/dot.svg`}
+                     alt=""
+                     style={{ width: 16, height: 16, display: "block" }}
+                     draggable={false}
+                   />
               <span style={{ fontWeight: 600 }}>商品ページ</span>
             </div>
 
