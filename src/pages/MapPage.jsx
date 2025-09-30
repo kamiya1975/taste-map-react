@@ -10,6 +10,8 @@ import FavoritePanel from "../components/panels/FavoritePanel";
 import RatedPanel from "../components/panels/RatedPanel";
 import MyPagePanel from "../components/panels/MyPagePanel";
 import MapCanvas from "../components/map/MapCanvas";
+import PanelHeader from "../components/ui/PanelHeader";
+import { PANEL_HEADER_H } from "../ui/constants";
 
 // 共通定数
 import {
@@ -1002,52 +1004,16 @@ function MapPage() {
           }}
         >
          {/* ▼ ヘッダーを置き換え */}
-          <div
-            style={{
-              height: 60,
-              padding: "0 8px 0 12px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              background: "rgb(221, 211, 198)",         // ← 枠色（指定色）
-              borderBottom: "1px solid rgb(201, 201, 176)",
-            }}
-          >
-            {/* 左側：枠アイコンとタイトル */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <img
-                src={`${process.env.PUBLIC_URL || ""}/img/dot.svg`}
-                     alt=""
-                     style={{ width: 16, height: 16, display: "block" }}
-                     draggable={false}
-                   />
-              <span style={{ fontWeight: 600 }}>商品ページ</span>
-            </div>
-
-            {/* 右側：閉じる（X）— ボタン風の枠は消す */}
-            <button
-              onClick={() => {
-                setProductDrawerOpen(false);
-                setSelectedJAN(null);
-                setSelectedJANFromSearch(null);
-                setHideHeartForJAN(null);
-              }}
-              aria-label="閉じる"
-              title="閉じる"
-              style={{
-                background: "transparent",     // ← 透明
-                border: "none",                // ← 枠なし
-                padding: "6px 8px",
-                fontSize: 18,
-                lineHeight: 1,
-                cursor: "pointer",
-                color: "#000",
-                marginRight: 15,
-              }}
-            >
-              ×
-            </button>
-          </div>
+          <PanelHeader
+            title="商品ページ"
+                 icon="dot.svg"
+                 onClose={() => {
+                   setProductDrawerOpen(false);
+                   setSelectedJAN(null);
+                   setSelectedJANFromSearch(null);
+                   setHideHeartForJAN(null);
+                }}
+               />
 
         {/* ▼ スクロール領域（ラッパ） */}
         <div className="drawer-scroll">

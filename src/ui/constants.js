@@ -43,3 +43,9 @@ export const HEAT_GAMMA = 0.65;
 export const HEAT_CLIP_PCT = [0.0, 0.98];
 export const HEAT_COLOR_LOW = [255, 255, 255];
 export const HEAT_COLOR_HIGH = [255, 165, 0];
+
+ // ===== Panel Header (実機で揃う見えの高さ) =====
+ export const PANEL_HEADER_H       = 42;                               // 実機で一致した値
+ export const PANEL_HEADER_BG      = "rgb(221, 211, 198)";             // ベージュ
+ export const PANEL_HEADER_BORDER  = "1px solid rgb(201, 201, 176)";   // 下線
+ export const PANEL_HEADER_PADDING = "0 8px 0 12px";                   // 左右パディング

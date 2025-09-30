@@ -4,6 +4,7 @@ import Drawer from "@mui/material/Drawer";
 import { makeIndexed, searchItems, normalizeJP } from "../../utils/search";
 import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
 import ListRow from "../ui/ListRow";
+import PanelHeader from "../ui/PanelHeader";
 
 export default function SearchPanel({
   open,
@@ -84,50 +85,12 @@ export default function SearchPanel({
       PaperProps={{ style: paperBaseStyle }}
     >
       {/* ===== ヘッダー ===== */}
-      <div
-        style={{
-          height: HEADER_H,
-          minHeight: HEADER_H,
-          maxHeight: HEADER_H,
-          boxSizing: "border-box",
-          padding: "0 8px 0 12px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          background: HEADER_BG,
-          borderBottom: HEADER_BORDER,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <img
-            src={`${process.env.PUBLIC_URL || ""}/img/search2.svg`}
-            onError={(e) => { e.currentTarget.src = `${process.env.PUBLIC_URL || ""}/img/search.svg`; }}
-            alt=""
-            style={{ width: 16, height: 16, display: "block" }}
-            draggable={false}
-          />
-        <span style={{ fontWeight: 600 }}>検索</span>
-        </div>
-
-        {/* 右：閉じる（×） */}
-        <button
-          onClick={() => { setQ(""); setActive(-1); onClose?.(); }}
-          aria-label="閉じる"
-          title="閉じる"
-          style={{
-            background: "transparent",
-            border: "none",
-            padding: "6px 8px",
-            fontSize: 18,
-            lineHeight: 1,
-            cursor: "pointer",
-            color: "#000",
-            marginRight: 15,
-          }}
-        >
-          ×
-        </button>
-      </div>
+      <PanelHeader
+       title="検索"
+       icon="search2.svg"
+       iconFallback="search.svg"
+       onClose={() => { setQ(""); setActive(-1); onClose?.(); }}
+     />
 
       {/* ===== 検索ボックス行 ===== */}
       <div
