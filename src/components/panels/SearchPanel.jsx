@@ -154,7 +154,7 @@ export default function SearchPanel({
               sessionStorage.setItem(SCROLL_KEY, "0"); // クエリ変更時は先頭へ
             }}
             onKeyDown={(e) => { if (e.key === "Enter") pick(0); }}
-            placeholder="ワインをキーワードまたはJANコードから検索できます。"
+            placeholder="キーワードまたはJANコードから検索"
             style={{
               border: "none",
               outline: "none",
