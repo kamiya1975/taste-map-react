@@ -671,7 +671,7 @@ function MapPage() {
           left: "10px", 
           zIndex: 10, 
           padding: "6px", 
-          fontSize: "14px",
+          fontSize: "10px",
           color: "#000",
           backgroundColor: "#fff",
         }}
