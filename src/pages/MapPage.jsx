@@ -695,10 +695,15 @@ function MapPage() {
           fontWeight: "bold",
           fontSize: "20px",
         }}
-        aria-label="マイページ"
-        title="マイページ"
+        aria-label="アプリガイド"
+        title="アプリガイド"
       >
-        〓
+        <img
+          src={`${process.env.PUBLIC_URL || ""}/img/guide.svg`}
+          alt=""
+          style={{ width: 22, height: 22, display: "block" }}
+          draggable={false}
+        />
       </button>
 
       <MyPagePanel
@@ -727,8 +732,14 @@ function MapPage() {
           fontSize: "18px",
         }}
         aria-label="検索"
+        title="検索"
       >
-        🔍
+        <img
+          src={`${process.env.PUBLIC_URL || ""}/img/search.svg`}
+          alt=""
+          style={{ width: 22, height: 22, display: "block" }}
+          draggable={false}
+        />
       </button>
 
       {/* 右サイドの丸ボタン群（♡ → ◎） */}
@@ -752,8 +763,14 @@ function MapPage() {
           fontSize: "20px",
         }}
         aria-label="お気に入り一覧"
+        title="お気に入り一覧"
       >
-        ♡
+        <img
+          src={`${process.env.PUBLIC_URL || ""}/img/favorite.svg`}
+          alt=""
+          style={{ width: 22, height: 22, display: "block" }}
+          draggable={false}
+        />
       </button>
 
       <button
@@ -778,7 +795,12 @@ function MapPage() {
         aria-label="評価一覧"
         title="評価（◎）一覧"
       >
-        ◎
+        <img
+          src={`${process.env.PUBLIC_URL || ""}/img/rate.svg`}
+          alt=""
+          style={{ width: 22, height: 22, display: "block" }}
+          draggable={false}
+        />
       </button>
 
       {/* ====== 検索パネル（背面Map操作可） */}
