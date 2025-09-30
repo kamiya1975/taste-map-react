@@ -450,7 +450,7 @@ export default function MapCanvas({
           getSourcePosition: d => d.sourcePosition,
           getTargetPosition: d => d.targetPosition,
           getColor: [144, 144, 144, 255],
-          getWidth: 1.25,
+          getWidth: 1,
           widthUnits: "pixels",
         }),
         // ピン/コンパス
