@@ -95,16 +95,21 @@ function MapPage() {
     setIsMyPageOpen(true);
   };
 
-  // ★ クエリで MyPage を開く（/ ?open=mypage）
+  // ★ クエリで各パネルを開く（/ ?open=mypage|search|favorite|rated）
   useEffect(() => {
     try {
       const p = new URLSearchParams(location.search);
-      if (p.get("open") === "mypage") {
-        // ほかのUIを閉じてから MyPage を開く（既存の排他処理を利用）
-        openMyPageExclusive();
-        // クエリを除去して再トリガを防止（戻る履歴は汚さない）
+      const open = (p.get("open") || "").toLowerCase();
+      if (!open) return;
+      (async () => {
+        await closeUIsThen();
+        if (open === "mypage")       { openMyPageExclusive(); }
+        else if (open === "search")  { setIsSearchOpen(true); }
+        else if (open === "favorite"){ setIsFavoriteOpen(true); }
+        else if (open === "rated")   { setIsRatedOpen(true); }
+        // 再トリガ防止
         navigate(location.pathname, { replace: true });
-      }
+      })();
     } catch {}
   }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -991,17 +996,19 @@ function MapPage() {
                 const jan = String(selectedJAN);
                 const isFav = !!favorites[jan];
                 try {
-                  iframeRef.current?.contentWindow?.postMessage(
-                    { type: "SET_FAVORITE", jan, value: isFav },
-                    "*"
-                  );
-                  if (hideHeartForJAN === jan) {
-                    iframeRef.current?.contentWindow?.postMessage(
-                      { type: "HIDE_HEART", jan, value: true },
-                      "*"
-                    );
-                  }
-                } catch {}
+                 requestAnimationFrame(() => {
+                   iframeRef.current?.contentWindow?.postMessage(
+                     { type: "SET_FAVORITE", jan, value: isFav },
+                     "*"
+                   );
+                   if (hideHeartForJAN === jan) {
+                     iframeRef.current?.contentWindow?.postMessage(
+                       { type: "HIDE_HEART", jan, value: true },
+                       "*"
+                     );
+                   }
+                 });
+               } catch {}
               }}
             />
           ) : (

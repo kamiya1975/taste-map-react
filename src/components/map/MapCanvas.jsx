@@ -128,23 +128,27 @@ export default function MapCanvas({
   // visualViewport（URLバー出入り）：操作中は無視、操作後にデバウンスしてクランプ
   useEffect(() => {
     if (!window.visualViewport) return;
-    let t = 0;
+    let t = 0, raf = 0;
     const onVV = () => {
       if (interactingRef.current) return;
       clearTimeout(t);
-      t = setTimeout(() => {
-        const vv = window.visualViewport;
-        sizeRef.current = {
-          width:  Math.floor(vv?.width  || sizeRef.current.width),
-          height: Math.floor(vv?.height || sizeRef.current.height),
-        };
-        setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
-      }, 60);
+      tt = setTimeout(() => {
+       const vv = window.visualViewport;
+       sizeRef.current = {
+         width:  Math.floor(vv?.width  || sizeRef.current.width),
+         height: Math.floor(vv?.height || sizeRef.current.height),
+       };
+       cancelAnimationFrame(raf);
+       raf = requestAnimationFrame(() => {
+         setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
+       });
+     }, 80); // 60→80ms（若干後ろにずらす）
     };
     window.visualViewport.addEventListener("resize", onVV, { passive: true });
     window.visualViewport.addEventListener("scroll", onVV, { passive: true });
     return () => {
       clearTimeout(t);
+      cancelAnimationFrame(raf);
       window.visualViewport.removeEventListener("resize", onVV);
       window.visualViewport.removeEventListener("scroll", onVV);
     };
