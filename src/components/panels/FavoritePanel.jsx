@@ -1,6 +1,9 @@
+// src/components/panels/FavoritePanel.jsx
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DRAWER_HEIGHT } from "../../ui/constants"
+import { DRAWER_HEIGHT, PANEL_HEADER_H } from "../../ui/constants";
+import PanelHeader from "../ui/PanelHeader";
+import ListRow from "../ui/ListRow";
 
 export default function FavoritePanel({
   isOpen,
@@ -10,6 +13,7 @@ export default function FavoritePanel({
   userRatings,
   onSelectJAN,
 }) {
+  // 表示リスト作成（評価済みは除外）
   const list = React.useMemo(() => {
     const arr = Object.entries(favorites || {})
       .map(([jan, meta]) => {
@@ -18,8 +22,7 @@ export default function FavoritePanel({
         return { ...item, addedAt: meta?.addedAt ?? null };
       })
       .filter(Boolean)
-      // 評価済みは表示しない（視覚一貫性）
-      .filter((item) => !(Number(userRatings?.[String(item.JAN)]?.rating) > 0));
+      .filter((it) => !(Number(userRatings?.[String(it.JAN)]?.rating) > 0));
 
     arr.sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
     return arr.map((x, i) => ({ ...x, displayIndex: arr.length - i }));
@@ -45,53 +48,42 @@ export default function FavoritePanel({
             display: "flex",
             flexDirection: "column",
             pointerEvents: "auto",
+            overflow: "hidden",
           }}
         >
+          {/* 共通ヘッダー（商品/検索と完全一致） */}
+          <PanelHeader
+            title="飲みたい"
+            icon="favorite2.svg"        // 既存のアイコンに合わせています
+            onClose={onClose}
+          />
+
+          {/* リスト領域（ヘッダー高さ分を差し引き） */}
           <div
             style={{
-              padding: "12px 16px",
-              borderBottom: "1px solid #ddd",
-              background: "#f9f9f9",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              height: `calc(${DRAWER_HEIGHT} - ${PANEL_HEADER_H}px)`,
+              overflowY: "auto",
+              padding: "8px 12px 12px",
+              backgroundColor: "#fff",
             }}
           >
-            <h3 style={{ margin: 0 }}>飲みたいワイン</h3>
-            <button
-              onClick={onClose}
-              style={{ background: "#eee", border: "1px solid #ccc", padding: "6px 10px", borderRadius: 4 }}
-            >
-              閉じる
-            </button>
-          </div>
-
-          <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", backgroundColor: "#fff" }}>
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {list.map((item, idx) => (
-                <li
+                <ListRow
                   key={`${item.JAN}-${idx}`}
-                  onClick={() => onSelectJAN?.(item.JAN)}
-                  style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}
-                >
-                  <div>
-                    <strong style={{ marginRight: 4 }}>{item.displayIndex}.</strong>
-                    <span style={{ fontSize: 15, color: "#555" }}>
-                      {item.addedAt ? new Date(item.addedAt).toLocaleDateString() : "（日付不明）"}
-                    </span>
-                    <br />
-                    {item.商品名 || "（名称不明）"}
-                  </div>
-                  <small>
-                    Type: {item.Type || "不明"} / 価格:{" "}
-                    {item.希望小売価格 ? `¥${item.希望小売価格.toLocaleString()}` : "不明"}
-                    <br />
-                    Sweet: {Number.isFinite(item.PC2) ? item.PC2.toFixed(2) : "—"}, Body:{" "}
-                    {Number.isFinite(item.PC1) ? item.PC1.toFixed(2) : "—"}
-                  </small>
-                </li>
+                  index={item.displayIndex}
+                  item={item}
+                  onPick={() => onSelectJAN?.(item.JAN)}
+                  showDate={true}              // 追加日を表示
+                  accentColor="#7a2e39"        // モックのワイン色（小ドット）
+                  hoverHighlight={true}
+                />
               ))}
-              {list.length === 0 && <li style={{ color: "#666" }}>まだ「飲みたいワイン」はありません。</li>}
+              {list.length === 0 && (
+                <li style={{ color: "#666", padding: "8px 4px" }}>
+                  まだ「飲みたいワイン」はありません。
+                </li>
+              )}
             </ul>
           </div>
         </motion.div>
