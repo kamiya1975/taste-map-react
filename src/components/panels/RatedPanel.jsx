@@ -74,6 +74,7 @@ export default function RatedPanel({
           borderRadius: 8,
           overflow: "hidden",
           height: 28,
+          marginLeft: 6,
         }}
       >
         {[
