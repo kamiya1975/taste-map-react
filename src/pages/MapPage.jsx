@@ -665,7 +665,16 @@ function MapPage() {
       <select
         value={highlight2D}
         onChange={(e) => setHighlight2D(e.target.value)}
-        style={{ position: "absolute", top: "10px", left: "10px", zIndex: 10, padding: "6px", fontSize: "14px" }}
+        style={{ 
+          position: "absolute", 
+          top: "10px", 
+          left: "10px", 
+          zIndex: 10, 
+          padding: "6px", 
+          fontSize: "14px",
+          color: "#000",
+          backgroundColor: "#fff",
+        }}
       >
         <option value="">ー</option>
         <option value="PC2">Sweet</option>
