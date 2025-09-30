@@ -1050,12 +1050,14 @@ function MapPage() {
               className="product-iframe"
               title={`product-${selectedJAN}`}
               src={(() => {
-               const jan = String(selectedJAN ?? "");
-                const fromRated = hideHeartForJAN === jan;
-                return `${process.env.PUBLIC_URL || ""}/products/${jan}${
-                  fromRated ? "?fromRated=1" : ""
-                }`;
-              })()}
+                const jan = String(selectedJAN ?? "");
+                   const fromRated = hideHeartForJAN === jan;
+                   const params = new URLSearchParams();
+                   if (fromRated) params.set("fromRated", "1");
+                   params.set("embed", "1");          // ★ 埋め込みモード
+                   const qs = params.toString();
+                   return `${process.env.PUBLIC_URL || ""}/products/${jan}${qs ? `?${qs}` : ""}`;
+                 })()}
               onLoad={() => {
                 const jan = String(selectedJAN);
                 const isFav = !!favorites[jan];
