@@ -1,9 +1,151 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DRAWER_HEIGHT, PANEL_HEADER_H, PANEL_HEADER_BORDER, TYPE_COLOR_MAP } from "../../ui/constants";
+import {
+  DRAWER_HEIGHT,
+  PANEL_HEADER_H,
+  PANEL_HEADER_BORDER,
+  TYPE_COLOR_MAP,
+} from "../../ui/constants";
 import PanelHeader from "../ui/PanelHeader";
-import ListRow from "./ListRow";
 
+/* =========================
+   共通行 ListRow（内蔵）
+   ========================= */
+function ListRow({
+  index,
+  item,
+  onPick,
+  showDate = false,
+  dateValue = null,
+  accentColor = "#b4b4b4",
+  extraRight = null,
+  hoverHighlight = true,
+}) {
+  const price = Number.isFinite(item?.希望小売価格)
+    ? `¥${Number(item.希望小売価格).toLocaleString()}`
+    : "—";
+
+  const bodyVal =
+    Number.isFinite(item?.PC1) ? item.PC1 :
+    Number.isFinite(item?.BodyAxis) ? item.BodyAxis : null;
+
+  const sweetVal =
+    Number.isFinite(item?.PC2) ? item.PC2 :
+    Number.isFinite(item?.SweetAxis) ? item.SweetAxis : null;
+
+  const fmtDateTime = (v) => {
+    if (!v) return "（日時不明）";
+    try {
+      const d = new Date(v);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      return `${day}/${m}/${y}, ${hh}:${mm}`;
+    } catch { return "（日時不明）"; }
+  };
+
+  const TypeBadge = ({ type }) => {
+    const color = (type && TYPE_COLOR_MAP?.[type]) ? TYPE_COLOR_MAP[type] : accentColor;
+    return (
+      <span
+        title={type || "Type不明"}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "2px 8px",
+          borderRadius: 10,
+          background: "rgba(0,0,0,0.02)",
+          border: `1px solid ${color}`,
+          color: "#333",
+          fontSize: 12,
+          lineHeight: 1.2,
+          whiteSpace: "nowrap",
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            width: 10,
+            height: 10,
+            borderRadius: 3,
+            background: color,
+            display: "inline-block",
+          }}
+        />
+        {type || "Unknown"}
+      </span>
+    );
+  };
+
+  return (
+    <li
+      onClick={() => onPick?.(item)}
+      style={{
+        padding: "12px 8px",
+        borderBottom: "1px solid #eee",
+        cursor: "pointer",
+        borderRadius: 6,
+        background: "transparent",
+      }}
+      onMouseEnter={(e) => {
+        if (!hoverHighlight) return;
+        e.currentTarget.style.background = "#f6f9ff";
+      }}
+      onMouseLeave={(e) => {
+        if (!hoverHighlight) return;
+        e.currentTarget.style.background = "transparent";
+      }}
+    >
+      {/* 上段：番号 + 日付 + 右端（評価） */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 6, justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+          <strong
+            style={{
+              color: "rgb(50,50,50)",
+              fontSize: 16,
+              fontWeight: 700,
+              fontFamily: '"Helvetica Neue", Arial, sans-serif',
+              minWidth: 28,
+              textAlign: "right",
+            }}
+          >
+            {index}.
+          </strong>
+          <span
+            style={{
+              fontSize: 13,
+              color: "#555",
+              visibility: showDate ? "visible" : "hidden",
+            }}
+          >
+            {showDate ? fmtDateTime(dateValue) : "00/00/0000, 00:00"}
+          </span>
+        </div>
+        {extraRight ? <div style={{ marginLeft: 8 }}>{extraRight}</div> : null}
+      </div>
+
+      {/* 商品名 */}
+      <div style={{ marginTop: 2, fontSize: 15, color: "#333", lineHeight: 1.35 }}>
+        {item?.商品名 || "（名称不明）"}
+      </div>
+
+      {/* 下段：Typeバッジ + 価格 / Sweet / Body */}
+      <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <TypeBadge type={item?.Type} />
+        <small style={{ color: "#444" }}>
+          {price}　 Sweet: {sweetVal != null ? sweetVal.toFixed(2) : "—"} / Body: {bodyVal != null ? bodyVal.toFixed(2) : "—"}
+        </small>
+      </div>
+    </li>
+  );
+}
+
+/* =========================
+   評価一覧パネル本体
+   ========================= */
 export default function RatedPanel({
   isOpen,
   onClose,
@@ -157,7 +299,6 @@ export default function RatedPanel({
             pointerEvents: "auto",
           }}
         >
-          {/* 共通ヘッダー：右側にソート／その右に × */}
           <PanelHeader
             icon="rate2.svg"
             title="飲んだワイン"
@@ -165,7 +306,6 @@ export default function RatedPanel({
             rightExtra={SortCapsule}
           />
 
-          {/* リスト */}
           <div
             ref={scrollRef}
             style={{
@@ -179,8 +319,7 @@ export default function RatedPanel({
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {list.map((item, idx) => {
                 const typeColor =
-                  TYPE_COLOR_MAP?.[item?.Type] ??
-                  "rgb(180,180,180)"; // 未定義Typeはグレー
+                  TYPE_COLOR_MAP?.[item?.Type] ?? "rgb(180,180,180)";
 
                 return (
                   <ListRow
@@ -190,7 +329,6 @@ export default function RatedPanel({
                     onPick={() => onSelectJAN?.(item.JAN, { fromRated: true })}
                     showDate
                     dateValue={item.ratedAt}
-                    // ListRow側では TypeBadge を使うため accentColor は未使用でもOK
                     accentColor={typeColor}
                     extraRight={<RatingBadge value={item.rating} />}
                   />
