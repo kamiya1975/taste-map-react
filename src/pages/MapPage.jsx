@@ -1003,17 +1003,17 @@ function MapPage() {
             }
           }}
         >
-         {/* ▼ ヘッダーを置き換え */}
-          <PanelHeader
-            title="商品ページ"
-                 icon="dot.svg"
-                 onClose={() => {
-                   setProductDrawerOpen(false);
-                   setSelectedJAN(null);
-                   setSelectedJANFromSearch(null);
-                   setHideHeartForJAN(null);
-                }}
-               />
+       {/* ▼ ヘッダーを置き換え */}
+        <PanelHeader
+          title="商品ページ"
+               icon="dot.svg"
+               onClose={() => {
+                  setProductDrawerOpen(false);
+                  setSelectedJAN(null);
+                 setSelectedJANFromSearch(null);
+                 setHideHeartForJAN(null);
+              }}
+        />
 
         {/* ▼ スクロール領域（ラッパ） */}
         <div className="drawer-scroll">
