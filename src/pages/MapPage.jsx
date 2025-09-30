@@ -692,8 +692,7 @@ function MapPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontWeight: "bold",
-          fontSize: "20px",
+          padding: 0,
         }}
         aria-label="アプリガイド"
         title="アプリガイド"
@@ -701,7 +700,13 @@ function MapPage() {
         <img
           src={`${process.env.PUBLIC_URL || ""}/img/guide.svg`}
           alt=""
-          style={{ width: 22, height: 22, display: "block" }}
+          style={{
+           width: "100%",            // ← 枠いっぱいにフィット
+           height: "100%",
+           objectFit: "contain",
+           display: "block",
+           pointerEvents: "none",
+          }}
           draggable={false}
         />
       </button>
@@ -728,8 +733,7 @@ function MapPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontWeight: "bold",
-          fontSize: "18px",
+          padding: 0,
         }}
         aria-label="検索"
         title="検索"
@@ -737,7 +741,13 @@ function MapPage() {
         <img
           src={`${process.env.PUBLIC_URL || ""}/img/search.svg`}
           alt=""
-          style={{ width: 22, height: 22, display: "block" }}
+          style={{
+            width: "100%",            // ← 枠いっぱいにフィット
+            height: "100%",
+            objectFit: "contain",
+            display: "block",
+            pointerEvents: "none",
+          }}
           draggable={false}
         />
       </button>
@@ -759,8 +769,7 @@ function MapPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontWeight: "bold",
-          fontSize: "20px",
+          padding: 0,
         }}
         aria-label="お気に入り一覧"
         title="お気に入り一覧"
@@ -768,7 +777,13 @@ function MapPage() {
         <img
           src={`${process.env.PUBLIC_URL || ""}/img/favorite.svg`}
           alt=""
-          style={{ width: 22, height: 22, display: "block" }}
+          style={{
+            width: "100%",            // ← 枠いっぱいにフィット
+            height: "100%",
+            objectFit: "contain",
+            display: "block",
+            pointerEvents: "none",
+          }}
           draggable={false}
         />
       </button>
@@ -789,8 +804,7 @@ function MapPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontWeight: "bold",
-          fontSize: "18px",
+          padding: 0,
         }}
         aria-label="評価一覧"
         title="評価（◎）一覧"
@@ -798,7 +812,13 @@ function MapPage() {
         <img
           src={`${process.env.PUBLIC_URL || ""}/img/rate.svg`}
           alt=""
-          style={{ width: 22, height: 22, display: "block" }}
+          style={{
+            width: "100%",            // ← 枠いっぱいにフィット
+            height: "100%",
+            objectFit: "contain",
+            display: "block",
+            pointerEvents: "none",
+          }}
           draggable={false}
         />
       </button>
