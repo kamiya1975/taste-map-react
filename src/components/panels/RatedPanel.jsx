@@ -1,22 +1,16 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DRAWER_HEIGHT } from "../../ui/constants";
-import PanelHeader, { PANEL_HEADER_H, PANEL_HEADER_BG, PANEL_HEADER_BORDER } from "../ui/PanelHeader"; // ← 共通ヘッダー
+import { DRAWER_HEIGHT, PANEL_HEADER_H, PANEL_HEADER_BORDER } from "../../ui/constants";
+import PanelHeader from "../ui/PanelHeader";
 
-export default function RatedPanel({
-  isOpen,
-  onClose,
-  userRatings,
-  data,
-  onSelectJAN,
-}) {
+export default function RatedPanel({ isOpen, onClose, userRatings, data, onSelectJAN }) {
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
   const scrollRef = React.useRef(null);
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [sortMode]);
 
-  // ===== ランク番号（採点した順の通し番号）
+  // ランク番号（採点した順の通し番号）
   const rankMap = React.useMemo(() => {
     const items = Object.entries(userRatings || {})
       .map(([jan, meta]) => ({
@@ -26,13 +20,12 @@ export default function RatedPanel({
       }))
       .filter((x) => x.rating > 0)
       .sort((a, b) => (a.t - b.t) || a.jan.localeCompare(b.jan));
-
     const m = new Map();
     items.forEach((x, idx) => m.set(x.jan, idx + 1));
     return m;
   }, [userRatings]);
 
-  // ===== 表示リスト
+  // 表示リスト
   const list = React.useMemo(() => {
     const arr = Object.entries(userRatings || {})
       .map(([jan, meta]) => {
@@ -50,18 +43,16 @@ export default function RatedPanel({
       .filter(Boolean);
 
     if (sortMode === "rating") {
-      arr.sort((a, b) =>
-        (b.rating !== a.rating)
-          ? b.rating - a.rating
-          : (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0))
-      );
+      arr.sort((a, b) => (b.rating !== a.rating)
+        ? b.rating - a.rating
+        : (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0)));
     } else {
       arr.sort((a, b) => new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
     }
     return arr;
   }, [data, userRatings, sortMode, rankMap]);
 
-  // ===== ヘッダー右側（並び替えカプセル）
+  // ヘッダー右側：並び替えカプセル
   const SortCapsule = (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <span style={{ fontSize: 13, color: "#666" }}>並び替え</span>
@@ -135,15 +126,16 @@ export default function RatedPanel({
             pointerEvents: "auto",
           }}
         >
-          {/* ===== 共通ヘッダー（完全一致） ===== */}
+          {/* 共通ヘッダー（完全一致） */}
           <PanelHeader
-            iconSrc={`${process.env.PUBLIC_URL || ""}/img/rate2.svg`} // ← /public/img/rate2.svg を置く
             title="飲んだワイン"
+            icon="rate2.svg"            // /public/img/rate2.svg を配置
+            iconFallback="rate.svg"     // フォールバック任意
             onClose={onClose}
             right={SortCapsule}
           />
 
-          {/* ===== リスト ===== */}
+          {/* リスト */}
           <div
             ref={scrollRef}
             style={{
@@ -151,8 +143,7 @@ export default function RatedPanel({
               overflowY: "auto",
               padding: "12px 16px",
               background: "#fff",
-              borderTop: PANEL_HEADER_BORDER,      // 見切れ防止に薄いライン（任意）
-              backgroundColor: "#fff",
+              borderTop: PANEL_HEADER_BORDER,
             }}
           >
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
@@ -160,11 +151,7 @@ export default function RatedPanel({
                 <li
                   key={`${item.JAN}-${idx}`}
                   onClick={() => onSelectJAN?.(item.JAN, { fromRated: true })}
-                  style={{
-                    padding: "10px 0",
-                    borderBottom: "1px solid #eee",
-                    cursor: "pointer",
-                  }}
+                  style={{ padding: "10px 0", borderBottom: "1px solid #eee", cursor: "pointer" }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                     <div>
@@ -188,9 +175,7 @@ export default function RatedPanel({
                   </small>
                 </li>
               ))}
-              {list.length === 0 && (
-                <li style={{ color: "#666" }}>まだ「飲んだワイン」がありません。</li>
-              )}
+              {list.length === 0 && <li style={{ color: "#666" }}>まだ「飲んだワイン」がありません。</li>}
             </ul>
           </div>
         </motion.div>
