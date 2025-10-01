@@ -12,6 +12,14 @@ import CircleRatingDisplay from "../../components/CircleRatingDisplay";
 /* =========================
    共通行 ListRow（内蔵）
    ========================= */
+
+// 配列RGB or 文字列を CSS color に正規化
+const toCssColor = (c, fallback) => {
+  if (!c) return fallback;
+  if (Array.isArray(c)) return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+  return String(c);
+};
+
 function ListRow({
   index,
   item,
@@ -34,6 +42,7 @@ function ListRow({
     Number.isFinite(item?.PC2) ? item.PC2 :
     Number.isFinite(item?.SweetAxis) ? item.SweetAxis : null;
 
+  // 表記を YYYY/MM/DD ,HH:MM に統一
   const fmtDateTime = (v) => {
     if (!v) return "（日時不明）";
     try {
@@ -43,41 +52,25 @@ function ListRow({
       const day = String(d.getDate()).padStart(2, "0");
       const hh = String(d.getHours()).padStart(2, "0");
       const mm = String(d.getMinutes()).padStart(2, "0");
-      return `${day}/${m}/${y}, ${hh}:${mm}`;
+      return `${y}/${m}/${day} ,${hh}:${mm}`;
     } catch { return "（日時不明）"; }
   };
 
+  // タイプは色ブロックのみ
   const TypeBadge = ({ type }) => {
-    const color = (type && TYPE_COLOR_MAP?.[type]) ? TYPE_COLOR_MAP[type] : accentColor;
+    const colorCSS = toCssColor(TYPE_COLOR_MAP?.[type], accentColor);
     return (
       <span
         title={type || "Type不明"}
+        aria-label={type || "Unknown"}
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "2px 8px",
-          borderRadius: 10,
-          background: "rgba(0,0,0,0.02)",
-          border: `1px solid ${color}`,
-          color: "#333",
-          fontSize: 12,
-          lineHeight: 1.2,
-          whiteSpace: "nowrap",
+          display: "inline-block",
+          width: 14,
+          height: 14,
+          borderRadius: 4,
+          background: colorCSS,
         }}
-      >
-        <span
-          aria-hidden
-          style={{
-            width: 10,
-            height: 10,
-            borderRadius: 3,
-            background: color,
-            display: "inline-block",
-          }}
-        />
-        {type || "Unknown"}
-      </span>
+      />
     );
   };
 
@@ -85,61 +78,74 @@ function ListRow({
     <li
       onClick={() => onPick?.(item)}
       style={{
-        padding: "12px 8px",
+        padding: "12px 8px 14px 8px",
         borderBottom: "1px solid #eee",
         cursor: "pointer",
         borderRadius: 6,
         background: "transparent",
+        position: "relative",
+        paddingRight: 76, // ◎の分の右余白
       }}
-      onMouseEnter={(e) => {
-        if (!hoverHighlight) return;
-        e.currentTarget.style.background = "#f6f9ff";
-      }}
-      onMouseLeave={(e) => {
-        if (!hoverHighlight) return;
-        e.currentTarget.style.background = "transparent";
-      }}
+      onMouseEnter={(e) => { if (hoverHighlight) e.currentTarget.style.background = "#f6f9ff"; }}
+      onMouseLeave={(e) => { if (hoverHighlight) e.currentTarget.style.background = "transparent"; }}
     >
-      {/* 上段：番号 + 日付 + 右端（評価） */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: 6, justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-          <strong
-            style={{
-              color: "rgb(50,50,50)",
-              fontSize: 16,
-              fontWeight: 700,
-              fontFamily: '"Helvetica Neue", Arial, sans-serif',
-              minWidth: 28,
-              textAlign: "right",
-            }}
-          >
-            {index}.
-          </strong>
-          <span
-            style={{
-              fontSize: 13,
-              color: "#555",
-              visibility: showDate ? "visible" : "hidden",
-            }}
-          >
-            {showDate ? fmtDateTime(dateValue) : "00/00/0000, 00:00"}
+      {/* 上段：番号 + 日時（番号のすぐ右） */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          gap: 8,
+          marginBottom: 2,
+        }}
+      >
+        <strong
+          style={{
+            color: "rgb(50,50,50)",
+            fontSize: 16,
+            fontWeight: 700,
+            // 左寄せ（minWidth/textAlignは使わない）
+          }}
+        >
+          {index}.
+        </strong>
+
+        {/* showDate=false の場合は描画しない */}
+        {showDate && (
+          <span style={{ fontSize: 13, color: "#555" }}>
+            {fmtDateTime(dateValue || item?.ratedAt)}
           </span>
-        </div>
-        {extraRight ? <div style={{ marginLeft: 8 }}>{extraRight}</div> : null}
+        )}
       </div>
 
-      {/* 商品名 */}
-      <div style={{ marginTop: 2, fontSize: 15, color: "#333", lineHeight: 1.35 }}>
+      {/* 商品名（番号・日時の下に） */}
+      <div style={{ fontSize: 15, color: "#333", lineHeight: 1.35 }}>
         {item?.商品名 || "（名称不明）"}
       </div>
 
-      {/* 下段：Typeバッジ + 価格 / Sweet / Body */}
+      {/* 下段：色ブロック / 価格 / Sweet / Body */}
       <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <TypeBadge type={item?.Type} />
         <small style={{ color: "#444" }}>
           {price}　 Sweet: {sweetVal != null ? sweetVal.toFixed(2) : "—"} / Body: {bodyVal != null ? bodyVal.toFixed(2) : "—"}
         </small>
       </div>
+
+      {/* 右下に◎を固定（お気に入りと同仕様） */}
+      {extraRight && (
+        <div
+          style={{
+            position: "absolute",
+            right: 12,
+            bottom: 18,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            pointerEvents: "none",
+          }}
+        >
+          {extraRight}
+        </div>
+      )}
     </li>
   );
 }
@@ -295,9 +301,7 @@ export default function RatedPanel({
           >
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {list.map((item, idx) => {
-                const typeColor =
-                  TYPE_COLOR_MAP?.[item?.Type] ?? "rgb(180,180,180)";
-
+                const typeColor = TYPE_COLOR_MAP?.[item?.Type] ?? "rgb(180,180,180)";
                 return (
                   <ListRow
                     key={`${item.JAN}-${idx}`}
