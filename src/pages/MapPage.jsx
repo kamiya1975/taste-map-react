@@ -1099,7 +1099,8 @@ function MapPage() {
                    if (fromRated) params.set("fromRated", "1");
                    params.set("embed", "1");          // ★ 埋め込みモード
                    const qs = params.toString();
-                   return `${process.env.PUBLIC_URL || ""}/products/${jan}${qs ? `?${qs}` : ""}`;
+                   const base = (process.env.PUBLIC_URL || "") || window.location.origin;
+                   return `${base}/#/products/${jan}${qs ? `?${qs}` : ""}`;
                  })()}
               onLoad={() => {
                 const jan = String(selectedJAN);
