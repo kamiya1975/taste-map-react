@@ -99,9 +99,12 @@ export default function ListRow({
           {index}.
         </strong>
 
-        <span style={{ fontSize: 13, color: "#555" }}>
-          {showDate ? fmtDateTime(dateValue || item?.addedAt) : "00/00/0000, 00:00"}
-        </span>
+        {/* ★ showDate=false の場合は非表示にする */}
+        {showDate && (
+          <span style={{ fontSize: 13, color: "#555" }}>
+            {fmtDateTime(dateValue || item?.addedAt)}
+          </span>
+        )}
       </div>
 
       {/* 商品名（番号と左端を揃える） */}
