@@ -135,40 +135,27 @@ export default function ListRow({
         {item?.商品名 || "（名称不明）"}
       </div>
 
-      {/* 下段：Typeバッジ + 価格 / Sweet / Body ＋ 右端に◎を並べる */}
-      <div
-        style={{
-          marginTop: 6,
-          display: "flex",
-          alignItems: "center",    // ← この行の高さに対して縦センター
-          gap: 10,
-        }}
-      >
-        {/* 左側（可変幅） */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, flexWrap: "wrap" }}>
-          <TypeBadge type={item?.Type} />
-          <small style={{ color: "#444" }}>
-            {price}　 Sweet: {sweetVal != null ? sweetVal.toFixed(2) : "—"} / Body: {bodyVal != null ? bodyVal.toFixed(2) : "—"}
-          </small>
-        </div>
+      {/* 評価（◎）— 商品名の“下”に右寄せで表示 */}
+      {extraRight && (
+         <div
+           style={{
+             marginTop: 6,
+             display: "flex",
+             justifyContent: "flex-end",
+             pointerEvents: "none", // 行クリックを優先したい場合
+           }}
+         >
+           <div style={{ transform: "translateY(2px)" }}>{extraRight}</div>
+         </div>
+       )}
 
-        {/* 右側（◎）。この位置が「Sweet/Body の右横」 */}
-        {extraRight && (
-          <div
-            style={{
-              marginLeft: 12,              // 左のテキストと間隔
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              pointerEvents: "none",       // 行クリックを阻害しない
-              // 少しだけ下げたいなら下を解除して調整:
-              // transform: "translateY(4px)",
-            }}
-          >
-            {extraRight}
-          </div>
-        )}
-      </div>
-    </li>
-  );
-}
+       {/* 下段：Typeバッジ + 価格 / Sweet / Body */}
+       <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+         <TypeBadge type={item?.Type} />
+         <small style={{ color: "#444" }}>
+           {price}　 Sweet: {sweetVal != null ? sweetVal.toFixed(2) : "—"} / Body: {bodyVal != null ? bodyVal.toFixed(2) : "—"}
+         </small>
+       </div>
+      </li>
+    );
+   }
