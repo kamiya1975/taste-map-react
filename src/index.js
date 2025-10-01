@@ -1,7 +1,7 @@
 // src/index.js
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { HashRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
@@ -11,19 +11,17 @@ const root = createRoot(container);
 
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
+    <HashRouter>
       <App />
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>
 );
 
-// MSW (開発時のみ). トップレベルawaitは使わない
+// MSW (開発時のみ)
 if (process.env.NODE_ENV === "development") {
   import("./mocks/browser")
     .then(({ worker }) =>
       worker.start({ onUnhandledRequest: "bypass" })
     )
-    .catch(() => {
-      /* dev用なので失敗は無視 */
-    });
+    .catch(() => {/* dev用なので失敗は無視 */});
 }
