@@ -92,7 +92,7 @@ export default function ListRow({
         borderRadius: 6,
         background: "transparent",
         position: "relative",
-        paddingRight: 64, // 右端◎(size=40)が被らないよう余白
+        // ← 絶対配置をやめたので右余白は不要
       }}
       onMouseEnter={(e) => {
         if (!hoverHighlight) return;
@@ -128,40 +128,46 @@ export default function ListRow({
             {showDate ? fmtDateTime(dateValue) : "00/00/0000, 00:00"}
           </span>
         </div>
-
-        {/* 右端（◎など） */}
-        {extraRight && (
-          <div
-            style={{
-              position: "absolute",
-              right: 12,
-              top: 0,                 // 行全体を基準に
-              bottom: 0,              // ← 高さをli全体に広げる
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              pointerEvents: "none", // 行クリックを阻害しない
-            }}
-          >
-            {/* センターから下へオフセットしたい量だけ調整 */}
-            <div style={{ transform: "translateY(10px)" }}>
-            {extraRight}
-          </div>
-       </div>
-      )}
-    </div>
+      </div>
 
       {/* 商品名 */}
       <div style={{ marginTop: 2, fontSize: 15, color: "#333", lineHeight: 1.35 }}>
         {item?.商品名 || "（名称不明）"}
       </div>
 
-      {/* 下段：Typeバッジ + 価格 / Sweet / Body */}
-      <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <TypeBadge type={item?.Type} />
-        <small style={{ color: "#444" }}>
-          {price}　 Sweet: {sweetVal != null ? sweetVal.toFixed(2) : "—"} / Body: {bodyVal != null ? bodyVal.toFixed(2) : "—"}
-        </small>
+      {/* 下段：Typeバッジ + 価格 / Sweet / Body ＋ 右端に◎を並べる */}
+      <div
+        style={{
+          marginTop: 6,
+          display: "flex",
+          alignItems: "center",    // ← この行の高さに対して縦センター
+          gap: 10,
+        }}
+      >
+        {/* 左側（可変幅） */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, flexWrap: "wrap" }}>
+          <TypeBadge type={item?.Type} />
+          <small style={{ color: "#444" }}>
+            {price}　 Sweet: {sweetVal != null ? sweetVal.toFixed(2) : "—"} / Body: {bodyVal != null ? bodyVal.toFixed(2) : "—"}
+          </small>
+        </div>
+
+        {/* 右側（◎）。この位置が「Sweet/Body の右横」 */}
+        {extraRight && (
+          <div
+            style={{
+              marginLeft: 12,              // 左のテキストと間隔
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              pointerEvents: "none",       // 行クリックを阻害しない
+              // 少しだけ下げたいなら下を解除して調整:
+              // transform: "translateY(4px)",
+            }}
+          >
+            {extraRight}
+          </div>
+        )}
       </div>
     </li>
   );
