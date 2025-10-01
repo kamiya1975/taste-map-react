@@ -39,7 +39,7 @@ export default function ListRow({
       const day = String(d.getDate()).padStart(2, "0");
       const hh = String(d.getHours()).padStart(2, "0");
       const mm = String(d.getMinutes()).padStart(2, "0");
-      return `${day}/${m}/${y}, ${hh}:${mm}`;
+      return `${y}/${m}/${day} ,${hh}:${mm}`;
     } catch { return "（日時不明）"; }
   };
 
@@ -84,8 +84,8 @@ export default function ListRow({
         style={{
           display: "flex",
           alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: 6,
+          gap: 8,
+          marginBottom: 2,
         }}
       >
         {/* ★番号を左寄せ（商品名と同じX位置） */}
@@ -94,19 +94,18 @@ export default function ListRow({
             color: "rgb(50,50,50)",
             fontSize: 16,
             fontWeight: 700,
-            // minWidth / textAlign: right を削除して左寄せに
           }}
         >
           {index}.
         </strong>
 
-        <span style={{ fontSize: 13, color: "#555", visibility: showDate ? "visible" : "hidden" }}>
+        <span style={{ fontSize: 13, color: "#555" }}>
           {showDate ? fmtDateTime(dateValue || item?.addedAt) : "00/00/0000, 00:00"}
         </span>
       </div>
 
       {/* 商品名（番号と左端を揃える） */}
-      <div style={{ marginTop: 2, fontSize: 15, color: "#333", lineHeight: 1.35 }}>
+      <div style={{ fontSize: 15, color: "#333", lineHeight: 1.35 }}>
         {item?.商品名 || "（名称不明）"}
       </div>
 
