@@ -1,22 +1,27 @@
 // src/ProductPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { requireRatingOrRedirect } from "../utils/auth";
 
 /** =========================
  *  ユーティリティ
  * ========================= */
-const getJANFromURL = () => {
-  try {
-    const url = new URL(window.location.href);
-    // /products/:JAN or ?jan=XXXX の両対応
-    const byPath = window.location.pathname.split("/").filter(Boolean).pop();
-    const byQuery = url.searchParams.get("jan");
-    return String(byQuery || byPath || "").trim();
-  } catch {
-    return "";
-  }
-};
+ const useJanParam = () => {
+   const { jan: routeJan } = useParams();
+   const location = useLocation();
+   return React.useMemo(() => {
+     if (routeJan) return String(routeJan);
+     // ?jan=XXXX のフォールバック
+     try {
+       const url = new URL(window.location.href);
+       const byQuery = url.searchParams.get("jan");
+       if (byQuery) return String(byQuery);
+     } catch {}
+     // ハッシュ直叩きのフォールバック（/#/products/XXXX）
+     const m = (window.location.hash || "").match(/#\/products\/([^/?#]+)/);
+     return m ? m[1] : "";
+   }, [routeJan, location]);
+ };
 
 const postToParent = (payload) => {
   try {
@@ -223,7 +228,7 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
 export default function ProductPage() {
   const isEmbed = useIsEmbed();
   const navigate = useNavigate();
-  const jan = useMemo(() => getJANFromURL(), []);
+  const jan = useJanParam();
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
