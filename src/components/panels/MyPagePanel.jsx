@@ -13,7 +13,7 @@ function Row({ icon, label, onClick, last = false }) {
         style={{
           width: "100%",
           textAlign: "left",
-          padding: "14px 18px",
+          padding: "30px 18px",
           background: "transparent",
           border: "none",
           cursor: "pointer",
