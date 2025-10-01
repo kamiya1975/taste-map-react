@@ -62,7 +62,7 @@ export default function PanelHeader({
               if (iconFallback) e.currentTarget.src = `${base}${iconFallback}`;
             }}
             alt=""
-            style={{ width: 20, height: 20, display: "block" }}
+            style={{ width: 25, height: 25, display: "block" }}
             draggable={false}
           />
         )}
