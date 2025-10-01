@@ -1,17 +1,14 @@
 import React from "react";
 import { TYPE_COLOR_MAP } from "../../ui/constants";
 
-/** モック準拠の共通行（Type=カラーパネル、評価は右端に単体表示（親から extraRight））
- * props:
- *  - index:         表示番号（1始まり）
- *  - item:          商品データ（JAN, 商品名, 希望小売価格, Type, PC1/PC2 or BodyAxis/SweetAxis 等）
- *  - onPick(item):  クリック時
- *  - showDate:      trueなら日付表示（検索ではfalse）
- *  - dateValue:     表示する日付（ISO文字列/Date/数値）※showDate=trueの時のみ
- *  - accentColor:   左の小装飾色（Type未定義時のフォールバックとして使用）
- *  - extraRight:    右端の要素（例：◎×3）
- *  - hoverHighlight:trueでホバー反転
- */
+/** 配列RGB or 文字列を CSS color に正規化 */
+const toCssColor = (c, fallback) => {
+  if (!c) return fallback;
+  if (Array.isArray(c)) return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+  return String(c);
+};
+
+/** モック準拠の共通行（Type=カラーパネル、評価は右端に単体表示（親から extraRight）） */
 export default function ListRow({
   index,
   item,
@@ -52,9 +49,7 @@ export default function ListRow({
 
   // === Typeをカラーパネル（Chip）で表示 ===
   const TypeBadge = ({ type }) => {
-    const color =
-      (type && TYPE_COLOR_MAP?.[type]) ? TYPE_COLOR_MAP[type] : accentColor;
-
+    const colorCSS = toCssColor(TYPE_COLOR_MAP?.[type], accentColor);
     return (
       <span
         title={type || "Type不明"}
@@ -64,9 +59,8 @@ export default function ListRow({
           gap: 6,
           padding: "2px 8px",
           borderRadius: 10,
-          // 背景は薄め、枠で色を強調
           background: "rgba(0,0,0,0.02)",
-          border: `1px solid ${color}`,
+          border: `1px solid ${colorCSS}`,
           color: "#333",
           fontSize: 12,
           lineHeight: 1.2,
@@ -79,7 +73,7 @@ export default function ListRow({
             width: 10,
             height: 10,
             borderRadius: 3,
-            background: color,
+            background: colorCSS,
             display: "inline-block",
           }}
         />
@@ -97,6 +91,8 @@ export default function ListRow({
         cursor: "pointer",
         borderRadius: 6,
         background: "transparent",
+        position: "relative",
+        paddingRight: 64, // 右端◎(size=40)が被らないよう余白
       }}
       onMouseEnter={(e) => {
         if (!hoverHighlight) return;
@@ -107,7 +103,7 @@ export default function ListRow({
         e.currentTarget.style.background = "transparent";
       }}
     >
-      {/* 上段：番号 + 日付（任意） + 右端（例：◎×3） */}
+      {/* 上段：番号 + 日付（任意） */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 6, justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
           <strong
@@ -133,11 +129,24 @@ export default function ListRow({
           </span>
         </div>
 
-        {/* 右端（◎×N を想定） */}
-        {extraRight ? (
-          <div style={{ marginLeft: 8 }}>{extraRight}</div>
-        ) : null}
-      </div>
+        {/* 右端（◎など） */}
+        {extraRight && (
+          <div
+            style={{
+              position: "absolute",
+              right: 12,
+              top: "50%",
+              transform: "translateY(-50%)", // 縦中央
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              pointerEvents: "none", // 行クリックを阻害しない
+            }}
+          >
+            {extraRight}
+          </div>
+        )}
+      </div> {/* ← ここを閉じ忘れない！ */}
 
       {/* 商品名 */}
       <div style={{ marginTop: 2, fontSize: 15, color: "#333", lineHeight: 1.35 }}>
