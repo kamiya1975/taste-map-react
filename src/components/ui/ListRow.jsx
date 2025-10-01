@@ -120,7 +120,7 @@ export default function ListRow({
           style={{
             position: "absolute",
             right: 12,
-            bottom: 10,                // ← ここを 12〜18 に上げるともっと下へ
+            bottom: 18,                // ← ここを 12〜18 に上げるともっと下へ
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
