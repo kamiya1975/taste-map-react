@@ -103,11 +103,11 @@ export default function MyPagePanel({ isOpen, onClose }) {
       <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
         {view === "menu" && (
           <>
-            <Row icon="/icons/map-guide.svg" label="マップガイド" onClick={() => setView("mapGuide")} />
-            <Row icon="/icons/compass.png" label="基準のワイン 再設定" onClick={() => setView("baseline")} />
-            <Row icon="/icons/account.svg" label="マイアカウント" onClick={() => setView("account")} />
-            <Row icon="/icons/store.svg" label="お気に入り店舗登録" onClick={() => setView("favorites")} />
-            <Row icon="/icons/faq.svg" label="よくある質問" onClick={() => setView("faq")} />
+            <Row icon="/public/img/map-guide.svg" label="マップガイド" onClick={() => setView("mapGuide")} />
+            <Row icon="/public/img//compass.png" label="基準のワイン 再設定" onClick={() => setView("baseline")} />
+            <Row icon="/public/img/account.svg" label="マイアカウント" onClick={() => setView("account")} />
+            <Row icon="/public/img/store.svg" label="お気に入り店舗登録" onClick={() => setView("favorites")} />
+            <Row icon="/public/img/faq.svg" label="よくある質問" onClick={() => setView("faq")} />
           </>
         )}
 
