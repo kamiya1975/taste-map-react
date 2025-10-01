@@ -1,142 +1,198 @@
 // src/components/panels/MyPagePanel.jsx
 import React, { useState } from "react";
 
-// public配下の実URLヘルパ（デプロイ先がサブパスでも安全）
-const pub = (p) => `${process.env.PUBLIC_URL || ""}${p}`;
-
-/* 1行（アイコン + ラベル + インセット罫線） */
-function Row({ icon, label, onClick, last = false }) {
+/* =========================
+   共通UI
+   ========================= */
+function Header({ title, onClose, onBack, icon }) {
   return (
-    <button
-      onClick={onClick}
+    <div
       style={{
-        width: "100%",
-        textAlign: "left",
-        padding: "14px 18px 12px",
-        background: "transparent",
-        border: "none",
-        cursor: "pointer",
-        WebkitTapHighlightColor: "transparent",
-        display: "block",
+        padding: "14px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        borderBottom: "1px solid rgba(0,0,0,0.1)",
+        background: "#E5DED3",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <img src={pub(icon)} alt="" style={{ width: 22, height: 22 }} />
-        <span style={{ fontSize: 15, color: "#111" }}>{label}</span>
-      </div>
-      {/* インセットの罫線（両端を少し切る） */}
-      {!last && (
-        <div
+      {onBack ? (
+        <button
+          onClick={onBack}
+          aria-label="戻る"
           style={{
-            marginTop: 14,
-            marginLeft: 16,          // ← 左右を少し切る
-            marginRight: 16,
-            height: 1,
-            background: "rgba(0,0,0,0.12)",
+            background: "transparent",
+            border: "none",
+            fontSize: 18,
+            padding: 6,
+            cursor: "pointer",
           }}
-        />
+        >
+          ←
+        </button>
+      ) : (
+        <img src={icon} alt="" style={{ width: 28, height: 28 }} />
       )}
-    </button>
+      <div style={{ fontWeight: 700, fontSize: 15, flex: 1, color: "#111" }}>
+        {title}
+      </div>
+      <button
+        onClick={onClose}
+        aria-label="閉じる"
+        style={{
+          background: "transparent",
+          border: "none",
+          fontSize: 18,
+          lineHeight: 1,
+          cursor: "pointer",
+          padding: 6,
+        }}
+      >
+        ×
+      </button>
+    </div>
   );
 }
 
-export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
+/* =========================
+   メニュー行（罫線あり）
+   ========================= */
+function Row({ icon, label, onClick, last = false }) {
+  return (
+    <div style={{ width: "100%" }}>
+      <button
+        onClick={onClick}
+        style={{
+          width: "100%",
+          textAlign: "left",
+          padding: "14px 18px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          WebkitTapHighlightColor: "transparent",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+        }}
+      >
+        <img src={icon} alt="" style={{ width: 22, height: 22 }} />
+        <span style={{ fontSize: 15, color: "#111" }}>{label}</span>
+      </button>
+      {/* --- 罫線（全幅に通す） --- */}
+      {!last && (
+        <div
+          style={{
+            height: 1,
+            background: "rgba(0,0,0,0.12)",
+            width: "100%",
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* =========================
+   メイン：MyPagePanel
+   ========================= */
+export default function MyPagePanel({ isOpen, onClose }) {
   const [view, setView] = useState("menu"); // menu | mapGuide | baseline | account | favorites | faq
+  const goMenu = () => setView("menu");
+
   if (!isOpen) return null;
 
   return (
     <div
       style={{
         position: "fixed",
-        inset: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "#fff",
         zIndex: 1500,
-        background: "rgba(0,0,0,0.08)", // 薄いオーバーレイ（好みで調整）
         display: "flex",
+        flexDirection: "column",
       }}
-      onClick={onClose}
     >
-      {/* ====== 中身の“シート”：幅を 86vw / max 480 に限定（他ページと同じ） ====== */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "86vw",
-          maxWidth: 480,
-          height: "100%",
-          background: "#fff",
-          borderRadius: "0 12px 12px 0",
-          boxShadow: "0 2px 16px rgba(0,0,0,0.15)",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        {/* ヘッダー（シート幅に合わせて狭い） */}
-        <div
-          style={{
-            padding: "12px 14px",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            borderBottom: "1px solid rgba(0,0,0,0.10)",
-            background: "#E5DED3",
-            borderTopRightRadius: 12,
-          }}
-        >
-          <img
-            src={pub("/img/compass.png")}
-            alt=""
-            style={{ width: 26, height: 26 }}
-          />
-          <div style={{ fontWeight: 700, fontSize: 15, flex: 1, color: "#111" }}>
-            アプリガイド
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="閉じる"
-            style={{
-              background: "transparent",
-              border: "none",
-              fontSize: 18,
-              lineHeight: 1,
-              cursor: "pointer",
-              padding: 6,
-            }}
-          >
-            ×
-          </button>
-        </div>
+      {/* ヘッダー */}
+      <Header
+        title={
+          view === "menu"
+            ? "アプリガイド"
+            : view === "mapGuide"
+            ? "マップガイド"
+            : view === "baseline"
+            ? "基準のワイン 再設定"
+            : view === "account"
+            ? "マイアカウント"
+            : view === "favorites"
+            ? "お気に入り店舗登録"
+            : "よくある質問"
+        }
+        onClose={onClose}
+        onBack={view === "menu" ? undefined : goMenu}
+        icon="/img/compass.png"
+      />
 
-        {/* 本文（メニュー） */}
-        <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
-          <Row
-            icon="/img/map-guide.svg"
-            label="マップガイド"
-            onClick={() => setView("mapGuide")}
-          />
-          <Row
-            icon="/img/compass.png"
-            label="基準のワイン 再設定"
-            onClick={() => {
-              if (onOpenSlider) { onClose?.(); onOpenSlider(); }
-              else { setView("baseline"); }
-            }}
-          />
-          <Row
-            icon="/img/account.svg"
-            label="マイアカウント"
-            onClick={() => setView("account")}
-          />
-          <Row
-            icon="/img/store.svg"
-            label="お気に入り店舗登録"
-            onClick={() => setView("favorites")}
-          />
-          <Row
-            icon="/img/faq.svg"
-            label="よくある質問"
-            onClick={() => setView("faq")}
-            last
-          />
-        </div>
+      {/* 本文 */}
+      <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
+        {view === "menu" && (
+          <>
+            <Row
+              icon="/img/map-guide.svg"
+              label="マップガイド"
+              onClick={() => setView("mapGuide")}
+            />
+            <Row
+              icon="/img/compass.png"
+              label="基準のワイン 再設定"
+              onClick={() => setView("baseline")}
+            />
+            <Row
+              icon="/img/account.svg"
+              label="マイアカウント"
+              onClick={() => setView("account")}
+            />
+            <Row
+              icon="/img/store.svg"
+              label="お気に入り店舗登録"
+              onClick={() => setView("favorites")}
+            />
+            <Row
+              icon="/img/faq.svg"
+              label="よくある質問"
+              onClick={() => setView("faq")}
+              last
+            />
+          </>
+        )}
+
+        {view === "mapGuide" && (
+          <section style={{ padding: "14px 16px" }}>
+            <p>マップの見方を解説するセクションです。</p>
+          </section>
+        )}
+        {view === "baseline" && (
+          <section style={{ padding: "14px 16px" }}>
+            <p>基準のワイン（スライダー再設定）ページ。</p>
+          </section>
+        )}
+        {view === "account" && (
+          <section style={{ padding: "14px 16px" }}>
+            <p>アカウント編集ページ。</p>
+          </section>
+        )}
+        {view === "favorites" && (
+          <section style={{ padding: "14px 16px" }}>
+            <p>お気に入り店舗の登録ページ。</p>
+          </section>
+        )}
+        {view === "faq" && (
+          <section style={{ padding: "14px 16px" }}>
+            <p>よくある質問ページ。</p>
+          </section>
+        )}
       </div>
     </div>
   );
