@@ -12,6 +12,27 @@ import IntroPage from "./pages/IntroPage";
 import UserTastePage from "./pages/UserTastePage";
 import ScanAndProductFlow from "./pages/ScanAndProductFlow";
 
+// src/App.jsx（抜粋）
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import MapPage from "./pages/MapPage";
+import SliderPage from "./pages/SliderPage";
+import StorePage from "./pages/StorePage";
+import MyAccount from "./pages/MyAccount"; // ← 新規
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<MapPage />} />
+        <Route path="/slider" element={<SliderPage />} />
+        <Route path="/stores" element={<StorePage />} />
+        <Route path="/my-account" element={<MyAccount />} />
+        {/* 他のルート… */}
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
 export default function App() {
   return (
     <Routes>
@@ -41,3 +62,15 @@ export default function App() {
     </Routes>
   );
 }
+
+// src/App.jsx（またはルート定義ファイル）
+import FavoriteStoresPage from "./pages/FavoriteStoresPage";
+// 既存
+// import StorePage from "./pages/StorePage";
+
+<Routes>
+  {/* 既存 */}
+  <Route path="/store" element={<StorePage />} />          {/* 固定店舗の設定（Introフロー） */}
+  <Route path="/stores-fav" element={<FavoriteStoresPage />} /> {/* アプリガイド → お気に入り追加 */}
+  {/* …他のルート */}
+</Routes>

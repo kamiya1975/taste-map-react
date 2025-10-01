@@ -1,6 +1,7 @@
 // src/SliderPage.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import PanelHeader from "../components/ui/PanelHeader";
 
 /* =======================
    小ユーティリティ（既存）
@@ -46,10 +47,10 @@ const MOVE_PER_UNIT_PX = 5.0;
 const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 const COMPASS_SIZE_PCT = 9;
 
-// 上余白カット後のUI高さ見込み
+// 上余白カット後のUI高さ見込み（コメントのみ：既存）
 const RESERVED_SVH = 34;
 
-// 罫線ピッチなどの定数の下あたりに1行追加（中央に太線が来る調整）
+// 中央に太線が来る調整
 const ALIGN_OFFSET = GRID_STEP_PX * THICK_EVERY / 2 - THICK_W_PX / 2; // 32.5 - 0.7 = 31.8px
 
 export default function SliderPage() {
@@ -144,28 +145,25 @@ export default function SliderPage() {
     navigate("/map", { state: { centerOnUserPin: true } });
   };
 
-  // 「閉じる」→ blendF の位置に戻す
-  const handleClose = () => {
+  // ヘッダーの「×」クローズ：blendF の位置に戻す
+  const handleHeaderClose = () => {
     try {
       let x = null, y = null;
-      // 最優先：データ内の blendF の UMAP 座標
       const b = rows.find((d) => String(d.JAN) === "blendF");
       if (b && Number.isFinite(b.UMAP1) && Number.isFinite(b.UMAP2)) {
         x = b.UMAP1; y = b.UMAP2;
       }
-      // フォールバック：UMAP の中央値
       if (x == null || y == null) {
         const xs = rows.map(r=>r.UMAP1).filter(Number.isFinite);
         const ys = rows.map(r=>r.UMAP2).filter(Number.isFinite);
-        if (xs.length && ys.length) { x = median(xs); y = median(ys); }
-        else { x = 0; y = 0; }
+        if (xs.length && ys.length) { x = median(xs); y = median(ys); } else { x = 0; y = 0; }
       }
       sessionStorage.setItem("tm_center_umap", JSON.stringify({ x, y }));
     } catch {}
     navigate("/map", { replace: true, state: { centerOnBlendF: true } });
   };
 
-  /* ---------- JSX（上余白カット & 「閉じる」をマップ内へ） ---------- */
+  /* ---------- JSX ---------- */
   return (
     <div
       style={{
@@ -176,192 +174,164 @@ export default function SliderPage() {
         background: "#fff",
         display: "flex",
         flexDirection: "column",
-        padding: "8px 16px 12px",
-        boxSizing: "border-box",
-        gap: 8,
       }}
     >
-      {/* ===== ダミーマップ（正方形・はみ出さない） ===== */}
-      <div style={{ flexShrink: 0, display: "flex", justifyContent: "center" }}>
-        <div
-          aria-label="taste-map-dummy"
-          style={{
-            position: "relative",
-            width: "min(calc(100svw - 32px), calc(100svh - 34svh))",
-            aspectRatio: "1 / 1",
-            overflow: "hidden",
+      <PanelHeader
+        title="基準のワイン（スライダー）"
+        onBack={() => navigate(-1)}
+        onClose={handleHeaderClose}
+        icon="/img/slider.svg"
+      />
 
-            /* === グリッド罫線: 細線/太線とも中央基準で交差 === */
-            backgroundImage: `
-             /* 細：横 */
-             linear-gradient(
-               0deg,
-               transparent calc(50% - ${THIN_W_PX / 2}px),
-               ${THIN_RGBA}  calc(50% - ${THIN_W_PX / 2}px),
-               ${THIN_RGBA}  calc(50% + ${THIN_W_PX / 2}px),
-               transparent   calc(50% + ${THIN_W_PX / 2}px)
-              ),
-              /* 細：縦 */
-              linear-gradient(
-                90deg,
-                transparent calc(50% - ${THIN_W_PX / 2}px),
-                ${THIN_RGBA}  calc(50% - ${THIN_W_PX / 2}px),
-                ${THIN_RGBA}  calc(50% + ${THIN_W_PX / 2}px),
-                transparent   calc(50% + ${THIN_W_PX / 2}px)
-              ),
-              /* 太：横（5ピッチごと） */
-              linear-gradient(
-                0deg,
-                transparent  calc(50% - ${THICK_W_PX / 2}px),
-                ${THICK_RGBA} calc(50% - ${THICK_W_PX / 2}px),
-                ${THICK_RGBA} calc(50% + ${THICK_W_PX / 2}px),
-                transparent  calc(50% + ${THICK_W_PX / 2}px)
-              ),
-              /* 太：縦（5ピッチごと） */
-              linear-gradient(
-                90deg,
-                transparent  calc(50% - ${THICK_W_PX / 2}px),
-                ${THICK_RGBA} calc(50% - ${THICK_W_PX / 2}px),
-                ${THICK_RGBA} calc(50% + ${THICK_W_PX / 2}px),
-                transparent  calc(50% + ${THICK_W_PX / 2}px)
-              )
-            `,
-            backgroundSize: `
-              ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
-              ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
-              ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
-              ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
-            `,
-            backgroundPosition: `
-              calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px),
-              calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px),
-              calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px),
-              calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px)
-            `,
-            backgroundRepeat: "repeat",
-            transition: "background-position 120ms linear",
-          }}
-        >
-           {/* 閉じる（マップ内右上） */}
-           <button
-             onClick={() => {
-               // blendF を中心に戻す合図（任意：入れておくと便利）
-               try {
-                 const b = (rows || []).find(d => String(d.JAN) === "blendF");
-                 if (b) {
-                   sessionStorage.setItem(
-                     "tm_center_umap",
-                     JSON.stringify({ x: Number(b.UMAP1), y: Number(b.UMAP2) })
-                   );
-                 }
-               } catch {}
-               navigate("/map", { replace: true, state: { centerOnBlendF: true } });
-             }}
-             style={{
-               position: "absolute",
-               top: 8,
-               right: 8,
-               zIndex: 5,
-               background: "#eee",
-               border: "1px solid #ccc",
-               borderRadius: 8,
-               fontSize: 13,
-               padding: "6px 10px",
-               cursor: "pointer",
-               boxShadow: "0 2px 6px rgba(0,0,0,.15)",
-               WebkitBackdropFilter: "blur(2px)",
-               backdropFilter: "blur(2px)"
-             }}
-           >
-             閉じる
-           </button>
+      <div style={{ padding: "8px 16px 12px", boxSizing: "border-box", gap: 8, display: "flex", flexDirection: "column" }}>
+        {/* ===== ダミーマップ（正方形・はみ出さない, アニメーションなし） ===== */}
+        <div style={{ flexShrink: 0, display: "flex", justifyContent: "center" }}>
+          <div
+            aria-label="taste-map-dummy"
+            style={{
+              position: "relative",
+              width: "min(calc(100svw - 32px), calc(100svh - 34svh))",
+              aspectRatio: "1 / 1",
+              overflow: "hidden",
 
-          {/* コンパス画像 */}
-          <img
-            src={COMPASS_URL}
-            alt="compass"
-            draggable={false}
-           style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              width: `${COMPASS_SIZE_PCT}%`,
-              height: "auto",
-              transform: "translate(-50%, -50%)",
-              pointerEvents: "none",
-              userSelect: "none",
-              opacity: 0.9,
-              filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.25))",
-              zIndex: 1
+              /* === グリッド罫線: 細線/太線とも中央基準で交差 === */
+              backgroundImage: `
+               /* 細：横 */
+               linear-gradient(
+                 0deg,
+                 transparent calc(50% - ${THIN_W_PX / 2}px),
+                 ${THIN_RGBA}  calc(50% - ${THIN_W_PX / 2}px),
+                 ${THIN_RGBA}  calc(50% + ${THIN_W_PX / 2}px),
+                 transparent   calc(50% + ${THIN_W_PX / 2}px)
+                ),
+                /* 細：縦 */
+                linear-gradient(
+                  90deg,
+                  transparent calc(50% - ${THIN_W_PX / 2}px),
+                  ${THIN_RGBA}  calc(50% - ${THIN_W_PX / 2}px),
+                  ${THIN_RGBA}  calc(50% + ${THIN_W_PX / 2}px),
+                  transparent   calc(50% + ${THIN_W_PX / 2}px)
+                ),
+                /* 太：横（5ピッチごと） */
+                linear-gradient(
+                  0deg,
+                  transparent  calc(50% - ${THICK_W_PX / 2}px),
+                  ${THICK_RGBA} calc(50% - ${THICK_W_PX / 2}px),
+                  ${THICK_RGBA} calc(50% + ${THICK_W_PX / 2}px),
+                  transparent  calc(50% + ${THICK_W_PX / 2}px)
+                ),
+                /* 太：縦（5ピッチごと） */
+                linear-gradient(
+                  90deg,
+                  transparent  calc(50% - ${THICK_W_PX / 2}px),
+                  ${THICK_RGBA} calc(50% - ${THICK_W_PX / 2}px),
+                  ${THICK_RGBA} calc(50% + ${THICK_W_PX / 2}px),
+                  transparent  calc(50% + ${THICK_W_PX / 2}px)
+                )
+              `,
+              backgroundSize: `
+                ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+                ${GRID_STEP_PX}px ${GRID_STEP_PX}px,
+                ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px,
+                ${GRID_STEP_PX * THICK_EVERY}px ${GRID_STEP_PX * THICK_EVERY}px
+              `,
+              backgroundPosition: `
+                calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px),
+                calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px),
+                calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px),
+                calc(50% + ${bgOffset.dx}px) calc(50% + ${bgOffset.dy}px)
+              `,
+              backgroundRepeat: "repeat",
+              // ★ Mapアニメーションは不要：transitionを付けない
             }}
+          >
+            {/* コンパス画像 */}
+            <img
+              src={COMPASS_URL}
+              alt="compass"
+              draggable={false}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                width: `${COMPASS_SIZE_PCT}%`,
+                height: "auto",
+                transform: "translate(-50%, -50%)",
+                pointerEvents: "none",
+                userSelect: "none",
+                opacity: 0.9,
+                filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.25))",
+                zIndex: 1
+              }}
+            />
+          </div>
+        </div>
+
+        {/* 見出し */}
+        <p style={{ fontWeight:700, fontSize:16, margin:"8px 0 6px", textAlign:"center", flexShrink:0 }}>
+          基準のワインを飲んだ印象は？
+        </p>
+
+        {/* スライダーCSS */}
+        <style>{`
+          .taste-slider{ appearance:none; -webkit-appearance:none; width:100%; height:6px; background:transparent; margin-top:6px; outline:none; }
+          .taste-slider::-webkit-slider-runnable-track{ height:6px; border-radius:9999px; background:var(--range,#e9e9e9); }
+          .taste-slider::-moz-range-track{ height:6px; border-radius:9999px; background:var(--range,#e9e9e9); }
+          .taste-slider::-webkit-slider-thumb{ -webkit-appearance:none; width:28px; height:28px; border-radius:50%; background:#fff; border:0; box-shadow:0 2px 6px rgba(0,0,0,.25); margin-top:-11px; cursor:pointer; }
+          .taste-slider::-moz-range-thumb{ width:28px; height:28px; border-radius:50%; background:#fff; border:0; box-shadow:0 2px 6px rgba(0,0,0,.25); cursor:pointer; }
+        `}</style>
+
+        {/* 甘み */}
+        <div style={{ marginBottom:10, flexShrink:0 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:4 }}>
+            <span>← こんなに甘みは不要</span><span>もっと甘みが欲しい →</span>
+          </div>
+          <input
+            type="range" min="0" max="100" value={sweetness}
+            onChange={(e)=>setSweetness(Number(e.target.value))}
+            className="taste-slider" style={{ "--range": centerGradient(sweetness) }}
           />
         </div>
-      </div>
 
-      {/* 見出し */}
-      <p style={{ fontWeight:700, fontSize:16, margin:"2px 0 6px", textAlign:"center", flexShrink:0 }}>
-        基準のワインを飲んだ印象は？
-      </p>
-
-      {/* スライダーCSS */}
-      <style>{`
-        .taste-slider{ appearance:none; -webkit-appearance:none; width:100%; height:6px; background:transparent; margin-top:6px; outline:none; }
-        .taste-slider::-webkit-slider-runnable-track{ height:6px; border-radius:9999px; background:var(--range,#e9e9e9); }
-        .taste-slider::-moz-range-track{ height:6px; border-radius:9999px; background:var(--range,#e9e9e9); }
-        .taste-slider::-webkit-slider-thumb{ -webkit-appearance:none; width:28px; height:28px; border-radius:50%; background:#fff; border:0; box-shadow:0 2px 6px rgba(0,0,0,.25); margin-top:-11px; cursor:pointer; }
-        .taste-slider::-moz-range-thumb{ width:28px; height:28px; border-radius:50%; background:#fff; border:0; box-shadow:0 2px 6px rgba(0,0,0,.25); cursor:pointer; }
-      `}</style>
-
-      {/* 甘み */}
-      <div style={{ marginBottom:10, flexShrink:0 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:4 }}>
-          <span>← こんなに甘みは不要</span><span>もっと甘みが欲しい →</span>
+        {/* コク（ボディ） */}
+        <div style={{ marginBottom:10, flexShrink:0 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:4 }}>
+            <span>← もっと軽やかが良い</span><span>濃厚なコクが欲しい →</span>
+          </div>
+          <input
+            type="range" min="0" max="100" value={body}
+            onChange={(e)=>setBody(Number(e.target.value))}
+            className="taste-slider" style={{ "--range": centerGradient(body) }}
+          />
         </div>
-        <input
-          type="range" min="0" max="100" value={sweetness}
-          onChange={(e)=>setSweetness(Number(e.target.value))}
-          className="taste-slider" style={{ "--range": centerGradient(sweetness) }}
-        />
-      </div>
 
-      {/* コク（ボディ） */}
-      <div style={{ marginBottom:10, flexShrink:0 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:700, marginBottom:4 }}>
-          <span>← もっと軽やかが良い</span><span>濃厚なコクが欲しい →</span>
-        </div>
-        <input
-          type="range" min="0" max="100" value={body}
-          onChange={(e)=>setBody(Number(e.target.value))}
-          className="taste-slider" style={{ "--range": centerGradient(body) }}
-        />
+        {/* 生成ボタン */}
+        <button
+          onClick={handleGenerate}
+          style={{
+            alignSelf: "center",
+            marginTop: 14,
+            marginBottom: 8,
+            width: "min(calc(100svw - 32px), calc(100svh - 34svh))",
+            maxWidth: 560,
+            padding: "14px 16px",
+            lineHeight: 1.2,
+            background: "rgba(245,233,221,0.98)",
+            color: "#000",
+            border: "none",
+            borderRadius: 10,
+            fontSize: 16,
+            fontWeight: 700,
+            cursor: "pointer",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.18)",
+            WebkitBackdropFilter: "blur(2px)",
+            backdropFilter: "blur(2px)"
+          }}
+          disabled={!blendF || !pcMinMax || !rows.length}
+        >
+          あなたの好みからMAPを生成
+        </button>
       </div>
-
-      {/* 生成ボタン：通常フローに置いて重なりを回避（Safari対応） */}
-      <button
-        onClick={handleGenerate}
-        style={{
-          alignSelf: "center",
-          marginTop: 14,
-          marginBottom: 8,
-          width: "min(calc(100svw - 32px), calc(100svh - 34svh))",
-          maxWidth: 560,
-          padding: "14px 16px",
-          lineHeight: 1.2,
-          background: "rgba(245,233,221,0.98)",
-          color: "#000",
-          border: "none",
-          borderRadius: 10,
-          fontSize: 16,
-          fontWeight: 700,
-          cursor: "pointer",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.18)",
-          WebkitBackdropFilter: "blur(2px)",
-          backdropFilter: "blur(2px)"
-        }}
-        disabled={!blendF || !pcMinMax || !rows.length}
-      >
-        あなたの好みからMAPを生成
-      </button>
     </div>
   );
 }

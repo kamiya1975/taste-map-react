@@ -1,5 +1,6 @@
 // src/components/panels/MyPagePanel.jsx
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PanelHeader from "../ui/PanelHeader";
 
 /* =========================
@@ -13,7 +14,7 @@ function Row({ icon, label, onClick, last = false }) {
         style={{
           width: "100%",
           textAlign: "left",
-          padding: "30px 18px",
+          padding: "26px 18px",
           background: "transparent",
           border: "none",
           cursor: "pointer",
@@ -23,10 +24,10 @@ function Row({ icon, label, onClick, last = false }) {
           gap: 14,
         }}
       >
-        <img src={icon} alt="" style={{ width: 25, height: 25 }} />
+        {!!icon && <img src={icon} alt="" style={{ width: 25, height: 25 }} />}
         <span style={{ fontSize: 15, color: "#111" }}>{label}</span>
       </button>
-      {/* --- 罫線（全幅に通す） --- */}
+
       {!last && (
         <div
           style={{
@@ -44,44 +45,47 @@ function Row({ icon, label, onClick, last = false }) {
    メイン：MyPagePanel
    ========================= */
 export default function MyPagePanel({ isOpen, onClose }) {
-  const [view, setView] = useState("menu"); // menu | mapGuide | baseline | account | favorites | faq
+  const [view, setView] = useState("menu"); // 'menu' | 'mapGuide' | 'faq'
+  const navigate = useNavigate();
   const goMenu = () => setView("menu");
 
   if (!isOpen) return null;
+
+  // ルーター遷移（押下時にパネルを閉じる）
+  const go = (path) => {
+    try {
+      navigate(path);
+    } finally {
+      onClose?.();
+    }
+  };
 
   return (
     <div
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        inset: 0,
         background: "#fff",
         zIndex: 1500,
         display: "flex",
         flexDirection: "column",
       }}
+      aria-modal="true"
+      role="dialog"
     >
       {/* ヘッダー */}
       <PanelHeader
         title={
           view === "menu"
-          ? "アプリガイド"
-          : view === "mapGuide"
-          ? "マップガイド"
-          : view === "baseline"
-          ? "基準のワイン 再設定"
-          : view === "account"
-          ? "マイアカウント"
-          : view === "favorites"
-          ? "お気に入り店舗登録"
-          : "よくある質問"
+            ? "アプリガイド"
+            : view === "mapGuide"
+            ? "マップガイド"
+            : "よくある質問"
         }
         onClose={onClose}
         onBack={view === "menu" ? undefined : goMenu}
         icon="compass.png"
-       />
+      />
 
       {/* 本文 */}
       <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
@@ -92,52 +96,60 @@ export default function MyPagePanel({ isOpen, onClose }) {
               label="マップガイド"
               onClick={() => setView("mapGuide")}
             />
+
+            {/* —— ここから “活用ページ” への遷移 —— */}
             <Row
-              icon="/img/compass.png"
-              label="基準のワイン 再設定"
-              onClick={() => setView("baseline")}
+              icon="/img/slider.svg"
+              label="基準のワイン（スライダー）"
+              onClick={() => go("/slider")}
             />
             <Row
               icon="/img/account.svg"
               label="マイアカウント"
-              onClick={() => setView("account")}
+              onClick={() => go("/my-account")}
             />
             <Row
               icon="/img/store.svg"
               label="お気に入り店舗登録"
-              onClick={() => setView("favorites")}
+              onClick={() => go("/stores-fav")} 
             />
+            {/* —— ここまで —— */}
+
             <Row
               icon="/img/faq.svg"
               label="よくある質問"
               onClick={() => setView("faq")}
+              last
             />
           </>
         )}
 
         {view === "mapGuide" && (
-          <section style={{ padding: "14px 16px" }}>
-            <p>マップの見方を解説するセクションです。</p>
+          <section style={{ padding: "14px 16px", lineHeight: 1.7 }}>
+            <p>
+              基準のワインを出発点に、様々なワインを評価して自分の好みの位置を可視化します。
+            </p>
+            <ul style={{ paddingLeft: 18 }}>
+              <li>ワインをタップすると詳細を表示</li>
+              <li>評価済みのワインは記号サイズが変化</li>
+              <li>範囲外へはズーム・パンで移動可能</li>
+            </ul>
           </section>
         )}
-        {view === "baseline" && (
-          <section style={{ padding: "14px 16px" }}>
-            <p>基準のワイン（スライダー再設定）ページ。</p>
-          </section>
-        )}
-        {view === "account" && (
-          <section style={{ padding: "14px 16px" }}>
-            <p>アカウント編集ページ。</p>
-          </section>
-        )}
-        {view === "favorites" && (
-          <section style={{ padding: "14px 16px" }}>
-            <p>お気に入り店舗の登録ページ。</p>
-          </section>
-        )}
+
         {view === "faq" && (
-          <section style={{ padding: "14px 16px" }}>
-            <p>よくある質問ページ。</p>
+          <section style={{ padding: "14px 16px", lineHeight: 1.8 }}>
+            <h3 style={{ fontSize: 16, margin: "6px 0 10px" }}>データの扱い</h3>
+            <p style={{ margin: 0 }}>
+              現在は DB 未接続のため、プロフィール・店舗・お気に入りは
+              <code style={{ padding: "0 4px" }}>localStorage</code> に保存します。
+              本番は管理ページAPI（FastAPI）に差し替え予定です。
+            </p>
+
+            <h3 style={{ fontSize: 16, margin: "16px 0 10px" }}>位置情報は必須？</h3>
+            <p style={{ margin: 0 }}>
+              許可しなくても利用できます（未許可時は東京駅近傍で並び替え）。
+            </p>
           </section>
         )}
       </div>

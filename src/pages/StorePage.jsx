@@ -1,6 +1,7 @@
 // src/pages/StorePage.jsx
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import PanelHeader from "../components/ui/PanelHeader";
 
 /* ========= ユーティリティ ========= */
 function haversineKm(lat1, lon1, lat2, lon2) {
