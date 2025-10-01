@@ -30,12 +30,7 @@ const toNum = (v) => {
 export function normalizeStore(s, i = 0) {
   const lat = toNum(s.lat) ?? toNum(s.latitude);
   const lng = toNum(s.lng) ?? toNum(s.lon) ?? toNum(s.longitude);
-  return {
-    ...s,
-    lat,
-    lng,
-    _key: `${s.name || ""}@@${s.branch || ""}@@${i}`,
-  };
+  return { ...s, lat, lng, _key: `${s.name || ""}@@${s.branch || ""}@@${i}` };
 }
 
 export async function loadAndSortStoresByDistance() {

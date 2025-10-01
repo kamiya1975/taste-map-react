@@ -1,5 +1,5 @@
 // src/pages/FavoriteStoresPage.jsx
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PanelHeader from "../components/ui/PanelHeader";
 import {
@@ -16,7 +16,6 @@ export default function FavoriteStoresPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // 初回ロード
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -118,8 +117,7 @@ export default function FavoriteStoresPage() {
                         marginTop: 2,
                       }}
                     >
-                      {store.address || ""}{" "}
-                      {store.genre ? ` / ${store.genre}` : ""}
+                      {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
                     </div>
                   </div>
 
