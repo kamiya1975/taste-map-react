@@ -9,6 +9,7 @@ import { requireRatingOrRedirect } from "../utils/auth";
 const getJANFromURL = () => {
   try {
     const url = new URL(window.location.href);
+    // /products/:JAN or ?jan=XXXX の両対応
     const byPath = window.location.pathname.split("/").filter(Boolean).pop();
     const byQuery = url.searchParams.get("jan");
     return String(byQuery || byPath || "").trim();
@@ -90,11 +91,12 @@ const useIsEmbed = () => {
 };
 
 /** =========================
- *  お気に入りハート
+ *  お気に入りハート（手動のみ）
  * ========================= */
 function HeartButton({ jan, size = 22 }) {
   const [fav, setFav] = useState(false);
 
+  // ローカルストレージと親からの同期
   useEffect(() => {
     const readFav = () => {
       try {
@@ -111,10 +113,15 @@ function HeartButton({ jan, size = 22 }) {
     };
     window.addEventListener("storage", onStorage);
 
+    // 親からのメッセージを受信（SET_FAVORITE / STATE_SNAPSHOT）
     const onMsg = (e) => {
       const { type, jan: targetJan, value } = e.data || {};
-      if (String(targetJan) !== String(jan)) return;
-      if (type === "SET_FAVORITE") setFav(!!value);
+      const match = String(targetJan) === String(jan);
+      if (!match) return;
+
+      if (type === "SET_FAVORITE") {
+        setFav(!!value);
+      }
     };
     window.addEventListener("message", onMsg);
 
@@ -126,19 +133,15 @@ function HeartButton({ jan, size = 22 }) {
 
   const toggle = () => {
     const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
-    let isFav = false;
     if (favs[jan]) {
       delete favs[jan];
-      isFav = false;
     } else {
       favs[jan] = { addedAt: new Date().toISOString() };
-      isFav = true;
     }
     localStorage.setItem("favorites", JSON.stringify(favs));
-    setFav(isFav);
+    setFav(!!favs[jan]);
 
-    // 親へ即時通知（MapPage用）
-    postToParent({ type: "tm:fav-updated", jan, isFavorite: isFav });
+    postToParent({ type: "TOGGLE_FAVORITE", jan });
   };
 
   return (
@@ -188,6 +191,7 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
         alignItems: "center",
         justifyContent: "center",
         borderRadius: "50%",
+        boxSizing: "border-box",
       }}
     >
       {[...Array(ringCount)].map((_, i) => {
@@ -202,6 +206,7 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
               height: `${size}px`,
               border: `1.5px solid ${selected ? "#000" : "#bbb"}`,
               borderRadius: "50%",
+              boxSizing: "border-box",
               backgroundColor:
                 i === 0 ? (selected ? centerColor : "rgb(150,150,150)") : "transparent",
             }}
@@ -222,10 +227,14 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
+  // ◎一覧から来たか（来ていれば♡を隠す）
   const hideHeartFromQuery = useHideHeartFromQuery();
   const [hideHeart, setHideHeart] = useState(hideHeartFromQuery);
-  useEffect(() => setHideHeart(hideHeartFromQuery), [hideHeartFromQuery]);
+  useEffect(() => {
+    setHideHeart(hideHeartFromQuery);
+  }, [hideHeartFromQuery]);
 
+  // マウント→OPEN通知、アンマウント→CLOSED通知
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan });
     postToParent({ type: "REQUEST_STATE", jan });
@@ -253,14 +262,29 @@ export default function ProductPage() {
     } catch {}
   }, [jan]);
 
-  // 親からの snapshot
+  // 親からの STATE_SNAPSHOT
   useEffect(() => {
     const onMsg = (e) => {
       const { type, jan: targetJan, rating: ratingPayload, hideHeart } = e.data || {};
       if (type !== "STATE_SNAPSHOT") return;
       if (String(targetJan) !== String(jan)) return;
-      setRating(ratingPayload?.rating ?? 0);
-      if (typeof hideHeart === "boolean") setHideHeart(hideHeart);
+      try {
+        setRating(ratingPayload?.rating ?? 0);
+        if (typeof hideHeart === "boolean") setHideHeart(hideHeart);
+      } catch {}
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [jan]);
+
+  // 親からの HIDE_HEART
+  useEffect(() => {
+    const onMsg = (e) => {
+      const { type, jan: targetJan, value } = e.data || {};
+      if (String(targetJan) !== String(jan)) return;
+      if (type === "HIDE_HEART") {
+        setHideHeart(Boolean(value));
+      }
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
@@ -277,58 +301,228 @@ export default function ProductPage() {
     if (newRating === 0) {
       delete ratings[jan];
     } else {
-      payload = { rating: newRating, date: new Date().toISOString() };
+      let weather = {};
+      try {
+        const token = process.env.REACT_APP_IPINFO_TOKEN;
+        const ipRes = await fetch(`https://ipinfo.io/json?token=${token}`);
+        const ipData = await ipRes.json();
+        const [lat, lon] = (ipData.loc || ",").split(",");
+
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        const HH = String(now.getHours()).padStart(2, "0");
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        const targetTime = `${dateStr}T${HH}:00`;
+
+        const meteoUrl =
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+          `&start_date=${dateStr}&end_date=${dateStr}` +
+          `&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,surface_pressure,cloudcover,precipitation,wind_speed_10m,weathercode` +
+          `&timezone=Asia%2FTokyo`;
+
+        const weatherRes = await fetch(meteoUrl);
+        const weatherData = await weatherRes.json();
+        const hourly = weatherData.hourly || {};
+        const idx = Array.isArray(hourly.time) ? hourly.time.indexOf(targetTime) : -1;
+
+        if (idx !== -1) {
+          weather = {
+            temperature: hourly.temperature_2m?.[idx],
+            apparentTemperature: hourly.apparent_temperature?.[idx],
+            humidity: hourly.relative_humidity_2m?.[idx],
+            pressure: hourly.surface_pressure?.[idx],
+            cloudcover: hourly.cloudcover?.[idx],
+            precipitation: hourly.precipitation?.[idx],
+            windSpeed: hourly.wind_speed_10m?.[idx],
+            weatherCode: hourly.weathercode?.[idx],
+          };
+        }
+      } catch (err) {
+        console.warn("気象情報の取得に失敗しました:", err);
+      }
+
+      payload = { rating: newRating, date: new Date().toISOString(), weather };
       ratings[jan] = payload;
     }
 
     localStorage.setItem("userRatings", JSON.stringify(ratings));
-
-    // 親へ即時通知（MapPage用）
-    postToParent({ type: "tm:rating-updated", jan, rating: newRating, date: new Date().toISOString() });
+    postToParent({ type: "RATING_UPDATED", jan, payload });
   };
 
-  if (!product) return <div style={{ padding: 16 }}>商品が見つかりませんでした。</div>;
+  if (!product) {
+    return <div style={{ padding: 16 }}>商品が見つかりませんでした。</div>;
+  }
 
   const price = product.希望小売価格 ?? product.価格 ?? 1800;
-  const typeColors = { Spa: "#6BAED6", White: "#D9D76C", Red: "#8B2E3B", Rose: "#E48E8E", Other: "#CCCCCC" };
+
+  // ★ Typeごとの色マップ
+  const typeColors = {
+    Spa: "#6BAED6",
+    White: "#D9D76C",
+    Red: "#8B2E3B",
+    Rose: "#E48E8E",
+    Other: "#CCCCCC",
+  };
   const typeColor = typeColors[product.Type] || typeColors.Other;
 
   return (
-    <div style={{ height: "100%", overflow: "auto", maxWidth: 500, margin: "0 auto", padding: 16 }}>
+    <div
+      style={{
+        height: "100%",
+        overflow: "auto",
+        WebkitOverflowScrolling: "touch",
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        maxWidth: "500px",
+        margin: "0 auto",
+        padding: "16px",
+        position: "relative",
+      }}
+    >
+      {/* 左上に固定の♡（embed でも表示） */}
       {!hideHeart && (
         <div style={{ position: "fixed", top: 12, left: 12, zIndex: 1000 }}>
           <HeartButton jan={jan} size={22} />
         </div>
       )}
 
+      {/* 商品画像 */}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
-        <img src={`/img/${jan}.png`} alt="商品画像" style={{ maxHeight: 225, objectFit: "contain" }}
-          onError={(e) => { e.currentTarget.style.opacity = 0.3; }} />
+        <img
+          src={`/img/${jan}.png`}
+          alt="商品画像"
+          style={{ maxHeight: 225, objectFit: "contain" }}
+          onError={(e) => {
+            e.currentTarget.style.opacity = 0.3;
+          }}
+        />
       </div>
 
+      {/* 商品名 */}
       <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 16 }}>
         {product.商品名 || "（名称不明）"}
       </h2>
 
-      <div style={{ display: "flex", alignItems: "center", margin: "4px 0 12px 0" }}>
-        <span style={{ width: 16, height: 16, backgroundColor: typeColor, borderRadius: 4, marginRight: 8 }} />
-        <span style={{ marginLeft: 8 }}>¥{Number(price).toLocaleString()}</span>
-        <span style={{ marginLeft: 24 }}>{product.産地 || "シチリア"} / {product.国 || "イタリア"}</span>
+      {/* タイプマーク＋価格 */}
+      <div
+        style={{ 
+          display: "flex", 
+          alignItems: "center", 
+          margin: "4px 0 12px 0" 
+        }}
+      >
+        {/* タイプマーク */}
+        <span
+          style={{
+            width: 16,
+            height: 16,
+            backgroundColor: typeColor,
+            borderRadius: 4,
+            marginRight: 8,
+            display: "inline-block",
+          }}
+        />
+       {/* 価格 */}
+       <span style={{ marginLeft: 8 }}>
+         ¥{Number(price).toLocaleString()}
+       </span>
+
+       {/* 原産地・年 */}
+       <span style={{ marginLeft: 24 }}>
+         {product.産地 || product.生産地 || "シチリア / イタリア"} /{" "}
+         {product.国 || product.国 || "2022"}
+       </span>
       </div>
 
+      {/* 味データ */}
       <p style={{ margin: "4px 0" }}>
-        Sweet: {Number(product.PC2).toFixed(2)} / Body: {Number(product.PC1).toFixed(2)}
+        Sweet: {Number(product.PC2).toFixed(2)}  /  Body: {Number(product.PC1).toFixed(2)}
       </p>
 
-      <div style={{ marginTop: 24, paddingTop: 8, paddingBottom: 8, borderTop: "1px solid #ccc", borderBottom: "1px solid #ccc" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <div style={{ fontWeight: "bold", fontSize: 16, minWidth: 48 }}>評価</div>
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, width: "100%", maxWidth: 300 }}>
+      {/* 評価（◎） */}
+      <div
+        style={{
+          marginTop: 24,
+          paddingTop: 8,
+          paddingBottom: 8,
+          borderTop: "1px solid #ccc",
+          borderBottom: "1px solid #ccc",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              fontWeight: "bold",
+              fontSize: 16,
+              minWidth: 48,
+              whiteSpace: "nowrap",
+            }}
+          >
+            評価
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: 8,
+              width: "100%",
+              maxWidth: 300,
+            }}
+          >
             {[1, 2, 3, 4, 5].map((v) => (
-              <CircleRating key={v} value={v} currentRating={rating} onClick={handleCircleClick} />
+              <CircleRating
+                key={v}
+                value={v}
+                currentRating={rating}
+                onClick={handleCircleClick}
+              />
             ))}
           </div>
         </div>
+      </div>
+
+      {/* 説明ダミー */}
+      <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
+        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
+        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
+        昨今では、世界標準の飲み物と言えるまでになっています。
       </div>
     </div>
   );
