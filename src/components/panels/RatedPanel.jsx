@@ -307,7 +307,7 @@ export default function RatedPanel({
                     showDate
                     dateValue={item.ratedAt}
                     accentColor={typeColor}
-                    extraRight={<CircleRatingDisplay rating={item.rating} size={30} />}
+                    extraRight={<CircleRatingDisplay rating={item.rating} size={35} />}
                   />
                 );
               })}
