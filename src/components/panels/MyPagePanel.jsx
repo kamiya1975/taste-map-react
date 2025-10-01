@@ -96,7 +96,7 @@ export default function MyPagePanel({ isOpen, onClose }) {
         }
         onClose={onClose}
         onBack={view === "menu" ? undefined : goMenu}
-        icon="/img/compas.svg"
+        icon="/img/compass.png"
       />
 
       {/* 本文 */}
