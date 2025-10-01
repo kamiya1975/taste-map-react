@@ -7,6 +7,7 @@ import {
   TYPE_COLOR_MAP,
 } from "../../ui/constants";
 import PanelHeader from "../ui/PanelHeader";
+import CircleRatingDisplay from "../../components/CircleRatingDisplay";
 
 /* =========================
    共通行 ListRow（内蔵）
@@ -253,30 +254,6 @@ export default function RatedPanel({
     </div>
   );
 
-  // ◎の“単体表示”バッジ
-  const RatingBadge = ({ value = 0 }) => {
-    const v = Math.max(0, Math.min(5, Math.floor(Number(value) || 0)));
-    if (v <= 0) return null;
-    return (
-      <div
-        aria-label={`評価 ${v}`}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          fontWeight: 700,
-          fontSize: 18,
-          lineHeight: 1,
-          letterSpacing: 0.5,
-          color: "#000",
-        }}
-      >
-        <span aria-hidden>◎</span>
-        <span style={{ fontSize: 13, opacity: 0.85 }}>×{v}</span>
-      </div>
-    );
-  };
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -330,7 +307,7 @@ export default function RatedPanel({
                     showDate
                     dateValue={item.ratedAt}
                     accentColor={typeColor}
-                    extraRight={<RatingBadge value={item.rating} />}
+                    extraRight={<CircleRatingDisplay rating={item.rating} size={24} />}
                   />
                 );
               })}

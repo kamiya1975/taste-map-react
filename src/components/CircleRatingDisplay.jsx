@@ -1,38 +1,55 @@
 import React from "react";
 
-// 各◎を表示（評価0〜5に応じて黒/グレー）
-const CircleRatingIcon = ({ ringLevel, currentRating }) => {
-  const baseSize = 6; // ← 元より70%小さい
-  const ringGap = 2.2;
-  const ringCount = ringLevel + 1;
+/**
+ * 評価の「n重丸」を1個だけ描くミニ表示コンポーネント。
+ * ProductPage の CircleRating で「選択された状態」の見た目に合わせています。
+ *
+ * props:
+ *  - rating:        1..5 の整数
+ *  - size:          全体サイズ(px)。24〜28 がおすすめ
+ *  - centerColor:   中心ドット色（既定 #000）
+ */
+export default function CircleRatingDisplay({
+  rating = 0,
+  size = 24,
+  centerColor = "#000",
+}) {
+  const v = Math.max(0, Math.min(5, Math.floor(Number(rating) || 0)));
+  if (v <= 0) return null; // 未評価は表示しない（◎一覧では常に >=1 のはず）
+
+  // ProductPage の比率に合わせて相対化
+  const outerSize = size;
+  const baseSize = size * 0.2;   // 元: 8px 相当
+  const ringGap  = size * 0.075; // 元: 3px 相当
+  const ringCount = v + 1;       // 「中心ドット + v本のリング」
 
   return (
     <div
+      aria-label={`評価 ${v}`}
       style={{
         position: "relative",
-        width: `${baseSize + ringGap * 2 * (ringCount - 1)}px`,
-        height: `${baseSize + ringGap * 2 * (ringCount - 1)}px`,
-        display: "flex",
+        width: `${outerSize}px`,
+        height: `${outerSize}px`,
+        display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        marginRight: "4px",
       }}
     >
       {[...Array(ringCount)].map((_, i) => {
-        const size = baseSize + ringGap * 2 * i;
-        const color = i === 0
-          ? "rgb(150,150,150)"   // ★ 中心は常に同じ色
-          : i <= currentRating ? "#000" : "#ccc";
+        const w = baseSize + ringGap * 2 * i;
+        // 一覧は常に「選択済み」の見た目＝枠は黒
+        const stroke = "#000";
+        const fill = i === 0 ? centerColor : "transparent";
         return (
           <div
             key={i}
             style={{
               position: "absolute",
-              width: `${size}px`,
-              height: `${size}px`,
-              border: `1.2px solid ${color}`,
+              width: `${w}px`,
+              height: `${w}px`,
+              border: `1.5px solid ${stroke}`,
               borderRadius: "50%",
-              backgroundColor: i === 0 ? color : "transparent",
+              backgroundColor: fill,
               boxSizing: "border-box",
             }}
           />
@@ -40,32 +57,4 @@ const CircleRatingIcon = ({ ringLevel, currentRating }) => {
       })}
     </div>
   );
-};
-
-// 横並びで6段階すべて表示（小さめに中心揃え）
-const CircleRatingRowDisplay = ({ currentRating = -1 }) => {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center", // 垂直中心
-        justifyContent: "flex-start",
-        height: "34px",     // 商品名との高さを合わせる
-        marginTop: "-4px",  // 上に寄せる
-        marginLeft: "-8px", // 左に寄せる
-      }}
-    >
-      {[1, 2, 3, 4, 5].map((val) => (
-        <CircleRatingIcon
-          key={val}
-          value={v}
-          currentRating={currentRating}
-          centerColor={typeColor}
-        />
-      ))}
-    </div>
-  );
-};
-
-export default CircleRatingRowDisplay;
+}
