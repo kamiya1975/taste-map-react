@@ -23,7 +23,7 @@ function Row({ icon, label, onClick, last = false }) {
           gap: 14,
         }}
       >
-        <img src={icon} alt="" style={{ width: 28, height: 28 }} />
+        <img src={icon} alt="" style={{ width: 25, height: 25 }} />
         <span style={{ fontSize: 15, color: "#111" }}>{label}</span>
       </button>
       {/* --- 罫線（全幅に通す） --- */}
