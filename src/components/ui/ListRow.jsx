@@ -135,18 +135,21 @@ export default function ListRow({
             style={{
               position: "absolute",
               right: 12,
-              top: "calc(50% + 14px)",           // ← 下に 8px オフセット（好みで 6〜14px）
-              transform: "translateY(-50%)",
+              top: 0,                 // 行全体を基準に
+              bottom: 0,              // ← 高さをli全体に広げる
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               pointerEvents: "none", // 行クリックを阻害しない
             }}
           >
+            {/* センターから下へオフセットしたい量だけ調整 */}
+            <div style={{ transform: "translateY(10px)" }}>
             {extraRight}
           </div>
-        )}
-      </div> {/* ← ここを閉じ忘れない！ */}
+       </div>
+      )}
+    </div>
 
       {/* 商品名 */}
       <div style={{ marginTop: 2, fontSize: 15, color: "#333", lineHeight: 1.35 }}>
