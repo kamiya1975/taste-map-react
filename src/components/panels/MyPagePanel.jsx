@@ -104,7 +104,7 @@ export default function MyPagePanel({ isOpen, onClose }) {
         {view === "menu" && (
           <>
             <Row icon="/img/map-guide.svg" label="マップガイド" onClick={() => setView("mapGuide")} />
-            <Row icon="/img//compass.png" label="基準のワイン 再設定" onClick={() => setView("baseline")} />
+            <Row icon="/img/compass.png" label="基準のワイン 再設定" onClick={() => setView("baseline")} />
             <Row icon="/img/account.svg" label="マイアカウント" onClick={() => setView("account")} />
             <Row icon="/img/store.svg" label="お気に入り店舗登録" onClick={() => setView("favorites")} />
             <Row icon="/img/faq.svg" label="よくある質問" onClick={() => setView("faq")} />
