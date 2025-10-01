@@ -1,58 +1,6 @@
 // src/components/panels/MyPagePanel.jsx
 import React, { useState } from "react";
-
-/* =========================
-   共通UI
-   ========================= */
-function Header({ title, onClose, onBack, icon }) {
-  return (
-    <div
-      style={{
-        padding: "14px 16px",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        borderBottom: "1px solid rgba(0,0,0,0.1)",
-        background: "#E5DED3",
-      }}
-    >
-      {onBack ? (
-        <button
-          onClick={onBack}
-          aria-label="戻る"
-          style={{
-            background: "transparent",
-            border: "none",
-            fontSize: 18,
-            padding: 6,
-            cursor: "pointer",
-          }}
-        >
-          ←
-        </button>
-      ) : (
-        <img src={icon} alt="" style={{ width: 28, height: 28 }} />
-      )}
-      <div style={{ fontWeight: 700, fontSize: 15, flex: 1, color: "#111" }}>
-        {title}
-      </div>
-      <button
-        onClick={onClose}
-        aria-label="閉じる"
-        style={{
-          background: "transparent",
-          border: "none",
-          fontSize: 18,
-          lineHeight: 1,
-          cursor: "pointer",
-          padding: 6,
-        }}
-      >
-        ×
-      </button>
-    </div>
-  );
-}
+import PanelHeader from "../ui/PanelHeader";
 
 /* =========================
    メニュー行（罫線あり）
@@ -116,24 +64,24 @@ export default function MyPagePanel({ isOpen, onClose }) {
       }}
     >
       {/* ヘッダー */}
-      <Header
+      <PanelHeader
         title={
           view === "menu"
-            ? "アプリガイド"
-            : view === "mapGuide"
-            ? "マップガイド"
-            : view === "baseline"
-            ? "基準のワイン 再設定"
-            : view === "account"
-            ? "マイアカウント"
-            : view === "favorites"
-            ? "お気に入り店舗登録"
-            : "よくある質問"
+          ? "アプリガイド"
+          : view === "mapGuide"
+          ? "マップガイド"
+          : view === "baseline"
+          ? "基準のワイン 再設定"
+          : view === "account"
+          ? "マイアカウント"
+          : view === "favorites"
+          ? "お気に入り店舗登録"
+          : "よくある質問"
         }
         onClose={onClose}
         onBack={view === "menu" ? undefined : goMenu}
-        icon="/img/compass.png"
-      />
+        icon="compass.png"
+       />
 
       {/* 本文 */}
       <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
