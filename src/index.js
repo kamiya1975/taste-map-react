@@ -5,8 +5,14 @@ import { HashRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-const container = document.getElementById("root");
-if (!container) throw new Error("#root element not found");
+const container =
+  document.getElementById("root") ||
+  (() => {
+    const el = document.createElement("div");
+    el.id = "root";
+    document.body.appendChild(el);
+    return el;
+  })();
 const root = createRoot(container);
 
 root.render(
