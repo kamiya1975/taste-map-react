@@ -135,8 +135,8 @@ export default function ListRow({
             style={{
               position: "absolute",
               right: 12,
-              top: "50%",
-              transform: "translateY(-50%)", // 縦中央
+              top: "calc(50% + 14px)",           // ← 下に 8px オフセット（好みで 6〜14px）
+              transform: "translateY(-50%)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
