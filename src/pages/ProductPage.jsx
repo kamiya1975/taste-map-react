@@ -252,50 +252,58 @@ export default function ProductPage() {
     };
   }, [jan]);
 
-  // 商品・評価ロード
+  // 商品・評価ロード（localStorage → JSON フォールバック）
   useEffect(() => {
     let alive = true;
-    const normJAN = (d) =>
-      String(d?.JAN ?? d?.jan ?? d?.code ?? d?.barcode ?? "").trim();
 
-    const load = async () => {
-      // 1) localStorage から探す      let data = [];
-      try {
-        data = JSON.parse(localStorage.getItem("umapData") || "[]");
-      } catch {}
-      let found = Array.isArray(data)
-        ? data.find((d) => normJAN(d) === String(jan).trim())
-        : null;
+      const normJAN = (d) =>
+        String(d?.JAN ?? d?.jan ?? d?.code ?? d?.barcode ?? "").trim();
 
-      // 2) 見つからなければ public の JSON を読む
-      if (!found) {
+      const load = async () => {
+        // 1) localStorage から探す
+        let dataArr = [];
         try {
-          const url = `${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`;
-          const res = await fetch(url, { cache: "no-store" });
-          if (res.ok) {
-            const json = await res.json();
-            const arr = Array.isArray(json) ? json : [];
-            found = arr.find((d) => normJAN(d) === String(jan).trim()) || null;
-            // キャッシュして次回以降は速く
-            try { localStorage.setItem("umapData", JSON.stringify(arr)); } catch {}
+          dataArr = JSON.parse(localStorage.getItem("umapData") || "[]");
+        } catch {}
+        let found =
+          Array.isArray(dataArr)
+            ? dataArr.find((d) => normJAN(d) === String(jan).trim())
+            : null;
+
+        // 2) 見つからなければ public の JSON を読む
+        if (!found) {
+          try {
+            const url = `${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`;
+            const res = await fetch(url, { cache: "no-store" });
+            if (res.ok) {
+              const json = await res.json();
+              const arr = Array.isArray(json) ? json : [];
+              found = arr.find((d) => normJAN(d) === String(jan).trim()) || null;
+              // キャッシュ
+              try {
+                localStorage.setItem("umapData", JSON.stringify(arr));
+              } catch {}
+            }
+          } catch (e) {
+            console.warn("UMAP_PCA_coordinates.json の読込に失敗:", e);
           }
-        } catch (e) {
-          console.warn("UMAP_PCA_coordinates.json の読込に失敗:", e);
         }
-      }
 
-      if (!alive) return;
-      setProduct(found || null);
+        if (!alive) return;
+        setProduct(found || null);
 
-      // 評価の読込
-      try {
-        const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
-        if (ratings[jan]) setRating(ratings[jan].rating ?? 0);
-      } catch {}
-    };
-    load();
-    return () => { alive = false; };
-  }, [jan]);
+        // 評価の読込
+        try {
+          const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
+          if (ratings[jan]) setRating(ratings[jan].rating ?? 0);
+        } catch {}
+      };
+
+      load();
+      return () => {
+        alive = false;
+       };
+    }, [jan]);
 
   // 親からの STATE_SNAPSHOT
   useEffect(() => {
