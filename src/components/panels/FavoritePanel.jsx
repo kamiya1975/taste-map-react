@@ -1,4 +1,3 @@
-// src/components/panels/FavoritePanel.jsx
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DRAWER_HEIGHT, PANEL_HEADER_H } from "../../ui/constants";
@@ -54,7 +53,7 @@ export default function FavoritePanel({
           {/* 共通ヘッダー（商品/検索と完全一致） */}
           <PanelHeader
             title="飲みたい"
-            icon="favorite2.svg"        // 既存のアイコンに合わせています
+            icon="favorite2.svg"
             onClose={onClose}
           />
 
@@ -74,8 +73,9 @@ export default function FavoritePanel({
                   index={item.displayIndex}
                   item={item}
                   onPick={() => onSelectJAN?.(item.JAN)}
-                  showDate={true}              // 追加日を表示
-                  accentColor="#7a2e39"        // モックのワイン色（小ドット）
+                  showDate={true}
+                  dateValue={item.addedAt}     // ← 追加日を渡す（表示安定化）
+                  accentColor="#7a2e39"
                   hoverHighlight={true}
                 />
               ))}
