@@ -189,17 +189,23 @@ export default function SliderPage() {
         <button
           onClick={handleGenerate}
           style={{
-            width: cardW,
-            padding: "12px 16px",
+            alignSelf: "center",
+            marginTop: 14,
+            marginTop: 14,
+            width: "min(calc(100svw - 32px), calc(100svh - 34svh))",
+            maxWidth: 560,
+            padding: "14px 16px",
             lineHeight: 1.2,
-            background: "rgba(245,233,221,0.98)",
+            background: "rgb(230,227,219)",
             color: "#000",
             border: "none",
             borderRadius: 10,
             fontSize: 15,
             fontWeight: 700,
             cursor: "pointer",
-            boxShadow: "0 4px 10px rgba(0,0,0,0.18)"
+            boxShadow: "0 4px 10px rgba(0,0,0,0.18)",
+            WebkitBackdropFilter: "blur(2px)",
+            backdropFilter: "blur(2px)"
           }}
           disabled={!blendF || !pcMinMax || !rows.length}
         >
