@@ -148,7 +148,7 @@ export default function SliderPage() {
         gap: 18
       }}>
         {/* 見出し */}
-        <p style={{ fontWeight:700, fontSize:16, margin:"6px 0 4px", textAlign:"center", width: cardW }}>
+        <p style={{ fontWeight:700, fontSize:16, margin:"8px 0 20px", textAlign:"center", width: cardW }}>
           基準のワインを飲んだ印象は？
         </p>
 
