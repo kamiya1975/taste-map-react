@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PanelHeader from "../components/ui/PanelHeader";
-import StoreIcon from "../assets/store.svg";
 import {
   loadAndSortStoresByDistance,
   getFavorites,
@@ -132,7 +131,7 @@ export default function FavoriteStoresPage() {
         title="お気に入り店舗登録"
         onBack={() => navigate(-1)}
         onClose={() => navigate("/map?open=mypage", { replace: true })}
-        icon={StoreIcon}
+        icon="/img/store.svg"
       />
 
       <div
