@@ -136,7 +136,7 @@ export default function SliderPage() {
       <PanelHeader
         title="基準のワイン"
         onBack={() => navigate(-1)}
-        onClose={handleClose}
+        onClose={() => navigate("/map", { replace: true })}
         icon="/img/slider.svg"
       />
 
