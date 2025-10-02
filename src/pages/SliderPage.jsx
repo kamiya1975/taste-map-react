@@ -162,7 +162,7 @@ export default function SliderPage() {
         `}</style>
 
         {/* 甘み */}
-        <div style={{ width: cardW }}>
+        <div style={{ width: cardW, marginBottom: 28 }}>
           <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}>
             <span>← こんなに甘味は不要</span><span>もっと甘みが欲しい →</span>
           </div>
@@ -174,7 +174,7 @@ export default function SliderPage() {
         </div>
 
         {/* コク（ボディ） */}
-        <div style={{ width: cardW }}>
+        <div style={{ width: cardW, marginBottom: 36 }}>
           <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, marginBottom:4 }}>
             <span>← もっと軽やかが良い</span><span>濃厚なコクが欲しい →</span>
           </div>
