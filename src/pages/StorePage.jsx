@@ -36,7 +36,7 @@ export default function StorePage() {
   const [err, setErr] = useState("");
   const askedRef = useRef(false);
 
-  // 👇 追加：ヘッダーの高さを測る
+  // ヘッダー高さ計測
   const headerRef = useRef(null);
   const [headerH, setHeaderH] = useState(0);
   useLayoutEffect(() => {
@@ -54,17 +54,12 @@ export default function StorePage() {
   }, []);
 
   useEffect(() => {
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      console.log("位置情報取得成功:", pos.coords);
-    },
-    (err) => {
-      console.warn("位置情報取得失敗:", err);
-    },
-    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-  );
-}, []);
-
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { console.log("位置情報取得成功:", pos.coords); },
+      (err) => { console.warn("位置情報取得失敗:", err); },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  }, []);
 
   useEffect(() => {
     const run = async () => {
@@ -83,7 +78,9 @@ export default function StorePage() {
 
         const enriched = (Array.isArray(raw) ? raw : []).map((s, i) => {
           const lat = Number.isFinite(s.lat) ? s.lat : s.latitude;
-          const lng = Number.isFinite(s.lng) ? s.lng : (Number.isFinite(s.lon) ? s.lon : s.longitude);
+          const lng =
+            Number.isFinite(s.lng) ? s.lng :
+            (Number.isFinite(s.lon) ? s.lon : s.longitude);
           const distance =
             Number.isFinite(lat) && Number.isFinite(lng)
               ? haversineKm(loc.lat, loc.lon, lat, lng)
@@ -99,9 +96,7 @@ export default function StorePage() {
 
         enriched.sort((a, b) => a.distance - b.distance);
         setStores(enriched);
-        try {
-          localStorage.setItem("allStores", JSON.stringify(enriched));
-        } catch {}
+        try { localStorage.setItem("allStores", JSON.stringify(enriched)); } catch {}
       } catch (e) {
         console.error(e);
         setErr("店舗データの読み込みに失敗しました。/stores.mock.json を確認してください。");
@@ -121,24 +116,31 @@ export default function StorePage() {
     }
   }, []);
 
-  const formatKm = (d) => (Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—");
+  const formatKm = (d) =>
+    (Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—");
 
   const handleStoreSelect = (store) => {
     try {
+      // 通常の選択記録
       localStorage.setItem("selectedStore", JSON.stringify(store));
+
+      // ✅ 固定店舗（基準ワイン購入店舗）を常に 1 件に保つ（上書き保存）
       localStorage.setItem("main_store", JSON.stringify(store));
+
+      // ついでに allStores にも取り込み（重複回避）
       const all = JSON.parse(localStorage.getItem("allStores") || "[]");
       const k = (s) => `${s?.name || ""}@@${s?.branch || ""}`;
       const exists = all.some((s) => k(s) === k(store));
       const next = exists ? all : [store, ...all];
       localStorage.setItem("allStores", JSON.stringify(next));
     } catch {}
+
     navigate("/slider", { state: { selectedStore: store } });
   };
 
   return (
     <div style={{ fontFamily: "sans-serif", height: "100vh", overflow: "hidden" }}>
-      {/* 固定ヘッダ（高さを測るために ref を付与） */}
+      {/* 固定ヘッダ */}
       <div
         ref={headerRef}
         style={{
@@ -154,11 +156,14 @@ export default function StorePage() {
           <h2 className="store-header" style={{ margin: 0 }}>
             購入した店舗を選んでください。
           </h2>
+          <div style={{ fontSize: 12, color: "#6e6e73" }}>
+            選択した店舗は「固定店舗」として保存されます（常に1件）。
+          </div>
         </div>
         <div style={{ height: 1, background: "#ccc" }} />
       </div>
 
-      {/* リスト（paddingTop をヘッダーの実高さに合わせる） */}
+      {/* リスト */}
       <div
         style={{
           paddingTop: headerH,
@@ -166,38 +171,37 @@ export default function StorePage() {
           height: "100vh",
           maxWidth: 500,
           margin: "0 auto",
-           background: "rgb(250,250,250)", 
+          background: "rgb(250,250,250)",
         }}
       >
         {loading && <div style={{ padding: 16 }}>読み込み中…</div>}
         {err && <div style={{ padding: 16, color: "crimson" }}>{err}</div>}
 
-        {!loading &&
-          !err &&
-          stores.map((store) => (
-            <div
-              key={store._key}
-              onClick={() => handleStoreSelect(store)}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "12px 16px",
-                borderBottom: "1px solid #eee",
-                cursor: "pointer",
-                alignItems: "flex-start", // ← ここは上揃えでOK
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <div className="store-link">
-                  {store.name} {store.branch || ""}
-                </div>
-                <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
-                  {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
-                </div>
+        {!loading && !err && stores.map((store) => (
+          <div
+            key={store._key}
+            onClick={() => handleStoreSelect(store)}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: "12px 16px",
+              borderBottom: "1px solid #eee",
+              cursor: "pointer",
+              alignItems: "flex-start",
+              background: "#fff",
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div className="store-link">
+                {store.name} {store.branch || ""}
               </div>
-              <div style={{ marginLeft: 12 }}>{formatKm(store.distance)}</div>
+              <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
+                {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
+              </div>
             </div>
-          ))}
+            <div style={{ marginLeft: 12 }}>{formatKm(store.distance)}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
