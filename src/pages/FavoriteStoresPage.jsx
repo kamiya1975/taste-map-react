@@ -184,8 +184,6 @@ export default function FavoriteStoresPage() {
                       fontSize: 12,
                       padding: "2px 8px",
                       borderRadius: 8,
-                      border: "1px solid rgb(179,83,103)",
-                      background: "rgba(241,202,210,.6)",
                       color: "#000",
                       lineHeight: 1.6,
                       userSelect: "none",
