@@ -191,7 +191,7 @@ export default function SliderPage() {
           style={{
             alignSelf: "center",
             marginTop: 14,
-            marginTop: 14,
+            marginBottom: 8,
             width: "min(calc(100svw - 32px), calc(100svh - 34svh))",
             maxWidth: 560,
             padding: "14px 16px",
