@@ -61,7 +61,7 @@ export default function MyAccount() {
       <PanelHeader
         title="マイアカウント"
         onBack={() => navigate(-1)}
-        onClose={() => navigate("/")}
+        onClose={() => navigate("/map?open=mypage", { replace: true })}
         icon="/img/account.svg"
       />
 
