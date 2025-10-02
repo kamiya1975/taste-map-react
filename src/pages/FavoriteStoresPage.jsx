@@ -9,6 +9,45 @@ import {
   isSameStore,
 } from "../utils/storeShared";
 
+/* ============ 小物：★ボタン ============ */
+function StarButton({ active, onClick, disabled = false, size = 20, title }) {
+  const color = disabled ? "rgb(179,83,103)" : active ? "rgb(179,83,103)" : "rgb(190,190,190)";
+  const fill = active || disabled ? color : "transparent";
+  const stroke = active || disabled ? color : "rgb(170,170,170)";
+
+  return (
+    <button
+      aria-label={title || (active ? "お気に入り解除" : "お気に入り追加")}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      style={{
+        width: size + 6,
+        height: size + 6,
+        padding: 0,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: "none",
+        background: "transparent",
+        cursor: disabled ? "default" : "pointer",
+        WebkitTapHighlightColor: "transparent",
+      }}
+    >
+      {/* 星アイコン（SVG / currentColor 非依存） */}
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <path
+          d="M12 2.6l2.93 5.93 6.55.95-4.74 4.62 1.12 6.52L12 17.9 6.14 20.62 7.26 14.1 2.52 9.48l6.55-.95L12 2.6z"
+          fill={fill}
+          stroke={stroke}
+          strokeWidth="1"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
+/* ============ 本体 ============ */
 export default function FavoriteStoresPage() {
   const navigate = useNavigate();
   const [stores, setStores] = useState([]);
@@ -16,7 +55,7 @@ export default function FavoriteStoresPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // 固定店舗を取得（常に1件）
+  // 固定（基準ワイン購入）店舗は常に 1 件
   const mainStore = (() => {
     try {
       const raw = localStorage.getItem("main_store");
@@ -26,7 +65,7 @@ export default function FavoriteStoresPage() {
     }
   })();
 
-  // 起動時：favorites から固定店舗を除外して整合性を保つ
+  // 起動時：favorites から固定店舗を除外（重複抑止）
   useEffect(() => {
     if (!mainStore || !Array.isArray(favorites)) return;
     const cleaned = favorites.filter((s) => !isSameStore(s, mainStore));
@@ -34,8 +73,8 @@ export default function FavoriteStoresPage() {
       setFav(cleaned);
       setFavorites(cleaned);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 初回のみ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -54,11 +93,13 @@ export default function FavoriteStoresPage() {
         if (alive) setLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const toggleFavorite = (store) => {
-    // 念のため：固定店舗はトグル不可
+    // 固定店舗はトグル対象外
     if (mainStore && isSameStore(store, mainStore)) return;
 
     const exists = favorites.some((s) => isSameStore(s, store));
@@ -70,9 +111,9 @@ export default function FavoriteStoresPage() {
   };
 
   const isFav = (store) => favorites.some((s) => isSameStore(s, store));
-  const formatKm = (d) => Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—";
+  const formatKm = (d) => (Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—");
 
-  // 固定を重複表示しないよう除外
+  // 固定を重複表示しない
   const otherStores = stores.filter((s) => !mainStore || !isSameStore(s, mainStore));
 
   return (
@@ -103,117 +144,114 @@ export default function FavoriteStoresPage() {
         }}
       >
         <div style={{ padding: 16 }}>
-          <p style={{ margin: "6px 0 12px", fontSize: 14, color: "#333" }}>
-            最上位の「固定店舗」は基準ワインを購入した店舗です（常に1件・変更は店舗選択画面から）。
-            そのほかに★でお気に入り店舗を登録できます。
-          </p>
-
           {loading && <div style={{ padding: 8 }}>読み込み中…</div>}
           {err && <div style={{ padding: 8, color: "crimson" }}>{err}</div>}
 
-          {/* 固定店舗（ある場合のみ） */}
-          {mainStore && (
-            <div
-              key={"main"}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "12px 10px",
-                borderBottom: "1px solid #eee",
-                alignItems: "flex-start",
-                background: "#fff",
-                borderRadius: 10,
-                marginBottom: 8,
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <div style={{ fontWeight: 700 }}>
-                  {mainStore.name} {mainStore.branch || ""}
-                </div>
-                <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
-                  固定店舗
-                </div>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ fontSize: 12, color: "#333" }}>
-                  {formatKm(mainStore.distance)}
-                </div>
+          {/* カード風の白背景ラッパ */}
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 14,
+              boxShadow: "0 1px 0 rgba(0,0,0,0.05)",
+              overflow: "hidden",
+              border: "1px solid #eee",
+            }}
+          >
+            {/* 固定店舗（あれば最上段） */}
+            {mainStore && (
+              <>
                 <div
-                  aria-label="固定"
                   style={{
-                    padding: "8px 10px",
-                    borderRadius: 10,
-                    border: "1px solid #b35367",
-                    background: "rgba(241, 202, 210, .6)",
-                    fontSize: 13,
-                    minWidth: 80,
-                    textAlign: "center",
-                    color: "#000",
-                    userSelect: "none",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    padding: "14px 14px",
                   }}
                 >
-                  固定
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 通常の店舗（★トグル） */}
-          {!loading && !err && otherStores.map((store) => {
-            const fav = isFav(store);
-            return (
-              <div
-                key={store._key}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "12px 10px",
-                  borderBottom: "1px solid #eee",
-                  alignItems: "flex-start",
-                  background: "#fff",
-                  borderRadius: 10,
-                  marginBottom: 8,
-                }}
-              >
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <div style={{ fontWeight: 600 }}>
-                    {store.name} {store.branch || ""}
+                  {/* 左の濃い★（固定） */}
+                  <StarButton active disabled title="固定店舗" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, lineHeight: 1.2 }}>
+                      {mainStore.name} {mainStore.branch || ""}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
+                      {formatKm(mainStore.distance)}
+                    </div>
                   </div>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ fontSize: 12, color: "#333" }}>
-                    {formatKm(store.distance)}
-                  </div>
-                  <button
-                    onClick={() => toggleFavorite(store)}
+                  {/* 右「固定」バッジ */}
+                  <div
                     style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: fav ? "1px solid #b35367" : "1px solid #ccc",
-                      background: fav ? "rgba(241, 202, 210, .6)" : "#fff",
+                      fontSize: 12,
+                      padding: "2px 8px",
+                      borderRadius: 8,
+                      border: "1px solid rgb(179,83,103)",
+                      background: "rgba(241,202,210,.6)",
                       color: "#000",
-                      fontSize: 13,
-                      cursor: "pointer",
-                      minWidth: 80,
+                      lineHeight: 1.6,
+                      userSelect: "none",
                     }}
                   >
-                    {fav ? "解除" : "追加"}
-                  </button>
+                    固定
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+                <div style={{ height: 1, background: "#eee" }} />
+              </>
+            )}
 
+            {/* 他店舗（★でトグル） */}
+            {!loading &&
+              !err &&
+              otherStores.map((store, i) => {
+                const fav = isFav(store);
+                return (
+                  <div key={store._key}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        padding: "14px 14px",
+                      }}
+                    >
+                      <StarButton
+                        active={fav}
+                        onClick={() => toggleFavorite(store)}
+                        title={fav ? "お気に入り解除" : "お気に入り追加"}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, lineHeight: 1.2 }}>
+                          {store.name} {store.branch || ""}
+                        </div>
+                        <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
+                          {formatKm(store.distance)}
+                        </div>
+                      </div>
+                    </div>
+                    {/* 区切り線（末尾は非表示） */}
+                    {i !== otherStores.length - 1 && (
+                      <div style={{ height: 1, background: "#eee" }} />
+                    )}
+                  </div>
+                );
+              })}
+
+            {/* 空状態 */}
+            {!loading && !err && !mainStore && otherStores.length === 0 && (
+              <div style={{ padding: 16, fontSize: 13, color: "#666" }}>
+                近隣店舗が見つかりませんでした。
+              </div>
+            )}
+          </div>
+
+          {/* 件数 */}
           {!loading && !err && favorites.length > 0 && (
-            <div style={{ marginTop: 18, fontSize: 12, color: "#555" }}>
+            <div style={{ marginTop: 12, fontSize: 12, color: "#555" }}>
               登録済み: {favorites.length} 店舗
             </div>
           )}
 
           {!loading && !err && !mainStore && (
-            <div style={{ marginTop: 18, fontSize: 12, color: "#b35367" }}>
+            <div style={{ marginTop: 12, fontSize: 12, color: "#b35367" }}>
               ※固定店舗が未設定です。店舗選択画面で「購入した店舗」を選んでください。
             </div>
           )}
