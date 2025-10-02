@@ -66,7 +66,7 @@ export default function FavoriteStoresPage() {
       <PanelHeader
         title="お気に入り店舗の追加"
         onBack={() => navigate(-1)}
-        onClose={() => navigate("/")}
+        onClose={() => navigate("/map?open=mypage", { replace: true })}
         icon="/img/store.svg"
       />
 
