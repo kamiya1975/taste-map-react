@@ -156,9 +156,6 @@ export default function StorePage() {
           <h2 className="store-header" style={{ margin: 0 }}>
             購入した店舗を選んでください。
           </h2>
-          <div style={{ fontSize: 12, color: "#6e6e73" }}>
-            選択した店舗は「固定店舗」として保存されます（常に1件）。
-          </div>
         </div>
         <div style={{ height: 1, background: "#ccc" }} />
       </div>
