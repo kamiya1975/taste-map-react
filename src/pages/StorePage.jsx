@@ -126,6 +126,7 @@ export default function StorePage() {
   const handleStoreSelect = (store) => {
     try {
       localStorage.setItem("selectedStore", JSON.stringify(store));
+      localStorage.setItem("main_store", JSON.stringify(store));
       const all = JSON.parse(localStorage.getItem("allStores") || "[]");
       const k = (s) => `${s?.name || ""}@@${s?.branch || ""}`;
       const exists = all.some((s) => k(s) === k(store));
