@@ -5,14 +5,14 @@ import PanelHeader from "../components/ui/PanelHeader";
 
 const isEmail = (s) => /^\S+@\S+\.\S+$/.test(String(s || "").trim());
 
-/* —— 共通: 枠なし入力コンポーネント —— */
+/* —— 枠なし入力 —— */
 const BorderlessInput = (props) => (
   <input
     {...props}
     style={{
-      fontSize: 16,           // iOSのズーム回避
+      fontSize: 16,
       width: "100%",
-      padding: 0,             // 余白は親側の行で担保
+      padding: 0,
       border: "none",
       outline: "none",
       background: "transparent",
@@ -72,6 +72,7 @@ export default function MyAccount() {
   const [birthYear, setBirthYear] = useState("");
   const [birthMonth, setBirthMonth] = useState("");
   const [gender, setGender] = useState("");
+  const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     try {
@@ -80,10 +81,13 @@ export default function MyAccount() {
       setBirthYear(localStorage.getItem("user.birthYear") || "");
       setBirthMonth(localStorage.getItem("user.birthMonth") || "");
       setGender(localStorage.getItem("user.gender") || "");
+      setAgreed((localStorage.getItem("user.agreed") || "") === "1");
     } catch {}
   }, []);
 
   const handleSave = () => {
+    if (!agreed) return; // 念のため二重防御
+
     if (!nickname || !email || !birthYear || !birthMonth || !gender) {
       alert("すべての項目を入力してください");
       return;
@@ -96,13 +100,15 @@ export default function MyAccount() {
       alert("パスワードは4〜20文字です");
       return;
     }
+
     try {
       localStorage.setItem("user.nickname", nickname.trim());
       localStorage.setItem("user.id", email.trim());
       localStorage.setItem("user.birthYear", birthYear);
       localStorage.setItem("user.birthMonth", birthMonth);
       localStorage.setItem("user.gender", gender);
-      if (password) localStorage.setItem("user.pass", password);
+      localStorage.setItem("user.agreed", agreed ? "1" : "0");
+      if (password) localStorage.setItem("user.pass", password); // モック
       setPassword("");
       alert("保存しました。");
     } catch {
@@ -225,11 +231,34 @@ export default function MyAccount() {
           </div>
         </div>
 
-        <div style={{ height: 24 }} />
+        {/* 利用規約チェック */}
+        <div style={{ maxWidth: 560, margin: "14px auto 0", textAlign: "center" }}>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "#333" }}>
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              style={{ width: 18, height: 18 }}
+            />
+            <span>
+              <a
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#515151", textDecoration: "underline" }}
+              >
+                利用規約
+              </a>
+              に同意します
+            </span>
+          </label>
+        </div>
 
-        <div style={{ maxWidth: 560, margin: "0 auto" }}>
+        {/* 保存ボタン */}
+        <div style={{ maxWidth: 560, margin: "12px auto 0" }}>
           <button
             onClick={handleSave}
+            disabled={!agreed}
             style={{
               width: "100%",
               padding: "14px",
@@ -238,12 +267,15 @@ export default function MyAccount() {
               background: "#e5e3db",
               color: "#000",
               fontSize: 15,
-              cursor: "pointer",
+              cursor: agreed ? "pointer" : "not-allowed",
+              opacity: agreed ? 1 : 0.55,
             }}
           >
             保存
           </button>
         </div>
+
+        <div style={{ height: 24 }} />
       </div>
     </div>
   );
