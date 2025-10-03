@@ -1,6 +1,6 @@
 // src/App.js
-import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import "./App.css";
 
 // Pages
@@ -17,9 +17,29 @@ import MapGuidePage from "./pages/MapGuidePage";
 import FaqPage from "./pages/FaqPage";
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // スタンドアロン起動の初回だけ /map へ寄せる
+  useEffect(() => {
+    const isStandalone =
+      window.matchMedia?.("(display-mode: standalone)")?.matches ||
+      window.navigator.standalone === true; // iOS
+
+    const navType = performance.getEntriesByType?.("navigation")?.[0]?.type;
+    const isColdStart =
+      !sessionStorage.getItem("tm_started_once") &&
+      (navType === "navigate" || navType === "reload" || !navType);
+
+    if (isStandalone && isColdStart && location.pathname !== "/map") {
+      navigate("/map", { replace: true });
+    }
+    sessionStorage.setItem("tm_started_once", "1");
+  }, [navigate, location.pathname]);
+
   return (
     <Routes>
-      {/* ランディング */}
+      {/* ランディング（通常ブラウザ） */}
       <Route path="/" element={<IntroPage />} />
 
       {/* 固定店舗の設定（Introフロー） */}
@@ -28,7 +48,7 @@ export default function App() {
       {/* 基準ワインの嗜好スライダー */}
       <Route path="/slider" element={<SliderPage />} />
 
-      {/* 地図ページ（検索/お気に入り/スキャン） */}
+      {/* 地図ページ */}
       <Route path="/map" element={<MapPage />} />
 
       {/* 商品詳細（埋め込み用） */}
@@ -43,15 +63,15 @@ export default function App() {
       {/* マイアカウント */}
       <Route path="/my-account" element={<MyAccount />} />
 
-      {/* お気に入り店舗追加（アプリガイド経由） */}
+      {/* お気に入り店舗追加 */}
       <Route path="/stores-fav" element={<FavoriteStoresPage />} />
 
-      {/* それ以外は地図へリダイレクト */}
-      <Route path="*" element={<Navigate to="/map" replace />} />
-
-      {/* 既存のルートたち */}
+      {/* ガイド/FAQ（独立ページ版） */}
       <Route path="/map-guide" element={<MapGuidePage />} />
       <Route path="/faq" element={<FaqPage />} />
+
+      {/* それ以外は地図へ */}
+      <Route path="*" element={<Navigate to="/map" replace />} />
     </Routes>
   );
 }

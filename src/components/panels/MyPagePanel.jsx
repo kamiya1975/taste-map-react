@@ -93,7 +93,6 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
           icon={ICONS.faq}
           label="よくある質問"
           onClick={() => { onClose?.(); navigate("/faq"); }}
-          last
         />
       </div>
     </div>
