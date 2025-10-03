@@ -3,22 +3,76 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PanelHeader from "../components/ui/PanelHeader";
 
-// メール簡易バリデータ（Intro と同等）
 const isEmail = (s) => /^\S+@\S+\.\S+$/.test(String(s || "").trim());
+
+/* —— 共通: 枠なし入力コンポーネント —— */
+const BorderlessInput = (props) => (
+  <input
+    {...props}
+    style={{
+      fontSize: 16,           // iOSのズーム回避
+      width: "100%",
+      padding: 0,             // 余白は親側の行で担保
+      border: "none",
+      outline: "none",
+      background: "transparent",
+      WebkitAppearance: "none",
+      appearance: "none",
+      color: "#111",
+      lineHeight: 1.5,
+      ...props.style,
+    }}
+  />
+);
+
+const BorderlessSelect = ({ rightIcon = true, ...props }) => (
+  <div style={{ position: "relative" }}>
+    <select
+      {...props}
+      style={{
+        fontSize: 16,
+        width: "100%",
+        paddingRight: rightIcon ? 22 : 0,
+        border: "none",
+        outline: "none",
+        background: "transparent",
+        WebkitAppearance: "none",
+        appearance: "none",
+        color: "#111",
+        lineHeight: 1.5,
+      }}
+    />
+    {rightIcon && (
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          right: 2,
+          top: "50%",
+          transform: "translateY(-50%) rotate(90deg)",
+          color: "#9aa0a6",
+          fontSize: 14,
+          pointerEvents: "none",
+          userSelect: "none",
+        }}
+      >
+        ⌵
+      </span>
+    )}
+  </div>
+);
 
 export default function MyAccount() {
   const navigate = useNavigate();
 
-  // Intro と同じフィールド構成
-  const [nickname, setNickname]   = useState("");
-  const [email, setEmail]         = useState("");
-  const [password, setPassword]   = useState("");
+  const [nickname, setNickname] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [birthYear, setBirthYear] = useState("");
   const [birthMonth, setBirthMonth] = useState("");
-  const [gender, setGender]       = useState("");
+  const [gender, setGender] = useState("");
 
-  // 初期ロード（Intro の保存キーに合わせる）
   useEffect(() => {
     try {
       setNickname(localStorage.getItem("user.nickname") || "");
@@ -26,12 +80,10 @@ export default function MyAccount() {
       setBirthYear(localStorage.getItem("user.birthYear") || "");
       setBirthMonth(localStorage.getItem("user.birthMonth") || "");
       setGender(localStorage.getItem("user.gender") || "");
-      // パスワードは表示しない（編集時のみ入力）
     } catch {}
   }, []);
 
   const handleSave = () => {
-    // Intro と同等のバリデーション
     if (!nickname || !email || !birthYear || !birthMonth || !gender) {
       alert("すべての項目を入力してください");
       return;
@@ -41,17 +93,16 @@ export default function MyAccount() {
       return;
     }
     if (password && (password.length < 4 || password.length > 20)) {
-      alert("パスワードは4文字以上20文字以内で入力してください");
+      alert("パスワードは4〜20文字です");
       return;
     }
-
     try {
       localStorage.setItem("user.nickname", nickname.trim());
       localStorage.setItem("user.id", email.trim());
       localStorage.setItem("user.birthYear", birthYear);
       localStorage.setItem("user.birthMonth", birthMonth);
       localStorage.setItem("user.gender", gender);
-      if (password) localStorage.setItem("user.pass", password); // モック
+      if (password) localStorage.setItem("user.pass", password);
       setPassword("");
       alert("保存しました。");
     } catch {
@@ -59,20 +110,12 @@ export default function MyAccount() {
     }
   };
 
-  // UI スタイル（カード型）
+  // 見た目
   const wrap = { position: "fixed", inset: 0, background: "rgb(250,250,250)", display: "flex", flexDirection: "column" };
   const body = { flex: 1, overflowY: "auto", padding: 16 };
-  const card = {
-    background: "#fff",
-    border: "1px solid #e7e7e7",
-    borderRadius: 12,
-    overflow: "hidden",
-    maxWidth: 560,
-    margin: "0 auto",
-  };
-  const row = { display: "grid", gridTemplateColumns: "110px 1fr", gap: 12, alignItems: "center", padding: "14px 16px", borderBottom: "1px solid #eee" };
+  const card = { background: "#fff", border: "1px solid #e7e7e7", borderRadius: 12, overflow: "hidden", maxWidth: 560, margin: "0 auto" };
+  const row = { display: "grid", gridTemplateColumns: "110px 1fr", gap: 12, alignItems: "center", padding: "16px", borderBottom: "1px solid #eee" };
   const label = { fontSize: 13, color: "#666" };
-  const input = { fontSize: 16, padding: "10px 12px", border: "1px solid #ddd", borderRadius: 8, outline: "none", width: "100%", background: "#fff" };
 
   return (
     <div style={wrap}>
@@ -88,12 +131,11 @@ export default function MyAccount() {
           {/* ニックネーム */}
           <div style={row}>
             <div style={label}>ニックネーム</div>
-            <input
-              style={input}
+            <BorderlessInput
               type="text"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
-              placeholder="-"
+              placeholder="−"
               autoCapitalize="off"
               autoCorrect="off"
             />
@@ -102,12 +144,11 @@ export default function MyAccount() {
           {/* ID（メール） */}
           <div style={row}>
             <div style={label}>ID（メール）</div>
-            <input
-              style={input}
+            <BorderlessInput
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="-"
+              placeholder="−"
               inputMode="email"
               autoCapitalize="off"
               autoCorrect="off"
@@ -118,12 +159,12 @@ export default function MyAccount() {
           <div style={row}>
             <div style={label}>パスワード</div>
             <div style={{ position: "relative" }}>
-              <input
-                style={{ ...input, paddingRight: 36 }}
+              <BorderlessInput
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="4〜20文字（空欄なら変更なし）"
+                style={{ paddingRight: 28 }}
                 autoComplete="new-password"
               />
               <button
@@ -133,13 +174,14 @@ export default function MyAccount() {
                 title="パスワード表示切替"
                 style={{
                   position: "absolute",
-                  right: 8,
+                  right: 0,
                   top: "50%",
                   transform: "translateY(-50%)",
                   border: "none",
                   background: "transparent",
                   cursor: "pointer",
                   fontSize: 16,
+                  color: "#3a7",
                 }}
               >
                 {showPassword ? "●" : "◯"}
@@ -150,55 +192,41 @@ export default function MyAccount() {
           {/* 生まれ年 */}
           <div style={row}>
             <div style={label}>生まれ年</div>
-            <select
-              style={input}
-              value={birthYear}
-              onChange={(e) => setBirthYear(e.target.value)}
-            >
-              <option value="">-</option>
+            <BorderlessSelect value={birthYear} onChange={(e) => setBirthYear(e.target.value)}>
+              <option value="">−</option>
               {Array.from({ length: 80 }, (_, i) =>
                 (new Date().getFullYear() - 20 - i).toString()
               ).map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
-            </select>
+            </BorderlessSelect>
           </div>
 
           {/* 生まれ月 */}
           <div style={row}>
             <div style={label}>生まれ月</div>
-            <select
-              style={input}
-              value={birthMonth}
-              onChange={(e) => setBirthMonth(e.target.value)}
-            >
-              <option value="">-</option>
+            <BorderlessSelect value={birthMonth} onChange={(e) => setBirthMonth(e.target.value)}>
+              <option value="">−</option>
               {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
                 <option key={m} value={m}>{m}</option>
               ))}
-            </select>
+            </BorderlessSelect>
           </div>
 
           {/* 性別 */}
           <div style={{ ...row, borderBottom: "none" }}>
             <div style={label}>性別</div>
-            <select
-              style={input}
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
-            >
-              <option value="">-</option>
+            <BorderlessSelect value={gender} onChange={(e) => setGender(e.target.value)}>
+              <option value="">−</option>
               <option value="男性">男性</option>
               <option value="女性">女性</option>
               <option value="その他">その他</option>
-            </select>
+            </BorderlessSelect>
           </div>
         </div>
 
-        {/* 余白 */}
         <div style={{ height: 24 }} />
 
-        {/* 保存ボタン */}
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
           <button
             onClick={handleSave}
