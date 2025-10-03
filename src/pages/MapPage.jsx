@@ -534,11 +534,11 @@ function MapPage() {
         } catch {}
       };
 
-      // === 1) ガイドを開いてほしい（iframe内からの要求）
-      if (type === "OPEN_MYPAGE") {
+      // === 1) マイアカウントへ遷移してほしい
+      if (type === "OPEN_MYACCOUNT") {
         (async () => {
           await closeUIsThen();
-          openMyPageExclusive();
+          navigate("/my-account");
         })();
         return;
       }

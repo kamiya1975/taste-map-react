@@ -60,23 +60,23 @@ export const clearGuestId = () => localStorage.removeItem(GUEST_ID_KEY);
  * @param {string} openParam デフォルト "open=mypage"
  * @returns {boolean} true=評価続行OK、false=中断（遷移済み）
  */
-export const requireRatingOrRedirect = (navigate, openParam = "open=mypage") => {
-  if (canUseRating()) return true;
-  alert("評価機能を使用するにはID登録が必要です。");
-  try {
-    // iframe 内なら親へ依頼
-    if (window.top && window.top !== window.self) {
-      window.parent?.postMessage(
-        { type: "OPEN_MYPAGE", reason: "rating_redirect" },
-        "*"
-      );
-    } else if (typeof navigate === "function") {
-      navigate(`/?${openParam}`);
-    } else {
-      window.location.href = `/?${openParam}`;
-    }
-  } catch {
-    if (typeof navigate === "function") navigate(`/?${openParam}`);
-  }
-  return false;
-};
+export const requireRatingOrRedirect = (navigate, dest = "/my-account") => {
+   if (canUseRating()) return true;
+   alert("評価機能を使用するにはID登録が必要です。");
+   try {
+     // 商品ページは iframe 内なので、親（MapPage）に遷移依頼を送る
+     if (window.top && window.top !== window.self) {
+       window.parent?.postMessage(
+         { type: "OPEN_MYACCOUNT", reason: "rating_redirect" },
+         "*"
+       );
+     } else if (typeof navigate === "function") {
+       navigate(dest);            // 直接 /my-account へ
+     } else {
+       window.location.href = dest;
+     }
+   } catch {
+     if (typeof navigate === "function") navigate(dest);
+   }
+   return false;
+ };

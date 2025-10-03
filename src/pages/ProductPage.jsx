@@ -334,7 +334,7 @@ export default function ProductPage() {
   }, [jan]);
 
   const handleCircleClick = async (value) => {
-    if (!requireRatingOrRedirect(navigate, "open=mypage")) return;
+    if (!requireRatingOrRedirect(navigate, "/my-account")) return;
     const newRating = value === rating ? 0 : value;
     setRating(newRating);
 
