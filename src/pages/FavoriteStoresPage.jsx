@@ -131,7 +131,7 @@ export default function FavoriteStoresPage() {
         title="お気に入り店舗登録"
         onBack={() => navigate(-1)}
         onClose={() => navigate("/map?open=mypage", { replace: true })}
-        icon="/img/store.svg"
+        icon="store.svg"
       />
 
       <div
