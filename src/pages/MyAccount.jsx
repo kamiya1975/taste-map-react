@@ -62,7 +62,7 @@ export default function MyAccount() {
         title="マイアカウント"
         onBack={() => navigate(-1)}
         onClose={() => navigate("/map?open=mypage", { replace: true })}
-        icon="/img/account.svg"
+        icon="account.svg"
       />
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
