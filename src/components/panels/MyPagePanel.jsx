@@ -93,7 +93,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
         title={titles[view] || "アプリガイド"}
         onClose={handleCloseX}
         onBack={handleBack}
-        icon={ICONS.compass}   // ★ 相対パスではなく PUBLIC_URL 経由
+        icon="account.svg"
       />
 
       {/* 本文 */}
