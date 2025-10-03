@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PanelHeader from "../components/ui/PanelHeader";
+import { setUserId } from "../utils/auth";
 
 const isEmail = (s) => /^\S+@\S+\.\S+$/.test(String(s || "").trim());
 
@@ -109,6 +110,7 @@ export default function MyAccount() {
       localStorage.setItem("user.gender", gender);
       localStorage.setItem("user.agreed", agreed ? "1" : "0");
       if (password) localStorage.setItem("user.pass", password); // モック
+      setUserId(email.trim());
       setPassword("");
       alert("保存しました。");
     } catch {
