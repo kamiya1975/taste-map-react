@@ -2,6 +2,7 @@
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import "./App.css";
+import { bootstrapIdentity } from "./utils/auth";
 
 // Pages
 import IntroPage from "./pages/IntroPage";
@@ -22,6 +23,9 @@ export default function App() {
 
   // スタンドアロン起動の初回だけ /map へ寄せる
   useEffect(() => {
+    // ★ まずIDを復元（Safari→ホーム起動でも引き継ぐ）
+    bootstrapIdentity();
+    
     const isStandalone =
       window.matchMedia?.("(display-mode: standalone)")?.matches ||
       window.navigator.standalone === true; // iOS

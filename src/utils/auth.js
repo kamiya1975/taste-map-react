@@ -3,13 +3,35 @@ export const USER_ID_KEY  = "tm_user_id";
 export const GUEST_KEY    = "tm_guest";      // ゲストフラグ（既存互換）
 export const GUEST_ID_KEY = "tm_guest_id";   // 端末ローカルのゲストID（新規）
 
+// --- Cookie helpers ---
+const setCookie = (name, value, days = 365) => {
+  try {
+    const maxAge = days * 24 * 60 * 60;
+    document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; samesite=lax`;
+  } catch {}
+};
+const getCookie = (name) => {
+  try {
+    const m = document.cookie.split("; ").find((r) => r.startsWith(`${name}=`));
+    return m ? decodeURIComponent(m.split("=")[1]) : "";
+  } catch { return ""; }
+};
+const delCookie = (name) => {
+  try { document.cookie = `${name}=; path=/; max-age=0; samesite=lax`; } catch {}
+};
+
 /* ======================
    保存系
    ====================== */
 export const setGuest = () => {
-  // 既存互換：ゲストフラグを立て、ユーザーIDは消す
+  // 既に本登録IDがあるならゲスト化しない（IDを消さない）
+  if (getUserId()) {
+    localStorage.removeItem(GUEST_KEY);
+    return getGuestId();
+  }
   localStorage.setItem(GUEST_KEY, "1");
   localStorage.removeItem(USER_ID_KEY);
+  delCookie(USER_ID_KEY);
   // ついでにゲストIDを確保（無ければ発行）
   return getGuestId();
 };
@@ -21,6 +43,7 @@ export const clearGuest = () => {
 export const setUserId = (id) => {
   if (id == null || `${id}`.trim() === "") return;
   localStorage.setItem(USER_ID_KEY, String(id));
+  setCookie(USER_ID_KEY, String(id));   // ★ Cookieにも保存（Safari/ホーム共有用）
   clearGuest();         // ゲストフラグは解除
   // 本登録後はゲストIDも不要なら消す（任意）
   // localStorage.removeItem(GUEST_ID_KEY);
@@ -32,6 +55,22 @@ export const setUserId = (id) => {
 export const getUserId  = () => localStorage.getItem(USER_ID_KEY);
 export const isGuest    = () => !!localStorage.getItem(GUEST_KEY) && !getUserId();
 export const canUseRating = () => !!getUserId();
+
+/* ======================
+   起動時ブートストラップ
+   ====================== */
+export const bootstrapIdentity = () => {
+  // 1) 既に localStorage にあれば Cookieも同期して終了
+  const uid = getUserId();
+  if (uid) { setCookie(USER_ID_KEY, uid); return uid; }
+  // 2) Cookie に残っていれば localStorage に復元
+  const fromCookie = getCookie(USER_ID_KEY);
+  if (fromCookie) { setUserId(fromCookie); return fromCookie; }
+  // 3) 旧キー（user.id）があれば移行
+  const legacy = localStorage.getItem("user.id");
+  if (legacy) { setUserId(legacy); return legacy; }
+  return null;
+};
 
 /* ======================
    新規：ゲストIDの発行/取得 & クリア
