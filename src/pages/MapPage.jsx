@@ -368,7 +368,7 @@ function MapPage() {
     // BlendF が無い時は重心へフォールバック
     const [cx, cy] = umapCentroid;
     centerToUMAP(cx, cy, { zoom: INITIAL_ZOOM });
-     idInitialCenterRef.current = true;
+     didInitialCenterRef.current = true;
   }, [data, centerToUMAP, umapCentroid]);
 
   // 初回センタリング（userPin 指定時）
