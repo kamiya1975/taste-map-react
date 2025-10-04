@@ -28,6 +28,7 @@ const REREAD_LS_KEY = "tm_reread_until";
 function MapPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const didInitialCenterRef = useRef(false);  // 初期センタリング（1回だけ）の実行ガード
   const [openFromRated, setOpenFromRated] = useState(false);
   const fromRatedRef = useRef(false);
 
@@ -202,6 +203,27 @@ function MapPage() {
         console.error("UMAP_PCA_coordinates.json の取得に失敗:", err)
       );
   }, []);
+
+   // ★ データが入ったら「最初の1回だけ」BlendF にセンタリング
+   useEffect(() => {
+     if (didInitialCenterRef.current) return;    // もうやっていたら何もしない
+     if (!Array.isArray(data) || data.length === 0) return;
+
+     // 既に他の意図的なセンタリング（スライダー戻りなど）がある場合はそれを優先したいなら、
+     // そのフラグをここでチェックして return してください（必要なければこのままでOK）。
+
+     const b = data.find((d) => String(d.JAN) === "blendF");
+     if (b && Number.isFinite(b.UMAP1) && Number.isFinite(b.UMAP2)) {
+       centerToUMAP(b.UMAP1, b.UMAP2, { zoom: INITIAL_ZOOM });
+       didInitialCenterRef.current = true;
+       return;
+     }
+     // BlendF が無い時は重心へフォールバック
+     const [cx, cy] = umapCentroid;
+     centerToUMAP(cx, cy, { zoom: INITIAL_ZOOM });
+     didInitialCenterRef.current = true;
+   }, [data, centerToUMAP, umapCentroid]);
+
 
   // スキャナを開くたびに「未登録JANの警告」をリセット（警告は各スキャンセッションで1回だけに）
   useEffect(() => {
