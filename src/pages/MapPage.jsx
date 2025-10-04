@@ -32,8 +32,8 @@ function MapPage() {
   const fromRatedRef = useRef(false);
 
   // パンの“広さ”を決める倍率（背景とグリッド）
-  const [bgScaleK, setBgScaleK] = useState(8);   // 6〜10が目安
-  const [gridScaleK, setGridScaleK] = useState(3); // 2〜4が目安
+  const [bgScaleK, setBgScaleK] = useState(6);   // 6〜10が目安
+  const [gridScaleK, setGridScaleK] = useState(2); // 2〜4が目安
 
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
