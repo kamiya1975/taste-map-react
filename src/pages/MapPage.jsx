@@ -25,6 +25,23 @@ import {
 
 const REREAD_LS_KEY = "tm_reread_until";
 
+// 例：上から25%に置きたい
+const CENTER_Y_FRAC = 0.25; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
+
+function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
+  // 1px が何ワールド単位か（Orthographic：scale = 2^zoom）
+  const worldPerPx = 1 / Math.pow(2, Number(zoom) || 0);
+  // 実画面の高さ（モバイルでも visualViewport を優先）
+  const hPx =
+    (typeof window !== "undefined" && window.visualViewport?.height) ||
+    window.innerHeight ||
+    0;
+
+  // 画面中央(0.5) → 指定割合(fracFromTop) へずらすピクセル量をワールド単位へ
+  // 上から25%なら (0.5 - 0.25) * 画面高 = 0.25 * 画面高 を上方向にずらす
+  return (0.5 - fracFromTop) * hPx * worldPerPx;
+}
+
 function MapPage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -344,9 +361,10 @@ function MapPage() {
       ZOOM_LIMITS.min,
       Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM)
     );
+    const yOffset = getYOffsetWorld(zoomTarget, CENTER_Y_FRAC);
     setViewState((prev) => ({
       ...prev,
-      target: [xUMAP, yCanvas - CENTER_Y_OFFSET, 0],
+      target: [xUMAP, yCanvas - yOffset, 0],
       zoom: zoomTarget,
     }));
   }, []);
@@ -489,12 +507,13 @@ function MapPage() {
       const zoomTarget = (wantZoom == null)
         ? prev.zoom
         : Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, wantZoom));
+      const yOffset = getYOffsetWorld(zoomTarget, CENTER_Y_FRAC);
 
       // ② ターゲットは opts.recenter === false のとき据え置き
       const keepTarget = opts.recenter === false;
       const nextTarget = keepTarget
         ? prev.target
-        : [tx, -tyUMAP - CENTER_Y_OFFSET, 0];
+        : [tx, -tyUMAP - yOffset, 0];
 
       return { ...prev, target: nextTarget, zoom: zoomTarget };
     });
@@ -938,11 +957,7 @@ function MapPage() {
           // フォーカス
           const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
           if (Number.isFinite(tx) && Number.isFinite(ty)) {
-            setViewState((prev) => ({
-              ...prev,
-              target: [tx, -ty - CENTER_Y_OFFSET, 0],
-              zoom: prev.zoom,
-            }));
+            centerToUMAP(tx, ty, { zoom: viewState.zoom });
           }
         }}
         onScanClick={() => {
@@ -1002,11 +1017,7 @@ function MapPage() {
             // フォーカス
             const tx = Number(hit.UMAP1), ty = Number(hit.UMAP2);
             if (Number.isFinite(tx) && Number.isFinite(ty)) {
-              setViewState((prev) => ({
-                ...prev,
-                target: [tx, -ty - CENTER_Y_OFFSET, 0],
-                zoom: INITIAL_ZOOM,
-              }));
+              centerToUMAP(tx, ty, { zoom: INITIAL_ZOOM });
             }
             return true; // 採用→スキャナ側停止
           }
@@ -1037,11 +1048,7 @@ function MapPage() {
           if (item) {
             const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
             if (Number.isFinite(tx) && Number.isFinite(ty)) {
-              setViewState((prev) => ({
-                ...prev,
-                target: [tx, -ty - CENTER_Y_OFFSET, 0],
-                zoom: INITIAL_ZOOM,
-              }));
+              centerToUMAP(tx, ty, { zoom: INITIAL_ZOOM });
             }
           }
           setProductDrawerOpen(true);
@@ -1066,11 +1073,7 @@ function MapPage() {
           if (item) {
             const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
             if (Number.isFinite(tx) && Number.isFinite(ty)) {
-              setViewState((prev) => ({
-                ...prev,
-                target: [tx, -ty - CENTER_Y_OFFSET, 0],
-                zoom: INITIAL_ZOOM,
-              }));
+              centerToUMAP(tx, ty, { zoom: INITIAL_ZOOM });
             }
           }
           setProductDrawerOpen(true);
