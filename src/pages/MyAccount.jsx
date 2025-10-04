@@ -1,5 +1,5 @@
 // src/pages/MyAccount.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PanelHeader from "../components/ui/PanelHeader";
 import { setUserId } from "../utils/auth";
@@ -63,6 +63,38 @@ const BorderlessSelect = ({ rightIcon = true, ...props }) => (
   </div>
 );
 
+/* —— 状態チップ —— */
+function StatusChip({ loggedIn, userId }) {
+  const dot = {
+    display: "inline-block",
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    background: loggedIn ? "#2ecc71" : "#9aa0a6",
+    marginRight: 8,
+  };
+  const wrap = {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "8px 10px",
+    border: "1px solid #e7e7e7",
+    borderRadius: 999,
+    background: "#fff",
+    fontSize: 12,
+    color: "#333",
+    gap: 6,
+  };
+  return (
+    <div style={wrap}>
+      <span aria-hidden style={dot} />
+      <span>{loggedIn ? "ログイン中" : "ゲスト"}</span>
+      <span style={{ color: "#999" }}>
+        {loggedIn ? `（${userId || "-"}）` : ""}
+      </span>
+    </div>
+  );
+}
+
 export default function MyAccount() {
   const navigate = useNavigate();
 
@@ -75,16 +107,39 @@ export default function MyAccount() {
   const [gender, setGender] = useState("");
   const [agreed, setAgreed] = useState(false);
 
+  // ★ ログイン状態（将来は /api/auth/check に置換）
+  const computeIsLoggedIn = useCallback(() => {
+    try {
+      const token = localStorage.getItem("auth.token"); // JWT想定
+      const uid = localStorage.getItem("user.id");
+      return Boolean(token || uid);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const [isLoggedIn, setIsLoggedIn] = useState(computeIsLoggedIn());
+
+  // 初期読込
   useEffect(() => {
     try {
       setNickname(localStorage.getItem("user.nickname") || "");
-      setEmail(localStorage.getItem("user.id") || "");
+      const id = localStorage.getItem("user.id") || "";
+      setEmail(id);
       setBirthYear(localStorage.getItem("user.birthYear") || "");
       setBirthMonth(localStorage.getItem("user.birthMonth") || "");
       setGender(localStorage.getItem("user.gender") || "");
       setAgreed((localStorage.getItem("user.agreed") || "") === "1");
+      setIsLoggedIn(computeIsLoggedIn());
     } catch {}
-  }, []);
+  }, [computeIsLoggedIn]);
+
+  // 他タブでのログイン/ログアウト反映
+  useEffect(() => {
+    const onStorage = () => setIsLoggedIn(computeIsLoggedIn());
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [computeIsLoggedIn]);
 
   const handleSave = () => {
     if (!agreed) return; // 念のため二重防御
@@ -112,10 +167,45 @@ export default function MyAccount() {
       if (password) localStorage.setItem("user.pass", password); // モック
       setUserId(email.trim());
       setPassword("");
+      setIsLoggedIn(computeIsLoggedIn());
       alert("保存しました。");
     } catch {
       alert("保存に失敗しました。");
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      // 将来：await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    } catch {}
+    try {
+      // ローカル情報をクリア
+      const keepKeys = new Set([]); // 必要なら保持キーを列挙
+      Object.keys(localStorage).forEach((k) => {
+        if (keepKeys.has(k)) return;
+        if (k.startsWith("auth.") || k.startsWith("user.")) {
+          localStorage.removeItem(k);
+        }
+      });
+      // 念押しで主要キーも
+      localStorage.removeItem("auth.token");
+      localStorage.removeItem("auth.refresh");
+      localStorage.removeItem("user.id");
+      localStorage.removeItem("user.pass");
+
+      setUserId(""); // アプリ側のIDキャッシュも初期化
+      setIsLoggedIn(false);
+      setEmail("");
+      alert("ログアウトしました。");
+      navigate("/map?open=mypage", { replace: true });
+    } catch {
+      alert("ログアウトに失敗しました。");
+    }
+  };
+
+  const goLogin = () => {
+    // 既存の導線に合わせて遷移先を調整（/intro や /login など）
+    navigate("/intro?redirect=/map", { replace: false });
   };
 
   // 見た目
@@ -135,6 +225,40 @@ export default function MyAccount() {
       />
 
       <div style={body}>
+        {/* ★ ログイン状態の見出し帯 */}
+        <div style={{ maxWidth: 560, margin: "0 auto 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <StatusChip loggedIn={isLoggedIn} userId={email} />
+          {isLoggedIn ? (
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 10,
+                border: "1px solid #e7e7e7",
+                background: "#fff",
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              ログアウト
+            </button>
+          ) : (
+            <button
+              onClick={goLogin}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 10,
+                border: "1px solid #e7e7e7",
+                background: "#fff",
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              ログインへ
+            </button>
+          )}
+        </div>
+
         <div style={card}>
           {/* ニックネーム */}
           <div style={row}>
@@ -160,6 +284,8 @@ export default function MyAccount() {
               inputMode="email"
               autoCapitalize="off"
               autoCorrect="off"
+              readOnly={isLoggedIn} // ★ ログイン中は編集不可
+              style={isLoggedIn ? { color: "#666" } : undefined}
             />
           </div>
 
