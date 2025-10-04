@@ -2,26 +2,40 @@
 import React, { useMemo, useRef, useCallback, useEffect } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrthographicView } from "@deck.gl/core";
-import { ScatterplotLayer, LineLayer, GridCellLayer, PathLayer, IconLayer, BitmapLayer } from "@deck.gl/layers";
+import {
+  ScatterplotLayer,
+  LineLayer,
+  GridCellLayer,
+  PathLayer,
+  IconLayer,
+  BitmapLayer,
+} from "@deck.gl/layers";
 import {
   ZOOM_LIMITS,
-  GRID_CELL_SIZE, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX, HEAT_GAMMA, HEAT_CLIP_PCT,
-  HEAT_COLOR_LOW, HEAT_COLOR_HIGH,
-  MAP_POINT_COLOR, ORANGE,
+  GRID_CELL_SIZE,
+  HEAT_ALPHA_MIN,
+  HEAT_ALPHA_MAX,
+  HEAT_GAMMA,
+  HEAT_CLIP_PCT,
+  HEAT_COLOR_LOW,
+  HEAT_COLOR_HIGH,
+  MAP_POINT_COLOR,
+  ORANGE,
 } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
-const FAVORITE_RED = [178, 53, 103, 255];  // お気に入りの打点色
-const TILE_GRAY  = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
+const FAVORITE_RED = [178, 53, 103, 255];
+const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
-// ✅ パンのクランプ切替（false = パンは戻さない／ズームのみ上下限クランプ）
+// ✅ パンのクランプ切替
 const PAN_CLAMP = true;
 
-// 画面端で「ギリ見える」ための余白（px）
-const EDGE_MARGIN_PX = 12;
+// デフォルト余白（px）
+const DEFAULT_EDGE_MARGIN_X_PX = 8;   // 横
+const DEFAULT_EDGE_MARGIN_Y_PX = 20;  // 縦
 
-/** px → world の換算（Orthographic） */
+/** px → world（Orthographic） */
 function pxToWorld(zoom, px) {
   const scale = Math.pow(2, Number(zoom) || 0);
   return (px || 0) / (scale || 1);
@@ -29,16 +43,16 @@ function pxToWorld(zoom, px) {
 
 // --- 小ユーティリティ ---
 const EPS = 1e-9;
-const toIndex  = (v) => Math.floor((v + EPS) / GRID_CELL_SIZE);
+const toIndex = (v) => Math.floor((v + EPS) / GRID_CELL_SIZE);
 const toCorner = (i) => i * GRID_CELL_SIZE;
-const keyOf    = (ix, iy) => `${ix},${iy}`;
+const keyOf = (ix, iy) => `${ix},${iy}`;
 
-// 実際に見えているビューポートの px サイズ（Safari URLバーを除外）
+// 実際に見えているビューポート px（Safari の URL バーを除外）
 function getEffectiveSizePx(sizePx) {
-  let w = Math.max(1, sizePx?.width  || 1);
+  let w = Math.max(1, sizePx?.width || 1);
   let h = Math.max(1, sizePx?.height || 1);
   if (typeof window !== "undefined" && window.visualViewport) {
-    const vvW = Math.floor(window.visualViewport.width  || 0);
+    const vvW = Math.floor(window.visualViewport.width || 0);
     const vvH = Math.floor(window.visualViewport.height || 0);
     if (vvW > 0) w = vvW;
     if (vvH > 0) h = vvH;
@@ -46,27 +60,29 @@ function getEffectiveSizePx(sizePx) {
   return { width: w, height: h };
 }
 
-// 画面サイズ（px）とズームから世界座標での半幅・半高を計算（Orthographic）
+// 画面サイズ（px）とズームから世界座標の半幅・半高
 function halfSizeWorld(zoom, sizePx) {
   const scale = Math.pow(2, Number(zoom) || 0);
   const { width: w, height: h } = getEffectiveSizePx(sizePx);
   return { halfW: w / (2 * scale), halfH: h / (2 * scale) };
 }
 
-// 可動域クランプ（余白スラックつき）
-function clampViewState(nextVS, panBounds, sizePx) {
+// ===== パン可動域クランプ（“ギリ見える”余白つき） =====
+function clampViewState(nextVS, panBounds, sizePx, margins = {}) {
   const zoom = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, nextVS.zoom));
   if (!PAN_CLAMP) return { ...nextVS, zoom };
 
   const { halfW, halfH } = halfSizeWorld(zoom, sizePx);
   const xmin = panBounds?.xmin ?? -Infinity;
-  const xmax = panBounds?.xmax ??  Infinity;
+  const xmax = panBounds?.xmax ?? Infinity;
   const ymin = panBounds?.ymin ?? -Infinity;
-  const ymax = panBounds?.ymax ??  Infinity;
+  const ymax = panBounds?.ymax ?? Infinity;
 
-  // 画面端に EDGE_MARGIN_PX だけデータが残る位置でクランプ
-  const mX = pxToWorld(zoom, EDGE_MARGIN_PX);
-  const mY = pxToWorld(zoom, EDGE_MARGIN_PX);
+  // 画面端に「X=edgeMarginXPx, Y=edgeMarginYPx」だけデータが残るように
+  const pxX = margins.xPx ?? DEFAULT_EDGE_MARGIN_X_PX;
+  const pxY = margins.yPx ?? DEFAULT_EDGE_MARGIN_Y_PX;
+  const mX = pxToWorld(zoom, pxX);
+  const mY = pxToWorld(zoom, pxY);
 
   const worldW = xmax - xmin;
   const worldH = ymax - ymin;
@@ -109,6 +125,8 @@ export default function MapCanvas({
   viewState,
   setViewState,
   onPickWine,        // (item) => void
+  edgeMarginXPx = DEFAULT_EDGE_MARGIN_X_PX, // 横余白（px）
+  edgeMarginYPx = DEFAULT_EDGE_MARGIN_Y_PX, // 縦余白（px）
 }) {
   // --- refs ---
   const sizeRef = useRef({ width: 1, height: 1 });
@@ -120,23 +138,28 @@ export default function MapCanvas({
     zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom)),
   });
 
-  // 🔧 ここに bgBounds を移動（Hooks はコンポーネント内で）
+  // 背景ビットマップの敷き範囲（常に画面外まで）
   const bgBounds = useMemo(() => {
     const { halfW, halfH } = halfSizeWorld(viewState.zoom, sizeRef.current);
     const cx = viewState?.target?.[0] ?? 0;
     const cy = viewState?.target?.[1] ?? 0;
-    const K = 8; // 余裕係数（6〜10 推奨）
+    const K = 8; // 余裕係数
     return [cx - K * halfW, cy - K * halfH, cx + K * halfW, cy + K * halfH];
   }, [viewState.zoom, viewState.target]);
 
-  // 初期レイアウトの“戻し”は PAN_CLAMP=true のときのみ
+  // 初期クランプ
   useEffect(() => {
     if (!PAN_CLAMP) return;
     const raf = requestAnimationFrame(() => {
-      setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
+      setViewState((curr) =>
+        clampViewState(curr, panBounds, sizeRef.current, {
+          xPx: edgeMarginXPx,
+          yPx: edgeMarginYPx,
+        })
+      );
     });
     return () => cancelAnimationFrame(raf);
-  }, [panBounds, setViewState]);
+  }, [panBounds, setViewState, edgeMarginXPx, edgeMarginYPx]);
 
   // visualViewport（URLバー出入り）
   useEffect(() => {
@@ -150,13 +173,18 @@ export default function MapCanvas({
       timeoutId = window.setTimeout(() => {
         const vv = window.visualViewport;
         sizeRef.current = {
-          width:  Math.floor(vv?.width  || sizeRef.current.width),
+          width: Math.floor(vv?.width || sizeRef.current.width),
           height: Math.floor(vv?.height || sizeRef.current.height),
         };
         if (!PAN_CLAMP) return;
         cancelAnimationFrame(animationId);
         animationId = requestAnimationFrame(() => {
-          setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
+          setViewState((curr) =>
+            clampViewState(curr, panBounds, sizeRef.current, {
+              xPx: edgeMarginXPx,
+              yPx: edgeMarginYPx,
+            })
+          );
         });
       }, 80);
     };
@@ -170,30 +198,49 @@ export default function MapCanvas({
       window.visualViewport.removeEventListener("resize", onVV);
       window.visualViewport.removeEventListener("scroll", onVV);
     };
-  }, [panBounds, setViewState]);
+  }, [panBounds, setViewState, edgeMarginXPx, edgeMarginYPx]);
 
   // bfcache復帰 / 画面の向き変更
   useEffect(() => {
     if (!PAN_CLAMP) return;
-    const onPageShow = () => setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
-    const onOrientation = () => setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
+    const onPageShow = () =>
+      setViewState((curr) =>
+        clampViewState(curr, panBounds, sizeRef.current, {
+          xPx: edgeMarginXPx,
+          yPx: edgeMarginYPx,
+        })
+      );
+    const onOrientation = () =>
+      setViewState((curr) =>
+        clampViewState(curr, panBounds, sizeRef.current, {
+          xPx: edgeMarginXPx,
+          yPx: edgeMarginYPx,
+        })
+      );
     window.addEventListener("pageshow", onPageShow);
     window.addEventListener("orientationchange", onOrientation);
     return () => {
       window.removeEventListener("pageshow", onPageShow);
       window.removeEventListener("orientationchange", onOrientation);
     };
-  }, [panBounds, setViewState]);
+  }, [panBounds, setViewState, edgeMarginXPx, edgeMarginYPx]);
 
   // --- グリッド線データ ---
   const { thinLines, thickLines } = useMemo(() => {
     const interval = GRID_CELL_SIZE;
-    const thin = [], thick = [];
+    const thin = [];
+    const thick = [];
     for (let i = -500; i <= 500; i++) {
       const x = i * interval;
-      (i % 5 === 0 ? thick : thin).push({ sourcePosition: [x, -100, 0], targetPosition: [x, 100, 0] });
+      (i % 5 === 0 ? thick : thin).push({
+        sourcePosition: [x, -100, 0],
+        targetPosition: [x, 100, 0],
+      });
       const y = i * interval;
-      (i % 5 === 0 ? thick : thin).push({ sourcePosition: [-100, y, 0], targetPosition: [100, y, 0] });
+      (i % 5 === 0 ? thick : thin).push({
+        sourcePosition: [-100, y, 0],
+        targetPosition: [100, y, 0],
+      });
     }
     return { thinLines: thin, thickLines: thick };
   }, []);
@@ -207,11 +254,16 @@ export default function MapCanvas({
       const key = keyOf(ix, iy);
       if (!map.has(key)) {
         map.set(key, {
-          ix, iy,
+          ix,
+          iy,
           position: [toCorner(ix), toCorner(iy)],
-          center: [toCorner(ix) + GRID_CELL_SIZE / 2, toCorner(iy) + GRID_CELL_SIZE / 2, 0],
+          center: [
+            toCorner(ix) + GRID_CELL_SIZE / 2,
+            toCorner(iy) + GRID_CELL_SIZE / 2,
+            0,
+          ],
           count: 0,
-          hasRating: false
+          hasRating: false,
         });
       }
       if ((userRatings[d.JAN]?.rating ?? 0) > 0) map.get(key).hasRating = true;
@@ -223,63 +275,78 @@ export default function MapCanvas({
   // --- ハイライト（平均値のヒート） ---
   const { heatCells, vMin, vMax, avgHash } = useMemo(() => {
     if (!highlight2D) return { heatCells: [], vMin: 0, vMax: 1, avgHash: "empty" };
-    const sumMap = new Map(), cntMap = new Map();
+    const sumMap = new Map(),
+      cntMap = new Map();
     for (const d of data) {
       const v = Number(d[highlight2D]);
       if (!Number.isFinite(v)) continue;
-      const ix = toIndex(d.UMAP1), iy = toIndex(-d.UMAP2);
+      const ix = toIndex(d.UMAP1),
+        iy = toIndex(-d.UMAP2);
       const key = keyOf(ix, iy);
       sumMap.set(key, (sumMap.get(key) || 0) + v);
       cntMap.set(key, (cntMap.get(key) || 0) + 1);
     }
-    const vals = [], cellsArr = [];
+    const vals = [],
+      cellsArr = [];
     for (const [key, sum] of sumMap.entries()) {
       const count = cntMap.get(key) || 1;
       const avg = sum / count;
       vals.push(avg);
       const [ix, iy] = key.split(",").map(Number);
-      cellsArr.push({ ix, iy, position: [toCorner(ix), toCorner(iy)], avg, count });
+      cellsArr.push({
+        ix,
+        iy,
+        position: [toCorner(ix), toCorner(iy)],
+        avg,
+        count,
+      });
     }
     if (!vals.length) return { heatCells: [], vMin: 0, vMax: 1, avgHash: "none" };
     vals.sort((a, b) => a - b);
     const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
     const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
-    const lo = vals[loIdx], hi = vals[hiIdx];
+    const lo = vals[loIdx],
+      hi = vals[hiIdx];
     const epsHi = hi - lo < 1e-9 ? lo + 1e-9 : hi;
     const hash = `${cellsArr.length}|${lo.toFixed(3)}|${epsHi.toFixed(3)}|${highlight2D}`;
     return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
   }, [data, highlight2D]);
 
   // --- レイヤ：打点 ---
-  const mainLayer = useMemo(() => new ScatterplotLayer({
-    id: "scatter",
-    data,
-    getPosition: (d) => [d.UMAP1, -d.UMAP2, 0],
-    getFillColor: (d) => {
-      const jan = String(d.JAN);
-      if (jan === String(selectedJAN)) return ORANGE;        // 選択＝オレンジ
-      if (Number(userRatings?.[jan]?.rating) > 0) return BLACK; // 評価済み＝黒
-      if (favorites && favorites[jan]) return FAVORITE_RED;  // お気に入り＝赤
-      return MAP_POINT_COLOR;                                 // それ以外＝固定グレー
-    },
-    updateTriggers: {
-      getFillColor: [
-        selectedJAN,
-        JSON.stringify(favorites || {}),
-        JSON.stringify(userRatings || {}),
-      ],
-    },
-    radiusUnits: "meters",
-    getRadius: 0.03,
-    pickable: true,
-  }), [data, selectedJAN, favorites, userRatings]);
+  const mainLayer = useMemo(
+    () =>
+      new ScatterplotLayer({
+        id: "scatter",
+        data,
+        getPosition: (d) => [d.UMAP1, -d.UMAP2, 0],
+        getFillColor: (d) => {
+          const jan = String(d.JAN);
+          if (jan === String(selectedJAN)) return ORANGE; // 選択＝オレンジ
+          if (Number(userRatings?.[jan]?.rating) > 0) return BLACK; // 評価済み＝黒
+          if (favorites && favorites[jan]) return FAVORITE_RED; // お気に入り＝赤
+          return MAP_POINT_COLOR; // その他＝固定グレー
+        },
+        updateTriggers: {
+          getFillColor: [
+            selectedJAN,
+            JSON.stringify(favorites || {}),
+            JSON.stringify(userRatings || {}),
+          ],
+        },
+        radiusUnits: "meters",
+        getRadius: 0.03,
+        pickable: true,
+      }),
+    [data, selectedJAN, favorites, userRatings]
+  );
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
     const lineColor = [255, 0, 0, 255];
     return Object.entries(userRatings || {}).flatMap(([jan, ratingObj]) => {
       const item = data.find((d) => String(d.JAN) === String(jan));
-      if (!item || !Number.isFinite(item.UMAP1) || !Number.isFinite(item.UMAP2)) return [];
+      if (!item || !Number.isFinite(item.UMAP1) || !Number.isFinite(item.UMAP2))
+        return [];
       const count = Math.min(Number(ratingObj?.rating) || 0, 5);
       if (count <= 0) return [];
       const radiusBase = 0.06;
@@ -316,7 +383,10 @@ export default function MapCanvas({
       getPosition: (d) => d.position,
       getIcon: () => ({
         url: `${process.env.PUBLIC_URL || ""}/img/compass.png`,
-        width: 310, height: 310, anchorX: 155, anchorY: 155
+        width: 310,
+        height: 310,
+        anchorX: 155,
+        anchorY: 155,
       }),
       sizeUnits: "meters",
       getSize: 0.4,
@@ -334,7 +404,10 @@ export default function MapCanvas({
       getPosition: (d) => d.position,
       getIcon: () => ({
         url: `${process.env.PUBLIC_URL || ""}/img/compass.png`,
-        width: 310, height: 310, anchorX: 155, anchorY: 155
+        width: 310,
+        height: 310,
+        anchorX: 155,
+        anchorY: 155,
       }),
       sizeUnits: "meters",
       getSize: 0.5,
@@ -345,31 +418,48 @@ export default function MapCanvas({
   }, [userPin]);
 
   // --- 近傍探索（クリック時） ---
-  const findNearestWine = useCallback((coord) => {
-    if (!coord || !Array.isArray(data) || data.length === 0) return null;
-    const [cx, cy] = coord;
-    let best = null, bestD2 = Infinity;
-    for (const d of data) {
-      const x = d.UMAP1, y = -d.UMAP2;
-      const dx = x - cx, dy = y - cy;
-      const d2 = dx * dx + dy * dy;
-      if (d2 < bestD2) { bestD2 = d2; best = d; }
-    }
-    return best;
-  }, [data]);
+  const findNearestWine = useCallback(
+    (coord) => {
+      if (!coord || !Array.isArray(data) || data.length === 0) return null;
+      const [cx, cy] = coord;
+      let best = null,
+        bestD2 = Infinity;
+      for (const d of data) {
+        const x = d.UMAP1,
+          y = -d.UMAP2;
+        const dx = x - cx,
+          dy = y - cy;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestD2) {
+          bestD2 = d2;
+          best = d;
+        }
+      }
+      return best;
+    },
+    [data]
+  );
 
-  // --- 操作終了時クランプ（PAN_CLAMP=true のときだけ）
-  const onInteractionStateChange = useCallback((state) => {
-    interactingRef.current =
-      !!state?.isDragging || !!state?.isPanning || !!state?.isZooming;
-    if (!PAN_CLAMP) return;
-    if (!interactingRef.current) {
-      cancelAnimationFrame(clampRAF.current);
-      clampRAF.current = requestAnimationFrame(() => {
-        setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
-      });
-    }
-  }, [panBounds, setViewState]);
+  // --- 操作終了時クランプ ---
+  const onInteractionStateChange = useCallback(
+    (state) => {
+      interactingRef.current =
+        !!state?.isDragging || !!state?.isPanning || !!state?.isZooming;
+      if (!PAN_CLAMP) return;
+      if (!interactingRef.current) {
+        cancelAnimationFrame(clampRAF.current);
+        clampRAF.current = requestAnimationFrame(() => {
+          setViewState((curr) =>
+            clampViewState(curr, panBounds, sizeRef.current, {
+              xPx: edgeMarginXPx,
+              yPx: edgeMarginYPx,
+            })
+          );
+        });
+      }
+    },
+    [panBounds, setViewState, edgeMarginXPx, edgeMarginYPx]
+  );
 
   return (
     <DeckGL
@@ -377,16 +467,19 @@ export default function MapCanvas({
       viewState={viewState}
       style={{ position: "absolute", inset: 0 }}
       useDevicePixels
-
       // キャンバスサイズ保持
       onResize={({ width, height }) => {
         sizeRef.current = getEffectiveSizePx({ width, height });
         if (!PAN_CLAMP) return;
         if (interactingRef.current) return;
-        setViewState((curr) => clampViewState(curr, panBounds, sizeRef.current));
+        setViewState((curr) =>
+          clampViewState(curr, panBounds, sizeRef.current, {
+            xPx: edgeMarginXPx,
+            yPx: edgeMarginYPx,
+          })
+        );
       }}
-
-      // ユーザー操作中/後：ズームだけクランプ
+      // ユーザー操作中/後：ズームだけ即時クランプ、パンは“ギリ見える”範囲に
       onViewStateChange={({ viewState: vs, interactionState }) => {
         const isInteracting =
           !!interactionState?.isDragging ||
@@ -396,14 +489,17 @@ export default function MapCanvas({
 
         const next = clampZoomOnly(vs);
         if (!PAN_CLAMP) {
-          setViewState(next);          // パンは戻さない
+          setViewState(next); // パンは戻さない
         } else {
-          setViewState(clampViewState(next, panBounds, sizeRef.current));
+          setViewState((curr) =>
+            clampViewState(next, panBounds, sizeRef.current, {
+              xPx: edgeMarginXPx,
+              yPx: edgeMarginYPx,
+            })
+          );
         }
       }}
-
       onInteractionStateChange={onInteractionStateChange}
-
       controller={{
         dragPan: true,
         dragRotate: false,
@@ -414,19 +510,19 @@ export default function MapCanvas({
         touchZoom: true,
         scrollZoom: true,
       }}
-
       onClick={(info) => {
         const picked = info?.object;
-        if (picked?.JAN) { onPickWine?.(picked); return; }
+        if (picked?.JAN) {
+          onPickWine?.(picked);
+          return;
+        }
         const coord = info?.coordinate;
         const nearest = findNearestWine(coord);
         if (nearest?.JAN) onPickWine?.(nearest);
       }}
-
       pickingRadius={8}
-
       layers={[
-        // 背景（紙テクスチャ）：枠外へ出ても白地にならないよう panBounds で敷く
+        // 背景（紙テクスチャ）
         new BitmapLayer({
           id: "paper-bg",
           image: `${process.env.PUBLIC_URL || ""}/img/paper-bg.png`,
@@ -434,7 +530,6 @@ export default function MapCanvas({
           opacity: 1,
           parameters: { depthTest: false },
         }),
-
         // セル塗り：ハイライト無し→タイル、あり→ヒート
         !highlight2D
           ? new IconLayer({
@@ -443,7 +538,10 @@ export default function MapCanvas({
               getPosition: (d) => d.center,
               getIcon: (d) => ({
                 url: d.hasRating ? TILE_OCHRE : TILE_GRAY,
-                width: 32, height: 32, anchorX: 16, anchorY: 16,
+                width: 32,
+                height: 32,
+                anchorX: 16,
+                anchorY: 16,
               }),
               sizeUnits: "meters",
               getSize: GRID_CELL_SIZE,
@@ -451,7 +549,7 @@ export default function MapCanvas({
               pickable: false,
               parameters: { depthTest: false },
               updateTriggers: {
-                getIcon: [JSON.stringify(cells.map(c => c.hasRating))],
+                getIcon: [JSON.stringify(cells.map((c) => c.hasRating))],
                 getPosition: [GRID_CELL_SIZE],
                 getSize: [GRID_CELL_SIZE],
               },
@@ -465,10 +563,21 @@ export default function MapCanvas({
                 let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
                 if (!Number.isFinite(t)) t = 0;
                 t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
-                const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t);
-                const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t);
-                const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t);
-                const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
+                const r = Math.round(
+                  HEAT_COLOR_LOW[0] +
+                    (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t
+                );
+                const g = Math.round(
+                  HEAT_COLOR_LOW[1] +
+                    (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t
+                );
+                const b = Math.round(
+                  HEAT_COLOR_LOW[2] +
+                    (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t
+                );
+                const a = Math.round(
+                  HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t
+                );
                 return [r, g, b, a];
               },
               extruded: false,
@@ -476,15 +585,16 @@ export default function MapCanvas({
               opacity: 1,
               parameters: { depthTest: false },
               pickable: false,
-              updateTriggers: { getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash] },
+              updateTriggers: {
+                getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash],
+              },
             }),
-
         // グリッド線
         new LineLayer({
           id: "grid-lines-thin",
           data: thinLines,
-          getSourcePosition: d => d.sourcePosition,
-          getTargetPosition: d => d.targetPosition,
+          getSourcePosition: (d) => d.sourcePosition,
+          getTargetPosition: (d) => d.targetPosition,
           getColor: [214, 214, 214, 255],
           getWidth: 1,
           widthUnits: "pixels",
@@ -492,20 +602,17 @@ export default function MapCanvas({
         new LineLayer({
           id: "grid-lines-thick",
           data: thickLines,
-          getSourcePosition: d => d.sourcePosition,
-          getTargetPosition: d => d.targetPosition,
+          getSourcePosition: (d) => d.sourcePosition,
+          getTargetPosition: (d) => d.targetPosition,
           getColor: [144, 144, 144, 255],
           getWidth: 1,
           widthUnits: "pixels",
         }),
-
         // ピン/コンパス
         userPinCompassLayer,
         compassLayer,
-
         // 打点
         mainLayer,
-
         // 評価リング
         ...ratingCircleLayers,
       ]}

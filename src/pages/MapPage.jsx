@@ -731,6 +731,8 @@ function MapPage() {
           setProductDrawerOpen(true);
           focusOnWine(item, { recenter: false });
         }}
+        edgeMarginXPx={8}   // 横の「ギリ見える」マージン(px)
+        edgeMarginYPx={20}  // 縦の「ギリ見える」マージン(px)
       />
 
       {/* 左上: 指標セレクタ（2Dハイライト） */}
