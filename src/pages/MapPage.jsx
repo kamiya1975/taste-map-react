@@ -355,21 +355,19 @@ function MapPage() {
 
   /** ===== 共通：UMAP座標へセンタリング（Y反転やオフセット込み） ===== */
   const centerToUMAP = useCallback((xUMAP, yUMAP, opts = {}) => {
-   if (!Number.isFinite(xUMAP) || !Number.isFinite(yUMAP)) return;
-   setViewState((prev) => {
-     const yCanvas = -yUMAP;
-     // zoomが未指定なら「今のzoomを維持」
-     const zoomSpecified = opts.zoom != null;
-     const zoomTarget = zoomSpecified
-       ? Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, Number(opts.zoom)))
-       : prev.zoom;
-     return {
-       ...prev,
-       target: [xUMAP, yCanvas - CENTER_Y_OFFSET, 0],
-       zoom: zoomTarget,
-     };
-   });
- }, []);
+    if (!Number.isFinite(xUMAP) || !Number.isFinite(yUMAP)) return;
+    const yCanvas = -yUMAP;
+    const zoomTarget = Math.max(
+      ZOOM_LIMITS.min,
+      Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM)
+    );
+    const yOffset = getYOffsetWorld(zoomTarget, CENTER_Y_FRAC);
+    setViewState((prev) => ({
+      ...prev,
+      target: [xUMAP, yCanvas - yOffset, 0],
+      zoom: zoomTarget,
+    }));
+  }, []);
 
   // ★ データが入ったら「最初の1回だけ」BlendF にセンタリング
   useEffect(() => {
