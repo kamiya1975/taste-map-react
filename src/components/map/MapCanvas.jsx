@@ -129,14 +129,19 @@ export default function MapCanvas({
     zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom)),
   });
 
-  // 🔧 ここに bgBounds を移動（Hooks はコンポーネント内で）
+  // 🔧 背景敷き範囲：panBounds を中心に少し拡張して紙テクスチャを敷く
+  const BG_EXPAND_K = 1.25; // 1.0=panBoundsジャスト, 1.2〜1.5 推奨
   const bgBounds = useMemo(() => {
-    const { halfW, halfH } = halfSizeWorld(viewState.zoom, sizeRef.current);
-    const cx = viewState?.target?.[0] ?? 0;
-    const cy = viewState?.target?.[1] ?? 0;
-    const K = 8; // 余裕係数（6〜10 推奨）
-    return [cx - K * halfW, cy - K * halfH, cx + K * halfW, cy + K * halfH];
-  }, [viewState.zoom, viewState.target]);
+    const xmin = panBounds?.xmin ?? -10;
+    const xmax = panBounds?.xmax ??  10;
+    const ymin = panBounds?.ymin ?? -10;
+    const ymax = panBounds?.ymax ??  10;
+    const cx = (xmin + xmax) / 2;
+    const cy = (ymin + ymax) / 2;
+    const halfW = (xmax - xmin) * BG_EXPAND_K / 2;
+    const halfH = (ymax - ymin) * BG_EXPAND_K / 2;
+    return [cx - halfW, cy - halfH, cx + halfW, cy + halfH];
+  }, [panBounds]);
 
   // 初期レイアウトの“戻し”は PAN_CLAMP=true のときのみ
   useEffect(() => {
