@@ -26,7 +26,7 @@ import {
 const REREAD_LS_KEY = "tm_reread_until";
 
 // 例：上から25%に置きたい
-const CENTER_Y_FRAC = 0.90; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
+const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
 
 function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
   // 1px が何ワールド単位か（Orthographic：scale = 2^zoom）
