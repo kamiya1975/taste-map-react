@@ -204,27 +204,6 @@ function MapPage() {
       );
   }, []);
 
-   // ★ データが入ったら「最初の1回だけ」BlendF にセンタリング
-   useEffect(() => {
-     if (didInitialCenterRef.current) return;    // もうやっていたら何もしない
-     if (!Array.isArray(data) || data.length === 0) return;
-
-     // 既に他の意図的なセンタリング（スライダー戻りなど）がある場合はそれを優先したいなら、
-     // そのフラグをここでチェックして return してください（必要なければこのままでOK）。
-
-     const b = data.find((d) => String(d.JAN) === "blendF");
-     if (b && Number.isFinite(b.UMAP1) && Number.isFinite(b.UMAP2)) {
-       centerToUMAP(b.UMAP1, b.UMAP2, { zoom: INITIAL_ZOOM });
-       didInitialCenterRef.current = true;
-       return;
-     }
-     // BlendF が無い時は重心へフォールバック
-     const [cx, cy] = umapCentroid;
-     centerToUMAP(cx, cy, { zoom: INITIAL_ZOOM });
-     didInitialCenterRef.current = true;
-   }, [data, centerToUMAP, umapCentroid]);
-
-
   // スキャナを開くたびに「未登録JANの警告」をリセット（警告は各スキャンセッションで1回だけに）
   useEffect(() => {
     if (isScannerOpen) unknownWarnedRef.current.clear();
@@ -371,6 +350,26 @@ function MapPage() {
       zoom: zoomTarget,
     }));
   }, []);
+
+  // ★ データが入ったら「最初の1回だけ」BlendF にセンタリング
+  useEffect(() => {
+    if (didInitialCenterRef.current) return;    // もうやっていたら何もしない
+    if (!Array.isArray(data) || data.length === 0) return;
+
+    // 既に他の意図的なセンタリング（スライダー戻りなど）がある場合はそれを優先したいなら、
+    // そのフラグをここでチェックして return してください（必要なければこのままでOK）。
+
+    const b = data.find((d) => String(d.JAN) === "blendF");
+    if (b && Number.isFinite(b.UMAP1) && Number.isFinite(b.UMAP2)) {
+      centerToUMAP(b.UMAP1, b.UMAP2, { zoom: INITIAL_ZOOM });
+      didInitialCenterRef.current = true;
+      return;
+    }
+    // BlendF が無い時は重心へフォールバック
+    const [cx, cy] = umapCentroid;
+    centerToUMAP(cx, cy, { zoom: INITIAL_ZOOM });
+     idInitialCenterRef.current = true;
+  }, [data, centerToUMAP, umapCentroid]);
 
   // 初回センタリング（userPin 指定時）
   useEffect(() => {
