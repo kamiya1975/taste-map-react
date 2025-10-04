@@ -117,8 +117,6 @@ export default function MapCanvas({
   panBounds,
   viewState,
   setViewState,
-  bgScaleK = 8,      //パン制限
-  gridScaleK = 3,    //パン制限
   onPickWine,        // (item) => void
 }) {
   // --- refs ---
@@ -136,9 +134,9 @@ export default function MapCanvas({
     const { halfW, halfH } = halfSizeWorld(viewState.zoom, sizeRef.current);
     const cx = viewState?.target?.[0] ?? 0;
     const cy = viewState?.target?.[1] ?? 0;
-    const K = Math.max(1, Number(bgScaleK) || 8);
+    const K = 8; // 余裕係数（6〜10 推奨）
     return [cx - K * halfW, cy - K * halfH, cx + K * halfW, cy + K * halfH];
-  }, [viewState.zoom, viewState.target, bgScaleK]);
+  }, [viewState.zoom, viewState.target]);
 
   // 初期レイアウトの“戻し”は PAN_CLAMP=true のときのみ
   useEffect(() => {
@@ -196,41 +194,18 @@ export default function MapCanvas({
     };
   }, [panBounds, setViewState]);
 
-  // --- グリッド線データ（表示領域に応じて動的に延長） ---
+  // --- グリッド線データ ---
   const { thinLines, thickLines } = useMemo(() => {
     const interval = GRID_CELL_SIZE;
-    const { halfW, halfH } = halfSizeWorld(viewState.zoom, sizeRef.current);
-    const cx = viewState?.target?.[0] ?? 0;
-    const cy = viewState?.target?.[1] ?? 0;
-    const K = Math.max(1, Number(gridScaleK) || 3);
-
-    const xmin = cx - K * halfW, xmax = cx + K * halfW;
-    const ymin = cy - K * halfH, ymax = cy + K * halfH;
-
-    const ixMin = Math.floor(xmin / interval) - 2;
-    const ixMax = Math.ceil (xmax / interval) + 2;
-    const iyMin = Math.floor(ymin / interval) - 2;
-    const iyMax = Math.ceil (ymax / interval) + 2;
-
     const thin = [], thick = [];
-    for (let ix = ixMin; ix <= ixMax; ix++) {
-      const x = ix * interval;
-      const isThick = ix % 5 === 0;
-      (isThick ? thick : thin).push({
-        sourcePosition: [x, ymin - interval, 0],
-        targetPosition: [x, ymax + interval, 0],
-      });
-    }
-    for (let iy = iyMin; iy <= iyMax; iy++) {
-      const y = iy * interval;
-      const isThick = iy % 5 === 0;
-      (isThick ? thick : thin).push({
-        sourcePosition: [xmin - interval, y, 0],
-        targetPosition: [xmax + interval, y, 0],
-      });
+    for (let i = -500; i <= 500; i++) {
+      const x = i * interval;
+      (i % 5 === 0 ? thick : thin).push({ sourcePosition: [x, -100, 0], targetPosition: [x, 100, 0] });
+      const y = i * interval;
+      (i % 5 === 0 ? thick : thin).push({ sourcePosition: [-100, y, 0], targetPosition: [100, y, 0] });
     }
     return { thinLines: thin, thickLines: thick };
-  }, [viewState.zoom, viewState.target, gridScaleK]);
+  }, []);
 
   // --- セル集計（評価フラグ） ---
   const cells = useMemo(() => {

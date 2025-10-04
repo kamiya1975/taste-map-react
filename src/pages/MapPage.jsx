@@ -31,10 +31,6 @@ function MapPage() {
   const [openFromRated, setOpenFromRated] = useState(false);
   const fromRatedRef = useRef(false);
 
-  // パンの“広さ”を決める倍率（背景とグリッド）
-  const [bgScaleK, setBgScaleK] = useState(6);   // 6〜10が目安
-  const [gridScaleK, setGridScaleK] = useState(2); // 2〜4が目安
-
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
 
@@ -728,8 +724,6 @@ function MapPage() {
         panBounds={panBounds}
         viewState={viewState}
         setViewState={setViewState}
-        bgScaleK={bgScaleK}
-        gridScaleK={gridScaleK}
         onPickWine={(item) => {
           if (!item) return;
           setHideHeartForJAN(null); // ← 追加：◎経由以外は解除
@@ -738,47 +732,6 @@ function MapPage() {
           focusOnWine(item, { recenter: false });
         }}
       />
-
-      {/* 左上：パン広さ（倍率）コントロール */}
-      <div
-        style={{
-          position: "absolute",
-          top: "10px",
-          left: "70px",
-          zIndex: 11,
-          padding: "6px 8px",
-          background: "rgba(255,255,255,0.92)",
-          border: "1px solid #ddd",
-          borderRadius: 6,
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-        }}
-      >
-        <label style={{ fontSize: 11, color: "#333" }}>
-          BG倍率
-          <input
-            type="number"
-            min={2}
-            max={20}
-            step={1}
-            value={bgScaleK}
-            onChange={(e) => setBgScaleK(Math.max(2, Math.min(20, Number(e.target.value) || 0)))}            style={{ width: 56, marginLeft: 6 }}
-          />
-        </label>
-        <label style={{ fontSize: 11, color: "#333" }}>
-          Grid倍率
-          <input
-            type="number"
-            min={1}
-            max={10}
-            step={1}
-            value={gridScaleK}
-            onChange={(e) => setGridScaleK(Math.max(1, Math.min(10, Number(e.target.value) || 0)))}
-            style={{ width: 56, marginLeft: 6 }}
-          />
-        </label>
-      </div>
 
       {/* 左上: 指標セレクタ（2Dハイライト） */}
       <select
