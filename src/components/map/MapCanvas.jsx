@@ -18,6 +18,15 @@ const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 // ✅ パンのクランプ切替（false = パンは戻さない／ズームのみ上下限クランプ）
 const PAN_CLAMP = false;
 
+// パン画面の 8 倍領域に常に紙テクスチャを敷く
+const bgBounds = useMemo(() => {
+  const { halfW, halfH } = halfSizeWorld(viewState.zoom, sizeRef.current);
+  const cx = viewState?.target?.[0] ?? 0;
+  const cy = viewState?.target?.[1] ?? 0;
+  const K = 8; // 余裕係数（お好みで 6〜10）
+  return [cx - K * halfW, cy - K * halfH, cx + K * halfW, cy + K * halfH];
+}, [viewState.zoom, viewState.target]);
+
 // --- 小ユーティリティ ---
 const EPS = 1e-9;
 const toIndex  = (v) => Math.floor((v + EPS) / GRID_CELL_SIZE);
@@ -430,7 +439,7 @@ export default function MapCanvas({
         new BitmapLayer({
           id: "paper-bg",
           image: `${process.env.PUBLIC_URL || ""}/img/paper-bg.png`,
-          bounds: [panBounds.xmin, panBounds.ymin, panBounds.xmax, panBounds.ymax],
+          bounds: bgBounds,
           opacity: 1,
           parameters: { depthTest: false },
         }),
