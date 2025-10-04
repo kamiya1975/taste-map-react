@@ -142,24 +142,19 @@ function MapPage() {
     setIsRatedOpen(true);
   };
 
-  // 🔧 余白率（“表示データの幅・高さに対する割合”）。例：0.10 = 各辺に10%ずつ足す
-  const EXTENT_PAD_RATIO = 0.10;  // お好みで 0.05〜0.20
-
+  // ====== パン境界（現在データに基づく）
   const panBounds = useMemo(() => {
     if (!data.length) return { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
     const xs = data.map((d) => d.UMAP1);
     const ys = data.map((d) => -d.UMAP2);
     const xmin = Math.min(...xs), xmax = Math.max(...xs);
     const ymin = Math.min(...ys), ymax = Math.max(...ys);
-    const rangeX = Math.max(1e-6, xmax - xmin);
-    const rangeY = Math.max(1e-6, ymax - ymin);
-    const padX = rangeX * EXTENT_PAD_RATIO;
-    const padY = rangeY * EXTENT_PAD_RATIO + Math.abs(CENTER_Y_OFFSET); // Yはガイド分も足す
+    const pad = 1.5 + Math.abs(CENTER_Y_OFFSET);
     return {
-      xmin: xmin - padX,
-      xmax: xmax + padX,
-      ymin: ymin - padY,
-      ymax: ymax + padY,
+      xmin: xmin - pad,
+      xmax: xmax + pad,
+      ymin: ymin - pad,
+      ymax: ymax + pad,
     };
   }, [data]);
 

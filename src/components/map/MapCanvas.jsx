@@ -16,7 +16,16 @@ const TILE_GRAY  = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
 // ✅ パンのクランプ切替（false = パンは戻さない／ズームのみ上下限クランプ）
-const PAN_CLAMP = false;
+const PAN_CLAMP = true;
+
+// 画面端で「ギリ見える」ための余白（px）
+const EDGE_MARGIN_PX = 12;
+
+/** px → world の換算（Orthographic） */
+function pxToWorld(zoom, px) {
+  const scale = Math.pow(2, Number(zoom) || 0);
+  return (px || 0) / (scale || 1);
+}
 
 // --- 小ユーティリティ ---
 const EPS = 1e-9;
@@ -47,62 +56,44 @@ function halfSizeWorld(zoom, sizePx) {
 // 可動域クランプ（余白スラックつき）
 function clampViewState(nextVS, panBounds, sizePx) {
   const zoom = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, nextVS.zoom));
-  // ⭐️ パンのクランプ無効時はズームのみ
   if (!PAN_CLAMP) return { ...nextVS, zoom };
 
   const { halfW, halfH } = halfSizeWorld(zoom, sizePx);
-
   const xmin = panBounds?.xmin ?? -Infinity;
   const xmax = panBounds?.xmax ??  Infinity;
   const ymin = panBounds?.ymin ?? -Infinity;
   const ymax = panBounds?.ymax ??  Infinity;
 
+  // 画面端に EDGE_MARGIN_PX だけデータが残る位置でクランプ
+  const mX = pxToWorld(zoom, EDGE_MARGIN_PX);
+  const mY = pxToWorld(zoom, EDGE_MARGIN_PX);
+
   const worldW = xmax - xmin;
   const worldH = ymax - ymin;
-  const centerX = (xmin + xmax) / 2;
-  const centerY = (ymin + ymax) / 2;
 
-  const slackX = Math.max(0, 2 * halfW - worldW);
-  const slackY = Math.max(0, 2 * halfH - worldH);
+  let minX, maxX, minY, maxY;
 
-  const SLACK_FACTOR_X = 0.9;
-  const SLACK_FACTOR_Y = 15.0;   // iOS対策で広め
-  const MAX_SLACK_RATIO_X = 0.6;
-  const MAX_SLACK_RATIO_Y = 0.9;
-
-  // X 範囲
-  let minX, maxX;
   if (worldW >= 2 * halfW) {
-    minX = xmin + halfW;
-    maxX = xmax - halfW;
+    // 左右端がデータの内側に入る限界
+    minX = xmin + halfW - mX;
+    maxX = xmax - halfW + mX;
   } else {
-    let sx = slackX * SLACK_FACTOR_X;
-    if (Number.isFinite(worldW)) sx = Math.min(sx, worldW * MAX_SLACK_RATIO_X);
-    minX = centerX - sx / 2;
-    maxX = centerX + sx / 2;
+    // データが画面より狭い → 中心固定
+    const cx = (xmin + xmax) / 2;
+    minX = maxX = cx;
   }
 
-  // Y 範囲
-  let minY, maxY;
   if (worldH >= 2 * halfH) {
-    const r = Math.max(0, Math.min(1, (2 * halfH) / (worldH || 1)));
-    const OVERPAN_MIN = 0.05;
-    const OVERPAN_MAX = 0.35;
-    const k = OVERPAN_MIN + (OVERPAN_MAX - OVERPAN_MIN) * r;
-    const overY = halfH * k;
-    minY = ymin + halfH - overY;
-    maxY = ymax - halfH + overY;
+    minY = ymin + halfH - mY;
+    maxY = ymax - halfH + mY;
   } else {
-    let sy = slackY * SLACK_FACTOR_Y;
-    if (Number.isFinite(worldH)) sy = Math.min(sy, worldH * MAX_SLACK_RATIO_Y);
-    minY = centerY - sy / 2;
-    maxY = centerY + sy / 2;
+    const cy = (ymin + ymax) / 2;
+    minY = maxY = cy;
   }
 
-  const EPS_EDGE = 1e-6; // 端の張り付きを緩和
+  const EPS_EDGE = 1e-6;
   const x = Math.max(minX + EPS_EDGE, Math.min(maxX - EPS_EDGE, nextVS.target[0]));
   const y = Math.max(minY + EPS_EDGE, Math.min(maxY - EPS_EDGE, nextVS.target[1]));
-
   return { ...nextVS, zoom, target: [x, y, 0] };
 }
 
@@ -129,19 +120,14 @@ export default function MapCanvas({
     zoom: Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, vs.zoom)),
   });
 
-  // 🔧 背景敷き範囲：panBounds を中心に少し拡張して紙テクスチャを敷く
-  const BG_EXPAND_K = 1.25; // 1.0=panBoundsジャスト, 1.2〜1.5 推奨
+  // 🔧 ここに bgBounds を移動（Hooks はコンポーネント内で）
   const bgBounds = useMemo(() => {
-    const xmin = panBounds?.xmin ?? -10;
-    const xmax = panBounds?.xmax ??  10;
-    const ymin = panBounds?.ymin ?? -10;
-    const ymax = panBounds?.ymax ??  10;
-    const cx = (xmin + xmax) / 2;
-    const cy = (ymin + ymax) / 2;
-    const halfW = (xmax - xmin) * BG_EXPAND_K / 2;
-    const halfH = (ymax - ymin) * BG_EXPAND_K / 2;
-    return [cx - halfW, cy - halfH, cx + halfW, cy + halfH];
-  }, [panBounds]);
+    const { halfW, halfH } = halfSizeWorld(viewState.zoom, sizeRef.current);
+    const cx = viewState?.target?.[0] ?? 0;
+    const cy = viewState?.target?.[1] ?? 0;
+    const K = 8; // 余裕係数（6〜10 推奨）
+    return [cx - K * halfW, cy - K * halfH, cx + K * halfW, cy + K * halfH];
+  }, [viewState.zoom, viewState.target]);
 
   // 初期レイアウトの“戻し”は PAN_CLAMP=true のときのみ
   useEffect(() => {
@@ -412,7 +398,7 @@ export default function MapCanvas({
         if (!PAN_CLAMP) {
           setViewState(next);          // パンは戻さない
         } else {
-          setViewState(isInteracting ? next : clampViewState(next, panBounds, sizeRef.current));
+          setViewState(clampViewState(next, panBounds, sizeRef.current));
         }
       }}
 
