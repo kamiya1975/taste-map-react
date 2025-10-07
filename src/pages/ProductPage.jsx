@@ -639,6 +639,7 @@ export default function ProductPage() {
       >
         <div style={{ fontSize: 14, lineHeight: 1.9 }}>
           {[
+            ["タイプ", "赤ワイン"],
             ["商品名", "シャトームートン"],
             ["生産者名", "シャトームートン"],
             ["生産国", "フランス"],
