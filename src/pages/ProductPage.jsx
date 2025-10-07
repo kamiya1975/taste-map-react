@@ -222,6 +222,65 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
   );
 };
 
+function ProductImage({ jan, maxHeight = 225 }) {
+  const [loaded, setLoaded] = React.useState(false);
+  const [src, setSrc] = React.useState(
+    `${process.env.PUBLIC_URL || ""}/img/${jan}.png`
+  );
+  const imgRef = React.useRef(null);
+
+  // jan 変更時にリセット＆パス再設定
+  React.useEffect(() => {
+    setLoaded(false);
+    setSrc(`${process.env.PUBLIC_URL || ""}/img/${jan}.png`);
+  }, [jan]);
+
+  // 読み込み/エラー監視（キャッシュ済みも拾う）
+  React.useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+
+    if (img.complete && img.naturalWidth > 0) {
+      setLoaded(true);
+      return;
+    }
+
+    const onLoad = () => setLoaded(true);
+    const onError = () => {
+      // 404等でも白っぽさは残さず、プレースホルダへ差し替え
+      setLoaded(true);
+      setSrc(`${process.env.PUBLIC_URL || ""}/img/placeholder.png`);
+    };
+
+    img.addEventListener("load", onLoad, { once: true });
+    img.addEventListener("error", onError, { once: true });
+    return () => {
+      img.removeEventListener("load", onLoad);
+      img.removeEventListener("error", onError);
+    };
+  }, [src]);
+
+  return (
+    <img
+      key={jan}                // 画像要素を確実に作り直したい場合
+      ref={imgRef}
+      src={src}
+      alt="商品画像"
+      decoding="async"
+      loading="eager"
+      fetchpriority="high"
+      style={{
+        maxHeight: maxHeight,
+        objectFit: "contain",
+        opacity: loaded ? 1 : 0.35,     // 読み込み中だけ薄く
+        transition: "opacity .25s ease",
+        WebkitBackfaceVisibility: "hidden",
+        transform: "translateZ(0)",
+      }}
+    />
+  );
+}
+
 /** =========================
  *  ProductPage
  * ========================= */
@@ -433,66 +492,12 @@ export default function ProductPage() {
 
       {/* 商品画像 */}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
-        {(() => {
-          const [loaded, setLoaded] = React.useState(false);
-          const [src, setSrc] = React.useState(
-           `${process.env.PUBLIC_URL || ""}/img/${jan}.png`
-          );
-          const imgRef = React.useRef(null);
-
-          React.useEffect(() => {
-            // JAN が変わったらリセット
-            setLoaded(false);
-            setSrc(`${process.env.PUBLIC_URL || ""}/img/${jan}.png`);
-          }, [jan]);
-
-          React.useEffect(() => {
-            const img = imgRef.current;
-            if (!img) return;
-            // キャッシュ済みでも確実に拾う
-            if (img.complete && img.naturalWidth > 0) {
-              setLoaded(true);
-              return;
-            }
-            const onLoad = () => setLoaded(true);
-            const onError = () => {
-              // 失敗時はフェードを残さず、プレースホルダに差し替え
-              setLoaded(true);
-              setSrc(`${process.env.PUBLIC_URL || ""}/img/placeholder.png`);
-            };
-            img.addEventListener("load", onLoad, { once: true });
-            img.addEventListener("error", onError, { once: true });
-            return () => {
-              img.removeEventListener("load", onLoad);
-              img.removeEventListener("error", onError);
-            };
-          }, [src]);
-
-          return (
-            <img
-              key={jan}
-              ref={imgRef}
-              src={src}
-              alt="商品画像"
-              decoding="async"
-              loading="eager"
-              fetchpriority="high"
-              style={{
-                maxHeight: 225,
-                objectFit: "contain",
-                opacity: loaded ? 1 : 0.35,       // 読み込み中だけ薄く
-                transition: "opacity .25s ease",
-                WebkitBackfaceVisibility: "hidden",
-                transform: "translateZ(0)",
-              }}
-            />
-          );
-        })()}
+        <ProductImage jan={jan} maxHeight={225} />
       </div>
 
       {/* 商品名 */}
       <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 16 }}>
-        {product.商品名 || "（名称不明）"}
+       {product.商品名 || "（名称不明）"}
       </h2>
 
       {/* タイプマーク＋価格 */}
