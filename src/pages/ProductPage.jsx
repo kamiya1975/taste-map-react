@@ -646,7 +646,7 @@ export default function ProductPage() {
             ["生産地", "ボルドー"],
             ["容量", "750ml"],
             ["ブドウ品種", "カベルネ・ソーヴィニョン、メルロー、マルベック、プティ・ヴェルド他"],
-            ["成分分析", "2024年産(酒類総合情報センター調べ)"],
+            ["成分分析", "2024年産：酒類総合情報センター調べ"],
           ].map(([label, value]) => (
            <div key={label} style={{ display: "flex", marginTop: 2 }}>
              <div style={{ width: 96, flexShrink: 0 /* ラベル固定幅 */ }}>{label}</div>
