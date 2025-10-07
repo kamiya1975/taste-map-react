@@ -236,7 +236,7 @@ function ProductImage({ jan, maxHeight = 225 }) {
   }, [jan]);
 
   // 読み込み/エラー監視（キャッシュ済みも拾う）
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const img = imgRef.current;
     if (!img) return;
 
