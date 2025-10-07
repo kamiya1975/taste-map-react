@@ -228,16 +228,20 @@ function ProductImage({ jan, maxHeight = 225 }) {
     img.src = `${process.env.PUBLIC_URL || ""}/img/${jan}.png`;
     return img.complete && img.naturalWidth > 0;
   });
-  
+
   const [src, setSrc] = React.useState(
     `${process.env.PUBLIC_URL || ""}/img/${jan}.png`
   );
 
   const wasCachedRef = React.useRef(false);
-  const imgRef = React.useCallback((node) => {
+  const imgElRef = React.useRef(null);
+
+  // コールバックrefでキャッシュ済みかどうかだけ拾い、実体は imgElRef に保持
+  const setImgRef = React.useCallback((node) => {
     if (node) {
       wasCachedRef.current = node.complete && node.naturalWidth > 0;
     }
+    imgElRef.current = node;
   }, []);
 
   // jan 変更時にリセット＆パス再設定
@@ -248,7 +252,7 @@ function ProductImage({ jan, maxHeight = 225 }) {
 
   // 読み込み/エラー監視（キャッシュ済みも拾う）
   React.useLayoutEffect(() => {
-    const img = imgRef.current;
+    const img = imgElRef.current;
     if (!img) return;
 
     if (img.complete && img.naturalWidth > 0) {
@@ -273,10 +277,7 @@ function ProductImage({ jan, maxHeight = 225 }) {
 
   return (
     <img
-      ref={(el) => {
-        imgRef(el);
-        imgRef.current = el;
-      }}
+      ref={setImgRef}
       src={src}
       alt="商品画像"
       decoding="async"
@@ -285,7 +286,7 @@ function ProductImage({ jan, maxHeight = 225 }) {
       style={{
         maxHeight: maxHeight,
         objectFit: "contain",
-        opacity: loaded ? 1 : 0.35,     // 読み込み中だけ薄く
+        opacity: loaded ? 1 : 0.35,                // 読み込み中だけ薄く
         transition: wasCachedRef.current ? "none" : "opacity .25s ease",
         WebkitBackfaceVisibility: "hidden",
         transform: "translateZ(0)",
@@ -599,39 +600,53 @@ export default function ProductPage() {
         </div>
       </div>
 
-      {/* 説明ダミー */}
+      {/* 商品キャッチ＋コメント */}
       <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。 …（略）
-        ワインとは、主にブドウから作られたお酒（酒税法上は果実酒に分類）です。
-        また、きわめて長い歴史をもつこのお酒は、西洋文明の象徴の一つであると同時に、
-        昨今では、世界標準の飲み物と言えるまでになっています。
+        <div style={{ fontWeight: "bold", marginBottom: 4 }}>
+           商品キャッチ
+        </div>
+        <div>
+          商品コメント商品コメント商品コメント商品コメント商品コメント商品コメント商品コメント商品コメント
+          商品コメント商品コメント商品コメント商品コメント商品コメント商品コメント商品コメント商品コメント。
+        </div>
       </div>
+
+      {/* スペース */}
+      <div style={{ height: 20 }} />
+
+      {/* 生産者キャッチ＋コメント */}
+      <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+        <div style={{ fontWeight: "bold", marginBottom: 4 }}>
+          生産者キャッチ
+        </div>
+        <div>
+          生産者コメント生産者コメント生産者コメント生産者コメント生産者コメント生産者コメント生産者コメント
+          生産者コメント生産者コメント生産者コメント生産者コメント生産者コメント生産者コメント生産者コメント。
+        </div>
+      </div>
+
+      {/* スペース */}
+      <div style={{ height: 20 }} />
+
+      {/* 基本情報（評価欄と同じ直線で囲む） */}
+      <div
+        style={{
+          marginTop: 24,
+          paddingTop: 8,
+          paddingBottom: 8,
+          borderTop: "1px solid #ccc",
+          borderBottom: "1px solid #ccc",
+        }}
+      >
+        <div style={{ fontWeight: "bold", marginBottom: 8 }}>基本情報</div>
+        <div style={{ fontSize: 14, lineHeight: 1.8 }}>
+          <div>生産者名.  シャトームートン</div>
+          <div>容量.     750ml</div>
+          <div>ブドウ品種 カベルネ・ソーヴィニョン、メルロー、マルベック、プティ・ヴェルド他</div>
+          <div>成分分析.  2024年産</div>
+        </div>
+      </div>
+
     </div>
-  );
-}
+   );
+  }
