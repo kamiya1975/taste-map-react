@@ -433,14 +433,61 @@ export default function ProductPage() {
 
       {/* 商品画像 */}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
-        <img
-          src={`/img/${jan}.png`}
-          alt="商品画像"
-          style={{ maxHeight: 225, objectFit: "contain" }}
-          onError={(e) => {
-            e.currentTarget.style.opacity = 0.3;
-          }}
-        />
+        {(() => {
+          const [loaded, setLoaded] = React.useState(false);
+          const [src, setSrc] = React.useState(
+           `${process.env.PUBLIC_URL || ""}/img/${jan}.png`
+          );
+          const imgRef = React.useRef(null);
+
+          React.useEffect(() => {
+            // JAN が変わったらリセット
+            setLoaded(false);
+            setSrc(`${process.env.PUBLIC_URL || ""}/img/${jan}.png`);
+          }, [jan]);
+
+          React.useEffect(() => {
+            const img = imgRef.current;
+            if (!img) return;
+            // キャッシュ済みでも確実に拾う
+            if (img.complete && img.naturalWidth > 0) {
+              setLoaded(true);
+              return;
+            }
+            const onLoad = () => setLoaded(true);
+            const onError = () => {
+              // 失敗時はフェードを残さず、プレースホルダに差し替え
+              setLoaded(true);
+              setSrc(`${process.env.PUBLIC_URL || ""}/img/placeholder.png`);
+            };
+            img.addEventListener("load", onLoad, { once: true });
+            img.addEventListener("error", onError, { once: true });
+            return () => {
+              img.removeEventListener("load", onLoad);
+              img.removeEventListener("error", onError);
+            };
+          }, [src]);
+
+          return (
+            <img
+              key={jan}
+              ref={imgRef}
+              src={src}
+              alt="商品画像"
+              decoding="async"
+              loading="eager"
+              fetchpriority="high"
+              style={{
+                maxHeight: 225,
+                objectFit: "contain",
+                opacity: loaded ? 1 : 0.35,       // 読み込み中だけ薄く
+                transition: "opacity .25s ease",
+                WebkitBackfaceVisibility: "hidden",
+                transform: "translateZ(0)",
+              }}
+            />
+          );
+        })()}
       </div>
 
       {/* 商品名 */}
