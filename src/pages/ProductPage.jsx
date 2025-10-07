@@ -227,7 +227,13 @@ function ProductImage({ jan, maxHeight = 225 }) {
   const [src, setSrc] = React.useState(
     `${process.env.PUBLIC_URL || ""}/img/${jan}.png`
   );
-  const imgRef = React.useRef(null);
+
+  const wasCachedRef = React.useRef(false);
+  const imgRef = React.useCallback((node) => {
+    if (node) {
+      wasCachedRef.current = node.complete && node.naturalWidth > 0;
+    }
+  }, []);
 
   // jan 変更時にリセット＆パス再設定
   React.useEffect(() => {
@@ -262,8 +268,10 @@ function ProductImage({ jan, maxHeight = 225 }) {
 
   return (
     <img
-      key={jan}                // 画像要素を確実に作り直したい場合
-      ref={imgRef}
+      ref={(el) => {
+        imgRef(el);
+        imgRef.current = el;
+      }}
       src={src}
       alt="商品画像"
       decoding="async"
@@ -273,7 +281,7 @@ function ProductImage({ jan, maxHeight = 225 }) {
         maxHeight: maxHeight,
         objectFit: "contain",
         opacity: loaded ? 1 : 0.35,     // 読み込み中だけ薄く
-        transition: "opacity .25s ease",
+        transition: wasCachedRef.current ? "none" : "opacity .25s ease",
         WebkitBackfaceVisibility: "hidden",
         transform: "translateZ(0)",
       }}
