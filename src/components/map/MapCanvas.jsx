@@ -100,11 +100,16 @@ function clampViewState(nextVS, panBounds, sizePx, margins = {}) {
   }
 
   if (worldH >= 2 * halfH) {
+    // ふつうに“ギリ見える”クランプ
     minY = ymin + halfH - mY;
     maxY = ymax - halfH + mY;
   } else {
+    // 画面の方が高い → “仮想余白”を作って可動域を確保
     const cy = (ymin + ymax) / 2;
-    minY = maxY = cy;
+    const lack = 2 * halfH - worldH;             // どれだけ足りないか
+    const slack = lack * 0.5 + mY;               // 上下に半分ずつ＋マージン
+    minY = cy - slack;
+    maxY = cy + slack;
   }
 
   const EPS_EDGE = 1e-6;
