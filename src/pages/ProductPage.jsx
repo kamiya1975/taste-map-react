@@ -223,7 +223,12 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
 };
 
 function ProductImage({ jan, maxHeight = 225 }) {
-  const [loaded, setLoaded] = React.useState(false);
+  const [loaded, setLoaded] = React.useState(() => {
+    const img = new Image();
+    img.src = `${process.env.PUBLIC_URL || ""}/img/${jan}.png`;
+    return img.complete && img.naturalWidth > 0;
+  });
+  
   const [src, setSrc] = React.useState(
     `${process.env.PUBLIC_URL || ""}/img/${jan}.png`
   );
