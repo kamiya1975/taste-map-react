@@ -90,13 +90,16 @@ function clampViewState(nextVS, panBounds, sizePx, margins = {}) {
   let minX, maxX, minY, maxY;
 
   if (worldW >= 2 * halfW) {
-    // 左右端がデータの内側に入る限界
+    // ふつうに“ギリ見える”クランプ
     minX = xmin + halfW - mX;
     maxX = xmax - halfW + mX;
   } else {
-    // データが画面より狭い → 中心固定
+    // 画面の方が横に広い → “仮想余白”で可動域を確保
     const cx = (xmin + xmax) / 2;
-    minX = maxX = cx;
+    const lackX = 2 * halfW - worldW; // どれだけ足りないか
+    const slackX = lackX * 0.5 + mX;  // 左右に半分ずつ + マージン
+    minX = cx - slackX;
+    maxX = cx + slackX;
   }
 
   if (worldH >= 2 * halfH) {
@@ -208,20 +211,25 @@ export default function MapCanvas({
   // bfcache復帰 / 画面の向き変更
   useEffect(() => {
     if (!PAN_CLAMP) return;
-    const onPageShow = () =>
+    const refreshSize = () => {
+      // visualViewport があれば優先して実画面サイズを取得
+      const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+      const width  = Math.floor(vv?.width  || window.innerWidth  || sizeRef.current.width  || 1);
+      const height = Math.floor(vv?.height || window.innerHeight || sizeRef.current.height || 1);
+      sizeRef.current = { width, height };
+    };
+    const onPageShow = () => {
+      refreshSize();
       setViewState((curr) =>
-        clampViewState(curr, panBounds, sizeRef.current, {
-          xPx: edgeMarginXPx,
-          yPx: edgeMarginYPx,
-        })
+        clampViewState(curr, panBounds, sizeRef.current, { xPx: edgeMarginXPx, yPx: edgeMarginYPx })
       );
-    const onOrientation = () =>
+    };
+    const onOrientation = () => {
+      refreshSize();
       setViewState((curr) =>
-        clampViewState(curr, panBounds, sizeRef.current, {
-          xPx: edgeMarginXPx,
-          yPx: edgeMarginYPx,
-        })
+        clampViewState(curr, panBounds, sizeRef.current, { xPx: edgeMarginXPx, yPx: edgeMarginYPx })
       );
+    };
     window.addEventListener("pageshow", onPageShow);
     window.addEventListener("orientationchange", onOrientation);
     return () => {
