@@ -299,7 +299,7 @@ function ProductImage({ jan, maxHeight = 225 }) {
  *  ProductPage
  * ========================= */
 export default function ProductPage() {
-  const isEmbed = useIsEmbed();
+  //const isEmbed = useIsEmbed();
   const navigate = useNavigate();
   const jan = useJanParam();
   const [product, setProduct] = useState(null);
@@ -636,17 +636,23 @@ export default function ProductPage() {
           paddingBottom: 8,
           borderTop: "1px solid #ccc",
           borderBottom: "1px solid #ccc",
+          marginBottom: 40,
         }}
       >
-        <div style={{ fontWeight: "bold", marginBottom: 8 }}>基本情報</div>
-        <div style={{ fontSize: 14, lineHeight: 1.8 }}>
-          <div>生産者名.  シャトームートン</div>
-          <div>容量.     750ml</div>
-          <div>ブドウ品種 カベルネ・ソーヴィニョン、メルロー、マルベック、プティ・ヴェルド他</div>
-          <div>成分分析.  2024年産</div>
+        <div style={{ fontSize: 14, lineHeight: 1.9 }}>
+          {[
+            ["生産者名", "シャトームートン"],
+            ["容量", "750ml"],
+            ["ブドウ品種", "カベルネ・ソーヴィニョン、メルロー、マルベック、プティ・ヴェルド他"],
+            ["成分分析", "2024年産"],
+          ].map(([label, value]) => (
+           <div key={label} style={{ display: "flex", marginTop: 2 }}>
+             <div style={{ width: 96, flexShrink: 0 /* ラベル固定幅 */ }}>{label}</div>
+              <div style={{ flex: 1 }}>{value}</div>
+            </div>
+          ))}
         </div>
       </div>
-
     </div>
    );
   }
