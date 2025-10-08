@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import PanelHeader from "../ui/PanelHeader";
 
 const ICONS = {
-  compass: "/img/compass.png",
-  mapGuide: "/img/map-guide.svg",
+  compass: "/img/bar.svg",
+  mapGuide: "/img/tizu.svg",
   account: "/img/account.svg",
   store:   "/img/store.svg",
   faq:     "/img/faq.svg",
