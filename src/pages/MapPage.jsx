@@ -895,7 +895,7 @@ function MapPage() {
         title="お気に入り一覧"
       >
         <img
-          src={`${process.env.PUBLIC_URL || ""}/img/favorite.svg`}
+          src={`${process.env.PUBLIC_URL || ""}/img/star.svg`}
           alt=""
           style={{
             width: "100%",            // ← 枠いっぱいにフィット
@@ -929,7 +929,7 @@ function MapPage() {
         title="評価（◎）一覧"
       >
         <img
-          src={`${process.env.PUBLIC_URL || ""}/img/rate.svg`}
+          src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
           alt=""
           style={{
             width: "100%",            // ← 枠いっぱいにフィット
