@@ -53,7 +53,7 @@ export default function FavoritePanel({
           {/* 共通ヘッダー（商品/検索と完全一致） */}
           <PanelHeader
             title="飲みたい"
-            icon="stor.svg"
+            icon="store.svg"
             onClose={onClose}
           />
 
