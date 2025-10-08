@@ -283,7 +283,7 @@ export default function RatedPanel({
           }}
         >
           <PanelHeader
-            icon="hyouka.svg"
+            icon="rate.svg"
             title="飲んだワイン"
             onClose={onClose}
             rightExtra={SortCapsule}
