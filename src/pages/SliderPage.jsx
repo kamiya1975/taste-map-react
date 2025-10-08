@@ -137,7 +137,7 @@ export default function SliderPage() {
         title="基準のワイン"
         onBack={() => navigate(-1)}
         onClose={() => navigate("/map", { replace: true })}
-        icon="slider.svg"
+        icon="bar.svg"
       />
 
       <div style={{

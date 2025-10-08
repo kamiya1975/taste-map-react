@@ -87,8 +87,8 @@ export default function SearchPanel({
       {/* ===== ヘッダー ===== */}
       <PanelHeader
        title="検索"
-       icon="bar.svg"
-       iconFallback="bar.svg"
+       icon="search2.svg"
+       iconFallback="search2.svg"
        onClose={() => { setQ(""); setActive(-1); onClose?.(); }}
      />
 
