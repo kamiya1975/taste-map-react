@@ -20,7 +20,7 @@ const buttonStyle = {
   border: "none",
   borderRadius: "10px",
   cursor: "pointer",
-  marginTop: "300px",
+  marginTop: "200px",
   width: "80%",
   minWidth: "140px",      // ← 最低幅（狭すぎ防止）
   //maxWidth: "240px",      // ← 大きな画面では最大幅240pxまで
