@@ -170,22 +170,26 @@ function slides(handleGoStore) {
       content: (
         <>
           {/* ▶ 店舗（上） */}
-          <HeroImage
-            //filename=""
-            alt="店舗"
-            maxWidthPct={42}
-            boxHeight="clamp(80px, 16vh, 160px)"
-            margin="64px auto 12px auto"
-          />
+          {false && (  // 一時的に非表示
+            <HeroImage
+              filename=""
+              alt="店舗"
+              maxWidthPct={42}
+              boxHeight="clamp(80px, 16vh, 160px)"
+              margin="64px auto 12px auto"
+            />
+          )}
 
           {/* ▶ タイトル（中） */}
-          <HeroImage
-            //filename=""
-            alt="店舗選択"
-            maxWidthPct={58}
-            boxHeight="clamp(48px, 8vh, 72px)"
-            margin="12px auto 0 auto"
-          />
+          {false && (  // 一時的に非表示
+             <HeroImage
+              filename=""
+              alt="店舗選択"
+              maxWidthPct={58}
+              boxHeight="clamp(48px, 8vh, 72px)"
+              margin="12px auto 0 auto"
+            />
+          )}
 
           {/* ▶ 説明文（下） */}
           <div style={{ width: "100%", maxWidth: 420, margin: "40px auto 0" }}>
