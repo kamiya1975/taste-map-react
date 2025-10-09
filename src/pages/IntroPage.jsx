@@ -3,6 +3,9 @@ import React, { useState, useLayoutEffect, useRef, useCallback, useEffect } from
 import { useNavigate } from "react-router-dom";
 import { setGuest } from "../utils/auth";
 
+// ===== Config =====
+const TAP_ZONE_VW = 22; // ← タップゾーン幅（%）。狭くしたい場合は数値を下げる
+
 // ===== Color Palette =====
 const PALETTE = {
   bg: "rgb(250,250,250)",
@@ -163,7 +166,6 @@ function slides(handleGoStore) {
       color: PALETTE.bg,
       content: (
         <>
-          {/* ▶ 説明文（下） */}
           <div style={{ width: "100%", maxWidth: 420, margin: "40px auto 0" }}>
             <p style={{ lineHeight: "1.9em", color: PALETTE.ink, fontSize: "11pt", textAlign: "center" }}>
               あなたの地図を作り始めるには、まずは<br />
@@ -200,11 +202,18 @@ export default function IntroPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
   const scrollerRef = useRef(null);
-  const allSlides = slides(handleGoStore); // forward ref needs function hoist; defined below
 
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, []);
+
+  // 「店舗選択」：ゲストで入って StorePage へ（ボタンのみ有効）
+  function handleGoStore() {
+    setGuest();
+    navigate("/store");
+  }
+
+  const allSlides = slides(handleGoStore);
 
   // スクロール位置から現在のインデックスを推定
   const handleScroll = (e) => {
@@ -224,36 +233,19 @@ export default function IntroPage() {
   }, [allSlides.length]);
 
   const nextSlide = useCallback(() => {
-    if (currentIndex >= allSlides.length - 1) {
-      // 最終スライド → 店舗選択へ
-      handleGoStore();
-    } else {
+    // 3枚目へはタップで遷移しない（2枚目まで）
+    if (currentIndex < 1) {
       scrollToIndex(currentIndex + 1);
     }
-  }, [currentIndex, allSlides.length, scrollToIndex]);
-
-  const prevSlide = useCallback(() => {
-    scrollToIndex(currentIndex - 1);
   }, [currentIndex, scrollToIndex]);
 
-  // 画面右/左のタップエリアで操作（iOS/SafariでもOK）
-  // 右35%: 進む / 左35%: 戻る / 中央30%: 何もしない
-  const TapZones = (
-    <>
-      <button
-        aria-label="前のページへ"
-        onClick={prevSlide}
-        style={tapZoneStyle("left")}
-      />
-      <button
-        aria-label="次のページへ"
-        onClick={nextSlide}
-        style={tapZoneStyle("right")}
-      />
-    </>
-  );
+  const prevSlide = useCallback(() => {
+    if (currentIndex > 0) {
+      scrollToIndex(currentIndex - 1);
+    }
+  }, [currentIndex, scrollToIndex]);
 
-  // キーボード操作（←/→）
+  // キーボード操作（←/→）も 2枚目までに制限
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "ArrowRight") nextSlide();
@@ -263,11 +255,8 @@ export default function IntroPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [nextSlide, prevSlide]);
 
-  // 「店舗選択」：ゲストで入って StorePage へ
-  function handleGoStore() {
-    setGuest();          // ゲストフラグを立てる（utils/auth）
-    navigate("/store");  // 固定店舗選択ページへ
-  }
+  // 1〜2枚目のみタップゾーンを有効化（3枚目は無効）
+  const showTapZones = currentIndex <= 1;
 
   return (
     <div className="intro-wrapper" style={{ position: "relative", height: "100vh", width: "100vw", overflow: "hidden" }}>
@@ -288,13 +277,13 @@ export default function IntroPage() {
           msOverflowStyle: "none",
         }}
       >
-        {/* 非表示スクロールバー（Safari/Chrome）対策 */}
         <style>
           {`
             .slides-container::-webkit-scrollbar { display: none; }
             .tap-zone { -webkit-tap-highlight-color: rgba(0,0,0,0); }
           `}
-          </style>
+        </style>
+
         {allSlides.map((slide) => {
           const isTight = slide.id === 3;
           return (
@@ -322,22 +311,37 @@ export default function IntroPage() {
         })}
       </div>
 
-      {/* 右/左タップゾーン（最前面） */}
-      {TapZones}
+      {/* 右/左タップゾーン（1〜2枚目のみ表示） */}
+      {showTapZones && (
+        <>
+          <button
+            aria-label="前のページへ"
+            onClick={prevSlide}
+            style={tapZoneStyle("left")}
+            className="tap-zone"
+          />
+          <button
+            aria-label="次のページへ"
+            onClick={nextSlide}
+            style={tapZoneStyle("right")}
+            className="tap-zone"
+          />
+        </>
+      )}
 
-      {/* インジケータ */}
+      {/* インジケータ（常に最前面） */}
       <div
         className="indicator"
         style={{
           position: "absolute",
           left: 0,
           right: 0,
-          bottom: 18,
+          bottom: "calc(14px + env(safe-area-inset-bottom))",
           display: "flex",
           justifyContent: "center",
           gap: 8,
-          pointerEvents: "none",
-          zIndex: 20,
+          pointerEvents: "none", // クリック透過
+          zIndex: 999,           // ← 最前面に
         }}
       >
         {allSlides.map((_, index) => (
@@ -364,14 +368,13 @@ function tapZoneStyle(side = "left") {
     position: "absolute",
     top: 0,
     bottom: 0,
-    width: "35vw",
+    width: `${TAP_ZONE_VW}vw`, // ← ここを変更すれば幅調整OK
     background: "transparent",
     border: "none",
     cursor: "pointer",
     zIndex: 10,
     padding: 0,
     margin: 0,
-    // アクセシビリティ向上
     color: "transparent",
   };
   if (side === "left") return { ...base, left: 0 };
