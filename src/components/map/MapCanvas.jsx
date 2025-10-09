@@ -336,7 +336,7 @@ export default function MapCanvas({
       data: [{ position: [hit.UMAP1, -hit.UMAP2, 0] }],
       getPosition: (d) => d.position,
       getIcon: () => ({
-        url: `${process.env.PUBLIC_URL || ""}/img/dot.svg`, // 差し替えアイコン
+        url: `${process.env.PUBLIC_URL || ""}/img/select.svg`, // 差し替えアイコン
         width: 64,
         height: 64,
         anchorX: 32,
@@ -651,7 +651,7 @@ export default function MapCanvas({
 
         // ★ 選択中のみ dot.svg を重ねる
         ...(selectedIconLayer ? [selectedIconLayer] : []),
-        
+
         // 打点
         mainLayer,
         // 評価リング
