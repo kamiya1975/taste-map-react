@@ -317,16 +317,20 @@ export default function IntroPage() {
           <button
             aria-label="前のページへ"
             onClick={prevSlide}
-            onPointerDown={(e) => e.preventDefault()}
+            onPointerDown={(e) => e.preventDefault()} // iOSのスクロール優先を抑止
+            onTouchEnd={(e) => { e.preventDefault(); prevSlide(); }}
+           onMouseUp={(e) => { e.preventDefault(); prevSlide(); }}
             style={{ ...tapZoneStyle("left"), zIndex: 200, pointerEvents: "auto", touchAction: "manipulation" }}
-            className="tap-zone"
+           className="tap-zone"
           />
           <button
             aria-label="次のページへ"
             onClick={nextSlide}
             onPointerDown={(e) => e.preventDefault()}
+            onTouchEnd={(e) => { e.preventDefault(); nextSlide(); }}
+            onMouseUp={(e) => { e.preventDefault(); nextSlide(); }}
             style={{ ...tapZoneStyle("right"), zIndex: 200, pointerEvents: "auto", touchAction: "manipulation" }}
-           className="tap-zone"
+            className="tap-zone"
           />
         </>
       )}
@@ -338,7 +342,7 @@ export default function IntroPage() {
           position: "absolute",
           left: 0,
           right: 0,
-          bottom: "calc(14px + env(safe-area-inset-bottom))",
+          bottom: "calc(88px + env(safe-area-inset-bottom))",
           display: "flex",
           justifyContent: "center",
           gap: 8,

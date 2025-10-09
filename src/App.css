@@ -150,16 +150,12 @@ body,
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(env(safe-area-inset-bottom) + 24px);
+  bottom: calc(env(safe-area-inset-bottom) + 88px);
   display: flex;
   justify-content: center;
   gap: 8px;
   z-index: 9999 !important;
   pointer-events: none;
-}
-/* ② 万一のため、.tap-zone を明示して下げる（存在すれば） */
-.tap-zone {
-  z-index: 1 !important;  /* ← タップゾーンは最背面側に */
 }
 .dot {
   width: 10px;
