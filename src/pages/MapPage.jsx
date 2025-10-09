@@ -48,6 +48,7 @@ function MapPage() {
   const didInitialCenterRef = useRef(false);  // 初期センタリング（1回だけ）の実行ガード
   const [openFromRated, setOpenFromRated] = useState(false);
   const fromRatedRef = useRef(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
@@ -101,6 +102,7 @@ function MapPage() {
       setSelectedJANFromSearch(null); // ハイライトも消す
       willClose = true;
     }
+    if (isGuideOpen) { setIsGuideOpen(false); willClose = true; }
     if (isSearchOpen) { setIsSearchOpen(false); willClose = true; }
     if (isFavoriteOpen) { setIsFavoriteOpen(false); willClose = true; }
     if (isRatedOpen) { setIsRatedOpen(false); willClose = true; }
@@ -127,6 +129,7 @@ function MapPage() {
         else if (open === "search")  { setIsSearchOpen(true); }
         else if (open === "favorite"){ setIsFavoriteOpen(true); }
         else if (open === "rated")   { setIsRatedOpen(true); }
+        else if (open === "guide")   { setIsGuideOpen(true); }
         // 再トリガ防止
         navigate(location.pathname, { replace: true });
       })();
@@ -1149,6 +1152,42 @@ function MapPage() {
           ) : (
             <div style={{ padding: 16 }}>商品を選択してください。</div>
           )}
+        </div>
+      </Drawer>
+      {/* ===== Mapの見方（ガイド）ドロワー：商品/一覧と同サイズ ===== */}
+      <Drawer
+        anchor="bottom"
+        open={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+        ModalProps={drawerModalProps}
+        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
+      >
+        <PanelHeader
+          title="Mapの見方"
+          icon="guide.svg"        // /public/img/guide.svg を既に利用中
+          onClose={() => setIsGuideOpen(false)}
+        />
+        <div className="drawer-scroll" style={{ padding: 16, lineHeight: 1.6, color: "#333" }}>
+          {/* ★ 説明本文（お好みで編集） */}
+          <p style={{ margin: "4px 0 10px" }}>
+            この地図は、ワインの風味を2次元に配置した「TasteMap 風味マップ」です。
+          </p>
+          <ul style={{ paddingLeft: 18, margin: 0 }}>
+            <li>灰色の点：取扱いワインの位置（嗜好に近いほど近くに並びます）</li>
+            <li>赤の点：お気に入り（♡）にしたワイン</li>
+            <li>黒の点：評価（◎）済みのワイン</li>
+            <li>ピン（コンパス）：あなたの嗜好位置（スライダー／評価から生成）</li>
+          </ul>
+          <div style={{ height: 10 }} />
+          <ul style={{ paddingLeft: 18, margin: 0 }}>
+            <li>点をタップ：商品ページを表示</li>
+            <li>ピンチ操作：拡大縮小、ドラッグ：移動</li>
+            <li>右上 🔍：検索、右の★/◎：お気に入り・評価の一覧</li>
+          </ul>
+          <div style={{ height: 14 }} />
+          <p style={{ fontSize: 13, color: "#666" }}>
+            ※ マス目は座標の目安です。座標軸に直接の意味はありません。
+          </p>
         </div>
       </Drawer>
     </div>
