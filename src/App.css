@@ -153,6 +153,7 @@ body,
   bottom: calc(env(safe-area-inset-bottom) + 150px);
   display: flex;
   justify-content: center;
+  align-items: center; 
   gap: 8px;
   z-index: 9999 !important;
   pointer-events: none;
@@ -164,6 +165,8 @@ body,
   background: rgb(206,206,206);  /* 非アクティブ：R206 */
   opacity: .9;
   transition: transform .2s ease, background .2s ease, opacity .2s ease;
+  display: inline-block;
+  vertical-align: middle;
 }
 .dot.active {
   background: rgb(81,81,81);     /* アクティブ：R81 */
