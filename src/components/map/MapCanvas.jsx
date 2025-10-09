@@ -339,8 +339,8 @@ export default function MapCanvas({
         url: `${process.env.PUBLIC_URL || ""}/img/select.svg`, // 差し替えアイコン
         width: 256,
         height: 256,
-        anchorX: 32,
-        anchorY: 32,
+        anchorX: 128,
+        anchorY: 128,
       }),
       sizeUnits: "meters",
       getSize: 0.2,          // アイコンの大きさ（必要なら微調整）
