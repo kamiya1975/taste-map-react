@@ -337,6 +337,7 @@ export default function IntroPage() {
           justifyContent: "center",
           gap: 8,
           pointerEvents: "none",
+          zIndex: 20,
         }}
       >
         {allSlides.map((_, index) => (
