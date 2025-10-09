@@ -325,6 +325,31 @@ export default function MapCanvas({
     return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
   }, [data, highlight2D]);
 
+  // ★ 選択中JANだけアイコン表示（dot.svg）
+  const selectedIconLayer = useMemo(() => {
+    if (!selectedJAN) return null;
+    const hit = data.find((d) => String(d.JAN) === String(selectedJAN));
+    if (!hit || !Number.isFinite(hit.UMAP1) || !Number.isFinite(hit.UMAP2)) return null;
+
+    return new IconLayer({
+      id: "selected-dot",
+      data: [{ position: [hit.UMAP1, -hit.UMAP2, 0] }],
+      getPosition: (d) => d.position,
+      getIcon: () => ({
+        url: `${process.env.PUBLIC_URL || ""}/img/dot.svg`, // 差し替えアイコン
+        width: 64,
+        height: 64,
+        anchorX: 32,
+        anchorY: 32,
+      }),
+      sizeUnits: "meters",
+      getSize: 0.28,          // アイコンの大きさ（必要なら微調整）
+      billboard: true,
+      pickable: false,
+      parameters: { depthTest: false },
+    });
+  }, [data, selectedJAN]);
+
   // --- レイヤ：打点 ---
   const mainLayer = useMemo(
     () =>
@@ -334,7 +359,6 @@ export default function MapCanvas({
         getPosition: (d) => [d.UMAP1, -d.UMAP2, 0],
         getFillColor: (d) => {
           const jan = String(d.JAN);
-          if (jan === String(selectedJAN)) return ORANGE; // 選択＝オレンジ
           if (Number(userRatings?.[jan]?.rating) > 0) return BLACK; // 評価済み＝黒
           if (favorites && favorites[jan]) return FAVORITE_RED; // お気に入り＝赤
           return MAP_POINT_COLOR; // その他＝固定グレー
@@ -624,6 +648,10 @@ export default function MapCanvas({
         // ピン/コンパス
         userPinCompassLayer,
         compassLayer,
+
+        // ★ 選択中のみ dot.svg を重ねる
+        ...(selectedIconLayer ? [selectedIconLayer] : []),
+        
         // 打点
         mainLayer,
         // 評価リング
