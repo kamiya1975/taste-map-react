@@ -227,36 +227,40 @@ export default function IntroPage() {
     const clamped = Math.min(Math.max(index, 0), allSlides.length - 1);
     const node = scrollerRef.current;
     if (!node) return;
-    const w = window.innerWidth || document.documentElement.clientWidth;
-    node.scrollTo({ left: clamped * w, behavior: "smooth" });
+
+    // ビューポート幅より scroller の実幅の方が安全
+    const w = node.getBoundingClientRect().width || window.innerWidth || document.documentElement.clientWidth;
+
+   node.scrollTo({ left: clamped * w, behavior: "smooth" });
     setCurrentIndex(clamped);
   }, [allSlides.length]);
 
+  // 右タップ：最後(= index=allSlides.length-1)まで進む
   const nextSlide = useCallback(() => {
-    // 3枚目へはタップで遷移しない（2枚目まで）
-    if (currentIndex < 1) {
+    if (currentIndex < allSlides.length - 1) {
       scrollToIndex(currentIndex + 1);
     }
-  }, [currentIndex, scrollToIndex]);
+  }, [currentIndex, scrollToIndex, allSlides.length]);
 
+  // 左タップ：最初(= index=0)まで戻る
   const prevSlide = useCallback(() => {
     if (currentIndex > 0) {
       scrollToIndex(currentIndex - 1);
     }
   }, [currentIndex, scrollToIndex]);
 
-  // キーボード操作（←/→）も 2枚目までに制限
+  // タップゾーンは全ページで有効（ダブり宣言はNG）
+  const showTapZones = true;
+
+  // キーボード操作（←/→）も同じく全ページで有効
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "ArrowRight") nextSlide();
-      if (e.key === "ArrowLeft") prevSlide();
+      if (e.key === "ArrowLeft")  prevSlide();
     };
     window.addEventListener("keydown", onKey, { passive: true });
     return () => window.removeEventListener("keydown", onKey);
   }, [nextSlide, prevSlide]);
-
-  // 1〜2枚目のみタップゾーンを有効化（3枚目は無効）
-  const showTapZones = currentIndex <= 1;
 
   return (
     <div className="intro-wrapper" style={{ position: "relative", height: "100vh", width: "100vw", overflow: "hidden" }}>
@@ -319,9 +323,9 @@ export default function IntroPage() {
             onClick={prevSlide}
             onPointerDown={(e) => e.preventDefault()} // iOSのスクロール優先を抑止
             onTouchEnd={(e) => { e.preventDefault(); prevSlide(); }}
-           onMouseUp={(e) => { e.preventDefault(); prevSlide(); }}
+            onMouseUp={(e) => { e.preventDefault(); prevSlide(); }}
             style={{ ...tapZoneStyle("left"), zIndex: 200, pointerEvents: "auto", touchAction: "manipulation" }}
-           className="tap-zone"
+            className="tap-zone"
           />
           <button
             aria-label="次のページへ"
