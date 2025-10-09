@@ -333,7 +333,7 @@ export default function MapCanvas({
     if (!hit || !Number.isFinite(hit.UMAP1) || !Number.isFinite(hit.UMAP2)) return [];
 
     const pos = [hit.UMAP1, -hit.UMAP2, 0];
-    const R = 0.16; // ベース半径（見た目サイズ。0.14〜0.20で好み調整）
+    const R = 0.1; // ベース半径（見た目サイズ。0.14〜0.20で好み調整）
 
     // 外側の黒丸
     const outer = new ScatterplotLayer({
@@ -673,11 +673,12 @@ export default function MapCanvas({
         userPinCompassLayer,
         compassLayer,
 
+        // 打点
+        mainLayer,
+
         // ★ 選択中のみ dot.svg を重ねる
         ...selectedDotLayers,
 
-        // 打点
-        mainLayer,
         // 評価リング
         ...ratingCircleLayers,
       ]}
