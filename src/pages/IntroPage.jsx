@@ -317,13 +317,13 @@ export default function IntroPage() {
           <button
             aria-label="前のページへ"
             onClick={prevSlide}
-            style={tapZoneStyle("left")}
+            style={{ ...tapZoneStyle("left"), zIndex: 1 }}   // ← 低くする
             className="tap-zone"
           />
           <button
             aria-label="次のページへ"
             onClick={nextSlide}
-            style={tapZoneStyle("right")}
+            style={{ ...tapZoneStyle("right"), zIndex: 1 }}  // ← 低くする
             className="tap-zone"
           />
         </>
@@ -341,7 +341,7 @@ export default function IntroPage() {
           justifyContent: "center",
           gap: 8,
           pointerEvents: "none", // クリック透過
-          zIndex: 999,           // ← 最前面に
+          zIndex: 9999,           // ← 最前面に
         }}
       >
         {allSlides.map((_, index) => (
