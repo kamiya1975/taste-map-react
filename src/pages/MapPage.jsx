@@ -1163,8 +1163,8 @@ function MapPage() {
         PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
       >
         <PanelHeader
-          title="Mapの見方"
-          icon="guide.svg"        // /public/img/guide.svg を既に利用中
+          title="TasteMapとは"
+          icon="map.svg"        // /public/img/guide.svg を既に利用中
           onClose={() => setIsGuideOpen(false)}
         />
         <div className="drawer-scroll" style={{ padding: 16, lineHeight: 1.6, color: "#333" }}>

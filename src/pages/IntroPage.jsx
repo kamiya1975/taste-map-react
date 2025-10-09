@@ -125,7 +125,7 @@ function slides(handleGoStore) {
       content: (
         <>
           <HeroImage
-            filename="地図.svg"
+            filename="map.svg"
             alt="地図"
             maxWidthPct={48}
             boxHeight="clamp(80px, 16vh, 160px)"
