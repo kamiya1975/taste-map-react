@@ -1,5 +1,5 @@
 // src/pages/IntroPage.jsx
-import React, { useState, useLayoutEffect } from "react";
+import React, { useState, useLayoutEffect, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { setGuest } from "../utils/auth";
 
@@ -69,7 +69,6 @@ function slides(handleGoStore) {
       color: PALETTE.bg,
       content: (
         <>
-          {/* ▶ コンパス（上） */}
           <HeroImage
             filename="compass_logo.svg"
             alt="コンパス"
@@ -77,7 +76,6 @@ function slides(handleGoStore) {
             boxHeight="clamp(80px, 16vh, 160px)"
             margin="64px auto 12px auto"
           />
-          {/* ▶ タイトル「基準のワイン」（中） */}
           <HeroImage
             filename="基準のワイン.svg"
             alt="基準のワイン"
@@ -85,7 +83,6 @@ function slides(handleGoStore) {
             boxHeight="clamp(56px, 9vh, 84px)"
             margin="24px auto 0 auto"
           />
-          {/* ▶ 説明文（下） */}
           <div style={{ marginTop: "64px" }}>
             <p
               style={{
@@ -119,7 +116,6 @@ function slides(handleGoStore) {
       color: PALETTE.bg,
       content: (
         <>
-          {/* ▶ 地図（上） */}
           <HeroImage
             filename="地図.svg"
             alt="地図"
@@ -127,7 +123,6 @@ function slides(handleGoStore) {
             boxHeight="clamp(80px, 16vh, 160px)"
             margin="64px auto 12px auto"
           />
-          {/* ▶ タイトル「TasteMap」（中） */}
           <HeroImage
             filename="TasteMap.svg"
             alt="TasteMap"
@@ -135,7 +130,6 @@ function slides(handleGoStore) {
             boxHeight="clamp(56px, 9vh, 84px)"
             margin="24px auto 0 auto"
           />
-          {/* ▶ 説明文（下） */}
           <div style={{ marginTop: "64px" }}>
             <p
               style={{
@@ -169,28 +163,6 @@ function slides(handleGoStore) {
       color: PALETTE.bg,
       content: (
         <>
-          {/* ▶ 店舗（上） */}
-          {false && (  // 一時的に非表示
-            <HeroImage
-              filename=""
-              alt="店舗"
-              maxWidthPct={42}
-              boxHeight="clamp(80px, 16vh, 160px)"
-              margin="64px auto 12px auto"
-            />
-          )}
-
-          {/* ▶ タイトル（中） */}
-          {false && (  // 一時的に非表示
-             <HeroImage
-              filename=""
-              alt="店舗選択"
-              maxWidthPct={58}
-              boxHeight="clamp(48px, 8vh, 72px)"
-              margin="12px auto 0 auto"
-            />
-          )}
-
           {/* ▶ 説明文（下） */}
           <div style={{ width: "100%", maxWidth: 420, margin: "40px auto 0" }}>
             <p style={{ lineHeight: "1.9em", color: PALETTE.ink, fontSize: "11pt", textAlign: "center" }}>
@@ -227,27 +199,102 @@ function slides(handleGoStore) {
 export default function IntroPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
+  const scrollerRef = useRef(null);
+  const allSlides = slides(handleGoStore); // forward ref needs function hoist; defined below
 
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, []);
 
+  // スクロール位置から現在のインデックスを推定
   const handleScroll = (e) => {
-    const index = Math.round(e.target.scrollLeft / window.innerWidth);
-    setCurrentIndex(index);
+    const w = window.innerWidth || document.documentElement.clientWidth;
+    const index = Math.round(e.target.scrollLeft / Math.max(1, w));
+    setCurrentIndex(Math.min(Math.max(index, 0), allSlides.length - 1));
   };
+
+  // スライド移動（プログラム制御）
+  const scrollToIndex = useCallback((index) => {
+    const clamped = Math.min(Math.max(index, 0), allSlides.length - 1);
+    const node = scrollerRef.current;
+    if (!node) return;
+    const w = window.innerWidth || document.documentElement.clientWidth;
+    node.scrollTo({ left: clamped * w, behavior: "smooth" });
+    setCurrentIndex(clamped);
+  }, [allSlides.length]);
+
+  const nextSlide = useCallback(() => {
+    if (currentIndex >= allSlides.length - 1) {
+      // 最終スライド → 店舗選択へ
+      handleGoStore();
+    } else {
+      scrollToIndex(currentIndex + 1);
+    }
+  }, [currentIndex, allSlides.length, scrollToIndex]);
+
+  const prevSlide = useCallback(() => {
+    scrollToIndex(currentIndex - 1);
+  }, [currentIndex, scrollToIndex]);
+
+  // 画面右/左のタップエリアで操作（iOS/SafariでもOK）
+  // 右35%: 進む / 左35%: 戻る / 中央30%: 何もしない
+  const TapZones = (
+    <>
+      <button
+        aria-label="前のページへ"
+        onClick={prevSlide}
+        style={tapZoneStyle("left")}
+      />
+      <button
+        aria-label="次のページへ"
+        onClick={nextSlide}
+        style={tapZoneStyle("right")}
+      />
+    </>
+  );
+
+  // キーボード操作（←/→）
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "ArrowRight") nextSlide();
+      if (e.key === "ArrowLeft") prevSlide();
+    };
+    window.addEventListener("keydown", onKey, { passive: true });
+    return () => window.removeEventListener("keydown", onKey);
+  }, [nextSlide, prevSlide]);
 
   // 「店舗選択」：ゲストで入って StorePage へ
-  const handleGoStore = () => {
+  function handleGoStore() {
     setGuest();          // ゲストフラグを立てる（utils/auth）
     navigate("/store");  // 固定店舗選択ページへ
-  };
-
-  const allSlides = slides(handleGoStore);
+  }
 
   return (
-    <div className="intro-wrapper">
-      <div className="slides-container" onScroll={handleScroll}>
+    <div className="intro-wrapper" style={{ position: "relative", height: "100vh", width: "100vw", overflow: "hidden" }}>
+      <div
+        ref={scrollerRef}
+        className="slides-container"
+        onScroll={handleScroll}
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          width: "100vw",
+          height: "100vh",
+          overflowX: "auto",
+          overflowY: "hidden",
+          scrollSnapType: "x mandatory",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+        }}
+      >
+        {/* 非表示スクロールバー（Safari/Chrome）対策 */}
+        <style>
+          {`
+            .slides-container::-webkit-scrollbar { display: none; }
+            .tap-zone { -webkit-tap-highlight-color: rgba(0,0,0,0); }
+          `}
+          </style>
         {allSlides.map((slide) => {
           const isTight = slide.id === 3;
           return (
@@ -274,11 +321,59 @@ export default function IntroPage() {
           );
         })}
       </div>
-      <div className="indicator">
+
+      {/* 右/左タップゾーン（最前面） */}
+      {TapZones}
+
+      {/* インジケータ */}
+      <div
+        className="indicator"
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 18,
+          display: "flex",
+          justifyContent: "center",
+          gap: 8,
+          pointerEvents: "none",
+        }}
+      >
         {allSlides.map((_, index) => (
-          <div key={index} className={`dot ${index === currentIndex ? "active" : ""}`} />
+          <div
+            key={index}
+            className={`dot ${index === currentIndex ? "active" : ""}`}
+            style={{
+              width: index === currentIndex ? 10 : 6,
+              height: index === currentIndex ? 10 : 6,
+              borderRadius: 999,
+              background: index === currentIndex ? "#666" : "#c8c8c8",
+              transition: "all .18s ease",
+            }}
+          />
         ))}
       </div>
     </div>
   );
+}
+
+/** 画面左右のタップゾーンスタイル */
+function tapZoneStyle(side = "left") {
+  const base = {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: "35vw",
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    zIndex: 10,
+    padding: 0,
+    margin: 0,
+    // アクセシビリティ向上
+    color: "transparent",
+  };
+  if (side === "left") return { ...base, left: 0 };
+  if (side === "right") return { ...base, right: 0 };
+  return base;
 }
