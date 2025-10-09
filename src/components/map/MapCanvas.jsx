@@ -360,16 +360,16 @@ export default function MapCanvas({
     });
 
     // 中心の黒点
-    const center = new ScatterplotLayer({
-      id: "selected-dot-center",
-      data: [{ position: pos }],
-      getPosition: d => d.position,
-      getFillColor: [0, 0, 0, 255],
-      radiusUnits: "meters",
-      getRadius: R * 0.16, // 中心点の大きさ（0.12〜0.2で調整）
-      pickable: false,
-      parameters: { depthTest: false },
-    });
+    //const center = new ScatterplotLayer({
+    //  id: "selected-dot-center",
+    //  data: [{ position: pos }],
+    //  getPosition: d => d.position,
+    //  getFillColor: [0, 0, 0, 255],
+    //  radiusUnits: "meters",
+    //  getRadius: R * 0.16, // 中心点の大きさ（0.12〜0.2で調整）
+    //  pickable: false,
+    //  parameters: { depthTest: false },
+    //});
 
     return [outer, innerWhite, center];
   }, [data, selectedJAN]);
