@@ -13,7 +13,7 @@ const PALETTE = {
 };
 
 const buttonStyle = {
-  padding: "12px",
+  padding: "12px 24px",   // 横paddingを増やすと幅感が出る
   fontSize: "16px",
   backgroundColor: "#e5e3db",
   color: "#000",
@@ -21,7 +21,10 @@ const buttonStyle = {
   borderRadius: "10px",
   cursor: "pointer",
   marginTop: "16px",
-  width: "100%",
+  width: "60%",           // ← 横幅を60%に制限
+  maxWidth: "240px",      // ← 大きな画面では最大幅240pxまで
+  marginLeft: "auto",     // ← 中央寄せのため追加
+  marginRight: "auto",    // ← 中央寄せのため追加
 };
 
 // ==============================
