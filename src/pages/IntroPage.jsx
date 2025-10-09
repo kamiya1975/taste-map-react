@@ -317,14 +317,16 @@ export default function IntroPage() {
           <button
             aria-label="前のページへ"
             onClick={prevSlide}
-            style={{ ...tapZoneStyle("left"), zIndex: 1 }}   // ← 低くする
+            onPointerDown={(e) => e.preventDefault()}
+            style={{ ...tapZoneStyle("left"), zIndex: 200, pointerEvents: "auto", touchAction: "manipulation" }}
             className="tap-zone"
           />
           <button
             aria-label="次のページへ"
             onClick={nextSlide}
-            style={{ ...tapZoneStyle("right"), zIndex: 1 }}  // ← 低くする
-            className="tap-zone"
+            onPointerDown={(e) => e.preventDefault()}
+            style={{ ...tapZoneStyle("right"), zIndex: 200, pointerEvents: "auto", touchAction: "manipulation" }}
+           className="tap-zone"
           />
         </>
       )}
@@ -340,8 +342,8 @@ export default function IntroPage() {
           display: "flex",
           justifyContent: "center",
           gap: 8,
-          pointerEvents: "none", // クリック透過
-          zIndex: 9999,           // ← 最前面に
+          pointerEvents: "none",
+          zIndex: 9999,     // ← inlineでも強制
         }}
       >
         {allSlides.map((_, index) => (
@@ -352,7 +354,7 @@ export default function IntroPage() {
               width: index === currentIndex ? 10 : 6,
               height: index === currentIndex ? 10 : 6,
               borderRadius: 999,
-              background: index === currentIndex ? "#666" : "#c8c8c8",
+              background: index === currentIndex ? "#111" : "#c8c8c8", // ← 認識性UP
               transition: "all .18s ease",
             }}
           />
@@ -368,11 +370,11 @@ function tapZoneStyle(side = "left") {
     position: "absolute",
     top: 0,
     bottom: 0,
-    width: `${TAP_ZONE_VW}vw`, // ← ここを変更すれば幅調整OK
+    width: `${TAP_ZONE_VW}vw`,
     background: "transparent",
     border: "none",
     cursor: "pointer",
-    zIndex: 10,
+    zIndex: 200,               // ← ここを 200 に
     padding: 0,
     margin: 0,
     color: "transparent",
