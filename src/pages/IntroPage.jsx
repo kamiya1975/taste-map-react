@@ -21,7 +21,7 @@ const buttonStyle = {
   borderRadius: "10px",
   cursor: "pointer",
   marginTop: "16px",
-  width: "60%",           // ← 横幅を60%に制限
+  width: "80%",           // ← 横幅を60%に制限
   minWidth: "140px",      // ← 最低幅（狭すぎ防止）
   maxWidth: "240px",      // ← 大きな画面では最大幅240pxまで
   display: "block",       // ← 中央寄せ用
