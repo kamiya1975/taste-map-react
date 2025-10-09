@@ -171,7 +171,7 @@ function slides(handleGoStore) {
         <>
           {/* ▶ 店舗（上） */}
           <HeroImage
-            filename=""
+            //filename=""
             alt="店舗"
             maxWidthPct={42}
             boxHeight="clamp(80px, 16vh, 160px)"
@@ -180,7 +180,7 @@ function slides(handleGoStore) {
 
           {/* ▶ タイトル（中） */}
           <HeroImage
-            filename=""
+            //filename=""
             alt="店舗選択"
             maxWidthPct={58}
             boxHeight="clamp(48px, 8vh, 72px)"
