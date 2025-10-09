@@ -21,9 +21,9 @@ const buttonStyle = {
   borderRadius: "10px",
   cursor: "pointer",
   marginTop: "16px",
-  width: "90%",
+  width: "80%",
   minWidth: "140px",      // ← 最低幅（狭すぎ防止）
-  maxWidth: "240px",      // ← 大きな画面では最大幅240pxまで
+  //maxWidth: "240px",      // ← 大きな画面では最大幅240pxまで
   display: "block",       // ← 中央寄せ用
   marginLeft: "auto",     // ← 中央寄せのため追加
   marginRight: "auto",    // ← 中央寄せのため追加
