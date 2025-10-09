@@ -325,7 +325,6 @@ export default function MapCanvas({
     return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
   }, [data, highlight2D]);
 
-  // ★ 選択中JANだけアイコン表示（select.svg）
   // ★ ベクタで描く選択ドット（外黒→内白→中心黒）
   const selectedDotLayers = useMemo(() => {
     if (!selectedJAN) return [];
@@ -359,7 +358,7 @@ export default function MapCanvas({
       parameters: { depthTest: false },
     });
 
-    return [outer, innerWhite, center];
+    return [outer, innerWhite];
   }, [data, selectedJAN]);
 
   // --- レイヤ：打点 ---
