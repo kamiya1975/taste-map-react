@@ -150,7 +150,7 @@ body,
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(env(safe-area-inset-bottom) + 88px);
+  bottom: calc(env(safe-area-inset-bottom) + 150px);
   display: flex;
   justify-content: center;
   gap: 8px;

@@ -342,7 +342,7 @@ export default function IntroPage() {
           position: "absolute",
           left: 0,
           right: 0,
-          bottom: "calc(88px + env(safe-area-inset-bottom))",
+          bottom: "calc(150px + env(safe-area-inset-bottom))",
           display: "flex",
           justifyContent: "center",
           gap: 8,
