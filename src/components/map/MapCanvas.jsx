@@ -337,13 +337,13 @@ export default function MapCanvas({
       getPosition: (d) => d.position,
       getIcon: () => ({
         url: `${process.env.PUBLIC_URL || ""}/img/select.svg`, // 差し替えアイコン
-        width: 64,
-        height: 64,
+        width: 256,
+        height: 256,
         anchorX: 32,
         anchorY: 32,
       }),
       sizeUnits: "meters",
-      getSize: 0.28,          // アイコンの大きさ（必要なら微調整）
+      getSize: 0.2,          // アイコンの大きさ（必要なら微調整）
       billboard: true,
       pickable: false,
       parameters: { depthTest: false },
