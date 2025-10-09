@@ -325,29 +325,53 @@ export default function MapCanvas({
     return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
   }, [data, highlight2D]);
 
-  // ★ 選択中JANだけアイコン表示（dot.svg）
-  const selectedIconLayer = useMemo(() => {
-    if (!selectedJAN) return null;
+  // ★ 選択中JANだけアイコン表示（select.svg）
+  // ★ ベクタで描く選択ドット（外黒→内白→中心黒）
+  const selectedDotLayers = useMemo(() => {
+    if (!selectedJAN) return [];
     const hit = data.find((d) => String(d.JAN) === String(selectedJAN));
-    if (!hit || !Number.isFinite(hit.UMAP1) || !Number.isFinite(hit.UMAP2)) return null;
+    if (!hit || !Number.isFinite(hit.UMAP1) || !Number.isFinite(hit.UMAP2)) return [];
 
-    return new IconLayer({
-      id: "selected-dot",
-      data: [{ position: [hit.UMAP1, -hit.UMAP2, 0] }],
-      getPosition: (d) => d.position,
-      getIcon: () => ({
-        url: `${process.env.PUBLIC_URL || ""}/img/select.svg`, // 差し替えアイコン
-        width: 256,
-        height: 256,
-        anchorX: 128,
-        anchorY: 128,
-      }),
-      sizeUnits: "meters",
-      getSize: 0.2,          // アイコンの大きさ（必要なら微調整）
-      billboard: true,
+    const pos = [hit.UMAP1, -hit.UMAP2, 0];
+    const R = 0.16; // ベース半径（見た目サイズ。0.14〜0.20で好み調整）
+
+    // 外側の黒丸
+    const outer = new ScatterplotLayer({
+      id: "selected-dot-outer",
+      data: [{ position: pos }],
+      getPosition: d => d.position,
+      getFillColor: [0, 0, 0, 255],
+      radiusUnits: "meters",
+      getRadius: R,
       pickable: false,
       parameters: { depthTest: false },
     });
+
+    // 中の白丸（リングに見せる）
+    const innerWhite = new ScatterplotLayer({
+      id: "selected-dot-inner-white",
+      data: [{ position: pos }],
+      getPosition: d => d.position,
+      getFillColor: [255, 255, 255, 255],
+      radiusUnits: "meters",
+      getRadius: R * 0.58, // リング幅の比率（0.55〜0.65で調整）
+      pickable: false,
+      parameters: { depthTest: false },
+    });
+
+    // 中心の黒点
+    const center = new ScatterplotLayer({
+      id: "selected-dot-center",
+      data: [{ position: pos }],
+      getPosition: d => d.position,
+      getFillColor: [0, 0, 0, 255],
+      radiusUnits: "meters",
+      getRadius: R * 0.16, // 中心点の大きさ（0.12〜0.2で調整）
+      pickable: false,
+      parameters: { depthTest: false },
+    });
+
+    return [outer, innerWhite, center];
   }, [data, selectedJAN]);
 
   // --- レイヤ：打点 ---
@@ -650,7 +674,7 @@ export default function MapCanvas({
         compassLayer,
 
         // ★ 選択中のみ dot.svg を重ねる
-        ...(selectedIconLayer ? [selectedIconLayer] : []),
+        ...selectedDotLayers,
 
         // 打点
         mainLayer,
