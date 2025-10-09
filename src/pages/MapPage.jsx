@@ -463,8 +463,7 @@ function MapPage() {
   // スライダー直後だけ：オレンジ打点の最寄り商品を自動で開く
   useEffect(() => {
     const wantAutoOpen =
-      sessionStorage.getItem("tm_autopen_nearest") === "1" ||
-      !!location.state?.centerOnUserPin;
+      sessionStorage.getItem("tm_autopen_nearest") === "1";
 
     if (!wantAutoOpen) return;
     if (autoOpenOnceRef.current) return;

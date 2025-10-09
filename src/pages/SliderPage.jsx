@@ -110,7 +110,6 @@ export default function SliderPage() {
 
     const [umapX, umapY] = pca2umap(pc1Value, pc2Value);
     localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: [umapX, umapY], version: 2 }));
-    sessionStorage.setItem("tm_autopen_nearest", "1");
     navigate("/map", { state: { centerOnUserPin: true } });
   };
 
