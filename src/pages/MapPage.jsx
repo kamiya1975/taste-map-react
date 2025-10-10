@@ -13,6 +13,7 @@ import MapCanvas from "../components/map/MapCanvas";
 import PanelHeader from "../components/ui/PanelHeader";
 import StorePanelContent from "../components/panels/StorePanelContent";
 import FaqPanelContent from "../components/panels/FaqPanelContent";
+import MyPagePanelContent from "../components/panels/MyPagePanelContent";
 
 import {
   drawerModalProps,
@@ -97,6 +98,8 @@ function MapPage() {
     if (isSearchOpen)    { setIsSearchOpen(false);    willClose = true; }
     if (isFavoriteOpen)  { setIsFavoriteOpen(false);  willClose = true; }
     if (isRatedOpen)     { setIsRatedOpen(false);     willClose = true; }
+    if (isAccountOpen)   { setIsAccountOpen(false);   willClose = true; }
+    if (isFaqOpen)       { setIsFaqOpen(false);       willClose = true; }
 
     // メニューは基本閉じるが、保護オプション時は残す
     if (!preserveMyPage && isMyPageOpen) { setIsMyPageOpen(false); willClose = true; }
@@ -625,7 +628,7 @@ function MapPage() {
         return { ...r, x: it.UMAP1, y: it.UMAP2 };
       })
       .filter(Boolean);
-    if (joined.length === 0) return { point: null, picked, rule: "elbow" };
+    if (joined.length === 0) return { point: null, picked: [], rule: "elbow" };
 
     joined.sort((a, b) => b.rating - a.rating);
     const scores = joined.map((r) => r.rating);
@@ -691,7 +694,7 @@ function MapPage() {
           position: "absolute",
           left: "12px",
           bottom: "max(12px, env(safe-area-inset-bottom))",
-          zIndex: 2000,
+          zIndex: 10,
           width: "40px",
           height: "40px",
           background: "transparent",
@@ -941,14 +944,27 @@ function MapPage() {
           onClose={async () => { await closeUIsThen(); setHideHeartForJAN(null); }}
         />
         <div className="drawer-scroll">
-          {/* 例:
-          <iframe
-            ref={iframeRef}
-            title="product"
-            src={`/products/${selectedJAN}`}
-            style={{ width: "100%", height: "70vh", border: "none" }}
-          />
-          */}
+          {selectedJAN ? (
+            <iframe
+              ref={iframeRef}
+              title={`product-${selectedJAN}`}
+              src={`/products/${selectedJAN}`}
+              style={{ width: "100%", height: "70vh", border: "none" }}
+              onLoad={() => {
+                try {
+                 // 子iframeへ最新スナップショットを要求
+                  iframeRef.current?.contentWindow?.postMessage(
+                    { type: "REQUEST_STATE", jan: String(selectedJAN) },
+                    "*"
+                  );
+                } catch {}
+              }}
+            />
+          ) : (
+            <div style={{ padding: 16, color: "#555" }}>
+              商品を選択するとページが表示されます。
+            </div>
+         )}
         </div>
       </Drawer>
 
@@ -1018,7 +1034,7 @@ function MapPage() {
       <Drawer
         anchor="bottom"
         open={isAccountOpen}
-       onClose={() => setIsAccountOpen(false)}
+        onClose={() => setIsAccountOpen(false)}
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{ ...drawerModalProps, keepMounted: true }}
         PaperProps={{
@@ -1040,6 +1056,42 @@ function MapPage() {
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
           <MyAccountPanelContent />
         </div>
+      </Drawer>
+
+      {/* アプリガイド（メニュー） */}
+      <Drawer
+        anchor="bottom"
+        open={isMyPageOpen}
+        onClose={() => setIsMyPageOpen(false)}
+        BackdropProps={{ style: { background: "transparent" } }}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            zIndex: 1400,
+            height: "60vh",
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+      >
+        <PanelHeader
+          title="アプリガイド"
+          icon="app-guide.svg"
+          onClose={() => setIsMyPageOpen(false)}
+        />
+        <MyPagePanelContent
+          onOpenMapGuide={() => openOverlayAboveMenu("mapguide")}
+          onOpenStore={() => openOverlayAboveMenu("store")}
+          onOpenAccount={() => openOverlayAboveMenu("account")}
+          onOpenFaq={() => openOverlayAboveMenu("faq")}
+          onOpenSlider={() => {
+            setIsMyPageOpen(false);
+            // スライダーのルート名は実装に合わせて
+            navigate("/slider", { replace: false, state: { from: "menu" } });
+          }}
+        />
       </Drawer>
 
       {/* FAQ */}

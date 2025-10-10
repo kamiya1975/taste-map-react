@@ -120,12 +120,15 @@ function HeartButton({ jan, size = 22 }) {
 
     // 親からのメッセージを受信（SET_FAVORITE / STATE_SNAPSHOT）
     const onMsg = (e) => {
-      const { type, jan: targetJan, value } = e.data || {};
+      const { type, jan: targetJan, value, favorite } = e.data || {};
       const match = String(targetJan) === String(jan);
       if (!match) return;
 
       if (type === "SET_FAVORITE") {
         setFav(!!value);
+      } else if (type === "STATE_SNAPSHOT") {
+        // 親が持つ最新の状態で初期化
+        setFav(!!favorite);
       }
     };
     window.addEventListener("message", onMsg);
@@ -540,8 +543,7 @@ export default function ProductPage() {
 
        {/* 原産地・年 */}
        <span style={{ marginLeft: 24 }}>
-         {product.産地 || product.生産地 || "シチリア / イタリア"} /{" "}
-         {product.国 || product.国 || "2022"}
+         {(product.産地 || product.生産地 || "—")} / {(product.国 || "—")} / {(product.生産年 ?? product.vintage ?? "—")}
        </span>
       </div>
 
