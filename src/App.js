@@ -10,7 +10,6 @@ import MapPage from "./pages/MapPage";
 import ProductPage from "./pages/ProductPage";
 import SliderPage from "./pages/SliderPage";
 import StorePage from "./pages/StorePage";
-import FavoriteStoresPage from "./pages/FavoriteStoresPage";
 import MyAccount from "./pages/MyAccount";
 import UserTastePage from "./pages/UserTastePage";
 import ScanAndProductFlow from "./pages/ScanAndProductFlow";
@@ -65,9 +64,6 @@ export default function App() {
 
       {/* マイアカウント */}
       <Route path="/my-account" element={<MyAccount />} />
-
-      {/* お気に入り店舗追加 */}
-      <Route path="/stores-fav" element={<FavoriteStoresPage />} />
 
       {/* ガイド/FAQ（独立ページ版） */}
       <Route path="/faq" element={<FaqPage />} />
