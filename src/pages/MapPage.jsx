@@ -8,7 +8,8 @@ import SearchPanel from "../components/panels/SearchPanel";
 import BarcodeScanner from "../components/BarcodeScanner";
 import FavoritePanel from "../components/panels/FavoritePanel";
 import RatedPanel from "../components/panels/RatedPanel";
-import MyAccountPanelContent from "../components/panels/MyAccountPanelContent";
+import MyPagePanelContent from "../components/panels/MyPagePanelContent";
+import MyMyAccountPanelContent from "../components/panels/MyMyAccountPanelContent";
 import MapCanvas from "../components/map/MapCanvas";
 import PanelHeader from "../components/ui/PanelHeader";
 import StorePanelContent from "../components/panels/StorePanelContent";
@@ -1076,7 +1077,7 @@ function MapPage() {
           onClose={() => setIsAccountOpen(false)}
         />
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
-          <AccountPanelContent />
+          <MyAccountPanelContent />
         </div>
       </Drawer>
 
