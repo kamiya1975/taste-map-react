@@ -1,141 +1,230 @@
 // src/components/panels/StorePanelContent.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
+import {
+  loadAndSortStoresByDistance,
+  getFavorites,
+  setFavorites,
+  isSameStore,
+} from "../../utils/storeShared";
 
-/* ========= ユーティリティ ========= */
-function haversineKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const toRad = (deg) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
-
-async function resolveLocation() {
-  const geo = await new Promise((resolve) => {
-    if (!("geolocation" in navigator)) return resolve(null);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => resolve({ lat: coords.latitude, lon: coords.longitude }),
-      () => resolve(null),
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
-    );
-  });
-  return geo || { lat: 35.681236, lon: 139.767125 }; // 東京駅
-}
-
-export default function StorePanelContent({ onPickStore }) {
-  const [stores, setStores]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr]         = useState("");
-  const askedRef = useRef(false);
-
-  useEffect(() => {
-    const run = async () => {
-      if (askedRef.current) return;
-      askedRef.current = true;
-
-      setLoading(true);
-      setErr("");
-
-      try {
-        const loc = await resolveLocation();
-        const res = await fetch("/stores.mock.json", { cache: "no-store" });
-        if (!res.ok) throw new Error("stores.mock.json が見つかりません");
-        const raw = await res.json();
-
-        const enriched = (Array.isArray(raw) ? raw : []).map((s, i) => {
-          const lat = Number.isFinite(s.lat) ? s.lat : s.latitude;
-          const lng =
-            Number.isFinite(s.lng) ? s.lng :
-            (Number.isFinite(s.lon) ? s.lon : s.longitude);
-          const distance =
-            Number.isFinite(lat) && Number.isFinite(lng)
-              ? haversineKm(loc.lat, loc.lon, lat, lng)
-              : Infinity;
-          return {
-            ...s,
-            lat,
-            lng,
-            distance,
-            _key: `${s.name || ""}@@${s.branch || ""}@@${i}`,
-          };
-        });
-
-        enriched.sort((a, b) => a.distance - b.distance);
-        setStores(enriched);
-        try { localStorage.setItem("allStores", JSON.stringify(enriched)); } catch {}
-      } catch (e) {
-        console.error(e);
-        setErr("店舗データの読み込みに失敗しました。/stores.mock.json を確認してください。");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // ドロワー表示時に一度だけ実行
-    run();
-  }, []);
-
-  const formatKm = useMemo(() => (d) =>
-    (Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—")
-  , []);
-
-  const handleSelect = (store) => {
-    try {
-      // 選択の保存（元ページと同じキー）
-      localStorage.setItem("selectedStore", JSON.stringify(store));
-      localStorage.setItem("main_store", JSON.stringify(store));
-      const all = JSON.parse(localStorage.getItem("allStores") || "[]");
-      const k = (s) => `${s?.name || ""}@@${s?.branch || ""}`;
-      const exists = all.some((s) => k(s) === k(store));
-      const next = exists ? all : [store, ...all];
-      localStorage.setItem("allStores", JSON.stringify(next));
-    } catch {}
-
-    onPickStore?.(store);
-  };
+/* ============ 小物：★ボタン ============ */
+function StarButton({ active, onClick, disabled = false, size = 20, title }) {
+  const color = disabled ? "rgb(179,83,103)" : active ? "rgb(179,83,103)" : "rgb(190,190,190)";
+  const fill = active || disabled ? color : "transparent";
+  const stroke = active || disabled ? color : "rgb(170,170,170)";
 
   return (
-    <div className="drawer-scroll" style={{ background: "rgb(250,250,250)" }}>
-      <div style={{ padding: "12px 16px 8px", color: "#111", fontWeight: 600 }}>
-        購入した店舗を選んでください。
-      </div>
-      <div style={{ height: 1, background: "#ddd" }} />
+    <button
+      aria-label={title || (active ? "お気に入り解除" : "お気に入り追加")}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      style={{
+        width: size + 6,
+        height: size + 6,
+        padding: 0,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: "none",
+        background: "transparent",
+        cursor: disabled ? "default" : "pointer",
+        WebkitTapHighlightColor: "transparent",
+      }}
+      title={title}
+    >
+      {/* 星アイコン（SVG / currentColor 非依存） */}
+      <svg width={size} height={size} viewBox="0 0 24 24">
+        <path
+          d="M12 2.6l2.93 5.93 6.55.95-4.74 4.62 1.12 6.52L12 17.9 6.14 20.62 7.26 14.1 2.52 9.48l6.55-.95L12 2.6z"
+          fill={fill}
+          stroke={stroke}
+          strokeWidth="1"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
 
-      {loading && <div style={{ padding: 16 }}>読み込み中…</div>}
-      {err && <div style={{ padding: 16, color: "crimson" }}>{err}</div>}
+/* ============ 本体（ドロワー内で使用） ============ */
+export default function StorePanelContent() {
+  const [stores, setStores] = useState([]);
+  const [favorites, setFav] = useState(getFavorites());
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
 
-      {!loading && !err && stores.map((store) => (
-        <button
-          key={store._key}
-          onClick={() => handleSelect(store)}
-          style={{
-            width: "100%",
-            background: "#fff",
-            border: "none",
-            borderBottom: "1px solid #eee",
-            padding: "12px 16px",
-            textAlign: "left",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            cursor: "pointer",
-            WebkitTapHighlightColor: "transparent",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <div className="store-link" style={{ fontSize: 15, color: "#111" }}>
-              {store.name} {store.branch || ""}
+  // 固定（基準ワイン購入）店舗は常に 1 件
+  const mainStore = (() => {
+    try {
+      const raw = localStorage.getItem("main_store");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  // 起動時：favorites から固定店舗を除外（重複抑止）
+  useEffect(() => {
+    if (!mainStore || !Array.isArray(favorites)) return;
+    const cleaned = favorites.filter((s) => !isSameStore(s, mainStore));
+    if (cleaned.length !== favorites.length) {
+      setFav(cleaned);
+      setFavorites(cleaned);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const list = await loadAndSortStoresByDistance();
+        if (!alive) return;
+        setStores(list);
+        setErr("");
+      } catch (e) {
+        console.error(e);
+        if (!alive) return;
+        setErr("店舗データの読み込みに失敗しました。/stores.mock.json を確認してください。");
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const toggleFavorite = (store) => {
+    // 固定店舗はトグル対象外
+    if (mainStore && isSameStore(store, mainStore)) return;
+
+    const exists = favorites.some((s) => isSameStore(s, store));
+    const next = exists
+      ? favorites.filter((s) => !isSameStore(s, store))
+      : [store, ...favorites];
+    setFav(next);
+    setFavorites(next);
+  };
+
+  const isFav = (store) => favorites.some((s) => isSameStore(s, store));
+  const formatKm = (d) => (Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—");
+
+  // 固定を重複表示しない
+  const otherStores = stores.filter((s) => !mainStore || !isSameStore(s, mainStore));
+
+  return (
+    <div style={{ padding: 16 }}>
+      {loading && <div style={{ padding: 8 }}>読み込み中…</div>}
+      {err && <div style={{ padding: 8, color: "crimson" }}>{err}</div>}
+
+      {/* カード風の白背景ラッパ */}
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: 14,
+          boxShadow: "0 1px 0 rgba(0,0,0,0.05)",
+          overflow: "hidden",
+          border: "1px solid #eee",
+        }}
+      >
+        {/* 固定店舗（あれば最上段） */}
+        {mainStore && (
+          <>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                padding: "14px 14px",
+              }}
+            >
+              {/* 左の濃い★（固定） */}
+              <StarButton active disabled title="固定店舗" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, lineHeight: 1.2 }}>
+                  {mainStore.name} {mainStore.branch || ""}
+                </div>
+                <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
+                  {formatKm(mainStore.distance)}
+                </div>
+              </div>
+              {/* 右「固定」バッジ */}
+              <div
+                style={{
+                  fontSize: 12,
+                  padding: "2px 8px",
+                  borderRadius: 8,
+                  color: "#000",
+                  lineHeight: 1.6,
+                  userSelect: "none",
+                }}
+              >
+                固定
+              </div>
             </div>
-            <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
-              {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
-            </div>
+            <div style={{ height: 1, background: "#eee" }} />
+          </>
+        )}
+
+        {/* 他店舗（★でトグル） */}
+        {!loading &&
+          !err &&
+          otherStores.map((store, i) => {
+            const fav = isFav(store);
+            return (
+              <div key={store._key}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    padding: "14px 14px",
+                  }}
+                >
+                  <StarButton
+                    active={fav}
+                    onClick={() => toggleFavorite(store)}
+                    title={fav ? "お気に入り解除" : "お気に入り追加"}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, lineHeight: 1.2 }}>
+                      {store.name} {store.branch || ""}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
+                      {formatKm(store.distance)}
+                    </div>
+                  </div>
+                </div>
+                {/* 区切り線（末尾は非表示） */}
+                {i !== otherStores.length - 1 && (
+                  <div style={{ height: 1, background: "#eee" }} />
+                )}
+              </div>
+            );
+          })}
+
+        {/* 空状態 */}
+        {!loading && !err && !mainStore && otherStores.length === 0 && (
+          <div style={{ padding: 16, fontSize: 13, color: "#666" }}>
+            近隣店舗が見つかりませんでした。
           </div>
-          <div style={{ marginLeft: 12 }}>{formatKm(store.distance)}</div>
-        </button>
-      ))}
+        )}
+      </div>
+
+      {/* 件数 */}
+      {!loading && !err && favorites.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: "#555" }}>
+          登録済み: {favorites.length} 店舗
+        </div>
+      )}
+
+      {!loading && !err && !mainStore && (
+        <div style={{ marginTop: 12, fontSize: 12, color: "#b35367" }}>
+          ※固定店舗が未設定です。店舗選択画面で「購入した店舗」を選んでください。
+        </div>
+      )}
     </div>
   );
 }
