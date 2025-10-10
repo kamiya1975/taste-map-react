@@ -8,8 +8,7 @@ import SearchPanel from "../components/panels/SearchPanel";
 import BarcodeScanner from "../components/BarcodeScanner";
 import FavoritePanel from "../components/panels/FavoritePanel";
 import RatedPanel from "../components/panels/RatedPanel";
-import MyPagePanelContent from "../components/panels/MyPagePanelContent";
-import MyAccountPanelContent from "../components/panels/MyMyAccountPanelContent";
+import MyAccountPanelContent from "../components/panels/MyAccountPanelContent";
 import MapCanvas from "../components/map/MapCanvas";
 import PanelHeader from "../components/ui/PanelHeader";
 import StorePanelContent from "../components/panels/StorePanelContent";
@@ -952,44 +951,6 @@ function MapPage() {
           */}
         </div>
       </Drawer>
-
-      {/* ===== メニュー（85vh, zIndex=1400） ===== */}
-      <Drawer
-        anchor="bottom"
-        open={isMyPageOpen}
-        onClose={() => setIsMyPageOpen(false)}
-        ModalProps={drawerModalProps}
-        PaperProps={{
-          style: {
-            ...paperBaseStyle,
-            borderTop: "1px solid #c9c9b0",
-            zIndex: 1400,
-            height: "85vh",
-          },
-        }}
-      >
-        <PanelHeader
-          title="アプリガイド"
-          icon="compass.png"
-          onClose={() => setIsMyPageOpen(false)}
-        />
-        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
-          <MyPagePanelContent
-            onClose={() => setIsMyPageOpen(false)}
-            onOpenSlider={async () => {
-              await closeUIsThen(); // スライダーは単独画面へ移動なので全部閉じる
-              navigate("/slider", { state: { from: "map" } });
-            }}
-            onOpenMapGuide={async () => { await openOverlayAboveMenu("mapguide"); }}
-            onOpenStore={async () => { await openOverlayAboveMenu("store"); }}
-            onOpenAboutMap={async () => { await openOverlayAboveMenu("guide"); }}
-            onOpenAccount={async () => { await openOverlayAboveMenu("account"); }}
-            onOpenFaq={async () => { await openOverlayAboveMenu("faq"); }}
-          />
-        </div>
-      </Drawer>
-
-      {/* ===== メニューの“上”に重ねるドロワー群（zIndex=1500、Backdrop透過） ===== */}
 
       {/* マップガイド */}
       <Drawer
