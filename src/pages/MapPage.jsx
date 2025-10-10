@@ -792,7 +792,7 @@ function MapPage() {
           backgroundColor: "#fff",
         }}
       >
-        <option value="">-</option>
+        <option value="">Mapガイド</option>
         <option value="PC2">Sweet</option>
         <option value="PC1">Body</option>
         <option value="PC3">PC3</option>
@@ -1171,7 +1171,7 @@ function MapPage() {
         <div className="drawer-scroll" style={{ padding: 16, lineHeight: 1.6, color: "#333" }}>
           {/* 概要 */}
           <p style={{ margin: "2px 0 14px" }}>
-            この地図は、ワインの「色・香り・味」を数値化し、似ているもの同士が近くに並ぶよう配置した“風味の地図”です。
+            この地図は、ワインの「色・香り・味」を科学的に数値化し、似ているもの同士が近くに並ぶよう配置した“ワイン風味の地図”です。
             近い点ほど風味が似ており、離れるほど個性が異なります。地図上のコンパスはあなたの嗜好位置を示します。
           </p>
 
@@ -1182,7 +1182,7 @@ function MapPage() {
               <li>灰色の点：取扱いワインの位置（嗜好に近いほど近くに並びます）</li>
               <li>赤の点：飲みたい（★）にしたワイン</li>
               <li>黒の点：飲んで評価（◎）済みのワイン</li>
-              <li>コンパス：あなたの現在の嗜好位置（スライダー／評価から生成）</li>
+              <li>コンパス：あなたの現在の嗜好位置（飲んで評価から生成）</li>
             </ul>
           </div>
 
@@ -1199,7 +1199,7 @@ function MapPage() {
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>マップガイド（バブル表示）</div>
             <p style={{ margin: "0 0 6px" }}>
-              左上のガイドでは、風味やトレンドの“偏り”をバブルで可視化します。
+              左上のMapガイドでは、風味やトレンドの“偏り”をバブルで可視化します。
               大きなバブルは、たとえるなら街の広場に人が集まってにぎわう様子。例えば「甘味が豊かなワイン」「フルーティなワイン」がその周辺に多いことを示します。
               小さなバブルは、ひっそりした小さな村のように控えめな存在です。
               地図を眺めるだけで「どんな特徴がどこに集まっているか」「いまどの傾向が盛り上がっているか」を直感的に把握できます。
