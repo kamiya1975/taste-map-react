@@ -968,7 +968,7 @@ function MapPage() {
           icon="compass.png"
           onClose={() => setIsMyPageOpen(false)}
         />
-        <div className="drawer-scroll">
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
           <MyPagePanelContent
             onClose={() => setIsMyPageOpen(false)}
             onOpenSlider={async () => {
@@ -992,13 +992,20 @@ function MapPage() {
         open={isMapGuideOpen}
         onClose={() => setIsMapGuideOpen(false)}
         BackdropProps={{ style: { background: "transparent" } }}
-        ModalProps={{ keepMounted: true }}
+        ModalProps={{
+          ...drawerModalProps,
+          keepMounted: true,
+          // 上に重ねが開いている間は Esc でメニューが閉じない
+          disableEscapeKeyDown: isStoreOpen || isMapGuideOpen || isGuideOpen,
+        }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
-            zIndex: 1500,          // ← メニュー(1400)より上
+            zIndex: 1400,          // ← メニュー(1400)より上
             height: "85vh",
+            display: "flex",
+            flexDirection: "column",
           },
         }}
       >
@@ -1025,6 +1032,8 @@ function MapPage() {
             borderTop: "1px solid #c9c9b0",
             zIndex: 1500,          // ← メニューの上
             height: "85vh",
+            display: "flex",
+            flexDirection: "column",
           },
         }}
       >
@@ -1033,13 +1042,10 @@ function MapPage() {
           icon="store.svg"
           onClose={() => setIsStoreOpen(false)}
         />
-        <StorePanelContent
-          onPickStore={async (store) => {
-            // 選択したら一旦全部閉じてスライダーへ
-            await closeUIsThen();
-            navigate("/slider", { state: { selectedStore: store } });
-          }}
-        />
+        {/* ← スクロール領域を追加 */}
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
+          <StorePanelContent />
+        </div>
       </Drawer>
 
       {/* 「TasteMapとは？」（必要なら重ね表示に） */}
@@ -1049,14 +1055,20 @@ function MapPage() {
         onClose={() => setIsGuideOpen(false)}
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={drawerModalProps}
-        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0", zIndex: 1500 } }}
+        PaperProps={{ style: { 
+          ...paperBaseStyle, 
+          borderTop: "1px solid #c9c9b0", 
+          zIndex: 1500,
+          display: "flex",
+          flexDirection: "column",
+        } }}
       >
         <PanelHeader
           title="TasteMap（ワイン風味マップ）とは？"
           icon="map.svg"
           onClose={() => setIsGuideOpen(false)}
         />
-        <div className="drawer-scroll" style={{ padding: 16, lineHeight: 1.6, color: "#333" }}>
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto", padding: 16, lineHeight: 1.6, color: "#333" }}>
           <p style={{ margin: "2px 0 14px" }}>
             この地図は、ワインの「色・香り・味」を科学的に数値化し、似ているもの同士が近くに並ぶよう配置した“ワイン風味の地図”です。
             近い点ほど風味が似ており、離れるほど個性が異なります。地図上のコンパスはあなたの嗜好位置を示します。
