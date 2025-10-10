@@ -71,6 +71,7 @@ function MapPage() {
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [selectedJAN, setSelectedJAN] = useState(null);
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
+  const [iframeNonce, setIframeNonce] = useState(0);
 
   // 検索・一覧
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -406,6 +407,7 @@ function MapPage() {
           setHideHeartForJAN(null);
           setSelectedJAN(nearest.JAN);
           setSelectedJANFromSearch(null);
+          setIframeNonce(Date.now());
           setProductDrawerOpen(true);
           focusOnWine(nearest, { zoom: INITIAL_ZOOM });
         }
@@ -659,6 +661,7 @@ function MapPage() {
           if (!item) return;
           setHideHeartForJAN(null);
           setSelectedJAN(item.JAN);
+          setIframeNonce(Date.now());
           setProductDrawerOpen(true);
           focusOnWine(item, { recenter: false });
         }}
@@ -813,6 +816,7 @@ function MapPage() {
           setHideHeartForJAN(null);
           setSelectedJANFromSearch(null);
           setSelectedJAN(item.JAN);
+          setIframeNonce(Date.now());
           setProductDrawerOpen(true);
           const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
           if (Number.isFinite(tx) && Number.isFinite(ty)) {
@@ -865,6 +869,7 @@ function MapPage() {
           if (hit) {
             setHideHeartForJAN(null);
             setSelectedJAN(hit.JAN);
+            setIframeNonce(Date.now());
             setProductDrawerOpen(true);
             lastCommittedRef.current = { code: jan, at: now };
             const tx = Number(hit.UMAP1), ty = Number(hit.UMAP2);
@@ -893,6 +898,7 @@ function MapPage() {
         onSelectJAN={(jan) => {
           setOpenFromRated(false);
           setHideHeartForJAN(null);
+          setIframeNonce(Date.now());
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
@@ -919,6 +925,7 @@ function MapPage() {
           setHideHeartForJAN(String(jan));
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
+          setIframeNonce(Date.now());
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
             const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
@@ -946,10 +953,9 @@ function MapPage() {
         <div className="drawer-scroll">
           {selectedJAN ? (
             <iframe
-              key={selectedJAN}
-              ref={iframeRef}
-              title={`product-${selectedJAN}`}
-              src={`${process.env.PUBLIC_URL || ""}/products/${selectedJAN}?embed=1&_=${Date.now()}`}
+              key={`${selectedJAN}-${iframeNonce}`}
+              src={`${process.env.PUBLIC_URL || ""}/#/products/${selectedJAN}?embed=1&_=${iframeNonce}${
+                hideHeartForJAN === String(selectedJAN) ? "&fromRated=1" : ""}`}
               style={{ width: "100%", height: "70vh", border: "none" }}
               onLoad={() => {
                 try {
