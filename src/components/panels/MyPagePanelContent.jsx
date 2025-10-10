@@ -57,10 +57,7 @@ export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGui
       <Row
         icon={ICONS.store}
         label="お気に入り店舗登録"
-        onClick={() => {
-          onClose?.();            // 必要ならドロワーを閉じる
-          onOpenStore?.();
-        }}
+        onClick={() => onOpenStore?.()}
       />
       <Row
         icon={ICONS.faq}
