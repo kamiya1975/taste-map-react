@@ -1,5 +1,6 @@
 // src/components/panels/MyPagePanelContent.jsx
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 const ICONS = {
   compass: "/img/bar.svg",
@@ -36,6 +37,7 @@ function Row({ icon, label, onClick, last = false }) {
 }
 
 export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGuide }) {
+    const navigate = useNavigate();
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
       <Row
@@ -56,7 +58,10 @@ export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGui
       <Row
         icon={ICONS.store}
         label="お気に入り店舗登録"
-        onClick={() => onOpenStore?.()}
+        onClick={() => {
+          onClose?.();            // 必要ならドロワーを閉じる
+          navigate("/stores");
+        }}
       />
       <Row
         icon={ICONS.faq}
