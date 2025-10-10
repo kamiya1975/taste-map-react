@@ -1163,33 +1163,52 @@ function MapPage() {
         PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
       >
         <PanelHeader
-          title="TasteMap（ワイン風味マップ）とは?"
-          icon="map.svg"        // /public/img/guide.svg を既に利用中
+          title="TasteMap（ワイン風味マップ）とは？"
+          icon="map.svg"
           onClose={() => setIsGuideOpen(false)}
         />
+
         <div className="drawer-scroll" style={{ padding: 16, lineHeight: 1.6, color: "#333" }}>
-          {/* ★ 説明本文（お好みで編集） */}
-          <p style={{ margin: "4px 0 10px" }}>
-            この地図は、たくさんのワインの「色・香り・味」の特徴を科学的に数値化し、似たもの同士が近くに集まるよう配置したものです。
-            位置が近いワインほど風味が似ていて、離れているほど個性が異なります。
-            地図上のコンパスはあなたの嗜好を表し、点をタップすればワインの詳細が表示されます。
-            まるで街歩きのように、ワイン風味の世界を探検しながら自分に合う一本を見つけられるのが「TasteMap」です。
+          {/* 概要 */}
+          <p style={{ margin: "2px 0 14px" }}>
+            この地図は、ワインの「色・香り・味」を数値化し、似ているもの同士が近くに並ぶよう配置した“風味の地図”です。
+            近い点ほど風味が似ており、離れるほど個性が異なります。地図上のコンパスはあなたの嗜好位置を示します。
           </p>
-          <ul style={{ paddingLeft: 18, margin: 0 }}>
-            <li>灰色の点：取扱いワインの位置（嗜好に近いほど近くに並びます）</li>
-            <li>赤の点：飲みたい（★）にしたワイン</li>
-            <li>黒の点：飲んで評価（◎）済みのワイン</li>
-            <li>コンパス：あなたの現在の嗜好位置（評価から生成）</li>
-          </ul>
-          <div style={{ height: 10 }} />
-          <ul style={{ paddingLeft: 18, margin: 0 }}>
-            <li>点をタップ：商品ページを表示</li>
-            <li>ピンチ操作：拡大縮小、ドラッグ：移動</li>
-            <li>右上 🔍：検索、右の★/◎：お気に入り・評価の一覧</li>
-          </ul>
-          <div style={{ height: 14 }} />
-          <p style={{ fontSize: 13, color: "#666" }}>
-            ※ マス目は座標の目安です。座標軸に直接の意味はありません。
+
+          {/* 凡例 */}
+          <div style={{ marginTop: 4, marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>凡例</div>
+            <ul style={{ paddingLeft: 18, margin: 0 }}>
+              <li>灰色の点：取扱いワインの位置（嗜好に近いほど近くに並びます）</li>
+              <li>赤の点：飲みたい（★）にしたワイン</li>
+              <li>黒の点：飲んで評価（◎）済みのワイン</li>
+              <li>コンパス：あなたの現在の嗜好位置（スライダー／評価から生成）</li>
+            </ul>
+          </div>
+
+          {/* 操作＆バブルガイド */}
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>使い方</div>
+            <ul style={{ paddingLeft: 18, margin: 0 }}>
+              <li>点をタップ：商品ページを表示</li>
+              <li>ピンチで拡大縮小、ドラッグで移動</li>
+              <li>右上 🔍：検索　／　右の ★・◎：飲みたい／飲んだ一覧</li>
+            </ul>
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>マップガイド（バブル表示）</div>
+            <p style={{ margin: "0 0 6px" }}>
+              左上のガイドでは、風味やトレンドの“偏り”をバブルで可視化します。
+              大きなバブルは、たとえるなら街の広場に人が集まってにぎわう様子。例えば「甘味が豊かなワイン」「フルーティなワイン」がその周辺に多いことを示します。
+              小さなバブルは、ひっそりした小さな村のように控えめな存在です。
+              地図を眺めるだけで「どんな特徴がどこに集まっているか」「いまどの傾向が盛り上がっているか」を直感的に把握できます。
+            </p>
+          </div>
+
+          {/* 備考 */}
+          <p style={{ fontSize: 12, color: "#666", marginTop: 12 }}>
+            ※ マス目は位置の目安です。座標軸そのものに意味はありません。
           </p>
         </div>
       </Drawer>
