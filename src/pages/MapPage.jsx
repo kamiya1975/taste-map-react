@@ -706,7 +706,7 @@ function MapPage() {
         title="アプリガイド"
       >
         <img
-          src={`${process.env.PUBLIC_URL || ""}/img/app-guide.png`}
+          src={`${process.env.PUBLIC_URL || ""}/img/app-guide.svg`}
           alt=""
           style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
           draggable={false}
