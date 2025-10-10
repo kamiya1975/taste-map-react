@@ -1070,7 +1070,7 @@ function MapPage() {
           style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
-            zIndex: 1400,
+            zIndex: 1500,
             height: "85vh",
             display: "flex",
             flexDirection: "column",
