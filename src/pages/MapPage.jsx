@@ -11,6 +11,7 @@ import RatedPanel from "../components/panels/RatedPanel";
 import MyPagePanelContent from "../components/panels/MyPagePanelContent";
 import MapCanvas from "../components/map/MapCanvas";
 import PanelHeader from "../components/ui/PanelHeader";
+import StorePanelContent from "../components/panels/StorePanelContent";
 
 import {
   DRAWER_HEIGHT,
@@ -47,6 +48,7 @@ function MapPage() {
   const fromRatedRef = useRef(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
+  const [isStoreOpen, setIsStoreOpen]   = useState(false);
 
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
@@ -1165,6 +1167,7 @@ function MapPage() {
             onClose={() => setIsMyPageOpen(false)}
             onOpenSlider={openSliderExclusive}
             onOpenMapGuide={() => setIsMapGuideOpen(true)}
+            onOpenStore={() => setIsStoreOpen(true)}
           />
         </div>
       </Drawer>
@@ -1193,6 +1196,34 @@ function MapPage() {
         <div className="drawer-scroll">
           <MapGuidePanelContent />
         </div>
+      </Drawer>
+
+      {/* ★ 店舗登録ドロワー */}
+      <Drawer
+        anchor="bottom"
+        open={isStoreOpen}
+        onClose={() => setIsStoreOpen(false)}
+        ModalProps={drawerModalProps}
+        PaperProps={{ style: { 
+          ...paperBaseStyle, 
+          borderTop: "1px solid #c9c9b0",
+          zIndex: 1400,
+          height: "85vh",
+        } }}
+      >
+        <PanelHeader
+          title="お気に入り店舗登録"
+          icon="store.svg"   // 任意
+          onClose={() => setIsStoreOpen(false)}
+        />
+        {/* MapGuidePanelContent と同じく drawer-scroll に流し込む */}
+        <StorePanelContent
+          onPickStore={(store) => {
+            setIsStoreOpen(false);
+            // ここでスライダーへ遷移（元の StorePage と同じ動線）
+            navigate("/slider", { state: { selectedStore: store } });
+          }}
+        />
       </Drawer>
 
       {/* ===== Mapの見方（ガイド）ドロワー：商品/一覧と同サイズ ===== */}
