@@ -1163,7 +1163,7 @@ function MapPage() {
         PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
       >
         <PanelHeader
-          title="ワイン風味マップとは?"
+          title="TasteMap（ワイン風味マップ）とは?"
           icon="map.svg"        // /public/img/guide.svg を既に利用中
           onClose={() => setIsGuideOpen(false)}
         />
@@ -1173,7 +1173,7 @@ function MapPage() {
             この地図は、たくさんのワインの「色・香り・味」の特徴を科学的に数値化し、似たもの同士が近くに集まるよう配置したものです。
             位置が近いワインほど風味が似ていて、離れているほど個性が異なります。
             地図上のコンパスはあなたの嗜好を表し、点をタップすればワインの詳細が表示されます。
-            まるで街歩きのように、風味の世界を探検しながら自分に合う一本を見つけられるのが「風味マップ」です。
+            まるで街歩きのように、ワイン風味の世界を探検しながら自分に合う一本を見つけられるのが「TasteMap」です。
           </p>
           <ul style={{ paddingLeft: 18, margin: 0 }}>
             <li>灰色の点：取扱いワインの位置（嗜好に近いほど近くに並びます）</li>
