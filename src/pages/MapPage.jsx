@@ -949,15 +949,16 @@ function MapPage() {
               key={selectedJAN}
               ref={iframeRef}
               title={`product-${selectedJAN}`}
-              src={`/products/${selectedJAN}`}
+              src={`${process.env.PUBLIC_URL || ""}/products/${selectedJAN}?embed=1&_=${selectedJAN}`}
               style={{ width: "100%", height: "70vh", border: "none" }}
               onLoad={() => {
                 try {
-                 // 子iframeへ最新スナップショットを要求
-                  iframeRef.current?.contentWindow?.postMessage(
-                    { type: "REQUEST_STATE", jan: String(selectedJAN) },
-                    "*"
-                  );
+                  requestAnimationFrame(() => {
+                    iframeRef.current?.contentWindow?.postMessage(
+                      { type: "REQUEST_STATE", jan: String(selectedJAN) },
+                      "*"
+                    );
+                  });
                 } catch {}
               }}
             />
