@@ -69,7 +69,6 @@ export default function MyPagePanelContent({
         icon={ICONS.faq}
         label="よくある質問"
         onClick={() => onOpenFaq?.()} 
-        last
       />
     </div>
   );

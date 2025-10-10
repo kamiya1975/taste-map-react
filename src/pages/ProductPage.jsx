@@ -655,6 +655,8 @@ export default function ProductPage() {
           ))}
         </div>
       </div>
+       {/* ページ終端の余白（フッターや固定UIと被らないように） */}
+      <div style={{ height: 80 }} />
     </div>
    );
   }
