@@ -995,14 +995,12 @@ function MapPage() {
         ModalProps={{
           ...drawerModalProps,
           keepMounted: true,
-          // 上に重ねが開いている間は Esc でメニューが閉じない
-          disableEscapeKeyDown: isStoreOpen || isMapGuideOpen || isGuideOpen,
         }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
-            zIndex: 1400,          // ← メニュー(1400)より上
+            zIndex: 1500,          // ← メニュー(1400)より上
             height: "85vh",
             display: "flex",
             flexDirection: "column",
@@ -1014,7 +1012,7 @@ function MapPage() {
           icon="map-guide.svg"
           onClose={() => setIsMapGuideOpen(false)}
         />
-        <div className="drawer-scroll">
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
           <MapGuidePanelContent />
         </div>
       </Drawer>
@@ -1028,6 +1026,7 @@ function MapPage() {
         ModalProps={{
           ...drawerModalProps,
           keepMounted: true,   // ← これを追加
+
         }}
         PaperProps={{
           style: {
