@@ -56,7 +56,7 @@ export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGui
       <Row
         icon={ICONS.store}
         label="お気に入り店舗登録"
-        onClick={() => onOpenMapGuide?.()}
+        onClick={() => onOpenStore?.()}
       />
       <Row
         icon={ICONS.faq}
