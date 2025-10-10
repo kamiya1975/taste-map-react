@@ -41,7 +41,7 @@ export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGui
       <Row
         icon={ICONS.mapGuide}
         label="マップガイド"
-        onClick={() => { onClose?.(); onOpenMapGuide?.(); }}
+        onClick={() => onOpenMapGuide?.()} 
       />
       <Row
         icon={ICONS.compass}
@@ -61,7 +61,7 @@ export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGui
       <Row
         icon={ICONS.faq}
         label="よくある質問"
-        onClick={() => { onClose?.(); onOpenMapGuide?.(); }}
+        onClick={() => onOpenMapGuide?.()} 
         last
       />
     </div>
