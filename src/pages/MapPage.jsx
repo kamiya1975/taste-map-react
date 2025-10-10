@@ -946,6 +946,7 @@ function MapPage() {
         <div className="drawer-scroll">
           {selectedJAN ? (
             <iframe
+              key={selectedJAN}
               ref={iframeRef}
               title={`product-${selectedJAN}`}
               src={`/products/${selectedJAN}`}
@@ -1004,7 +1005,7 @@ function MapPage() {
         anchor="bottom"
         open={isStoreOpen}
         onClose={() => setIsStoreOpen(false)}
-        BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}  // ← 修正
+        BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{
           ...drawerModalProps,
           keepMounted: true,
@@ -1070,7 +1071,7 @@ function MapPage() {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
             zIndex: 1400,
-            height: "60vh",
+            height: "85vh",
             display: "flex",
             flexDirection: "column",
           },
