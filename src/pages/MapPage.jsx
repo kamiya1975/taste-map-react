@@ -48,6 +48,8 @@ function MapPage() {
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);  // 「マップガイド」(オーバーレイ)
   const [isStoreOpen, setIsStoreOpen] = useState(false);        // 店舗登録 (オーバーレイ)
   const [isMyPageOpen, setIsMyPageOpen] = useState(false);      // アプリガイド（メニュー）
+  const [isAccountOpen, setIsAccountOpen] = useState(false);    // マイアカウント（メニュー）
+  const [isFaqOpen, setIsFaqOpen] = useState(false);            // よくある質問（メニュー）
 
   const iframeRef = useRef(null);
   const autoOpenOnceRef = useRef(false);
@@ -124,11 +126,12 @@ function MapPage() {
 
   /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
   const openOverlayAboveMenu = useCallback(async (kind) => {
-    // メニューは残す。他の競合UIだけ閉じる
     await closeUIsThen({ preserveMyPage: true });
     if (kind === "mapguide") setIsMapGuideOpen(true);
     else if (kind === "store") setIsStoreOpen(true);
     else if (kind === "guide") setIsGuideOpen(true);
+    else if (kind === "account") setIsAccountOpen(true);
+    else if (kind === "faq") setIsFaqOpen(true);
   }, [closeUIsThen]);
 
   // ★ クエリで各パネルを開く（/ ?open=mypage|search|favorite|rated|mapguide|guide|store）
@@ -975,11 +978,11 @@ function MapPage() {
               await closeUIsThen(); // スライダーは単独画面へ移動なので全部閉じる
               navigate("/slider", { state: { from: "map" } });
             }}
-            // ← ここが仕様変更ポイント：メニューは閉じずに上に重ねる
             onOpenMapGuide={async () => { await openOverlayAboveMenu("mapguide"); }}
             onOpenStore={async () => { await openOverlayAboveMenu("store"); }}
-            // 必要なら「TasteMapとは？」もメニュー上に重ねる
             onOpenAboutMap={async () => { await openOverlayAboveMenu("guide"); }}
+            onOpenAccount={async () => { await openOverlayAboveMenu("account"); }}
+            onOpenFaq={async () => { await openOverlayAboveMenu("faq"); }}
           />
         </div>
       </Drawer>
@@ -1047,6 +1050,63 @@ function MapPage() {
           <StorePanelContent />
         </div>
       </Drawer>
+
+      {/* アカウント */}
+      <Drawer
+        anchor="bottom"
+        open={isAccountOpen}
+       onClose={() => setIsAccountOpen(false)}
+        BackdropProps={{ style: { background: "transparent" } }}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            zIndex: 1500,
+            height: "85vh",
+            display: "flex",
+            flexDirection: "column",
+         },
+        }}
+      >
+        <PanelHeader
+          title="マイアカウント"
+          icon="account.svg"
+          onClose={() => setIsAccountOpen(false)}
+        />
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
+          <AccountPanelContent />
+        </div>
+      </Drawer>
+
+      {/* FAQ */}
+      <Drawer
+        anchor="bottom"
+        open={isFaqOpen}
+        onClose={() => setIsFaqOpen(false)}
+        BackdropProps={{ style: { background: "transparent" } }}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            zIndex: 1500,
+            height: "85vh",
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+      >
+        <PanelHeader
+          title="よくある質問"
+          icon="faq.svg"
+          onClose={() => setIsFaqOpen(false)}
+        />
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
+          <FaqPanelContent />
+        </div>
+      </Drawer>
+
 
       {/* 「TasteMapとは？」（必要なら重ね表示に） */}
       <Drawer

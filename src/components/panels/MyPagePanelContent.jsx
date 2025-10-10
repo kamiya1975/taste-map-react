@@ -1,6 +1,5 @@
 // src/components/panels/MyPagePanelContent.jsx
 import React from "react";
-import { useNavigate } from "react-router-dom";
 
 const ICONS = {
   compass: "/img/bar.svg",
@@ -36,8 +35,13 @@ function Row({ icon, label, onClick, last = false }) {
   );
 }
 
-export default function MyPagePanelContent({ 
-  onClose, onOpenSlider, onOpenMapGuide, onOpenStore, onOpenAccount, onOpenFaq
+export default function MyPagePanelContent({
+  onClose,
+  onOpenSlider,
+  onOpenMapGuide,
+  onOpenStore,
+  onOpenAccount,
+  onOpenFaq,
 }) {
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
