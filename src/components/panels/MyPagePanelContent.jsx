@@ -36,7 +36,9 @@ function Row({ icon, label, onClick, last = false }) {
   );
 }
 
-export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGuide, onOpenStore }) {
+export default function MyPagePanelContent({ 
+  onClose, onOpenSlider, onOpenMapGuide, onOpenStore, onOpenAccount, onOpenFaq
+}) {
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
       <Row
@@ -52,7 +54,7 @@ export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGui
       <Row
         icon={ICONS.account}
         label="マイアカウント"
-        onClick={() => onOpenMapGuide?.()}
+        onClick={() => onOpenAccount?.()}
       />
       <Row
         icon={ICONS.store}
@@ -62,7 +64,7 @@ export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGui
       <Row
         icon={ICONS.faq}
         label="よくある質問"
-        onClick={() => onOpenMapGuide?.()} 
+        onClick={() => onOpenFaq?.()} 
         last
       />
     </div>

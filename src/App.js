@@ -10,10 +10,8 @@ import MapPage from "./pages/MapPage";
 import ProductPage from "./pages/ProductPage";
 import SliderPage from "./pages/SliderPage";
 import StorePage from "./pages/StorePage";
-import MyAccount from "./pages/MyAccount";
 import UserTastePage from "./pages/UserTastePage";
 import ScanAndProductFlow from "./pages/ScanAndProductFlow";
-import FaqPage from "./pages/FaqPage";
 
 export default function App() {
   const navigate = useNavigate();
@@ -61,12 +59,6 @@ export default function App() {
 
       {/* スキャン＆商品フロー */}
       <Route path="/scan-flow" element={<ScanAndProductFlow />} />
-
-      {/* マイアカウント */}
-      <Route path="/my-account" element={<MyAccount />} />
-
-      {/* ガイド/FAQ（独立ページ版） */}
-      <Route path="/faq" element={<FaqPage />} />
 
       {/* それ以外は地図へ */}
       <Route path="*" element={<Navigate to="/map" replace />} />
