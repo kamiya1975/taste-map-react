@@ -1025,7 +1025,10 @@ function MapPage() {
         open={isStoreOpen}
         onClose={() => setIsStoreOpen(false)}
         BackdropProps={{ style: { background: "transparent" } }}
-        ModalProps={drawerModalProps}
+        ModalProps={{
+          ...drawerModalProps,
+          keepMounted: true,   // ← これを追加
+        }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
