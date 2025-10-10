@@ -691,7 +691,7 @@ function MapPage() {
           position: "absolute",
           left: "12px",
           bottom: "max(12px, env(safe-area-inset-bottom))",
-          zIndex: 10,
+          zIndex: 2000,
           width: "40px",
           height: "40px",
           background: "transparent",
@@ -706,7 +706,7 @@ function MapPage() {
         title="アプリガイド"
       >
         <img
-          src={`${process.env.PUBLIC_URL || ""}/img/compass.png`}
+          src={`${process.env.PUBLIC_URL || ""}/img/app-guide.png`}
           alt=""
           style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
           draggable={false}
