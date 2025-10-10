@@ -14,7 +14,6 @@ import PanelHeader from "../components/ui/PanelHeader";
 import StorePanelContent from "../components/panels/StorePanelContent";
 
 import {
-  DRAWER_HEIGHT,
   drawerModalProps,
   paperBaseStyle,
   ZOOM_LIMITS,
@@ -43,14 +42,17 @@ function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
 function MapPage() {
   const location = useLocation();
   const navigate = useNavigate();
+
   const didInitialCenterRef = useRef(false);  // 初期センタリング（1回だけ）の実行ガード
   const [openFromRated, setOpenFromRated] = useState(false);
   const fromRatedRef = useRef(false);
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
-  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
-  const [isStoreOpen, setIsStoreOpen]   = useState(false);
 
-  // 🔗 商品ページiframe参照（♡状態の同期に使用）
+  const [isGuideOpen, setIsGuideOpen] = useState(false);        // 「TasteMapとは？」
+  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);  // 「マップガイド」
+  const [isStoreOpen, setIsStoreOpen] = useState(false);        // 店舗登録
+  const [isMyPageOpen, setIsMyPageOpen] = useState(false);      // アプリガイド（メニュー）
+
+  // 🔗 商品ページiframe参照（♡状態の同期に使用）※実装予定ならこのrefを使って<iframe ref={iframeRef} ...>を追加
   const iframeRef = useRef(null);
 
   // スライダーから戻った直後の「一度だけ自動オープン」ガード
@@ -77,10 +79,7 @@ function MapPage() {
   const [selectedJAN, setSelectedJAN] = useState(null);
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
 
-  // 設定・再検索スライダー
-  const [isMyPageOpen, setIsMyPageOpen] = useState(false);
-
-  // 検索・スキャン
+  // 検索
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
 
@@ -92,8 +91,8 @@ function MapPage() {
   const PANEL_ANIM_MS = 320;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  /** 商品ドロワー／検索／お気に入り／評価 をまとめて閉じ、閉じアニメ分だけ待つ */
-  const closeUIsThen = async () => {
+  /** 商品ドロワー／検索／お気に入り／評価／各ガイドをまとめて閉じ、閉じアニメ分だけ待つ */
+  const closeUIsThen = useCallback(async () => {
     let willClose = false;
 
     if (productDrawerOpen) {
@@ -102,86 +101,52 @@ function MapPage() {
       setSelectedJANFromSearch(null); // ハイライトも消す
       willClose = true;
     }
-    if (isGuideOpen) { setIsGuideOpen(false); willClose = true; }
-    if (isMapGuideOpen) { setIsMapGuideOpen(false); willClose = true; }
-    if (isSearchOpen) { setIsSearchOpen(false); willClose = true; }
-    if (isFavoriteOpen) { setIsFavoriteOpen(false); willClose = true; }
-    if (isRatedOpen) { setIsRatedOpen(false); willClose = true; }
+    if (isGuideOpen)     { setIsGuideOpen(false);     willClose = true; }
+    if (isMapGuideOpen)  { setIsMapGuideOpen(false);  willClose = true; }
+    if (isMyPageOpen)    { setIsMyPageOpen(false);    willClose = true; }
+    if (isStoreOpen)     { setIsStoreOpen(false);     willClose = true; }
+    if (isSearchOpen)    { setIsSearchOpen(false);    willClose = true; }
+    if (isFavoriteOpen)  { setIsFavoriteOpen(false);  willClose = true; }
+    if (isRatedOpen)     { setIsRatedOpen(false);     willClose = true; }
 
     if (willClose) await wait(PANEL_ANIM_MS);
-  };
+  }, [
+    productDrawerOpen,
+    isGuideOpen,
+    isMapGuideOpen,
+    isMyPageOpen,
+    isStoreOpen,
+    isSearchOpen,
+    isFavoriteOpen,
+    isRatedOpen,
+  ]);
 
-  // マイページ（●）
-  const openMyPageExclusive = async () => {
-    if (isMyPageOpen) { setIsMyPageOpen(false); return; }
+  /** パネル共通オープナー（相互排他） */
+  const openPanel = useCallback(async (kind) => {
     await closeUIsThen();
-    setIsMyPageOpen(true);
-  };
+    if (kind === "mypage")      setIsMyPageOpen(true);
+    else if (kind === "mapguide") setIsMapGuideOpen(true);
+    else if (kind === "store")  setIsStoreOpen(true);
+    else if (kind === "search") setIsSearchOpen(true);
+    else if (kind === "favorite") setIsFavoriteOpen(true);
+    else if (kind === "rated")  setIsRatedOpen(true);
+    else if (kind === "guide")  setIsGuideOpen(true);          // 「TasteMapとは？」
+  }, [closeUIsThen]);
 
-  // ★ クエリで各パネルを開く（/ ?open=mypage|search|favorite|rated）
+  // ★ クエリで各パネルを開く（/ ?open=mypage|search|favorite|rated|mapguide|guide|store）
   useEffect(() => {
     try {
       const p = new URLSearchParams(location.search);
       const open = (p.get("open") || "").toLowerCase();
       if (!open) return;
       (async () => {
-        await closeUIsThen();
-        if (open === "mypage")       { openMyPageExclusive(); }
-        else if (open === "search")  { setIsSearchOpen(true); }
-        else if (open === "favorite"){ setIsFavoriteOpen(true); }
-        else if (open === "rated")   { setIsRatedOpen(true); }
-        else if (open === "guide")   { setIsGuideOpen(true); }
+        await openPanel(open);
         // 再トリガ防止
         navigate(location.pathname, { replace: true });
       })();
     } catch {}
-  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // スライダー（●）
-  const openSliderExclusive = async () => {
-    await closeUIsThen();
-    navigate("/slider", { state: { from: "map" } });
-  };
-
-  // 検索（🔍）
-  const openSearchExclusive = async () => {
-    if (isSearchOpen) { setIsSearchOpen(false); return; }
-    await closeUIsThen();
-    setIsSearchOpen(true);
-  };
-
-  // マップガイド（下ドロワー）
-  const openMapGuideExclusive = async () => {
-    if (isMapGuideOpen) { setIsMapGuideOpen(false); return; }
-    await closeUIsThen();
-    setIsMapGuideOpen(true);
-  };
-
-  // お気に入り（♡）
-  const openFavoriteExclusive = async () => {
-    if (isFavoriteOpen) { setIsFavoriteOpen(false); return; }
-    await closeUIsThen();
-    setIsFavoriteOpen(true);
-  };
-
-  // 評価（◎）
-  const openRatedExclusive = async () => {
-    if (isRatedOpen) { setIsRatedOpen(false); return; }
-    await closeUIsThen();
-    setIsRatedOpen(true);
-  };
-
-  // アプリガイド
-  const openCompassMenuExclusive = useCallback(async () => {
-    if (isMyPageOpen) { setIsMyPageOpen(false); return; }
-    await closeUIsThen();
-    setIsMyPageOpen(true);
-  }, [isMyPageOpen, closeUIsThen]);
-
-  // ストア追加
-  const openStorePanel = useCallback(() => {
-    setIsStoreOpen(true);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
 
   // ====== パン境界（現在データに基づく）
   const panBounds = useMemo(() => {
@@ -291,10 +256,11 @@ function MapPage() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("userRatings", JSON.stringify(userRatings));
+    try { localStorage.setItem("userRatings", JSON.stringify(userRatings)); } catch {}
   }, [userRatings]);
+
   useEffect(() => {
-    localStorage.setItem("favorites", JSON.stringify(favorites));
+    try { localStorage.setItem("favorites", JSON.stringify(favorites)); } catch {}
   }, [favorites]);
 
   // ====== UMAP クラスタ重心（旧 userPin 互換処理用）
@@ -398,7 +364,7 @@ function MapPage() {
     if (!Array.isArray(data) || data.length === 0) return;
 
     // 既に他の意図的なセンタリング（スライダー戻りなど）がある場合はそれを優先したいなら、
-    // そのフラグをここでチェックして return してください（必要なければこのままでOK）。
+    // そのフラグをここでチェックして return。
 
     const b = data.find((d) => String(d.JAN) === "blendF");
     if (b && Number.isFinite(b.UMAP1) && Number.isFinite(b.UMAP2)) {
@@ -409,7 +375,7 @@ function MapPage() {
     // BlendF が無い時は重心へフォールバック
     const [cx, cy] = umapCentroid;
     centerToUMAP(cx, cy, { zoom: INITIAL_ZOOM });
-     didInitialCenterRef.current = true;
+    didInitialCenterRef.current = true;
   }, [data, centerToUMAP, umapCentroid]);
 
   // 初回センタリング（userPin 指定時）
@@ -514,7 +480,7 @@ function MapPage() {
         console.error("auto-open-nearest failed:", e);
       }
     });
-  }, [location.key, userPin, data, findNearestWine]); // ← 依存に findNearestWine を追加
+  }, [location.key, userPin, data, findNearestWine]);
 
   // ====== 共通：商品へフォーカス
   const focusOnWine = useCallback((item, opts = {}) => {
@@ -568,7 +534,7 @@ function MapPage() {
 
   // 商品ページ（iframe）からの postMessage
   useEffect(() => {
-    const onMsg = (e) => {
+    const onMsg = async (e) => {
       const msg = e?.data || {};
       const { type } = msg || {};
       if (!type) return;
@@ -591,17 +557,15 @@ function MapPage() {
             iframeRef.current?.contentWindow?.postMessage(
               { type: "HIDE_HEART", jan: janStr, value: true },
               "*"
-           );
+            );
           }
         } catch {}
       };
 
       // === 1) マイアカウントへ遷移してほしい
       if (type === "OPEN_MYACCOUNT") {
-        (async () => {
-          await closeUIsThen();
-          navigate("/my-account");
-        })();
+        await closeUIsThen();
+        navigate("/my-account");
         return;
       }
 
@@ -611,9 +575,7 @@ function MapPage() {
 
       // === 2) 旧方式：お気に入りトグル
       if (type === "TOGGLE_FAVORITE") {
-        // 既存のユーティリティで切替（子にも反映）
-       toggleFavorite(janStr);
-        // スナップショット返信
+        toggleFavorite(janStr);
         sendSnapshotToChild(janStr);
         return;
       }
@@ -629,7 +591,6 @@ function MapPage() {
           return next;
         });
 
-        // 評価>0なら「赤」より「黒」を優先：お気に入りから外す（仕様に合わせる）
         if (payload && Number(payload.rating) > 0) {
           setFavorites((prev) => {
             if (!prev[janStr]) return prev;
@@ -638,7 +599,6 @@ function MapPage() {
             try { localStorage.setItem("favorites", JSON.stringify(next)); } catch {}
             return next;
           });
-          // 子iframeのハートUIも同期
           try {
             iframeRef.current?.contentWindow?.postMessage(
               { type: "SET_FAVORITE", jan: janStr, value: false },
@@ -653,7 +613,7 @@ function MapPage() {
 
       // === 4) 新方式：お気に入り更新（即時反映）
       if (type === "tm:fav-updated") {
-       const isFavorite = !!msg.isFavorite;
+        const isFavorite = !!msg.isFavorite;
         setFavorites((prev) => {
           const next = { ...prev };
           if (isFavorite) next[janStr] = { addedAt: new Date().toISOString() };
@@ -661,9 +621,7 @@ function MapPage() {
           try { localStorage.setItem("favorites", JSON.stringify(next)); } catch {}
           return next;
         });
-
-        // お気に入りだけでは色は赤、ただし評価が既にあるなら黒優先（後段の色判定に委ねる）
-       sendSnapshotToChild(janStr);
+        sendSnapshotToChild(janStr);
         return;
       }
 
@@ -680,7 +638,6 @@ function MapPage() {
           return next;
         });
 
-        // 評価>0 を入れたら「赤より黒」を優先 → お気に入りから外す
         if (rating > 0) {
           setFavorites((prev) => {
             if (!prev[janStr]) return prev;
@@ -689,7 +646,6 @@ function MapPage() {
             try { localStorage.setItem("favorites", JSON.stringify(next)); } catch {}
             return next;
           });
-          // 子iframeのハートUIも同期
           try {
             iframeRef.current?.contentWindow?.postMessage(
               { type: "SET_FAVORITE", jan: janStr, value: false },
@@ -717,7 +673,7 @@ function MapPage() {
     userRatings,
     hideHeartForJAN,
     closeUIsThen,
-    openMyPageExclusive,
+    navigate,
   ]);
 
   // 評価の有無
@@ -801,12 +757,12 @@ function MapPage() {
       <select
         value={highlight2D}
         onChange={(e) => setHighlight2D(e.target.value)}
-        style={{ 
-          position: "absolute", 
-          top: "10px", 
-          left: "10px", 
-          zIndex: 10, 
-          padding: "6px", 
+        style={{
+          position: "absolute",
+          top: "10px",
+          left: "10px",
+          zIndex: 10,
+          padding: "6px",
           fontSize: "10px",
           color: "#000",
           backgroundColor: "#fff",
@@ -818,13 +774,13 @@ function MapPage() {
         <option value="PC3">PC3</option>
       </select>
 
-      {/* 左下: マイページ（設定）ボタン */}
+      {/* 左下: アプリガイド（メニュー）ボタン */}
       <button
-        onClick={openCompassMenuExclusive}
+        onClick={() => openPanel("mypage")}
         style={{
           position: "absolute",
           left: "12px",
-          bottom: "max(12px, env(safe-area-inset-bottom))", 
+          bottom: "max(12px, env(safe-area-inset-bottom))",
           top: "auto",
           right: "auto",
           zIndex: 10,
@@ -842,90 +798,22 @@ function MapPage() {
         title="アプリガイド"
       >
         <img
-          src={`${process.env.PUBLIC_URL || ""}/img/guide.svg`}
+          src={`${process.env.PUBLIC_URL || ""}/img/compass.png`}
           alt=""
           style={{
-           width: "100%",            // ← 枠いっぱいにフィット
-           height: "100%",
-           objectFit: "contain",
-           display: "block",
-           pointerEvents: "none",
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            display: "block",
+            pointerEvents: "none",
           }}
           draggable={false}
         />
       </button>
 
-      <Drawer
-        anchor="bottom"
-        open={isMapGuideOpen}
-        onClose={() => setIsMapGuideOpen(false)}
-        BackdropProps={{ style: { background: "transparent" } }}
-        ModalProps={{ keepMounted: true }}
-        PaperProps={{
-          style: {
-            ...paperBaseStyle,
-           borderTop: "1px solid #c9c9b0",
-            zIndex: 1400, // メニューより前面
-          },
-        }}
-      >
-       <PanelHeader
-          title="マップガイド"
-          icon="map-guide.svg"
-          onClose={() => setIsMapGuideOpen(false)}
-        />
-        <div className="drawer-scroll">
-          <MapGuidePanelContent />
-        </div>
-      </Drawer>
-
-      {/* アプリガイド（メニュー）ドロワー */}
-      <Drawer
-        anchor="bottom"
-        open={isMyPageOpen}
-        onClose={() => setIsMyPageOpen(false)}
-        ModalProps={drawerModalProps}
-        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
-      >
-        <PanelHeader
-          title="アプリガイド"
-          icon="compass.png"
-          onClose={() => setIsMyPageOpen(false)}
-        />
-        <div className="drawer-scroll">
-          <MyPagePanelContent
-            onClose={() => setIsMyPageOpen(false)}
-            onOpenSlider={openSliderExclusive}
-            onOpenMapGuide={() => setIsMapGuideOpen(true)}
-            onOpenStore={openStorePanel}        {/* ★ これを渡す */}
-          />
-        </div>
-      </Drawer>
-
-      {/* 店舗リスト（アプリガイドの“上”に重ねる） */}
-      <Drawer
-        anchor="bottom"
-        open={isStoreOpen}
-        onClose={() => setIsStoreOpen(false)}
-        ModalProps={drawerModalProps}
-        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0", zIndex: 1400 } }}
-      >
-        <PanelHeader
-          title="店舗を選ぶ"
-          icon="store.svg"
-          onClose={() => setIsStoreOpen(false)}
-        />
-        <StorePanelContent
-          onPickStore={(store) => {
-            setIsStoreOpen(false);
-            // ここで次のフローへ。基準ワイン再設定に繋ぐならスライダーへ飛ばす等。
-            navigate("/slider", { state: { selectedStore: store } });
-          }}
-        />
-      </Drawer>
-
+      {/* 右上: 検索 */}
       <button
-        onClick={openSearchExclusive}
+        onClick={() => openPanel("search")}
         style={{
           position: "absolute",
           top: "10px",
@@ -948,7 +836,7 @@ function MapPage() {
           src={`${process.env.PUBLIC_URL || ""}/img/search.svg`}
           alt=""
           style={{
-            width: "100%",            // ← 枠いっぱいにフィット
+            width: "100%",
             height: "100%",
             objectFit: "contain",
             display: "block",
@@ -960,7 +848,7 @@ function MapPage() {
 
       {/* 右サイドの丸ボタン群（♡ → ◎） */}
       <button
-        onClick={openFavoriteExclusive}
+        onClick={() => openPanel("favorite")}
         style={{
           position: "absolute",
           top: "60px",
@@ -983,7 +871,7 @@ function MapPage() {
           src={`${process.env.PUBLIC_URL || ""}/img/star.svg`}
           alt=""
           style={{
-            width: "100%",            // ← 枠いっぱいにフィット
+            width: "100%",
             height: "100%",
             objectFit: "contain",
             display: "block",
@@ -994,7 +882,7 @@ function MapPage() {
       </button>
 
       <button
-        onClick={openRatedExclusive}
+        onClick={() => openPanel("rated")}
         style={{
           position: "absolute",
           top: "110px",
@@ -1017,7 +905,7 @@ function MapPage() {
           src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
           alt=""
           style={{
-            width: "100%",            // ← 枠いっぱいにフィット
+            width: "100%",
             height: "100%",
             objectFit: "contain",
             display: "block",
@@ -1030,7 +918,7 @@ function MapPage() {
       {/* ====== 検索パネル（背面Map操作可） */}
       <SearchPanel
         open={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
+        onClose={async () => { await closeUIsThen(); }}
         data={data}
         onPick={(item) => {
           if (!item) return;
@@ -1039,15 +927,13 @@ function MapPage() {
           setSelectedJANFromSearch(null);
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
-          // フォーカス
           const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
           if (Number.isFinite(tx) && Number.isFinite(ty)) {
             centerToUMAP(tx, ty, { zoom: viewState.zoom });
           }
         }}
-        onScanClick={() => {
-          setProductDrawerOpen(false);
-          setSelectedJAN(null);
+        onScanClick={async () => {
+          await closeUIsThen();
           setIsScannerOpen(true);
         }}
       />
@@ -1120,7 +1006,7 @@ function MapPage() {
       {/* お気に入り（下から 60vh） */}
       <FavoritePanel
         isOpen={isFavoriteOpen}
-        onClose={() => { setIsFavoriteOpen(false); }}
+        onClose={async () => { await closeUIsThen(); }}
         favorites={favorites}
         data={data}
         userRatings={userRatings}
@@ -1143,13 +1029,13 @@ function MapPage() {
       {/* 評価（◎）一覧パネル */}
       <RatedPanel
         isOpen={isRatedOpen}
-        onClose={() => { setIsRatedOpen(false); }}
+        onClose={async () => { await closeUIsThen(); }}
         userRatings={userRatings}
         data={data}
         onSelectJAN={(jan) => {
           setOpenFromRated(true);    // ◎から開いたフラグ
           fromRatedRef.current = true;
-          try { sessionStorage.setItem('tm_from_rated_jan', String(jan)); } catch {}
+          try { sessionStorage.setItem("tm_from_rated_jan", String(jan)); } catch {}
           setHideHeartForJAN(String(jan)); // ← このJANは♡を隠す
 
           setSelectedJANFromSearch(null);
@@ -1169,10 +1055,8 @@ function MapPage() {
       <Drawer
         anchor="bottom"
         open={productDrawerOpen}
-        onClose={() => {
-          setProductDrawerOpen(false);
-          setSelectedJAN(null);
-          setSelectedJANFromSearch(null);
+        onClose={async () => {
+          await closeUIsThen();
           setHideHeartForJAN(null);
         }}
         ModalProps={drawerModalProps}
@@ -1181,43 +1065,54 @@ function MapPage() {
         <PanelHeader
           title="商品ページ"
           icon="dot.svg"
-          onClose={() => {
-            setProductDrawerOpen(false);
-            setSelectedJAN(null);
-            setSelectedJANFromSearch(null);
+          onClose={async () => {
+            await closeUIsThen();
             setHideHeartForJAN(null);
           }}
         />
         <div className="drawer-scroll">
-          {/* ... iframe 等そのまま ... */}
+          {/* ここに商品ページのiframeなどを配置します。例：
+          <iframe
+            ref={iframeRef}
+            title="product"
+            src={`/products/${selectedJAN}`}
+            style={{ width: "100%", height: "70vh", border: "none" }}
+          />
+          */}
         </div>
       </Drawer>
 
-      {/* ★ アプリガイド（メニュー）ドロワー：商品ドロワーの“外”に置く */}
+      {/* ===== ここから “統一済み” ドロワー群（85vh、高z-index） ===== */}
+
+      {/* アプリガイド（メニュー）ドロワー */}
       <Drawer
         anchor="bottom"
         open={isMyPageOpen}
-        onClose={() => setIsMyPageOpen(false)}
+        onClose={async () => { await closeUIsThen(); }}
         ModalProps={drawerModalProps}
-        PaperProps={{ 
-          style: { 
+        PaperProps={{
+          style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
             zIndex: 1400,
             height: "85vh",
-          } }}
+          },
+        }}
       >
         <PanelHeader
           title="アプリガイド"
           icon="compass.png"
-          onClose={() => setIsMyPageOpen(false)}
+          onClose={async () => { await closeUIsThen(); }}
         />
         <div className="drawer-scroll">
           <MyPagePanelContent
-            onClose={() => setIsMyPageOpen(false)}
-            onOpenSlider={openSliderExclusive}
-            onOpenMapGuide={() => setIsMapGuideOpen(true)}
-            onOpenStore={() => setIsStoreOpen(true)}
+            onClose={async () => { await closeUIsThen(); }}
+            onOpenSlider={async () => {
+              await closeUIsThen();
+              navigate("/slider", { state: { from: "map" } });
+            }}
+            onOpenMapGuide={async () => { await openPanel("mapguide"); }}
+            onOpenStore={async () => { await openPanel("store"); }}
           />
         </div>
       </Drawer>
@@ -1226,13 +1121,13 @@ function MapPage() {
       <Drawer
         anchor="bottom"
         open={isMapGuideOpen}
-        onClose={() => setIsMapGuideOpen(false)}
+        onClose={async () => { await closeUIsThen(); }}
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{ keepMounted: true }}
         PaperProps={{
-          style: { 
-            ...paperBaseStyle, 
-            borderTop: "1px solid #c9c9b0", 
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
             zIndex: 1400,
             height: "85vh",
           },
@@ -1241,53 +1136,54 @@ function MapPage() {
         <PanelHeader
           title="マップガイド"
           icon="map-guide.svg"
-          onClose={() => setIsMapGuideOpen(false)}
+          onClose={async () => { await closeUIsThen(); }}
         />
         <div className="drawer-scroll">
           <MapGuidePanelContent />
         </div>
       </Drawer>
 
-      {/* ★ 店舗登録ドロワー */}
+      {/* 店舗登録ドロワー */}
       <Drawer
         anchor="bottom"
         open={isStoreOpen}
-        onClose={() => setIsStoreOpen(false)}
+        onClose={async () => { await closeUIsThen(); }}
         ModalProps={drawerModalProps}
-        PaperProps={{ style: { 
-          ...paperBaseStyle, 
-          borderTop: "1px solid #c9c9b0",
-          zIndex: 1400,
-          height: "85vh",
-        } }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            zIndex: 1400,
+            height: "85vh",
+          },
+        }}
       >
         <PanelHeader
           title="お気に入り店舗登録"
-          icon="store.svg"   // 任意
-          onClose={() => setIsStoreOpen(false)}
+          icon="store.svg"
+          onClose={async () => { await closeUIsThen(); }}
         />
-        {/* MapGuidePanelContent と同じく drawer-scroll に流し込む */}
         <StorePanelContent
-          onPickStore={(store) => {
-            setIsStoreOpen(false);
+          onPickStore={async (store) => {
+            await closeUIsThen();
             // ここでスライダーへ遷移（元の StorePage と同じ動線）
             navigate("/slider", { state: { selectedStore: store } });
           }}
         />
       </Drawer>
 
-      {/* ===== Mapの見方（ガイド）ドロワー：商品/一覧と同サイズ ===== */}
+      {/* 「TasteMapとは？」ドロワー（商品/一覧と同サイズ） */}
       <Drawer
         anchor="bottom"
         open={isGuideOpen}
-        onClose={() => setIsGuideOpen(false)}
+        onClose={async () => { await closeUIsThen(); }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
       >
         <PanelHeader
           title="TasteMap（ワイン風味マップ）とは？"
           icon="map.svg"
-          onClose={() => setIsGuideOpen(false)}
+          onClose={async () => { await closeUIsThen(); }}
         />
 
         <div className="drawer-scroll" style={{ padding: 16, lineHeight: 1.6, color: "#333" }}>
