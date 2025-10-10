@@ -101,6 +101,7 @@ function MapPage() {
       willClose = true;
     }
     if (isGuideOpen) { setIsGuideOpen(false); willClose = true; }
+    if (isMapGuideOpen) { setIsMapGuideOpen(false); willClose = true; }
     if (isSearchOpen) { setIsSearchOpen(false); willClose = true; }
     if (isFavoriteOpen) { setIsFavoriteOpen(false); willClose = true; }
     if (isRatedOpen) { setIsRatedOpen(false); willClose = true; }
@@ -145,6 +146,13 @@ function MapPage() {
     if (isSearchOpen) { setIsSearchOpen(false); return; }
     await closeUIsThen();
     setIsSearchOpen(true);
+  };
+
+  // マップガイド（下ドロワー）
+  const openMapGuideExclusive = async () => {
+    if (isMapGuideOpen) { setIsMapGuideOpen(false); return; }
+    await closeUIsThen();
+    setIsMapGuideOpen(true);
   };
 
   // お気に入り（♡）
@@ -798,7 +806,7 @@ function MapPage() {
 
       {/* 左下: マイページ（設定）ボタン */}
       <button
-        onClick={openMyPageExclusive}
+        onClick={openMapGuideExclusive}
         style={{
           position: "absolute",
           left: "12px",
@@ -1176,6 +1184,7 @@ function MapPage() {
             <div style={{ padding: 16 }}>商品を選択してください。</div>
           )}
         </div>
+
       </Drawer>
       {/* ===== Mapの見方（ガイド）ドロワー：商品/一覧と同サイズ ===== */}
       <Drawer
