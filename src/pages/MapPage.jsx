@@ -8,10 +8,11 @@ import SearchPanel from "../components/panels/SearchPanel";
 import BarcodeScanner from "../components/BarcodeScanner";
 import FavoritePanel from "../components/panels/FavoritePanel";
 import RatedPanel from "../components/panels/RatedPanel";
-import MyPagePanelContent from "../components/panels/MyPagePanelContent";
+import MyAccountPanelContent from "../components/panels/MyAccountPanelContent";
 import MapCanvas from "../components/map/MapCanvas";
 import PanelHeader from "../components/ui/PanelHeader";
 import StorePanelContent from "../components/panels/StorePanelContent";
+import FaqPanelContent from "../components/panels/FaqPanelContent";
 
 import {
   drawerModalProps,
