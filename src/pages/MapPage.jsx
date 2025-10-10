@@ -1,9 +1,9 @@
 // src/MapPage.js
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
-import Drawer from "@mui/material/Drawer";
 import { useLocation, useNavigate } from "react-router-dom";
+import Drawer from "@mui/material/Drawer";
 
-// パネル / Canvas
+import MapGuidePanelContent from "../components/panels/MapGuidePanelContent";
 import SearchPanel from "../components/panels/SearchPanel";
 import BarcodeScanner from "../components/BarcodeScanner";
 import FavoritePanel from "../components/panels/FavoritePanel";
@@ -11,9 +11,7 @@ import RatedPanel from "../components/panels/RatedPanel";
 import MyPagePanel from "../components/panels/MyPagePanel";
 import MapCanvas from "../components/map/MapCanvas";
 import PanelHeader from "../components/ui/PanelHeader";
-import { PANEL_HEADER_H } from "../ui/constants";
 
-// 共通定数
 import {
   DRAWER_HEIGHT,
   drawerModalProps,
@@ -21,7 +19,7 @@ import {
   ZOOM_LIMITS,
   INITIAL_ZOOM,
   CENTER_Y_OFFSET,
-} from "../ui/constants"
+} from "../ui/constants";
 
 const REREAD_LS_KEY = "tm_reread_until";
 
@@ -29,16 +27,15 @@ const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
 
 function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
-  // 1px が何ワールド単位か（Orthographic：scale = 2^zoom）
   const worldPerPx = 1 / Math.pow(2, Number(zoom) || 0);
-  // 実画面の高さ（モバイルでも visualViewport を優先）
-  const hPx =
-    (typeof window !== "undefined" && window.visualViewport?.height) ||
-    window.innerHeight ||
-    0;
 
-  // 画面中央(0.5) → 指定割合(fracFromTop) へずらすピクセル量をワールド単位へ
-  // 上から25%なら (0.5 - 0.25) * 画面高 = 0.25 * 画面高 を上方向にずらす
+  let hPx = 0;
+  if (typeof window !== "undefined") {
+    hPx = (window.visualViewport && window.visualViewport.height)
+      ? window.visualViewport.height
+      : (window.innerHeight || 0);
+  }
+
   return (0.5 - fracFromTop) * hPx * worldPerPx;
 }
 
@@ -49,6 +46,7 @@ function MapPage() {
   const [openFromRated, setOpenFromRated] = useState(false);
   const fromRatedRef = useRef(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);
 
   // 🔗 商品ページiframe参照（♡状態の同期に使用）
   const iframeRef = useRef(null);
@@ -839,7 +837,32 @@ function MapPage() {
         isOpen={isMyPageOpen}
         onClose={() => setIsMyPageOpen(false)}
         onOpenSlider={openSliderExclusive}
+        onOpenMapGuide={() => setIsMapGuideOpen(true)}
       />
+
+      <Drawer
+        anchor="bottom"
+        open={isMapGuideOpen}
+        onClose={() => setIsMapGuideOpen(false)}
+        BackdropProps={{ style: { background: "transparent" } }}
+        ModalProps={{ keepMounted: true }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+           borderTop: "1px solid #c9c9b0",
+            zIndex: 1400, // メニューより前面
+          },
+        }}
+      >
+       <PanelHeader
+          title="マップガイド"
+          icon="map-guide.svg"
+          onClose={() => setIsMapGuideOpen(false)}
+        />
+        <div className="drawer-scroll">
+          <MapGuidePanelContent />
+        </div>
+      </Drawer>
 
       <button
         onClick={openSearchExclusive}

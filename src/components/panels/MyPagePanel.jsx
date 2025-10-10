@@ -37,7 +37,7 @@ function Row({ icon, label, onClick, last = false }) {
   );
 }
 
-export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
+export default function MyPagePanel({ isOpen, onClose, onOpenSlider, onOpenMapGuide}) {
   const navigate = useNavigate();
   const [stack] = useState(["menu"]); // 内部ページは廃止
   const view = "menu";
@@ -69,7 +69,7 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
         <Row
           icon={ICONS.mapGuide}
           label="マップガイド"
-          onClick={() => { onClose?.(); navigate("/map-guide"); }}
+          onClick={() => { onClose?.(); onOpenMapGuide?.(); }}
         />
         <Row
           icon={ICONS.compass}
@@ -82,17 +82,17 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider }) {
         <Row
           icon={ICONS.account}
           label="マイアカウント"
-          onClick={() => navigate("/my-account")}
+          onClick={() => onOpenMapGuide?.()}
         />
         <Row
           icon={ICONS.store}
           label="お気に入り店舗登録"
-          onClick={() => navigate("/stores-fav")}
+          onClick={() => onOpenMapGuide?.()}
         />
         <Row
           icon={ICONS.faq}
           label="よくある質問"
-          onClick={() => { onClose?.(); navigate("/faq"); }}
+          onClick={() => { onClose?.(); onOpenMapGuide?.(); }}
         />
       </div>
     </div>
