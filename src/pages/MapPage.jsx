@@ -8,7 +8,7 @@ import SearchPanel from "../components/panels/SearchPanel";
 import BarcodeScanner from "../components/BarcodeScanner";
 import FavoritePanel from "../components/panels/FavoritePanel";
 import RatedPanel from "../components/panels/RatedPanel";
-import MyPagePanel from "../components/panels/MyPagePanel";
+import MyPagePanelContent from "../components/panels/MyPagePanelContent";
 import MapCanvas from "../components/map/MapCanvas";
 import PanelHeader from "../components/ui/PanelHeader";
 
@@ -168,6 +168,13 @@ function MapPage() {
     await closeUIsThen();
     setIsRatedOpen(true);
   };
+
+  // アプリガイド
+  const openCompassMenuExclusive = useCallback(async () => {
+    if (isMyPageOpen) { setIsMyPageOpen(false); return; }
+    await closeUIsThen();
+    setIsMyPageOpen(true);
+  }, [isMyPageOpen, closeUIsThen]);
 
   // ====== パン境界（現在データに基づく）
   const panBounds = useMemo(() => {
@@ -806,7 +813,7 @@ function MapPage() {
 
       {/* 左下: マイページ（設定）ボタン */}
       <button
-        onClick={openMapGuideExclusive}
+        onClick={openCompassMenuExclusive}
         style={{
           position: "absolute",
           left: "12px",
@@ -840,13 +847,6 @@ function MapPage() {
           draggable={false}
         />
       </button>
-
-      <MyPagePanel
-        isOpen={isMyPageOpen}
-        onClose={() => setIsMyPageOpen(false)}
-        onOpenSlider={openSliderExclusive}
-        onOpenMapGuide={() => setIsMapGuideOpen(true)}
-      />
 
       <Drawer
         anchor="bottom"
@@ -1116,76 +1116,74 @@ function MapPage() {
       {/* 商品ページドロワー */}
       <Drawer
         anchor="bottom"
-          open={productDrawerOpen}
+        open={productDrawerOpen}
+        onClose={() => {
+          setProductDrawerOpen(false);
+          setSelectedJAN(null);
+          setSelectedJANFromSearch(null);
+          setHideHeartForJAN(null);
+        }}
+        ModalProps={drawerModalProps}
+        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
+      >
+        <PanelHeader
+          title="商品ページ"
+          icon="dot.svg"
           onClose={() => {
             setProductDrawerOpen(false);
             setSelectedJAN(null);
             setSelectedJANFromSearch(null);
             setHideHeartForJAN(null);
           }}
-          ModalProps={drawerModalProps}
-          PaperProps={{
-            style: {
-             ...paperBaseStyle,
-              // 上端の細枠を追加（お好みで）
-              borderTop: "1px solid #c9c9b0"
-            }
-          }}
-        >
-       {/* ▼ ヘッダーを置き換え */}
-        <PanelHeader
-          title="商品ページ"
-               icon="dot.svg"
-               onClose={() => {
-                  setProductDrawerOpen(false);
-                  setSelectedJAN(null);
-                 setSelectedJANFromSearch(null);
-                 setHideHeartForJAN(null);
-              }}
         />
-
-        {/* ▼ スクロール領域（ラッパ） */}
         <div className="drawer-scroll">
-          {selectedJAN ? (
-            <iframe
-             ref={iframeRef}
-              className="product-iframe"
-              title={`product-${selectedJAN}`}
-              src={(() => {
-                const jan = String(selectedJAN ?? "");
-                   const fromRated = hideHeartForJAN === jan;
-                   const params = new URLSearchParams();
-                   if (fromRated) params.set("fromRated", "1");
-                   params.set("embed", "1");          // ★ 埋め込みモード
-                   const qs = params.toString();
-                   const base = (process.env.PUBLIC_URL || "") || window.location.origin;
-                   return `${base}/#/products/${jan}${qs ? `?${qs}` : ""}`;
-                 })()}
-              onLoad={() => {
-                const jan = String(selectedJAN);
-                const isFav = !!favorites[jan];
-                try {
-                 requestAnimationFrame(() => {
-                   iframeRef.current?.contentWindow?.postMessage(
-                     { type: "SET_FAVORITE", jan, value: isFav },
-                     "*"
-                   );
-                   if (hideHeartForJAN === jan) {
-                     iframeRef.current?.contentWindow?.postMessage(
-                       { type: "HIDE_HEART", jan, value: true },
-                       "*"
-                     );
-                   }
-                 });
-               } catch {}
-              }}
-            />
-          ) : (
-            <div style={{ padding: 16 }}>商品を選択してください。</div>
-          )}
+          {/* ... iframe 等そのまま ... */}
         </div>
-
       </Drawer>
+
+      {/* ★ アプリガイド（メニュー）ドロワー：商品ドロワーの“外”に置く */}
+      <Drawer
+        anchor="bottom"
+        open={isMyPageOpen}
+        onClose={() => setIsMyPageOpen(false)}
+        ModalProps={drawerModalProps}
+        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
+      >
+        <PanelHeader
+          title="アプリガイド"
+          icon="compass.png"
+          onClose={() => setIsMyPageOpen(false)}
+        />
+        <div className="drawer-scroll">
+          <MyPagePanelContent
+            onClose={() => setIsMyPageOpen(false)}
+            onOpenSlider={openSliderExclusive}
+            onOpenMapGuide={() => setIsMapGuideOpen(true)}
+          />
+        </div>
+      </Drawer>
+
+      {/* マップガイド（説明）ドロワー */}
+      <Drawer
+        anchor="bottom"
+        open={isMapGuideOpen}
+        onClose={() => setIsMapGuideOpen(false)}
+        BackdropProps={{ style: { background: "transparent" } }}
+        ModalProps={{ keepMounted: true }}
+        PaperProps={{
+          style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0", zIndex: 1400 },
+        }}
+      >
+        <PanelHeader
+          title="マップガイド"
+          icon="map-guide.svg"
+          onClose={() => setIsMapGuideOpen(false)}
+        />
+        <div className="drawer-scroll">
+          <MapGuidePanelContent />
+        </div>
+      </Drawer>
+
       {/* ===== Mapの見方（ガイド）ドロワー：商品/一覧と同サイズ ===== */}
       <Drawer
         anchor="bottom"

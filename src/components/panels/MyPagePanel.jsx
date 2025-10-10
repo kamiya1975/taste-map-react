@@ -1,7 +1,7 @@
 // src/components/panels/MyPagePanel.jsx
 import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import PanelHeader from "../ui/PanelHeader";
+import MyPagePanelContent from "./MyPagePanelContent";
 
 const ICONS = {
   compass: "/img/bar.svg",
@@ -38,7 +38,6 @@ function Row({ icon, label, onClick, last = false }) {
 }
 
 export default function MyPagePanel({ isOpen, onClose, onOpenSlider, onOpenMapGuide}) {
-  const navigate = useNavigate();
   const [stack] = useState(["menu"]); // 内部ページは廃止
   const view = "menu";
 
@@ -65,36 +64,11 @@ export default function MyPagePanel({ isOpen, onClose, onOpenSlider, onOpenMapGu
         icon="compass.png"   // ★ ファイル名のみ
       />
 
-      <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
-        <Row
-          icon={ICONS.mapGuide}
-          label="マップガイド"
-          onClick={() => { onClose?.(); onOpenMapGuide?.(); }}
-        />
-        <Row
-          icon={ICONS.compass}
-          label="基準のワイン 再設定"
-          onClick={() => {
-            if (onOpenSlider) onOpenSlider();
-            else navigate("/slider", { state: { from: "mypage" } });
-          }}
-        />
-        <Row
-          icon={ICONS.account}
-          label="マイアカウント"
-          onClick={() => onOpenMapGuide?.()}
-        />
-        <Row
-          icon={ICONS.store}
-          label="お気に入り店舗登録"
-          onClick={() => onOpenMapGuide?.()}
-        />
-        <Row
-          icon={ICONS.faq}
-          label="よくある質問"
-          onClick={() => { onClose?.(); onOpenMapGuide?.(); }}
-        />
-      </div>
+      <MyPagePanelContent
+        onClose={onClose}
+        onOpenSlider={onOpenSlider}
+        onOpenMapGuide={onOpenMapGuide}
+      />
     </div>
   );
 }
