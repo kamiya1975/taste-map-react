@@ -2,26 +2,25 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { requireRatingOrRedirect } from "../utils/auth";
+import "./index.css";
 
 /** =========================
  *  ユーティリティ
  * ========================= */
- const useJanParam = () => {
-   const { jan: routeJan } = useParams();
-   const location = useLocation();
-   return React.useMemo(() => {
-     if (routeJan) return String(routeJan);
-     // ?jan=XXXX のフォールバック
-     try {
-       const url = new URL(window.location.href);
-       const byQuery = url.searchParams.get("jan");
-       if (byQuery) return String(byQuery);
-     } catch {}
-     // ハッシュ直叩きのフォールバック（/#/products/XXXX）
-     const m = (window.location.hash || "").match(/#\/products\/([^/?#]+)/);
-     return m ? m[1] : "";
-   }, [routeJan, location]);
- };
+const useJanParam = () => {
+  const { jan: routeJan } = useParams();
+  const location = useLocation();
+  return useMemo(() => {
+    if (routeJan) return String(routeJan);
+    try {
+      const url = new URL(window.location.href);
+      const byQuery = url.searchParams.get("jan");
+      if (byQuery) return String(byQuery);
+    } catch {}
+    const m = (window.location.hash || "").match(/#\/products\/([^/?#]+)/);
+    return m ? m[1] : "";
+  }, [routeJan, location]);
+};
 
 const postToParent = (payload) => {
   try {
@@ -29,7 +28,6 @@ const postToParent = (payload) => {
   } catch {}
 };
 
-// スキャン系の“自動再オープン”原因になりがちなキーを掃除
 const clearScanHints = (jan) => {
   const keys = [
     "selectedJAN",
@@ -52,7 +50,6 @@ const clearScanHints = (jan) => {
   } catch {}
 };
 
-// 親へ「閉じたよ。JANはクリアしてね」を多経路で通知（アンマウント時）
 const notifyParentClosed = (jan) => {
   postToParent({ type: "PRODUCT_CLOSED", jan, clear: true });
   clearScanHints(jan);
@@ -63,7 +60,6 @@ const notifyParentClosed = (jan) => {
   } catch {}
 };
 
-// ◎一覧から開いたか（?fromRated=1|true）をURLクエリで判定
 const useHideHeartFromQuery = () => {
   const [hide, setHide] = useState(false);
   useEffect(() => {
@@ -78,30 +74,12 @@ const useHideHeartFromQuery = () => {
   return hide;
 };
 
-// 埋め込み判定（ヘッダー非表示用）
-const useIsEmbed = () => {
-  const [embed, setEmbed] = useState(false);
-  useEffect(() => {
-    try {
-      const url = new URL(window.location.href);
-      const q = (url.searchParams.get("embed") || "").toLowerCase();
-      const byQuery = q === "1" || q === "true";
-      const inIframe = window.self !== window.top;
-      setEmbed(byQuery || inIframe);
-    } catch {
-      setEmbed(false);
-    }
-  }, []);
-  return embed;
-};
-
 /** =========================
- *  お気に入りハート（手動のみ）
+ *  お気に入りハート
  * ========================= */
 function HeartButton({ jan, size = 22 }) {
   const [fav, setFav] = useState(false);
 
-  // ローカルストレージと親からの同期
   useEffect(() => {
     const readFav = () => {
       try {
@@ -118,15 +96,10 @@ function HeartButton({ jan, size = 22 }) {
     };
     window.addEventListener("storage", onStorage);
 
-    // 親からのメッセージを受信（SET_FAVORITE / STATE_SNAPSHOT）
     const onMsg = (e) => {
       const { type, jan: targetJan, value } = e.data || {};
-      const match = String(targetJan) === String(jan);
-      if (!match) return;
-
-      if (type === "SET_FAVORITE") {
-        setFav(!!value);
-      }
+      if (String(targetJan) !== String(jan)) return;
+      if (type === "SET_FAVORITE") setFav(!!value);
     };
     window.addEventListener("message", onMsg);
 
@@ -138,14 +111,10 @@ function HeartButton({ jan, size = 22 }) {
 
   const toggle = () => {
     const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
-    if (favs[jan]) {
-      delete favs[jan];
-    } else {
-      favs[jan] = { addedAt: new Date().toISOString() };
-    }
+    if (favs[jan]) delete favs[jan];
+    else favs[jan] = { addedAt: new Date().toISOString() };
     localStorage.setItem("favorites", JSON.stringify(favs));
     setFav(!!favs[jan]);
-
     postToParent({ type: "TOGGLE_FAVORITE", jan });
   };
 
@@ -223,35 +192,27 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
 };
 
 function ProductImage({ jan, maxHeight = 225 }) {
-  const [loaded, setLoaded] = React.useState(() => {
+  const [loaded, setLoaded] = useState(() => {
     const img = new Image();
     img.src = `${process.env.PUBLIC_URL || ""}/img/${jan}.png`;
     return img.complete && img.naturalWidth > 0;
   });
 
-  const [src, setSrc] = React.useState(
-    `${process.env.PUBLIC_URL || ""}/img/${jan}.png`
-  );
-
+  const [src, setSrc] = useState(`${process.env.PUBLIC_URL || ""}/img/${jan}.png`);
   const wasCachedRef = React.useRef(false);
   const imgElRef = React.useRef(null);
 
-  // コールバックrefでキャッシュ済みかどうかだけ拾い、実体は imgElRef に保持
   const setImgRef = React.useCallback((node) => {
-    if (node) {
-      wasCachedRef.current = node.complete && node.naturalWidth > 0;
-    }
+    if (node) wasCachedRef.current = node.complete && node.naturalWidth > 0;
     imgElRef.current = node;
   }, []);
 
-  // jan 変更時にリセット＆パス再設定
-  React.useEffect(() => {
+  useEffect(() => {
     setLoaded(false);
     setSrc(`${process.env.PUBLIC_URL || ""}/img/${jan}.png`);
   }, [jan]);
 
-  // 読み込み/エラー監視（キャッシュ済みも拾う）
-  React.useLayoutEffect(() => {
+  useEffect(() => {
     const img = imgElRef.current;
     if (!img) return;
 
@@ -259,14 +220,11 @@ function ProductImage({ jan, maxHeight = 225 }) {
       setLoaded(true);
       return;
     }
-
     const onLoad = () => setLoaded(true);
     const onError = () => {
-      // 404等でも白っぽさは残さず、プレースホルダへ差し替え
       setLoaded(true);
       setSrc(`${process.env.PUBLIC_URL || ""}/img/placeholder.png`);
     };
-
     img.addEventListener("load", onLoad, { once: true });
     img.addEventListener("error", onError, { once: true });
     return () => {
@@ -286,7 +244,7 @@ function ProductImage({ jan, maxHeight = 225 }) {
       style={{
         maxHeight: maxHeight,
         objectFit: "contain",
-        opacity: loaded ? 1 : 0.35,                // 読み込み中だけ薄く
+        opacity: loaded ? 1 : 0.35,
         transition: wasCachedRef.current ? "none" : "opacity .25s ease",
         WebkitBackfaceVisibility: "hidden",
         transform: "translateZ(0)",
@@ -296,91 +254,144 @@ function ProductImage({ jan, maxHeight = 225 }) {
 }
 
 /** =========================
- *  ProductPage
+ *  商品説明セクション（末尾余白込み）
+ * ========================= */
+function ProductInfoSection() {
+  return (
+    <div>
+      {/* 商品キャッチ＋コメント */}
+      <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
+        <div style={{ fontWeight: "bold", marginBottom: 4 }}>
+          ひと口で広がる華やかな香りと余韻
+        </div>
+        <div>
+          このワインは、飲み始めから最後の一滴まで一貫して心地よい調和を感じさせる仕上がりです。グラスを近づけた瞬間に広がる華やかなアロマは、熟した果実の甘やかさと爽やかな酸味を同時に連想させます。口に含むと、果実味の豊かさと引き締まった酸がバランスよく調和し、余韻にはほのかなスパイスと樽由来の複雑さが重なります。ミディアムボディながら深みを備え、軽やかさと重厚感の両方を楽しめる点が特徴です。赤身の肉料理やトマトソースを使ったパスタと合わせることで、お互いの味わいをより引き立て合います。日常の食卓にも特別な日の演出にもふさわしい万能な一本として、幅広いシーンで活躍するワインです。
+        </div>
+      </div>
+
+      {/* スペース */}
+      <div style={{ height: 20 }} />
+
+      {/* 生産者キャッチ＋コメント */}
+      <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+        <div style={{ fontWeight: "bold", marginBottom: 4 }}>
+          伝統と革新が息づく情熱の造り手
+        </div>
+        <div>
+          このワインを手掛ける生産者は、長年培ってきた伝統的な醸造技術と最新の研究成果を融合させ、常に最高品質のワインを追求してきました。畑は恵まれた気候と土壌条件に支えられ、手摘みによる収穫や徹底した温度管理が実施されています。小規模ながらも丁寧なアプローチを大切にし、一房一房に生産者のこだわりが込められています。また、持続可能な農業にも力を注ぎ、環境に配慮した栽培と醸造を実践。そうした取り組みが、複雑さと繊細さを併せ持つ独自のスタイルを生み出しています。地域を代表する存在として国内外から高く評価され、受賞歴も多数。造り手の情熱と土地の恵みが見事に調和した一本が、グラスを通して飲む人の心に語りかけます。
+        </div>
+      </div>
+
+      {/* スペース */}
+      <div style={{ height: 20 }} />
+
+      {/* 基本情報（評価欄と同じ直線で囲む） */}
+      <div
+        style={{
+          marginTop: 24,
+          paddingTop: 8,
+          paddingBottom: 8,
+          borderTop: "1px solid #ccc",
+          borderBottom: "1px solid #ccc",
+          marginBottom: 0, // 末尾marginは相殺されがちなので0
+        }}
+      >
+        <div style={{ fontSize: 14, lineHeight: 1.9 }}>
+          {[
+            ["タイプ", "赤ワイン"],
+            ["商品名", "プティ・ムートン"],
+            ["生産者名", "シャトー・ムートン・ロートシルト"],
+            ["生産国", "フランス"],
+            ["生産地", "ボルドー"],
+            ["容量", "750ml"],
+            ["ブドウ品種", "カベルネ・ソーヴィニョン、メルロー、マルベック、プティ・ヴェルド他"],
+            ["成分分析", "2024年産：酒類総合情報センター調べ"],
+          ].map(([label, value]) => (
+            <div key={label} style={{ display: "flex", marginTop: 2 }}>
+              <div style={{ width: 96, flexShrink: 0 }}>{label}</div>
+              <div style={{ flex: 1 }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ページ終端の余白（保険） */}
+      <div style={{ height: 100 }} />
+    </div>
+  );
+}
+
+/** =========================
+ *  ProductPage（default export）
  * ========================= */
 export default function ProductPage() {
-  //const isEmbed = useIsEmbed();
   const navigate = useNavigate();
   const jan = useJanParam();
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // ◎一覧から来たか（来ていれば♡を隠す）
   const hideHeartFromQuery = useHideHeartFromQuery();
   const [hideHeart, setHideHeart] = useState(hideHeartFromQuery);
-  useEffect(() => {
-    setHideHeart(hideHeartFromQuery);
-  }, [hideHeartFromQuery]);
+  useEffect(() => setHideHeart(hideHeartFromQuery), [hideHeartFromQuery]);
 
-  // マウント→OPEN通知、アンマウント→CLOSED通知
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan });
     postToParent({ type: "REQUEST_STATE", jan });
-
     const onBeforeUnload = () => notifyParentClosed(jan);
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       notifyParentClosed(jan);
-      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("beforeunload", onBeforeunload);
     };
   }, [jan]);
 
-  // 商品・評価ロード（localStorage → JSON フォールバック）
   useEffect(() => {
     let alive = true;
+    const normJAN = (d) =>
+      String(d?.JAN ?? d?.jan ?? d?.code ?? d?.barcode ?? "").trim();
 
-      const normJAN = (d) =>
-        String(d?.JAN ?? d?.jan ?? d?.code ?? d?.barcode ?? "").trim();
+    const load = async () => {
+      let dataArr = [];
+      try {
+        dataArr = JSON.parse(localStorage.getItem("umapData") || "[]");
+      } catch {}
+      let found =
+        Array.isArray(dataArr)
+          ? dataArr.find((d) => normJAN(d) === String(jan).trim())
+          : null;
 
-      const load = async () => {
-        // 1) localStorage から探す
-        let dataArr = [];
+      if (!found) {
         try {
-          dataArr = JSON.parse(localStorage.getItem("umapData") || "[]");
-        } catch {}
-        let found =
-          Array.isArray(dataArr)
-            ? dataArr.find((d) => normJAN(d) === String(jan).trim())
-            : null;
-
-        // 2) 見つからなければ public の JSON を読む
-        if (!found) {
-          try {
-            const url = `${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`;
-            const res = await fetch(url, { cache: "no-store" });
-            if (res.ok) {
-              const json = await res.json();
-              const arr = Array.isArray(json) ? json : [];
-              found = arr.find((d) => normJAN(d) === String(jan).trim()) || null;
-              // キャッシュ
-              try {
-                localStorage.setItem("umapData", JSON.stringify(arr));
-              } catch {}
-            }
-          } catch (e) {
-            console.warn("UMAP_PCA_coordinates.json の読込に失敗:", e);
+          const url = `${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`;
+          const res = await fetch(url, { cache: "no-store" });
+          if (res.ok) {
+            const json = await res.json();
+            const arr = Array.isArray(json) ? json : [];
+            found = arr.find((d) => normJAN(d) === String(jan).trim()) || null;
+            try {
+              localStorage.setItem("umapData", JSON.stringify(arr));
+            } catch {}
           }
+        } catch (e) {
+          console.warn("UMAP_PCA_coordinates.json の読込に失敗:", e);
         }
+      }
 
-        if (!alive) return;
-        setProduct(found || null);
+      if (!alive) return;
+      setProduct(found || null);
 
-        // 評価の読込
-        try {
-          const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
-          if (ratings[jan]) setRating(ratings[jan].rating ?? 0);
-        } catch {}
-      };
+      try {
+        const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
+        if (ratings[jan]) setRating(ratings[jan].rating ?? 0);
+      } catch {}
+    };
 
-      load();
-      return () => {
-        alive = false;
-       };
-    }, [jan]);
+    load();
+    return () => { alive = false; };
+  }, [jan]);
 
-  // 親からの STATE_SNAPSHOT
   useEffect(() => {
-    const onMsg = (e) => {
+    const onMsgSnapshot = (e) => {
       const { type, jan: targetJan, rating: ratingPayload, hideHeart } = e.data || {};
       if (type !== "STATE_SNAPSHOT") return;
       if (String(targetJan) !== String(jan)) return;
@@ -389,21 +400,18 @@ export default function ProductPage() {
         if (typeof hideHeart === "boolean") setHideHeart(hideHeart);
       } catch {}
     };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
+    window.addEventListener("message", onMsgSnapshot);
+    return () => window.removeEventListener("message", onMsgSnapshot);
   }, [jan]);
 
-  // 親からの HIDE_HEART
   useEffect(() => {
-    const onMsg = (e) => {
+    const onMsgHide = (e) => {
       const { type, jan: targetJan, value } = e.data || {};
       if (String(targetJan) !== String(jan)) return;
-      if (type === "HIDE_HEART") {
-        setHideHeart(Boolean(value));
-      }
+      if (type === "HIDE_HEART") setHideHeart(Boolean(value));
     };
-    window.addEventListener("message", onMsg);
-    return () => window.removeEventListener("message", onMsg);
+    window.addEventListener("message", onMsgHide);
+    return () => window.removeEventListener("message", onMsgHide);
   }, [jan]);
 
   const handleCircleClick = async (value) => {
@@ -473,7 +481,7 @@ export default function ProductPage() {
 
   const price = product.希望小売価格 ?? product.価格 ?? 1800;
 
-  // ★ Typeごとの色マップ
+  // Typeごとの色マップ
   const typeColors = {
     Spa: "#6BAED6",
     White: "#D9D76C",
@@ -485,19 +493,21 @@ export default function ProductPage() {
 
   return (
     <div
+      className="pb-safe fill-screen"
       style={{
         height: "100%",
         overflow: "auto",
         WebkitOverflowScrolling: "touch",
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        maxWidth: "500px",
+        maxWidth: 500,
         margin: "0 auto",
-        padding: "16px",
+        padding: 16,
         position: "relative",
+        boxSizing: "border-box",
       }}
     >
-      {/* 左上に固定の♡（embed でも表示） */}
+      {/* 左上に固定の♡ */}
       {!hideHeart && (
         <div style={{ position: "fixed", top: 12, left: 12, zIndex: 1000 }}>
           <HeartButton jan={jan} size={22} />
@@ -511,18 +521,11 @@ export default function ProductPage() {
 
       {/* 商品名 */}
       <h2 style={{ margin: "8px 0", fontWeight: "bold", fontSize: 16 }}>
-       {product.商品名 || "（名称不明）"}
+        {product.商品名 || "（名称不明）"}
       </h2>
 
-      {/* タイプマーク＋価格 */}
-      <div
-        style={{ 
-          display: "flex", 
-          alignItems: "center", 
-          margin: "4px 0 12px 0" 
-        }}
-      >
-        {/* タイプマーク */}
+      {/* タイプマーク＋価格＋産地/年 */}
+      <div style={{ display: "flex", alignItems: "center", margin: "4px 0 12px 0" }}>
         <span
           style={{
             width: 16,
@@ -533,21 +536,16 @@ export default function ProductPage() {
             display: "inline-block",
           }}
         />
-       {/* 価格 */}
-       <span style={{ marginLeft: 8 }}>
-         ¥{Number(price).toLocaleString()}
-       </span>
-
-       {/* 原産地・年 */}
-       <span style={{ marginLeft: 24 }}>
-         {product.産地 || product.生産地 || "シチリア / イタリア"} /{" "}
-         {product.国 || product.国 || "2022"}
-       </span>
+        <span style={{ marginLeft: 8 }}>¥{Number(price).toLocaleString()}</span>
+        <span style={{ marginLeft: 24 }}>
+          {(product.産地 || product.生産地 || "シチリア / イタリア")} /{" "}
+          {(product.ヴィンテージ || product.ビンテージ || product.年 || product.vintage || "-")}
+        </span>
       </div>
 
       {/* 味データ */}
       <p style={{ margin: "4px 0" }}>
-        Sweet: {Number(product.PC2).toFixed(2)}  /  Body: {Number(product.PC1).toFixed(2)}
+        Sweet: {Number(product.PC2).toFixed(2)} / Body: {Number(product.PC1).toFixed(2)}
       </p>
 
       {/* 評価（◎） */}
@@ -568,95 +566,19 @@ export default function ProductPage() {
             gap: 10,
           }}
         >
-          <div
-            style={{
-              fontWeight: "bold",
-              fontSize: 16,
-              minWidth: 48,
-              whiteSpace: "nowrap",
-            }}
-          >
+          <div style={{ fontWeight: "bold", fontSize: 16, minWidth: 48, whiteSpace: "nowrap" }}>
             評価
           </div>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: 8,
-              width: "100%",
-              maxWidth: 300,
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, width: "100%", maxWidth: 300 }}>
             {[1, 2, 3, 4, 5].map((v) => (
-              <CircleRating
-                key={v}
-                value={v}
-                currentRating={rating}
-                onClick={handleCircleClick}
-              />
+              <CircleRating key={v} value={v} currentRating={rating} onClick={handleCircleClick} />
             ))}
           </div>
         </div>
       </div>
 
-      {/* 商品キャッチ＋コメント */}
-      <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
-        <div style={{ fontWeight: "bold", marginBottom: 4 }}>
-           ひと口で広がる華やかな香りと余韻
-        </div>
-        <div>
-          このワインは、飲み始めから最後の一滴まで一貫して心地よい調和を感じさせる仕上がりです。グラスを近づけた瞬間に広がる華やかなアロマは、熟した果実の甘やかさと爽やかな酸味を同時に連想させます。口に含むと、果実味の豊かさと引き締まった酸がバランスよく調和し、余韻にはほのかなスパイスと樽由来の複雑さが重なります。ミディアムボディながら深みを備え、軽やかさと重厚感の両方を楽しめる点が特徴です。赤身の肉料理やトマトソースを使ったパスタと合わせることで、お互いの味わいをより引き立て合います。日常の食卓にも特別な日の演出にもふさわしい万能な一本として、幅広いシーンで活躍するワインです。
-        </div>
-      </div>
-
-      {/* スペース */}
-      <div style={{ height: 20 }} />
-
-      {/* 生産者キャッチ＋コメント */}
-      <div style={{ fontSize: 14, lineHeight: 1.6 }}>
-        <div style={{ fontWeight: "bold", marginBottom: 4 }}>
-          伝統と革新が息づく情熱の造り手
-        </div>
-        <div>
-          このワインを手掛ける生産者は、長年培ってきた伝統的な醸造技術と最新の研究成果を融合させ、常に最高品質のワインを追求してきました。畑は恵まれた気候と土壌条件に支えられ、手摘みによる収穫や徹底した温度管理が実施されています。小規模ながらも丁寧なアプローチを大切にし、一房一房に生産者のこだわりが込められています。また、持続可能な農業にも力を注ぎ、環境に配慮した栽培と醸造を実践。そうした取り組みが、複雑さと繊細さを併せ持つ独自のスタイルを生み出しています。地域を代表する存在として国内外から高く評価され、受賞歴も多数。造り手の情熱と土地の恵みが見事に調和した一本が、グラスを通して飲む人の心に語りかけます。
-        </div>
-      </div>
-
-      {/* スペース */}
-      <div style={{ height: 20 }} />
-
-      {/* 基本情報（評価欄と同じ直線で囲む） */}
-      <div
-        style={{
-          marginTop: 24,
-          paddingTop: 8,
-          paddingBottom: 8,
-          borderTop: "1px solid #ccc",
-          borderBottom: "1px solid #ccc",
-          marginBottom: 40,
-        }}
-      >
-        <div style={{ fontSize: 14, lineHeight: 1.9 }}>
-          {[
-            ["タイプ", "赤ワイン"],
-            ["商品名", "プティ・ムートン"],
-            ["生産者名", "シャトー・ムートン・ロートシルト"],
-            ["生産国", "フランス"],
-            ["生産地", "ボルドー"],
-            ["容量", "750ml"],
-            ["ブドウ品種", "カベルネ・ソーヴィニョン、メルロー、マルベック、プティ・ヴェルド他"],
-            ["成分分析", "2024年産：酒類総合情報センター調べ"],
-          ].map(([label, value]) => (
-           <div key={label} style={{ display: "flex", marginTop: 2 }}>
-             <div style={{ width: 96, flexShrink: 0 /* ラベル固定幅 */ }}>{label}</div>
-              <div style={{ flex: 1 }}>{value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-       {/* ページ終端の余白（フッターや固定UIと被らないように） */}
-      <div style={{ height: 100 }} />
+      {/* 説明セクション（末尾余白込み） */}
+      <ProductInfoSection />
     </div>
-   );
-  }
+  );
+}

@@ -37,3 +37,16 @@ canvas {
 :root {
   touch-action: manipulation;
 }
+
+/* iOS セーフエリア対応（旧WebKit→新WebKitの順） */
+.pb-safe {
+  padding-bottom: calc(96px + constant(safe-area-inset-bottom));
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+/* iOS PWA の 100vh 問題対策 */
+.fill-screen {
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  box-sizing: border-box;
+}
