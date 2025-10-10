@@ -36,8 +36,7 @@ function Row({ icon, label, onClick, last = false }) {
   );
 }
 
-export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGuide }) {
-    const navigate = useNavigate();
+export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGuide, onOpenStore }) {
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
       <Row
@@ -60,7 +59,7 @@ export default function MyPagePanelContent({ onClose, onOpenSlider, onOpenMapGui
         label="お気に入り店舗登録"
         onClick={() => {
           onClose?.();            // 必要ならドロワーを閉じる
-          navigate("/stores");
+          onOpenStore?.();
         }}
       />
       <Row

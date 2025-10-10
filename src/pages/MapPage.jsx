@@ -178,6 +178,11 @@ function MapPage() {
     setIsMyPageOpen(true);
   }, [isMyPageOpen, closeUIsThen]);
 
+  // ストア追加
+  const openStorePanel = useCallback(() => {
+    setIsStoreOpen(true);
+  }, []);
+
   // ====== パン境界（現在データに基づく）
   const panBounds = useMemo(() => {
     if (!data.length) return { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
@@ -872,6 +877,51 @@ function MapPage() {
         <div className="drawer-scroll">
           <MapGuidePanelContent />
         </div>
+      </Drawer>
+
+      {/* アプリガイド（メニュー）ドロワー */}
+      <Drawer
+        anchor="bottom"
+        open={isMyPageOpen}
+        onClose={() => setIsMyPageOpen(false)}
+        ModalProps={drawerModalProps}
+        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
+      >
+        <PanelHeader
+          title="アプリガイド"
+          icon="compass.png"
+          onClose={() => setIsMyPageOpen(false)}
+        />
+        <div className="drawer-scroll">
+          <MyPagePanelContent
+            onClose={() => setIsMyPageOpen(false)}
+            onOpenSlider={openSliderExclusive}
+            onOpenMapGuide={() => setIsMapGuideOpen(true)}
+            onOpenStore={openStorePanel}        {/* ★ これを渡す */}
+          />
+        </div>
+      </Drawer>
+
+      {/* 店舗リスト（アプリガイドの“上”に重ねる） */}
+      <Drawer
+        anchor="bottom"
+        open={isStoreOpen}
+        onClose={() => setIsStoreOpen(false)}
+        ModalProps={drawerModalProps}
+        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0", zIndex: 1400 } }}
+      >
+        <PanelHeader
+          title="店舗を選ぶ"
+          icon="store.svg"
+          onClose={() => setIsStoreOpen(false)}
+        />
+        <StorePanelContent
+          onPickStore={(store) => {
+            setIsStoreOpen(false);
+            // ここで次のフローへ。基準ワイン再設定に繋ぐならスライダーへ飛ばす等。
+            navigate("/slider", { state: { selectedStore: store } });
+          }}
+        />
       </Drawer>
 
       <button
