@@ -1197,7 +1197,7 @@ function MapPage() {
           </div>
 
           <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>マップガイド（バブル表示）</div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Mapガイド（バブル表示）</div>
             <p style={{ margin: "0 0 6px" }}>
               左上のMapガイドでは、風味やトレンドの“偏り”をバブルで可視化します。
               大きなバブルは、たとえるなら街の広場に人が集まってにぎわう様子。例えば「甘味が豊かなワイン」「フルーティなワイン」がその周辺に多いことを示します。
