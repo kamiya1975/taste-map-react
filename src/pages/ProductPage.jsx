@@ -258,7 +258,13 @@ function ProductImage({ jan, maxHeight = 225 }) {
  * ========================= */
 function ProductInfoSection() {
   return (
-    <div>
+    <div
+      className="pb-safe"
+      style={{
+        // 固定余白 + セーフエリア（envが0でも固定分は効く）
+        paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
+      }}
+    >
       {/* 商品キャッチ＋コメント */}
       <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
         <div style={{ fontWeight: "bold", marginBottom: 4 }}>
