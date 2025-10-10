@@ -9,7 +9,7 @@ import BarcodeScanner from "../components/BarcodeScanner";
 import FavoritePanel from "../components/panels/FavoritePanel";
 import RatedPanel from "../components/panels/RatedPanel";
 import MyPagePanelContent from "../components/panels/MyPagePanelContent";
-import MyMyAccountPanelContent from "../components/panels/MyMyAccountPanelContent";
+import MyAccountPanelContent from "../components/panels/MyMyAccountPanelContent";
 import MapCanvas from "../components/map/MapCanvas";
 import PanelHeader from "../components/ui/PanelHeader";
 import StorePanelContent from "../components/panels/StorePanelContent";
