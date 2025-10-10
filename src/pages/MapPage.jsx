@@ -22,20 +22,16 @@ import {
 } from "../ui/constants";
 
 const REREAD_LS_KEY = "tm_reread_until";
-
-// 例：上から25%に置きたい
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
 
 function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
   const worldPerPx = 1 / Math.pow(2, Number(zoom) || 0);
-
   let hPx = 0;
   if (typeof window !== "undefined") {
     hPx = (window.visualViewport && window.visualViewport.height)
       ? window.visualViewport.height
       : (window.innerHeight || 0);
   }
-
   return (0.5 - fracFromTop) * hPx * worldPerPx;
 }
 
@@ -43,33 +39,26 @@ function MapPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const didInitialCenterRef = useRef(false);  // 初期センタリング（1回だけ）の実行ガード
+  const didInitialCenterRef = useRef(false);
   const [openFromRated, setOpenFromRated] = useState(false);
   const fromRatedRef = useRef(false);
 
+  // ドロワー状態
   const [isGuideOpen, setIsGuideOpen] = useState(false);        // 「TasteMapとは？」
-  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);  // 「マップガイド」
-  const [isStoreOpen, setIsStoreOpen] = useState(false);        // 店舗登録
+  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);  // 「マップガイド」(オーバーレイ)
+  const [isStoreOpen, setIsStoreOpen] = useState(false);        // 店舗登録 (オーバーレイ)
   const [isMyPageOpen, setIsMyPageOpen] = useState(false);      // アプリガイド（メニュー）
 
-  // 🔗 商品ページiframe参照（♡状態の同期に使用）※実装予定ならこのrefを使って<iframe ref={iframeRef} ...>を追加
   const iframeRef = useRef(null);
-
-  // スライダーから戻った直後の「一度だけ自動オープン」ガード
   const autoOpenOnceRef = useRef(false);
 
-  // スキャナの開閉（都度起動・都度破棄）
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const lastCommittedRef = useRef({ code: "", at: 0 });   // 直近採用JAN（60秒ガード）
-  const unknownWarnedRef = useRef(new Map());             // 未登録JANの警告デバウンス
+  const lastCommittedRef = useRef({ code: "", at: 0 });
+  const unknownWarnedRef = useRef(new Map());
 
-  // ====== ビュー制御（2D専用）
-  const [viewState, setViewState] = useState({
-    target: [0, 0, 0],
-    zoom: INITIAL_ZOOM,
-  });
+  const [viewState, setViewState] = useState({ target: [0, 0, 0], zoom: INITIAL_ZOOM });
 
-  // ====== データ & 状態
+  // データ & 状態
   const [data, setData] = useState([]);
   const [userRatings, setUserRatings] = useState({});
   const [favorites, setFavorites] = useState({});
@@ -79,58 +68,67 @@ function MapPage() {
   const [selectedJAN, setSelectedJAN] = useState(null);
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
 
-  // 検索
+  // 検索・一覧
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
-
-  // 一覧の排他表示制御（♡ と ◎）
   const [isFavoriteOpen, setIsFavoriteOpen] = useState(false);
   const [isRatedOpen, setIsRatedOpen] = useState(false);
 
-  // === 排他オープンのためのユーティリティ ===
   const PANEL_ANIM_MS = 320;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  /** 商品ドロワー／検索／お気に入り／評価／各ガイドをまとめて閉じ、閉じアニメ分だけ待つ */
-  const closeUIsThen = useCallback(async () => {
+  /** まとめて閉じ、閉じアニメ分だけ待つ（preserveMyPage=true ならメニューは残す） */
+  const closeUIsThen = useCallback(async (opts = {}) => {
+    const { preserveMyPage = false } = opts;
     let willClose = false;
 
     if (productDrawerOpen) {
       setProductDrawerOpen(false);
       setSelectedJAN(null);
-      setSelectedJANFromSearch(null); // ハイライトも消す
+      setSelectedJANFromSearch(null);
       willClose = true;
     }
     if (isGuideOpen)     { setIsGuideOpen(false);     willClose = true; }
     if (isMapGuideOpen)  { setIsMapGuideOpen(false);  willClose = true; }
-    if (isMyPageOpen)    { setIsMyPageOpen(false);    willClose = true; }
     if (isStoreOpen)     { setIsStoreOpen(false);     willClose = true; }
     if (isSearchOpen)    { setIsSearchOpen(false);    willClose = true; }
     if (isFavoriteOpen)  { setIsFavoriteOpen(false);  willClose = true; }
     if (isRatedOpen)     { setIsRatedOpen(false);     willClose = true; }
+
+    // メニューは基本閉じるが、保護オプション時は残す
+    if (!preserveMyPage && isMyPageOpen) { setIsMyPageOpen(false); willClose = true; }
 
     if (willClose) await wait(PANEL_ANIM_MS);
   }, [
     productDrawerOpen,
     isGuideOpen,
     isMapGuideOpen,
-    isMyPageOpen,
     isStoreOpen,
     isSearchOpen,
     isFavoriteOpen,
     isRatedOpen,
+    isMyPageOpen,
   ]);
 
-  /** パネル共通オープナー（相互排他） */
+  /** 通常の相互排他オープン（メニュー含め全部調停して開く） */
   const openPanel = useCallback(async (kind) => {
-    await closeUIsThen();
-    if (kind === "mypage")      setIsMyPageOpen(true);
+    await closeUIsThen(); // すべて閉じる
+    if (kind === "mypage")       setIsMyPageOpen(true);
     else if (kind === "mapguide") setIsMapGuideOpen(true);
-    else if (kind === "store")  setIsStoreOpen(true);
-    else if (kind === "search") setIsSearchOpen(true);
+    else if (kind === "store")   setIsStoreOpen(true);
+    else if (kind === "search")  setIsSearchOpen(true);
     else if (kind === "favorite") setIsFavoriteOpen(true);
-    else if (kind === "rated")  setIsRatedOpen(true);
-    else if (kind === "guide")  setIsGuideOpen(true);          // 「TasteMapとは？」
+    else if (kind === "rated")   setIsRatedOpen(true);
+    else if (kind === "guide")   setIsGuideOpen(true);
+  }, [closeUIsThen]);
+
+  /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
+  const openOverlayAboveMenu = useCallback(async (kind) => {
+    // メニューは残す。他の競合UIだけ閉じる
+    await closeUIsThen({ preserveMyPage: true });
+    if (kind === "mapguide") setIsMapGuideOpen(true);
+    else if (kind === "store") setIsStoreOpen(true);
+    else if (kind === "guide") setIsGuideOpen(true);
   }, [closeUIsThen]);
 
   // ★ クエリで各パネルを開く（/ ?open=mypage|search|favorite|rated|mapguide|guide|store）
@@ -140,15 +138,14 @@ function MapPage() {
       const open = (p.get("open") || "").toLowerCase();
       if (!open) return;
       (async () => {
-        await openPanel(open);
-        // 再トリガ防止
+        await openPanel(open); // クエリ経由は従来どおり相互排他
         navigate(location.pathname, { replace: true });
       })();
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search]);
 
-  // ====== パン境界（現在データに基づく）
+  // ====== パン境界
   const panBounds = useMemo(() => {
     if (!data.length) return { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
     const xs = data.map((d) => d.UMAP1);
@@ -156,12 +153,7 @@ function MapPage() {
     const xmin = Math.min(...xs), xmax = Math.max(...xs);
     const ymin = Math.min(...ys), ymax = Math.max(...ys);
     const pad = 1.5 + Math.abs(CENTER_Y_OFFSET);
-    return {
-      xmin: xmin - pad,
-      xmax: xmax + pad,
-      ymin: ymin - pad,
-      ymax: ymax + pad,
-    };
+    return { xmin: xmin - pad, xmax: xmax + pad, ymin: ymin - pad, ymax: ymax + pad };
   }, [data]);
 
   // ====== データ読み込み
@@ -195,21 +187,14 @@ function MapPage() {
               コメント: r["コメント"] ?? r["comment"] ?? r["説明"] ?? "",
             };
           })
-          .filter(
-            (r) =>
-              Number.isFinite(r.UMAP1) &&
-              Number.isFinite(r.UMAP2) &&
-              r.JAN !== ""
-          );
+          .filter((r) => Number.isFinite(r.UMAP1) && Number.isFinite(r.UMAP2) && r.JAN !== "");
         setData(cleaned);
         localStorage.setItem("umapData", JSON.stringify(cleaned));
       })
-      .catch((err) =>
-        console.error("UMAP_PCA_coordinates.json の取得に失敗:", err)
-      );
+      .catch((err) => console.error("UMAP_PCA_coordinates.json の取得に失敗:", err));
   }, []);
 
-  // スキャナを開くたびに「未登録JANの警告」をリセット（警告は各スキャンセッションで1回だけに）
+  // スキャナ：未登録JANの警告リセット
   useEffect(() => {
     if (isScannerOpen) unknownWarnedRef.current.clear();
   }, [isScannerOpen]);
@@ -219,11 +204,7 @@ function MapPage() {
     const syncUserRatings = () => {
       const stored = localStorage.getItem("userRatings");
       if (stored) {
-        try {
-          setUserRatings(JSON.parse(stored));
-        } catch (e) {
-          console.error("Failed to parse userRatings:", e);
-        }
+        try { setUserRatings(JSON.parse(stored)); } catch (e) { console.error("Failed to parse userRatings:", e); }
       }
     };
     syncUserRatings();
@@ -239,11 +220,7 @@ function MapPage() {
     const syncFavorites = () => {
       const stored = localStorage.getItem("favorites");
       if (stored) {
-        try {
-          setFavorites(JSON.parse(stored));
-        } catch (e) {
-          console.error("Failed to parse favorites:", e);
-        }
+        try { setFavorites(JSON.parse(stored)); } catch (e) { console.error("Failed to parse favorites:", e); }
       }
     };
     syncFavorites();
@@ -255,67 +232,46 @@ function MapPage() {
     };
   }, []);
 
-  useEffect(() => {
-    try { localStorage.setItem("userRatings", JSON.stringify(userRatings)); } catch {}
-  }, [userRatings]);
+  useEffect(() => { try { localStorage.setItem("userRatings", JSON.stringify(userRatings)); } catch {} }, [userRatings]);
+  useEffect(() => { try { localStorage.setItem("favorites", JSON.stringify(favorites)); } catch {} }, [favorites]);
 
-  useEffect(() => {
-    try { localStorage.setItem("favorites", JSON.stringify(favorites)); } catch {}
-  }, [favorites]);
-
-  // ====== UMAP クラスタ重心（旧 userPin 互換処理用）
+  // ====== UMAP 重心
   const umapCentroid = useMemo(() => {
     if (!data?.length) return [0, 0];
     let sx = 0, sy = 0, n = 0;
     for (const d of data) {
-      if (Number.isFinite(d.UMAP1) && Number.isFinite(d.UMAP2)) {
-        sx += d.UMAP1;
-        sy += d.UMAP2;
-        n++;
-      }
+      if (Number.isFinite(d.UMAP1) && Number.isFinite(d.UMAP2)) { sx += d.UMAP1; sy += d.UMAP2; n++; }
     }
     return n ? [sx / n, sy / n] : [0, 0];
   }, [data]);
 
-  // userPin 読み出し（新旧形式サポート）
+  // userPin 読み出し
   const readUserPinFromStorage = useCallback(() => {
     try {
       const raw = localStorage.getItem("userPinCoords");
       if (!raw) return null;
       const val = JSON.parse(raw);
 
-      // 新形式 {coordsUMAP: [x, y]}
       if (val && Array.isArray(val.coordsUMAP) && val.coordsUMAP.length >= 2) {
-        const x = Number(val.coordsUMAP[0]);
-        const y = Number(val.coordsUMAP[1]);
+        const x = Number(val.coordsUMAP[0]); const y = Number(val.coordsUMAP[1]);
         if (Number.isFinite(x) && Number.isFinite(y)) return [x, y];
       }
-      // 旧形式 {coords: [x, -y]} → UMAPに移行
       if (val && Array.isArray(val.coords) && val.coords.length >= 2) {
-        const xCanvas = Number(val.coords[0]);
-        const yCanvas = Number(val.coords[1]);
+        const xCanvas = Number(val.coords[0]); const yCanvas = Number(val.coords[1]);
         if (Number.isFinite(xCanvas) && Number.isFinite(yCanvas)) {
           const umap = [xCanvas, -yCanvas];
-          localStorage.setItem(
-            "userPinCoords",
-            JSON.stringify({ coordsUMAP: umap, version: 2 })
-          );
+          localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: umap, version: 2 }));
           return umap;
         }
       }
-      // 最旧：単なる配列 [x, y]（Y 反転の判定を重心で推定）
       if (Array.isArray(val) && val.length >= 2) {
-        const ax = Number(val[0]);
-        const ay = Number(val[1]);
+        const ax = Number(val[0]); const ay = Number(val[1]);
         if (Number.isFinite(ax) && Number.isFinite(ay)) {
           const [cx, cy] = umapCentroid;
           const dUMAP = (ax - cx) ** 2 + (ay - cy) ** 2;
           const dFlipY = (ax - cx) ** 2 + (-ay - cy) ** 2;
           const umap = dUMAP <= dFlipY ? [ax, ay] : [ax, -ay];
-          localStorage.setItem(
-            "userPinCoords",
-            JSON.stringify({ coordsUMAP: umap, version: 2 })
-          );
+          localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: umap, version: 2 }));
           return umap;
         }
       }
@@ -326,14 +282,12 @@ function MapPage() {
     }
   }, [umapCentroid]);
 
-  // userPin 同期（SliderPageで保存された座標を読む）
+  // userPin 同期
   useEffect(() => {
     const sync = () => setUserPin(readUserPinFromStorage());
     sync();
     const onFocus = () => sync();
-    const onStorage = (e) => {
-      if (!e || e.key === "userPinCoords") sync();
-    };
+    const onStorage = (e) => { if (!e || e.key === "userPinCoords") sync(); };
     window.addEventListener("focus", onFocus);
     window.addEventListener("storage", onStorage);
     return () => {
@@ -342,29 +296,19 @@ function MapPage() {
     };
   }, [readUserPinFromStorage]);
 
-  /** ===== 共通：UMAP座標へセンタリング（Y反転やオフセット込み） ===== */
+  /** ===== UMAP座標へセンタリング ===== */
   const centerToUMAP = useCallback((xUMAP, yUMAP, opts = {}) => {
     if (!Number.isFinite(xUMAP) || !Number.isFinite(yUMAP)) return;
     const yCanvas = -yUMAP;
-    const zoomTarget = Math.max(
-      ZOOM_LIMITS.min,
-      Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM)
-    );
+    const zoomTarget = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM));
     const yOffset = getYOffsetWorld(zoomTarget, CENTER_Y_FRAC);
-    setViewState((prev) => ({
-      ...prev,
-      target: [xUMAP, yCanvas - yOffset, 0],
-      zoom: zoomTarget,
-    }));
+    setViewState((prev) => ({ ...prev, target: [xUMAP, yCanvas - yOffset, 0], zoom: zoomTarget }));
   }, []);
 
-  // ★ データが入ったら「最初の1回だけ」BlendF にセンタリング
+  // 初期センタリング
   useEffect(() => {
-    if (didInitialCenterRef.current) return;    // もうやっていたら何もしない
+    if (didInitialCenterRef.current) return;
     if (!Array.isArray(data) || data.length === 0) return;
-
-    // 既に他の意図的なセンタリング（スライダー戻りなど）がある場合はそれを優先したいなら、
-    // そのフラグをここでチェックして return。
 
     const b = data.find((d) => String(d.JAN) === "blendF");
     if (b && Number.isFinite(b.UMAP1) && Number.isFinite(b.UMAP2)) {
@@ -372,7 +316,6 @@ function MapPage() {
       didInitialCenterRef.current = true;
       return;
     }
-    // BlendF が無い時は重心へフォールバック
     const [cx, cy] = umapCentroid;
     centerToUMAP(cx, cy, { zoom: INITIAL_ZOOM });
     didInitialCenterRef.current = true;
@@ -384,38 +327,31 @@ function MapPage() {
     const shouldCenter = !!location.state?.centerOnUserPin;
     if (shouldCenter) {
       centerToUMAP(userPin[0], userPin[1], { zoom: INITIAL_ZOOM });
-      try {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } catch {}
+      try { window.history.replaceState({}, document.title, window.location.pathname); } catch {}
     }
   }, [userPin, location.state, centerToUMAP]);
 
-  /** === SliderPage「閉じる」→ blendF に戻る要求を処理 === */
+  // SliderPage閉じる→ blendFへ戻る
   useEffect(() => {
     const fromState = !!location.state?.centerOnBlendF;
     const raw = sessionStorage.getItem("tm_center_umap");
-
     if (!fromState && !raw) return;
-    if (!Array.isArray(data) || data.length === 0) return; // データ待ち
+    if (!Array.isArray(data) || data.length === 0) return;
 
     let targetX = null, targetY = null;
-
     try {
       if (raw) {
         const payload = JSON.parse(raw);
         if (Number.isFinite(payload?.x) && Number.isFinite(payload?.y)) {
-          targetX = Number(payload.x);
-          targetY = Number(payload.y);
+          targetX = Number(payload.x); targetY = Number(payload.y);
         }
       }
     } catch {}
 
-    // payload が無い/不正なときはデータから blendF を検索
     if (targetX == null || targetY == null) {
       const b = data.find((d) => String(d.JAN) === "blendF");
       if (b && Number.isFinite(b.UMAP1) && Number.isFinite(b.UMAP2)) {
-        targetX = b.UMAP1;
-        targetY = b.UMAP2;
+        targetX = b.UMAP1; targetY = b.UMAP2;
       }
     }
 
@@ -423,37 +359,27 @@ function MapPage() {
       centerToUMAP(targetX, targetY, { zoom: INITIAL_ZOOM });
     }
 
-    // 一度だけ消費
     sessionStorage.removeItem("tm_center_umap");
-    try {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } catch {}
+    try { window.history.replaceState({}, document.title, window.location.pathname); } catch {}
   }, [location.state, data, centerToUMAP]);
 
-  // クリック座標から最近傍検索（自動オープン用）
+  // 最近傍
   const findNearestWine = useCallback((coord) => {
     if (!coord || !Array.isArray(data) || data.length === 0) return null;
     const [cx, cy] = coord;
     let best = null, bestD2 = Infinity;
     for (const d of data) {
-      const x = d.UMAP1;
-      const y = -d.UMAP2;
-      const dx = x - cx;
-      const dy = y - cy;
+      const x = d.UMAP1; const y = -d.UMAP2;
+      const dx = x - cx; const dy = y - cy;
       const d2 = dx * dx + dy * dy;
-      if (d2 < bestD2) {
-        bestD2 = d2;
-        best = d;
-      }
+      if (d2 < bestD2) { bestD2 = d2; best = d; }
     }
     return best;
   }, [data]);
 
-  // スライダー直後だけ：オレンジ打点の最寄り商品を自動で開く
+  // スライダー直後：最寄り自動オープン
   useEffect(() => {
-    const wantAutoOpen =
-      sessionStorage.getItem("tm_autopen_nearest") === "1";
-
+    const wantAutoOpen = sessionStorage.getItem("tm_autopen_nearest") === "1";
     if (!wantAutoOpen) return;
     if (autoOpenOnceRef.current) return;
     if (!userPin || !Array.isArray(data) || data.length === 0) return;
@@ -470,7 +396,7 @@ function MapPage() {
         const canvasCoord = [userPin[0], -userPin[1]];
         const nearest = findNearestWine(canvasCoord);
         if (nearest?.JAN) {
-          setHideHeartForJAN(null); // ← 追加：自動オープン時も解除
+          setHideHeartForJAN(null);
           setSelectedJAN(nearest.JAN);
           setSelectedJANFromSearch(null);
           setProductDrawerOpen(true);
@@ -482,7 +408,7 @@ function MapPage() {
     });
   }, [location.key, userPin, data, findNearestWine]);
 
-  // ====== 共通：商品へフォーカス
+  // ====== 商品へフォーカス
   const focusOnWine = useCallback((item, opts = {}) => {
     if (!item) return;
     const tx = Number(item.UMAP1);
@@ -490,24 +416,18 @@ function MapPage() {
     if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
 
     setViewState((prev) => {
-      // ① ズームは opts.zoom 未指定なら据え置き
       const wantZoom = opts.zoom;
       const zoomTarget = (wantZoom == null)
         ? prev.zoom
         : Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, wantZoom));
       const yOffset = getYOffsetWorld(zoomTarget, CENTER_Y_FRAC);
-
-      // ② ターゲットは opts.recenter === false のとき据え置き
       const keepTarget = opts.recenter === false;
-      const nextTarget = keepTarget
-        ? prev.target
-        : [tx, -tyUMAP - yOffset, 0];
-
+      const nextTarget = keepTarget ? prev.target : [tx, -tyUMAP - yOffset, 0];
       return { ...prev, target: nextTarget, zoom: zoomTarget };
     });
   }, []);
 
-  // ====== 子iframeへ♡状態を送るヘルパー
+  // ====== 子iframeへ♡状態を送る
   const sendFavoriteToChild = (jan, value) => {
     try {
       iframeRef.current?.contentWindow?.postMessage(
@@ -517,7 +437,6 @@ function MapPage() {
     } catch {}
   };
 
-  // ====== 便利関数（useCallbackで安定化）
   const toggleFavorite = useCallback((jan) => {
     setFavorites((prev) => {
       const next = { ...prev };
@@ -539,7 +458,6 @@ function MapPage() {
       const { type } = msg || {};
       if (!type) return;
 
-      // --- 共通ユーティリティ ---
       const sendSnapshotToChild = (janStr, nextRatingObj) => {
         try {
           const isFav = !!favorites[janStr];
@@ -562,25 +480,21 @@ function MapPage() {
         } catch {}
       };
 
-      // === 1) マイアカウントへ遷移してほしい
       if (type === "OPEN_MYACCOUNT") {
         await closeUIsThen();
         navigate("/my-account");
         return;
       }
 
-      // 以降は jan が必要
       const janStr = String(msg.jan || "");
       if (!janStr) return;
 
-      // === 2) 旧方式：お気に入りトグル
       if (type === "TOGGLE_FAVORITE") {
         toggleFavorite(janStr);
         sendSnapshotToChild(janStr);
         return;
       }
 
-      // === 3) 旧方式：評価更新（payload: {rating, date, ...}）
       if (type === "RATING_UPDATED") {
         const payload = msg.payload || null;
         setUserRatings((prev) => {
@@ -606,12 +520,10 @@ function MapPage() {
             );
           } catch {}
         }
-
         sendSnapshotToChild(janStr, msg.payload || null);
         return;
       }
 
-      // === 4) 新方式：お気に入り更新（即時反映）
       if (type === "tm:fav-updated") {
         const isFavorite = !!msg.isFavorite;
         setFavorites((prev) => {
@@ -625,7 +537,6 @@ function MapPage() {
         return;
       }
 
-      // === 5) 新方式：評価更新（即時反映）
       if (type === "tm:rating-updated") {
         const rating = Number(msg.rating) || 0;
         const date = msg.date || new Date().toISOString();
@@ -658,7 +569,6 @@ function MapPage() {
         return;
       }
 
-      // === 6) 子からの状態要求（互換維持）
       if (type === "REQUEST_STATE") {
         sendSnapshotToChild(janStr);
         return;
@@ -676,13 +586,12 @@ function MapPage() {
     navigate,
   ]);
 
-  // 評価の有無
   const hasAnyRating = useMemo(
     () => Object.values(userRatings || {}).some((v) => Number(v?.rating) > 0),
     [userRatings]
   );
 
-  // ===== 嗜好コンパス（DeckGLは MapCanvas 側で描画）
+  // ===== 嗜好コンパス
   const detectElbowIndex = (valsDesc) => {
     const n = valsDesc.length;
     if (n <= 3) return n;
@@ -712,14 +621,12 @@ function MapPage() {
         return { ...r, x: it.UMAP1, y: it.UMAP2 };
       })
       .filter(Boolean);
-    if (joined.length === 0) return { point: null, picked: [], rule: "elbow" };
+    if (joined.length === 0) return { point: null, picked, rule: "elbow" };
 
     joined.sort((a, b) => b.rating - a.rating);
-
-    const n = joined.length;
     const scores = joined.map((r) => r.rating);
     const kelbow = detectElbowIndex(scores);
-    const picked = joined.slice(0, Math.min(kelbow, n));
+    const picked = joined.slice(0, Math.min(kelbow, joined.length));
 
     let sw = 0, sx = 0, sy = 0;
     picked.forEach((p) => { sw += p.rating; sx += p.rating * p.x; sy += p.rating * p.y; });
@@ -730,7 +637,6 @@ function MapPage() {
   // ====== レンダリング
   return (
     <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}>
-      {/* デッキGLは分離済み */}
       <MapCanvas
         data={data}
         userRatings={userRatings}
@@ -744,16 +650,16 @@ function MapPage() {
         setViewState={setViewState}
         onPickWine={(item) => {
           if (!item) return;
-          setHideHeartForJAN(null); // ← 追加：◎経由以外は解除
+          setHideHeartForJAN(null);
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
           focusOnWine(item, { recenter: false });
         }}
-        edgeMarginXPx={50}   // 横の「ギリ見える」マージン(px)
-        edgeMarginYPx={400}  // 縦の「ギリ見える」マージン(px)
+        edgeMarginXPx={50}
+        edgeMarginYPx={400}
       />
 
-      {/* 左上: 指標セレクタ（2Dハイライト） */}
+      {/* 左上: 指標セレクタ */}
       <select
         value={highlight2D}
         onChange={(e) => setHighlight2D(e.target.value)}
@@ -776,13 +682,11 @@ function MapPage() {
 
       {/* 左下: アプリガイド（メニュー）ボタン */}
       <button
-        onClick={() => openPanel("mypage")}
+        onClick={() => setIsMyPageOpen((v) => !v)}
         style={{
           position: "absolute",
           left: "12px",
           bottom: "max(12px, env(safe-area-inset-bottom))",
-          top: "auto",
-          right: "auto",
           zIndex: 10,
           width: "40px",
           height: "40px",
@@ -800,13 +704,7 @@ function MapPage() {
         <img
           src={`${process.env.PUBLIC_URL || ""}/img/compass.png`}
           alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            display: "block",
-            pointerEvents: "none",
-          }}
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
           draggable={false}
         />
       </button>
@@ -835,13 +733,7 @@ function MapPage() {
         <img
           src={`${process.env.PUBLIC_URL || ""}/img/search.svg`}
           alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            display: "block",
-            pointerEvents: "none",
-          }}
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
           draggable={false}
         />
       </button>
@@ -870,13 +762,7 @@ function MapPage() {
         <img
           src={`${process.env.PUBLIC_URL || ""}/img/star.svg`}
           alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            display: "block",
-            pointerEvents: "none",
-          }}
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
           draggable={false}
         />
       </button>
@@ -904,18 +790,12 @@ function MapPage() {
         <img
           src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
           alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            display: "block",
-            pointerEvents: "none",
-          }}
+          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
           draggable={false}
         />
       </button>
 
-      {/* ====== 検索パネル（背面Map操作可） */}
+      {/* ====== 検索パネル ====== */}
       <SearchPanel
         open={isSearchOpen}
         onClose={async () => { await closeUIsThen(); }}
@@ -923,7 +803,7 @@ function MapPage() {
         onPick={(item) => {
           if (!item) return;
           setOpenFromRated(false);
-          setHideHeartForJAN(null);  // ← 検索からは隠さない
+          setHideHeartForJAN(null);
           setSelectedJANFromSearch(null);
           setSelectedJAN(item.JAN);
           setProductDrawerOpen(true);
@@ -943,7 +823,6 @@ function MapPage() {
         open={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onDetected={(codeText) => {
-          // --- EAN-13 検証 ---
           const isValidEan13 = (ean) => {
             if (!/^\d{13}$/.test(ean)) return false;
             let sum = 0;
@@ -956,54 +835,48 @@ function MapPage() {
           };
 
           let jan = String(codeText).replace(/\D/g, "");
-          if (jan.length === 12) jan = "0" + jan;       // UPC-A → EAN-13
+          if (jan.length === 12) jan = "0" + jan;
           if (jan.length !== 13 || !isValidEan13(jan)) {
             alert(`JAN: ${jan} は無効なバーコードです。`);
-            return false; // スキャナ継続
+            return false;
           }
 
           const now = Date.now();
-          // --- 「再読込み」ウィンドウ中は60sガードを一時解除 ---
           let bypassThrottle = false;
           try {
             const until = Number(sessionStorage.getItem(REREAD_LS_KEY) || 0);
             bypassThrottle = until > 0 && now < until;
           } catch {}
 
-          // 直近60秒の同一JANは通常スキップ（再読込み中は通す）
           if (!bypassThrottle) {
             if (jan === lastCommittedRef.current.code && now - lastCommittedRef.current.at < 60000) {
-              return false; // スキャナ継続
+              return false;
             }
           }
 
-          // データヒット判定
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
-            setHideHeartForJAN(null); // ← 追加：スキャナ経由は解除
+            setHideHeartForJAN(null);
             setSelectedJAN(hit.JAN);
             setProductDrawerOpen(true);
-            // 採用記録（勝手な再出現を防ぐ）
             lastCommittedRef.current = { code: jan, at: now };
-            // フォーカス
             const tx = Number(hit.UMAP1), ty = Number(hit.UMAP2);
             if (Number.isFinite(tx) && Number.isFinite(ty)) {
               centerToUMAP(tx, ty, { zoom: INITIAL_ZOOM });
             }
-            return true; // 採用→スキャナ側停止
+            return true;
           }
 
-          // 未登録JAN：ワンショット警告（12s抑制）
           const lastWarn = unknownWarnedRef.current.get(jan) || 0;
           if (now - lastWarn > 12000) {
             alert(`JAN: ${jan} は見つかりませんでした。`);
             unknownWarnedRef.current.set(jan, now);
           }
-          return false; // スキャナ継続
+          return false;
         }}
       />
 
-      {/* お気に入り（下から 60vh） */}
+      {/* お気に入り */}
       <FavoritePanel
         isOpen={isFavoriteOpen}
         onClose={async () => { await closeUIsThen(); }}
@@ -1012,7 +885,7 @@ function MapPage() {
         userRatings={userRatings}
         onSelectJAN={(jan) => {
           setOpenFromRated(false);
-          setHideHeartForJAN(null);  // ← 隠さない
+          setHideHeartForJAN(null);
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
@@ -1026,18 +899,17 @@ function MapPage() {
         }}
       />
 
-      {/* 評価（◎）一覧パネル */}
+      {/* 評価（◎） */}
       <RatedPanel
         isOpen={isRatedOpen}
         onClose={async () => { await closeUIsThen(); }}
         userRatings={userRatings}
         data={data}
         onSelectJAN={(jan) => {
-          setOpenFromRated(true);    // ◎から開いたフラグ
+          setOpenFromRated(true);
           fromRatedRef.current = true;
           try { sessionStorage.setItem("tm_from_rated_jan", String(jan)); } catch {}
-          setHideHeartForJAN(String(jan)); // ← このJANは♡を隠す
-
+          setHideHeartForJAN(String(jan));
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           const item = data.find((d) => String(d.JAN) === String(jan));
@@ -1055,23 +927,17 @@ function MapPage() {
       <Drawer
         anchor="bottom"
         open={productDrawerOpen}
-        onClose={async () => {
-          await closeUIsThen();
-          setHideHeartForJAN(null);
-        }}
+        onClose={async () => { await closeUIsThen(); setHideHeartForJAN(null); }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
       >
         <PanelHeader
           title="商品ページ"
           icon="dot.svg"
-          onClose={async () => {
-            await closeUIsThen();
-            setHideHeartForJAN(null);
-          }}
+          onClose={async () => { await closeUIsThen(); setHideHeartForJAN(null); }}
         />
         <div className="drawer-scroll">
-          {/* ここに商品ページのiframeなどを配置します。例：
+          {/* 例:
           <iframe
             ref={iframeRef}
             title="product"
@@ -1082,13 +948,11 @@ function MapPage() {
         </div>
       </Drawer>
 
-      {/* ===== ここから “統一済み” ドロワー群（85vh、高z-index） ===== */}
-
-      {/* アプリガイド（メニュー）ドロワー */}
+      {/* ===== メニュー（85vh, zIndex=1400） ===== */}
       <Drawer
         anchor="bottom"
         open={isMyPageOpen}
-        onClose={async () => { await closeUIsThen(); }}
+        onClose={() => setIsMyPageOpen(false)}
         ModalProps={drawerModalProps}
         PaperProps={{
           style: {
@@ -1102,33 +966,38 @@ function MapPage() {
         <PanelHeader
           title="アプリガイド"
           icon="compass.png"
-          onClose={async () => { await closeUIsThen(); }}
+          onClose={() => setIsMyPageOpen(false)}
         />
         <div className="drawer-scroll">
           <MyPagePanelContent
-            onClose={async () => { await closeUIsThen(); }}
+            onClose={() => setIsMyPageOpen(false)}
             onOpenSlider={async () => {
-              await closeUIsThen();
+              await closeUIsThen(); // スライダーは単独画面へ移動なので全部閉じる
               navigate("/slider", { state: { from: "map" } });
             }}
-            onOpenMapGuide={async () => { await openPanel("mapguide"); }}
-            onOpenStore={async () => { await openPanel("store"); }}
+            // ← ここが仕様変更ポイント：メニューは閉じずに上に重ねる
+            onOpenMapGuide={async () => { await openOverlayAboveMenu("mapguide"); }}
+            onOpenStore={async () => { await openOverlayAboveMenu("store"); }}
+            // 必要なら「TasteMapとは？」もメニュー上に重ねる
+            onOpenAboutMap={async () => { await openOverlayAboveMenu("guide"); }}
           />
         </div>
       </Drawer>
 
-      {/* マップガイド（説明）ドロワー */}
+      {/* ===== メニューの“上”に重ねるドロワー群（zIndex=1500、Backdrop透過） ===== */}
+
+      {/* マップガイド */}
       <Drawer
         anchor="bottom"
         open={isMapGuideOpen}
-        onClose={async () => { await closeUIsThen(); }}
+        onClose={() => setIsMapGuideOpen(false)}
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{ keepMounted: true }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
-            zIndex: 1400,
+            zIndex: 1500,          // ← メニュー(1400)より上
             height: "85vh",
           },
         }}
@@ -1136,24 +1005,25 @@ function MapPage() {
         <PanelHeader
           title="マップガイド"
           icon="map-guide.svg"
-          onClose={async () => { await closeUIsThen(); }}
+          onClose={() => setIsMapGuideOpen(false)}
         />
         <div className="drawer-scroll">
           <MapGuidePanelContent />
         </div>
       </Drawer>
 
-      {/* 店舗登録ドロワー */}
+      {/* 店舗登録 */}
       <Drawer
         anchor="bottom"
         open={isStoreOpen}
-        onClose={async () => { await closeUIsThen(); }}
+        onClose={() => setIsStoreOpen(false)}
+        BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={drawerModalProps}
         PaperProps={{
           style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
-            zIndex: 1400,
+            zIndex: 1500,          // ← メニューの上
             height: "85vh",
           },
         }}
@@ -1161,50 +1031,45 @@ function MapPage() {
         <PanelHeader
           title="お気に入り店舗登録"
           icon="store.svg"
-          onClose={async () => { await closeUIsThen(); }}
+          onClose={() => setIsStoreOpen(false)}
         />
         <StorePanelContent
           onPickStore={async (store) => {
+            // 選択したら一旦全部閉じてスライダーへ
             await closeUIsThen();
-            // ここでスライダーへ遷移（元の StorePage と同じ動線）
             navigate("/slider", { state: { selectedStore: store } });
           }}
         />
       </Drawer>
 
-      {/* 「TasteMapとは？」ドロワー（商品/一覧と同サイズ） */}
+      {/* 「TasteMapとは？」（必要なら重ね表示に） */}
       <Drawer
         anchor="bottom"
         open={isGuideOpen}
-        onClose={async () => { await closeUIsThen(); }}
+        onClose={() => setIsGuideOpen(false)}
+        BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={drawerModalProps}
-        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
+        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0", zIndex: 1500 } }}
       >
         <PanelHeader
           title="TasteMap（ワイン風味マップ）とは？"
           icon="map.svg"
-          onClose={async () => { await closeUIsThen(); }}
+          onClose={() => setIsGuideOpen(false)}
         />
-
         <div className="drawer-scroll" style={{ padding: 16, lineHeight: 1.6, color: "#333" }}>
-          {/* 概要 */}
           <p style={{ margin: "2px 0 14px" }}>
             この地図は、ワインの「色・香り・味」を科学的に数値化し、似ているもの同士が近くに並ぶよう配置した“ワイン風味の地図”です。
             近い点ほど風味が似ており、離れるほど個性が異なります。地図上のコンパスはあなたの嗜好位置を示します。
           </p>
-
-          {/* 凡例 */}
           <div style={{ marginTop: 4, marginBottom: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>凡例</div>
             <ul style={{ paddingLeft: 18, margin: 0 }}>
-              <li>灰色の点：取扱いワインの位置（嗜好に近いほど近くに並びます）</li>
+              <li>灰色の点：取扱いワインの位置</li>
               <li>赤の点：飲みたい（★）にしたワイン</li>
               <li>黒の点：飲んで評価（◎）済みのワイン</li>
-              <li>コンパス：あなたの現在の嗜好位置（飲んで評価から生成）</li>
+              <li>コンパス：あなたの嗜好位置（飲んで評価から生成）</li>
             </ul>
           </div>
-
-          {/* 操作＆バブルガイド */}
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>使い方</div>
             <ul style={{ paddingLeft: 18, margin: 0 }}>
@@ -1213,18 +1078,13 @@ function MapPage() {
               <li>右上 🔍：検索　／　右の ★・◎：飲みたい／飲んだ一覧</li>
             </ul>
           </div>
-
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Mapガイド（バブル表示）</div>
-            <p style={{ margin: "0 0 6px" }}>
+            <p style={{ margin: 0 }}>
               左上のMapガイドでは、風味やトレンドの“偏り”をバブルで可視化します。
-              大きなバブルは、たとえるなら街の広場に人が集まってにぎわう様子。例えば「甘味が豊かなワイン」「フルーティなワイン」がその周辺に多いことを示します。
-              小さなバブルは、ひっそりした小さな村のように控えめな存在です。
               地図を眺めるだけで「どんな特徴がどこに集まっているか」「いまどの傾向が盛り上がっているか」を直感的に把握できます。
             </p>
           </div>
-
-          {/* 備考 */}
           <p style={{ fontSize: 12, color: "#666", marginTop: 12 }}>
             ※ マス目は位置の目安です。座標軸そのものに意味はありません。
           </p>
