@@ -969,6 +969,41 @@ function MapPage() {
         </div>
       </Drawer>
 
+           {/* アプリガイド（メニュー） */}
+      <Drawer
+        anchor="bottom"
+        open={isMyPageOpen}
+        onClose={() => setIsMyPageOpen(false)}
+        BackdropProps={{ style: { background: "transparent" } }}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            zIndex: 1400,
+            height: "85vh",
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+      >
+        <PanelHeader
+          title="アプリガイド"
+          icon="app-guide.svg"
+          onClose={() => setIsMyPageOpen(false)}
+        />
+        <MyPagePanelContent
+          onOpenMapGuide={() => openOverlayAboveMenu("mapguide")}
+          onOpenStore={() => openOverlayAboveMenu("store")}
+          onOpenAccount={() => openOverlayAboveMenu("account")}
+          onOpenFaq={() => openOverlayAboveMenu("faq")}
+          onOpenSlider={() => {
+            setIsMyPageOpen(false);
+            navigate("/slider", { replace: false, state: { from: "menu" } });
+          }}
+        />
+      </Drawer>
+
       {/* マップガイド */}
       <Drawer
         anchor="bottom"
@@ -1000,7 +1035,35 @@ function MapPage() {
         </div>
       </Drawer>
 
-      {/* 店舗登録 */}
+      {/* マイアカウント */}
+      <Drawer
+        anchor="bottom"
+        open={isAccountOpen}
+        onClose={() => setIsAccountOpen(false)}
+        BackdropProps={{ style: { background: "transparent" } }}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            zIndex: 1500,
+            height: "85vh",
+            display: "flex",
+            flexDirection: "column",
+         },
+        }}
+      >
+        <PanelHeader
+          title="マイアカウント"
+          icon="account.svg"
+          onClose={() => setIsAccountOpen(false)}
+        />
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
+          <MyAccountPanelContent />
+        </div>
+      </Drawer>
+
+      {/* お気に入り店舗登録 */}
       <Drawer
         anchor="bottom"
         open={isStoreOpen}
@@ -1031,71 +1094,7 @@ function MapPage() {
         </div>
       </Drawer>
 
-      {/* アカウント */}
-      <Drawer
-        anchor="bottom"
-        open={isAccountOpen}
-        onClose={() => setIsAccountOpen(false)}
-        BackdropProps={{ style: { background: "transparent" } }}
-        ModalProps={{ ...drawerModalProps, keepMounted: true }}
-        PaperProps={{
-          style: {
-            ...paperBaseStyle,
-            borderTop: "1px solid #c9c9b0",
-            zIndex: 1500,
-            height: "85vh",
-            display: "flex",
-            flexDirection: "column",
-         },
-        }}
-      >
-        <PanelHeader
-          title="マイアカウント"
-          icon="account.svg"
-          onClose={() => setIsAccountOpen(false)}
-        />
-        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
-          <MyAccountPanelContent />
-        </div>
-      </Drawer>
-
-      {/* アプリガイド（メニュー） */}
-      <Drawer
-        anchor="bottom"
-        open={isMyPageOpen}
-        onClose={() => setIsMyPageOpen(false)}
-        BackdropProps={{ style: { background: "transparent" } }}
-        ModalProps={{ ...drawerModalProps, keepMounted: true }}
-        PaperProps={{
-          style: {
-            ...paperBaseStyle,
-            borderTop: "1px solid #c9c9b0",
-            zIndex: 1500,
-            height: "85vh",
-            display: "flex",
-            flexDirection: "column",
-          },
-        }}
-      >
-        <PanelHeader
-          title="アプリガイド"
-          icon="app-guide.svg"
-          onClose={() => setIsMyPageOpen(false)}
-        />
-        <MyPagePanelContent
-          onOpenMapGuide={() => openOverlayAboveMenu("mapguide")}
-          onOpenStore={() => openOverlayAboveMenu("store")}
-          onOpenAccount={() => openOverlayAboveMenu("account")}
-          onOpenFaq={() => openOverlayAboveMenu("faq")}
-          onOpenSlider={() => {
-            setIsMyPageOpen(false);
-            // スライダーのルート名は実装に合わせて
-            navigate("/slider", { replace: false, state: { from: "menu" } });
-          }}
-        />
-      </Drawer>
-
-      {/* FAQ */}
+      {/* よくある質問 */}
       <Drawer
         anchor="bottom"
         open={isFaqOpen}
