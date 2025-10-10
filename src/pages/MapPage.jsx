@@ -1171,7 +1171,12 @@ function MapPage() {
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{ keepMounted: true }}
         PaperProps={{
-          style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0", zIndex: 1400 },
+          style: { 
+            ...paperBaseStyle, 
+            borderTop: "1px solid #c9c9b0", 
+            zIndex: 1400,
+            height: "85vh",
+          },
         }}
       >
         <PanelHeader
