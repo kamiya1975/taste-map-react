@@ -1026,7 +1026,7 @@ function MapPage() {
         ModalProps={{
           ...drawerModalProps,
           keepMounted: true,   // ← これを追加
-
+          disableEscapeKeyDown: isStoreOpen || isMapGuideOpen || isGuideOpen,
         }}
         PaperProps={{
           style: {
@@ -1056,7 +1056,7 @@ function MapPage() {
         open={isGuideOpen}
         onClose={() => setIsGuideOpen(false)}
         BackdropProps={{ style: { background: "transparent" } }}
-        ModalProps={drawerModalProps}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
         PaperProps={{ style: { 
           ...paperBaseStyle, 
           borderTop: "1px solid #c9c9b0", 
