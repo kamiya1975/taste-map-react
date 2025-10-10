@@ -14,7 +14,6 @@ import FavoriteStoresPage from "./pages/FavoriteStoresPage";
 import MyAccount from "./pages/MyAccount";
 import UserTastePage from "./pages/UserTastePage";
 import ScanAndProductFlow from "./pages/ScanAndProductFlow";
-import MapGuidePage from "./pages/MapGuidePage";
 import FaqPage from "./pages/FaqPage";
 
 export default function App() {
@@ -71,7 +70,6 @@ export default function App() {
       <Route path="/stores-fav" element={<FavoriteStoresPage />} />
 
       {/* ガイド/FAQ（独立ページ版） */}
-      <Route path="/map-guide" element={<MapGuidePage />} />
       <Route path="/faq" element={<FaqPage />} />
 
       {/* それ以外は地図へ */}
