@@ -1022,11 +1022,10 @@ function MapPage() {
         anchor="bottom"
         open={isStoreOpen}
         onClose={() => setIsStoreOpen(false)}
-        BackdropProps={{ style: { background: "transparent" } }}
+        BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}  // ← 修正
         ModalProps={{
           ...drawerModalProps,
-          keepMounted: true,   // ← これを追加
-          disableEscapeKeyDown: isStoreOpen || isMapGuideOpen || isGuideOpen,
+          keepMounted: true,
         }}
         PaperProps={{
           style: {
@@ -1042,9 +1041,8 @@ function MapPage() {
         <PanelHeader
           title="お気に入り店舗登録"
           icon="store.svg"
-          onClose={() => setIsStoreOpen(false)}
+          onClose={() => setIsStoreOpen(false)}   // ← 子だけ閉じる
         />
-        {/* ← スクロール領域を追加 */}
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
           <StorePanelContent />
         </div>
