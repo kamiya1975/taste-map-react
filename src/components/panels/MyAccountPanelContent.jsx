@@ -1,4 +1,4 @@
-// src/components/panels/MyMyAccountPanelContent.jsx
+// src/components/panels/MyAccountPanelContent.jsx
 import React, { useEffect, useState } from "react";
 import { setUserId } from "../../utils/auth";
 
@@ -60,7 +60,7 @@ const BorderlessSelect = ({ rightIcon = true, ...props }) => (
   </div>
 );
 
-export default function MyMyAccountPanelContent() {
+export default function MyAccountPanelContent() {
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
