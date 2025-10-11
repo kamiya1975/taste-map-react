@@ -77,7 +77,7 @@ const useHideHeartFromQuery = () => {
 /** =========================
  *  お気に入りスター（☆/★ 画像版）
  * ========================= */
-function HeartButton({ jan, size = 22 }) {
+function HeartButton({ jan, size = 28, hidden = false }) {
   const [fav, setFav] = useState(false);
 
   useEffect(() => {
@@ -119,28 +119,23 @@ function HeartButton({ jan, size = 22 }) {
     <button
       aria-label={fav ? "お気に入り解除" : "お気に入りに追加"}
       onClick={toggle}
+      disabled={hidden}
       style={{
         border: "none",
         background: "transparent",
-        width: size + 16,
-        height: size + 16,
+        width: size, height: size,
         display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        lineHeight: 0,
-        WebkitTapHighlightColor: "transparent",
+        alignItems: "center", justifyContent: "center",
+        cursor: hidden ? "default" : "pointer",
+        visibility: hidden ? "hidden" : "visible",
       }}
       title={fav ? "お気に入りに登録済み" : "お気に入りに追加"}
     >
       <img
-        src={iconSrc}
-        alt={fav ? "お気に入り解除" : "お気に入りに追加"}
-        style={{ width: size, height: size, display: "block" }}
-        decoding="async"
-        loading="eager"
-        fetchpriority="high"
-        draggable="false"
+        src={`${process.env.PUBLIC_URL || ""}${fav ? "/img/store.svg" : "/img/store2.svg"}`}
+        alt=""
+        style={{ width: "100%", height: "100%", display: "block" }}
+        draggable={false}
       />
     </button>
   );
@@ -510,7 +505,7 @@ export default function ProductPage() {
         Sweet: {Number(product.PC2).toFixed(2)} / Body: {Number(product.PC1).toFixed(2)}
       </p>
 
-      {/* 評価（◎＋お気に入り☆/★） */}
+      {/* 評価（◎） */}
       <div
         style={{
           marginTop: 24,
@@ -520,72 +515,70 @@ export default function ProductPage() {
           borderBottom: "1px solid #ccc",
         }}
       >
-        {/* ラベル行 */}
-        <div
-          style={{
-            display: "flex",
-            fontSize: 12,
-            color: "#666",
-            padding: "0 8px",
-           marginBottom: 6,
-          }}
-        >
-          <span style={{ flex: "0 0 60px", textAlign: "left", marginLeft: 3 }}>飲みたい</span>
-          <span style={{ flex: "1", textAlign: "center", marginLeft: -155 }}>イマイチ</span>
-          <span style={{ flex: "0 0 60px", textAlign: "right", marginLeft: -20  }}>好き</span>
-        </div>
-
-        {/* 本体：左（☆/★）｜右（リング5段） */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          {/* 左の☆/★（お気に入り）。クエリで非表示指定なら隠す */}
-          {!hideHeart && (
-            <div
-              style={{
-                width: 64,               // ラベルの位置と合わせやすい固定幅
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
-              <HeartButton jan={jan} size={22} />
-            </div>
-          )}
-
-          {/* 仕切り線 */}
+        <div style={{ display: "flex", alignItems: "stretch" }}>
+          {/* ★列（固定幅） */}
           <div
             style={{
+              flex: "0 0 64px",                 // ← ここで幅を固定
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "6px 4px",
+            }}
+          >
+            <div style={{ fontSize: 12, color: "#666", alignSelf: "flex-start" }}>飲みたい</div>
+            {/* hideHeart のときも幅は保持（visibility で非表示） */}
+            <HeartButton jan={jan} size={28} hidden={hideHeart} />
+          </div>
+
+          {/* 縦罫線（常に同じ高さに） */}
+          <div
+           style={{
               width: 1,
-              background: "#ddd",
-              alignSelf: "stretch",   // ← 親flexの高さに自動でフィット
-              marginTop: -18,           // ← 上に余白を少し
-              marginBottom: 0,        // ← 下はピッタリ
+              background: "#d9d9d9",
+              margin: "0 12px",
+              alignSelf: "stretch",            // ← ラベル行までしっかり伸びる
             }}
           />
 
-          {/* リング5段（従来どおり押せる） */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 8,
-              flex: 1,
-              maxWidth: 300,
-              margin: "0 auto",
-            }}
-          >
-            {[1, 2, 3, 4, 5].map((v) => (
-              <CircleRating
-                key={v}
-                value={v}
-                currentRating={rating}
-                onClick={handleCircleClick}
-              />
-            ))}
+          {/* 右側（ラベル + リング） */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* ラベル行 */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                fontSize: 12,
+                color: "#666",
+                padding: "0 4px",
+                marginBottom: 6,
+              }}
+            >
+              <span style={{ flex: 1, textAlign: "center", paddingLeft: 12 }}>イマイチ</span>
+              <span style={{ flex: "0 0 48px", textAlign: "right" }}>好き</span>
+            </div>
+
+            {/* リング行 */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 8,
+                paddingRight: 4,
+                maxWidth: 320,
+              }}
+            >
+              {[1, 2, 3, 4, 5].map((v) => (
+                <CircleRating
+                  key={v}
+                  value={v}
+                  currentRating={rating}
+                  onClick={handleCircleClick}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </div>
