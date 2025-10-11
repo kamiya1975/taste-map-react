@@ -531,8 +531,8 @@ export default function ProductPage() {
           }}
         >
           <span style={{ flex: "0 0 60px", textAlign: "left", marginLeft: 3 }}>飲みたい</span>
-          <span style={{ flex: "1", textAlign: "center", marginLeft: -20 }}>イマイチ</span>
-          <span style={{ flex: "0 0 60px", textAlign: "right", marginLeft: 3  }}>好き</span>
+          <span style={{ flex: "1", textAlign: "center", marginLeft: -200 }}>イマイチ</span>
+          <span style={{ flex: "0 0 60px", textAlign: "right", marginLeft: 5  }}>好き</span>
         </div>
 
         {/* 本体：左（☆/★）｜右（リング5段） */}
