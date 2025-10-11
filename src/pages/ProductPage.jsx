@@ -555,8 +555,8 @@ export default function ProductPage() {
                 marginBottom: 6,
               }}
             >
-              <span style={{ flex: 1, textAlign: "center", marginLeft: -170 }}>イマイチ</span>
-              <span style={{ flex: "0 0 48px", textAlign: "right",marginLeft: -50 }}>好き</span>
+              <span style={{ flex: 1, textAlign: "center", marginLeft: -175 }}>イマイチ</span>
+              <span style={{ flex: "0 0 48px", textAlign: "right",marginLeft: 0 }}>好き</span>
             </div>
 
             {/* リング行 */}
