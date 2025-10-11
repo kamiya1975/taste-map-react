@@ -524,17 +524,15 @@ export default function ProductPage() {
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
             fontSize: 12,
             color: "#666",
             padding: "0 8px",
-            marginBottom: 6,
+           marginBottom: 6,
           }}
         >
-          <span>飲みたい</span>
-          <span>イマイチ</span>
-          <span>好き</span>
+          <span style={{ flex: "0 0 60px", textAlign: "left" }}>飲みたい</span>
+          <span style={{ flex: "1", textAlign: "center" }}>イマイチ</span>
+          <span style={{ flex: "0 0 60px", textAlign: "right" }}>好き</span>
         </div>
 
         {/* 本体：左（☆/★）｜右（リング5段） */}
@@ -564,7 +562,7 @@ export default function ProductPage() {
               width: 1,
               background: "#ddd",
               alignSelf: "stretch",   // ← 親flexの高さに自動でフィット
-              marginTop: -20,           // ← 上に余白を少し
+              marginTop: -18,           // ← 上に余白を少し
               marginBottom: 0,        // ← 下はピッタリ
             }}
           />
