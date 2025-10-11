@@ -120,9 +120,8 @@ function HeartButton({ jan, size = 22 }) {
       aria-label={fav ? "お気に入り解除" : "お気に入りに追加"}
       onClick={toggle}
       style={{
-        border: "1px solid #ddd",
-        borderRadius: 999,
-        background: "#fff",
+        border: "none",
+        background: "transparent",
         width: size + 16,
         height: size + 16,
         display: "inline-flex",
