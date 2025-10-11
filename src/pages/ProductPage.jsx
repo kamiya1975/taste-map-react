@@ -559,7 +559,15 @@ export default function ProductPage() {
           )}
 
           {/* 仕切り線 */}
-          <div style={{ width: 1, height: 36, background: "#ddd" }} />
+          <div
+            style={{
+              width: 1,
+              background: "#ddd",
+              alignSelf: "stretch",   // ← 親flexの高さに自動でフィット
+              marginTop: 0,           // ← 上に余白を少し
+              marginBottom: 0,        // ← 下はピッタリ
+            }}
+          />
 
           {/* リング5段（従来どおり押せる） */}
           <div
