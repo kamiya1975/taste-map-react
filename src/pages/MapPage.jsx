@@ -942,14 +942,22 @@ function MapPage() {
       <Drawer
         anchor="bottom"
         open={productDrawerOpen}
-        onClose={async () => { await closeUIsThen(); setHideHeartForJAN(null); }}
+        onClose={() => {
+          setProductDrawerOpen(false);
+          setSelectedJAN(null);
+          setHideHeartForJAN(null);
+        }}
         ModalProps={drawerModalProps}
         PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
       >
         <PanelHeader
           title="商品ページ"
           icon="dot.svg"
-          onClose={async () => { await closeUIsThen(); setHideHeartForJAN(null); }}
+          onClose={() => {
+            setProductDrawerOpen(false);
+            setSelectedJAN(null);
+            setHideHeartForJAN(null);
+          }}
         />
         <div className="drawer-scroll">
           {selectedJAN ? (
