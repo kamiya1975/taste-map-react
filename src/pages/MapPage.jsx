@@ -809,7 +809,7 @@ function MapPage() {
       {/* ====== 検索パネル ====== */}
       <SearchPanel
         open={isSearchOpen}
-        onClose={async () => { await closeUIsThen(); }}
+        onClose={async () => { await closeUIsThen(); }} 
         data={data}
         onPick={(item) => {
           if (!item) return;
@@ -899,9 +899,9 @@ function MapPage() {
         onSelectJAN={(jan) => {
           setOpenFromRated(false);
           setHideHeartForJAN(null);
-          setIframeNonce(Date.now());
           setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
+          setIframeNonce(Date.now());
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
             const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
