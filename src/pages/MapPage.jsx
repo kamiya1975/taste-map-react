@@ -490,8 +490,9 @@ function MapPage() {
       };
 
       if (type === "OPEN_MYACCOUNT") {
-        await closeUIsThen();
-        navigate("/my-account");
+        await closeUIsThen({ preserveMyPage: true });
+        setIsMyPageOpen(true);
+        setIsAccountOpen(true);
         return;
       }
 
@@ -953,6 +954,7 @@ function MapPage() {
         <div className="drawer-scroll">
           {selectedJAN ? (
             <iframe
+               ref={iframeRef}
               key={`${selectedJAN}-${iframeNonce}`}
               src={`${process.env.PUBLIC_URL || ""}/#/products/${selectedJAN}?embed=1&_=${iframeNonce}${
                 hideHeartForJAN === String(selectedJAN) ? "&fromRated=1" : ""}`}
