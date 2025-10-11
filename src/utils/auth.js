@@ -99,7 +99,7 @@ export const clearGuestId = () => localStorage.removeItem(GUEST_ID_KEY);
  * @param {string} openParam デフォルト "open=mypage"
  * @returns {boolean} true=評価続行OK、false=中断（遷移済み）
  */
-export const requireRatingOrRedirect = (navigate, dest = "/myaccount") => {
+export const requireRatingOrRedirect = (navigate, dest = "/mymyaccount") => {
    if (canUseRating()) return true;
    alert("評価機能を使用するにはID登録が必要です。");
    try {
