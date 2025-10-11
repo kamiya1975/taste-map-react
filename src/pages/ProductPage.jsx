@@ -477,12 +477,6 @@ export default function ProductPage() {
         boxSizing: "border-box",
       }}
     >
-      {/* 左上に固定の♡ */}
-      {!hideHeart && (
-        <div style={{ position: "fixed", top: 12, left: 12, zIndex: 1000 }}>
-          <HeartButton jan={jan} size={22} />
-        </div>
-      )}
 
       {/* 商品画像 */}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
@@ -518,7 +512,7 @@ export default function ProductPage() {
         Sweet: {Number(product.PC2).toFixed(2)} / Body: {Number(product.PC1).toFixed(2)}
       </p>
 
-      {/* 評価（◎） */}
+      {/* 評価（◎＋お気に入り☆/★） */}
       <div
         style={{
           marginTop: 24,
@@ -528,20 +522,65 @@ export default function ProductPage() {
           borderBottom: "1px solid #ccc",
         }}
       >
+        {/* ラベル行 */}
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            fontSize: 12,
+            color: "#666",
+            padding: "0 8px",
+            marginBottom: 6,
+          }}
+        >
+          <span>飲みたい</span>
+          <span>イマイチ</span>
+          <span>好き</span>
+        </div>
+
+        {/* 本体：左（☆/★）｜右（リング5段） */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
             gap: 10,
           }}
         >
-          <div style={{ fontWeight: "bold", fontSize: 16, minWidth: 48, whiteSpace: "nowrap" }}>
-            評価
-          </div>
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, width: "100%", maxWidth: 300 }}>
+          {/* 左の☆/★（お気に入り）。クエリで非表示指定なら隠す */}
+          {!hideHeart && (
+            <div
+              style={{
+                width: 64,               // ラベルの位置と合わせやすい固定幅
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <HeartButton jan={jan} size={22} />
+            </div>
+          )}
+
+          {/* 仕切り線 */}
+          <div style={{ width: 1, height: 36, background: "#ddd" }} />
+
+          {/* リング5段（従来どおり押せる） */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 8,
+              flex: 1,
+              maxWidth: 300,
+              margin: "0 auto",
+            }}
+          >
             {[1, 2, 3, 4, 5].map((v) => (
-              <CircleRating key={v} value={v} currentRating={rating} onClick={handleCircleClick} />
+              <CircleRating
+                key={v}
+                value={v}
+                currentRating={rating}
+                onClick={handleCircleClick}
+              />
             ))}
           </div>
         </div>
