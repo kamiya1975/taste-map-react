@@ -129,7 +129,6 @@ function HeartButton({ jan, size = 22 }) {
         justifyContent: "center",
         cursor: "pointer",
         lineHeight: 0,
-        boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
         WebkitTapHighlightColor: "transparent",
       }}
       title={fav ? "お気に入りに登録済み" : "お気に入りに追加"}
