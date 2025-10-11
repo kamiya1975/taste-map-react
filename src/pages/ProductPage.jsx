@@ -564,7 +564,7 @@ export default function ProductPage() {
               width: 1,
               background: "#ddd",
               alignSelf: "stretch",   // ← 親flexの高さに自動でフィット
-              marginTop: -12,           // ← 上に余白を少し
+              marginTop: 0,           // ← 上に余白を少し
               marginBottom: 0,        // ← 下はピッタリ
             }}
           />
