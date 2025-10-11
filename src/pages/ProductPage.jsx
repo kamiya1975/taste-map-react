@@ -75,7 +75,7 @@ const useHideHeartFromQuery = () => {
 };
 
 /** =========================
- *  お気に入りハート
+ *  お気に入りスター（☆/★ 画像版）
  * ========================= */
 function HeartButton({ jan, size = 22 }) {
   const [fav, setFav] = useState(false);
@@ -85,24 +85,18 @@ function HeartButton({ jan, size = 22 }) {
       try {
         const obj = JSON.parse(localStorage.getItem("favorites") || "{}");
         setFav(!!obj[jan]);
-      } catch {
-        setFav(false);
-      }
+      } catch { setFav(false); }
     };
     readFav();
 
-    const onStorage = (e) => {
-      if (e.key === "favorites") readFav();
-    };
-    window.addEventListener("storage", onStorage);
-
+    const onStorage = (e) => { if (e.key === "favorites") readFav(); };
     const onMsg = (e) => {
       const { type, jan: targetJan, value } = e.data || {};
       if (String(targetJan) !== String(jan)) return;
       if (type === "SET_FAVORITE") setFav(!!value);
     };
+    window.addEventListener("storage", onStorage);
     window.addEventListener("message", onMsg);
-
     return () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("message", onMsg);
@@ -118,6 +112,9 @@ function HeartButton({ jan, size = 22 }) {
     postToParent({ type: "TOGGLE_FAVORITE", jan });
   };
 
+  const base = process.env.PUBLIC_URL || "";
+  const iconSrc = fav ? `${base}/img/store.svg` : `${base}/img/store2.svg`;
+
   return (
     <button
       aria-label={fav ? "お気に入り解除" : "お気に入りに追加"}
@@ -132,13 +129,21 @@ function HeartButton({ jan, size = 22 }) {
         alignItems: "center",
         justifyContent: "center",
         cursor: "pointer",
-        fontSize: size,
-        lineHeight: 1,
+        lineHeight: 0,
         boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
+        WebkitTapHighlightColor: "transparent",
       }}
       title={fav ? "お気に入りに登録済み" : "お気に入りに追加"}
     >
-      {fav ? "♥" : "♡"}
+      <img
+        src={iconSrc}
+        alt={fav ? "お気に入り解除" : "お気に入りに追加"}
+        style={{ width: size, height: size, display: "block" }}
+        decoding="async"
+        loading="eager"
+        fetchpriority="high"
+        draggable="false"
+      />
     </button>
   );
 }
