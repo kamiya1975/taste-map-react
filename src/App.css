@@ -241,10 +241,9 @@ body,
   -webkit-appearance: none;
 
   display: block;
-  width: 80vw;             /* ← 画面幅の80% */
-  margin: 0 auto;          /* ← 中央寄せ */
-  max-width: 480px;        /* ← 保険：大きすぎ防止 */
-  min-width: 200px;        /* ← 保険：小さすぎ防止 */
+  width: 70vw;             /* ← 画面幅の80% */
+  max-width: 300px;        /* ← 保険：大きすぎ防止 */
+  margin: 0 auto;       /* 中央寄せ */
 
   height: 90px;            /* 縦のタッチ範囲 */
   background: transparent;
