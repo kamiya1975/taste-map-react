@@ -537,7 +537,7 @@ export default function ProductPage() {
                 lineHeight: 1,
                 position: "relative",
                 top: "-11px",
-                marginLeft: "4px" // 横位置を右に動かす
+                marginLeft: "6px" // 横位置を右に動かす
               }}
             >
               飲みたい
