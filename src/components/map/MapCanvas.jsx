@@ -121,21 +121,24 @@ function clampViewState(nextVS, panBounds, sizePx, margins = {}) {
   return { ...nextVS, zoom, target: [x, y, 0] };
 }
 
-export default function MapCanvas({
-  data,
-  userRatings,
-  selectedJAN,
-  favorites,
-  highlight2D,
-  userPin,           // [xUMAP, yUMAP] or null
-  compassPoint,      // [xUMAP, yUMAP] or null
-  panBounds,
-  viewState,
-  setViewState,
-  onPickWine,        // (item) => void
-  edgeMarginXPx = DEFAULT_EDGE_MARGIN_X_PX, // 横余白（px）
-  edgeMarginYPx = DEFAULT_EDGE_MARGIN_Y_PX, // 縦余白（px）
-}) {
+const MapCanvas = forwardRef(function MapCanvas(
+  {
+    data,
+    userRatings,
+    selectedJAN,
+    favorites,
+    highlight2D,
+    userPin,
+    compassPoint,
+    panBounds,
+    viewState,
+    setViewState,
+    onPickWine,
+    edgeMarginXPx = 8,
+    edgeMarginYPx = 20,
+  },
+  deckRef   // ★ ref を受け取る
+) {
   // --- refs ---
   const sizeRef = useRef({ width: 1, height: 1 });
   const interactingRef = useRef(false);
@@ -511,6 +514,7 @@ export default function MapCanvas({
 
   return (
     <DeckGL
+      ref={deckRef}   // ★ DeckGL に ref を渡す
       views={new OrthographicView({ near: -1, far: 1 })}
       viewState={viewState}
       style={{ position: "absolute", inset: 0 }}

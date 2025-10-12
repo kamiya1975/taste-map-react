@@ -44,6 +44,7 @@ function MapPage() {
   const didInitialCenterRef = useRef(false);
   const [openFromRated, setOpenFromRated] = useState(false);
   const fromRatedRef = useRef(false);
+  const deckRef = useRef(null);
 
   // ドロワー状態
   const [isGuideOpen, setIsGuideOpen] = useState(false);        // 「TasteMapとは？」
@@ -414,7 +415,8 @@ function MapPage() {
     requestAnimationFrame(() => {
       try {
         const canvasCoord = [userPin[0], -userPin[1]];
-        const nearest = findNearestWine(canvasCoord);
+        const [cx, cy] = canvasCoord;
+        const nearest = findNearestWinePixel(cx, cy, 40);
         if (nearest?.JAN) {
           setHideHeartForJAN(null);
           setSelectedJAN(nearest.JAN);
@@ -660,6 +662,7 @@ function MapPage() {
   return (
     <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}>
       <MapCanvas
+        ref={deckRef}
         data={data}
         userRatings={userRatings}
         selectedJAN={selectedJAN}
