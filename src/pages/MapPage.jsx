@@ -372,17 +372,28 @@ function MapPage() {
   }, [location.state, data, centerToUMAP]);
 
   // 最近傍
-  const findNearestWine = useCallback((coord, threshold = 0.5) => {
-    if (!coord || !Array.isArray(data) || data.length === 0) return null;
-    const [cx, cy] = coord;
+  const findNearestWinePixel = useCallback((clickPx, clickPy, thresholdPx = 40) => {
+    if (!Array.isArray(data) || data.length === 0) return null;
     let best = null, bestD2 = Infinity;
+
     for (const d of data) {
-      const x = d.UMAP1; const y = -d.UMAP2;
-      const dx = x - cx; const dy = y - cy;
+      const world = [d.UMAP1, -d.UMAP2, 0];
+      // DeckGLのproject()で画面座標に変換
+      const [px, py] = deckRef.current?.deck?.project(world) || [];
+      if (px == null || py == null) continue;
+
+      const dx = px - clickPx;
+      const dy = py - clickPy;
       const d2 = dx * dx + dy * dy;
-      if (d2 < bestD2) { bestD2 = d2; best = d; }
+
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        best = d;
+     }
     }
-    if (bestD2 > threshold * threshold) return null;
+
+    // ★しきい値（ピクセル距離）を超えていたら無効
+    if (Math.sqrt(bestD2) > thresholdPx) return null;
     return best;
   }, [data]);
 
