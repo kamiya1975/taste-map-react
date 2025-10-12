@@ -596,7 +596,9 @@ const MapCanvas = forwardRef(function MapCanvas(
           opacity: 1,
           parameters: { depthTest: false },
         }),
-        // セル塗り：ハイライト無し→タイル、あり→ヒート
+
+
+
         !highlight2D
           ? new IconLayer({
               id: "cell-tiles",
@@ -620,41 +622,49 @@ const MapCanvas = forwardRef(function MapCanvas(
                 getSize: [GRID_CELL_SIZE],
               },
             })
-          : new GridCellLayer({
-              id: `grid-cells-heat-${highlight2D}`,
-              data: heatCells,
-              cellSize: GRID_CELL_SIZE,
-              getPosition: (d) => d.position,
+          : new ScatterplotLayer({
+              id: `grid-bubbles-${highlight2D}`,
+              data: heatCells,                       // { position, avg, count }
+              getPosition: (d) => [
+                d.position[0] + GRID_CELL_SIZE / 2,  // セル“中心”へ
+                d.position[1] + GRID_CELL_SIZE / 2,
+                0
+              ],
+              radiusUnits: "meters",
+              // 値→半径: GRID_CELL_SIZE の約 45% を上限に（ガンマ補正も適用）
+              getRadius: (d) => {
+                let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
+                if (!Number.isFinite(t)) t = 0;
+                t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
+                const R_MAX = GRID_CELL_SIZE * 0.45;
+                const R_MIN = GRID_CELL_SIZE * 0.06; // 0だと消えるので最小半径を確保
+                return R_MIN + (R_MAX - R_MIN) * t;
+              },
+              // 色は従来のヒートマップを踏襲
               getFillColor: (d) => {
                 let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
                 if (!Number.isFinite(t)) t = 0;
                 t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
-                const r = Math.round(
-                  HEAT_COLOR_LOW[0] +
-                    (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t
-                );
-                const g = Math.round(
-                  HEAT_COLOR_LOW[1] +
-                    (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t
-                );
-                const b = Math.round(
-                  HEAT_COLOR_LOW[2] +
-                    (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t
-                );
-                const a = Math.round(
-                  HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t
-                );
+                const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t);
+                const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t);
+                const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t);
+                const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
                 return [r, g, b, a];
               },
-              extruded: false,
-              getElevation: 0,
-              opacity: 1,
-              parameters: { depthTest: false },
+              stroked: true,
+              getLineWidth: 1,
+              lineWidthUnits: "pixels",
+              getLineColor: [0, 0, 0, 40],           // うっすら枠
               pickable: false,
+              parameters: { depthTest: false },
               updateTriggers: {
+                getRadius: [vMin, vMax, HEAT_GAMMA, GRID_CELL_SIZE, avgHash],
                 getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash],
               },
             }),
+
+
+
         // グリッド線
         new LineLayer({
           id: "grid-lines-thin",
