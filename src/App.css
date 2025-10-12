@@ -238,7 +238,9 @@ body,
 
   appearance: none;
   -webkit-appearance: none;
-  width: 100%;
+  width: calc(100% + 80px);
+  margin-left: -40px;
+  margin-right: -40px;
   height: 90px;
   background: transparent;
   margin-top: 6px;
