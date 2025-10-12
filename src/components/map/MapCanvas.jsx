@@ -1,5 +1,5 @@
 // src/components/map/MapCanvas.jsx
-import React, { useMemo, useRef, useCallback, useEffect } from "react";
+import React, { forwardRef, useMemo, useRef, useCallback, useEffect } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrthographicView } from "@deck.gl/core";
 import {
@@ -675,4 +675,5 @@ const MapCanvas = forwardRef(function MapCanvas(
       ]}
     />
   );
-}
+});
+export default MapCanvas;
