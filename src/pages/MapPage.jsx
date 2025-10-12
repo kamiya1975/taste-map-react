@@ -419,7 +419,7 @@ function MapPage() {
         if (px == null || py == null) return;
 
         // ピクセル→ワールドへ変換して最近傍を取得
-        const nearest = findNearestWinePixel(px, py, 10);                  // 近傍値調整
+        const nearest = findNearestWinePixel(px, py, 40);                  // 近傍値調整
         if (nearest?.JAN) {
           setHideHeartForJAN(null);
           setSelectedJAN(nearest.JAN);
