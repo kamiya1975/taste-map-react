@@ -240,22 +240,22 @@ body,
   appearance: none;
   -webkit-appearance: none;
 
-/* 横ヒットエリアを左右20pxずつ拡張 */
-  width: calc(100% + 40px);
-  margin-left: -20px;
-  margin-right: -20px;
+  /* 横のタッチ範囲を+80px、中央に固定 */
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  display: block;
 
-  /* 縦ヒットエリアを拡張（見た目のバーは6pxのまま） */
-  height: 90px;
+  width: calc(100% + 80px);      /* ← 横を広げる */
+  margin: 0;                      /* ← 負マージンは使わない */
+  /* 画面端に食い込まない保険（必要なら残す） */
+  max-width: calc(100svw - 32px);
 
+  height: 90px;                   /* ← 縦のタッチ範囲を広げる */
   background: transparent;
   margin-top: 6px;
   outline: none;
   touch-action: pan-x;
-
-  /* 小さな安定化 */
-  display: block;                 /* インラインの余白影響を避ける */
-  -webkit-tap-highlight-color: transparent; /* iOSのハイライト除去（任意） */
 }
 
 /* トラック/サムはそのまま */
