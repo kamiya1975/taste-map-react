@@ -29,7 +29,7 @@ const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
 // クリック時に最近傍を許可する半径（px）
-const CLICK_NEAR_PX = 18; // お好みで 14〜24 あたり
+const CLICK_NEAR_PX = 24; // お好みで 14〜24 あたり
 
 // ✅ パンのクランプ切替
 const PAN_CLAMP = true;
