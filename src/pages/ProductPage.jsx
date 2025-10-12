@@ -511,15 +511,16 @@ export default function ProductPage() {
           marginTop: 24,
           paddingTop: 8,
           paddingBottom: 8,
-          borderTop: "1px solid #ccc",
+         borderTop: "1px solid #ccc",
           borderBottom: "1px solid #ccc",
         }}
       >
-        <div style={{ display: "flex", alignItems: "stretch" }}>
+        {/* ▼ ここを alignItems: "center" に変更 */}
+        <div style={{ display: "flex", alignItems: "center" }}>
           {/* ★列（固定幅） */}
           <div
             style={{
-              flex: "0 0 64px",                 // ← ここで幅を固定
+              flex: "0 0 64px",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -527,18 +528,31 @@ export default function ProductPage() {
               padding: "6px 4px",
             }}
           >
-            <div style={{ fontSize: 12, color: "#666", alignSelf: "flex-start" }}>飲みたい</div>
-            {/* hideHeart のときも幅は保持（visibility で非表示） */}
+            {/* ▼ 「飲みたい」を少し上げる */}
+            <div
+              style={{
+                fontSize: 12,
+                color: "#666",
+                alignSelf: "flex-start",
+                lineHeight: 1,
+                position: "relative",
+                top: "-2px",           // -1〜-3 で好みに微調整
+              }}
+            >
+              飲みたい
+            </div>
+
+            {/* hideHeart の時は visibility で非表示（幅は保持） */}
             <HeartButton jan={jan} size={28} hidden={hideHeart} />
           </div>
 
           {/* 縦罫線（常に同じ高さに） */}
           <div
-           style={{
+            style={{
               width: 1,
-              background: "#d9d9d9",
+             background: "#d9d9d9",
               margin: "0 12px",
-              alignSelf: "stretch",            // ← ラベル行までしっかり伸びる
+              alignSelf: "stretch",
             }}
           />
 
@@ -556,7 +570,7 @@ export default function ProductPage() {
               }}
             >
               <span style={{ flex: 1, textAlign: "center", marginLeft: -175 }}>イマイチ</span>
-              <span style={{ flex: "0 0 60px", textAlign: "right",marginLeft: 0 }}>好き</span>
+              <span style={{ flex: "0 0 60px", textAlign: "right", marginLeft: 0 }}>好き</span>
             </div>
 
             {/* リング行 */}
