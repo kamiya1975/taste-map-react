@@ -518,7 +518,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       views={new OrthographicView({ near: -1, far: 1 })}
       viewState={viewState}
       style={{ position: "absolute", inset: 0 }}
-      useDevicePixels={false}
+      useDevicePixels
       // キャンバスサイズ保持
       onResize={({ width, height }) => {
         sizeRef.current = getEffectiveSizePx({ width, height });
@@ -565,7 +565,7 @@ const MapCanvas = forwardRef(function MapCanvas(
 
         const nearest = findNearestWine(world);
         if (!nearest) return;
-        
+
         onPickWine?.(nearest);
       }}
 
