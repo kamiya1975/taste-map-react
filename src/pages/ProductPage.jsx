@@ -536,7 +536,7 @@ export default function ProductPage() {
                 alignSelf: "flex-start",
                 lineHeight: 1,
                 position: "relative",
-                top: "-10px",           // -1〜-3 で好みに微調整
+                top: "-12px",
               }}
             >
               飲みたい
