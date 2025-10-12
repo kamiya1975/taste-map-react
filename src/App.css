@@ -45,7 +45,13 @@ body,
   height: 100%;
   contain: strict;
   overscroll-behavior: none;  /* ← Mapだけに適用 */
-  touch-action: pan-x pan-y;
+  touch-action: none;
+}
+
+/* 念のため Canvas 自体にも適用（DeckGL の要素クラス） */
+ canvas.deckgl-canvas {
+   touch-action: none !important;
+   pointer-events: auto;
 }
 
 /* 右下固定ボタン（例） */

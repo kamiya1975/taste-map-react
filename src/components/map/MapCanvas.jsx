@@ -540,22 +540,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         interactingRef.current = isInteracting;
 
         const next = clampZoomOnly(vs);
-        if (!PAN_CLAMP) {
-          setViewState(next); // パンは戻さない
-        } else {
-          if (isInteracting) {
-            // ★ジェスチャー中はパンを拘束しない（ズームだけ反映）
-            setViewState(next);
-          } else {
-            // ★ジェスチャー終了時にだけ“ギリ見える”クランプ適用
-            setViewState((curr) =>
-              clampViewState(next, panBounds, sizeRef.current, {
-                xPx: edgeMarginXPx,
-                yPx: edgeMarginYPx,
-              })
-            );
-          }          
-        }
+        setViewState(next);
       }}
       onInteractionStateChange={onInteractionStateChange}
       controller={{
