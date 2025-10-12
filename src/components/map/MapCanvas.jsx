@@ -559,19 +559,13 @@ const MapCanvas = forwardRef(function MapCanvas(
           onPickWine?.(picked);
           return;
         }
-        const px = info?.pixel?.[0];
-        const py = info?.pixel?.[1];
-        if (px == null || py == null) return;
-        // ピクセル→ワールドへ変換
-        const world = deckRef.current?.deck?.unproject([px, py]);
+        const world = info?.coordinate
+          ?? (info?.pixel ? deckRef.current?.deck?.unproject(info.pixel) : null);
         if (!world) return;
+
         const nearest = findNearestWine(world);
         if (!nearest) return;
-        // （任意）ピクセルしきい値でフィルタしたい場合は、ここで距離を確認
-        // const worldThresh = pxToWorld(viewState.zoom, 10); // 10px 相当
-        // const dx = nearest.UMAP1 - world[0];
-        // const dy = (-nearest.UMAP2) - world[1];
-        // if (dx*dx + dy*dy > worldThresh*worldThresh) return;
+        
         onPickWine?.(nearest);
       }}
 

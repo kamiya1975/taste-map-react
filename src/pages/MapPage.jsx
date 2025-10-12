@@ -372,29 +372,16 @@ function MapPage() {
     try { window.history.replaceState({}, document.title, window.location.pathname); } catch {}
   }, [location.state, data, centerToUMAP]);
 
-  // 最近傍
-  const findNearestWinePixel = useCallback((clickPx, clickPy, thresholdPx = 40) => {
+  // 最近傍（ワールド座標：DeckGLの座標系 = [UMAP1, -UMAP2]）
+  const findNearestWineWorld = useCallback((wx, wy) => {
     if (!Array.isArray(data) || data.length === 0) return null;
     let best = null, bestD2 = Infinity;
-
     for (const d of data) {
-      const world = [d.UMAP1, -d.UMAP2, 0];
-      // DeckGLのproject()で画面座標に変換
-      const [px, py] = deckRef.current?.deck?.project(world) || [];
-      if (px == null || py == null) continue;
-
-      const dx = px - clickPx;
-      const dy = py - clickPy;
-      const d2 = dx * dx + dy * dy;
-
-      if (d2 < bestD2) {
-        bestD2 = d2;
-        best = d;
-     }
+      const x = d.UMAP1, y = -d.UMAP2;
+      const dx = x - wx, dy = y - wy;
+      const d2 = dx*dx + dy*dy;
+      if (d2 < bestD2) { bestD2 = d2; best = d; }
     }
-
-    // ★しきい値（ピクセル距離）を超えていたら無効
-    if (Math.sqrt(bestD2) > thresholdPx) return null;
     return best;
   }, [data]);
 
@@ -412,27 +399,23 @@ function MapPage() {
     setIsFavoriteOpen(false);
     setIsRatedOpen(false);
 
-    requestAnimationFrame(() => {
-      try {
-        const world = [userPin[0], -userPin[1], 0];
-        const [px, py] = deckRef.current?.deck?.project(world) || [];
-        if (px == null || py == null) return;
-
-        // ピクセル→ワールドへ変換して最近傍を取得
-        const nearest = findNearestWinePixel(px, py, 40);                  // 近傍値調整
-        if (nearest?.JAN) {
-          setHideHeartForJAN(null);
-          setSelectedJAN(nearest.JAN);
-          setSelectedJANFromSearch(null);
-          setIframeNonce(Date.now());
-          setProductDrawerOpen(true);
-          focusOnWine(nearest, { zoom: INITIAL_ZOOM });
-        }
-      } catch (e) {
-        console.error("auto-open-nearest failed:", e);
-      }
-    });
-      }, [location.key, userPin, data, findNearestWinePixel]);
+   try {
+     // userPin は UMAP空間（x, yUMAP）。DeckGL世界は y を反転している点に注意
+     const wx = userPin[0];
+     const wy = -userPin[1];
+     const nearest = findNearestWineWorld(wx, wy);
+     if (nearest?.JAN) {
+       setHideHeartForJAN(null);
+       setSelectedJAN(nearest.JAN);
+       setSelectedJANFromSearch(null);
+       setIframeNonce(Date.now());
+       setProductDrawerOpen(true);
+       focusOnWine(nearest, { zoom: INITIAL_ZOOM });
+     }
+   } catch (e) {
+     console.error("auto-open-nearest failed:", e);
+   }
+ }, [location.key, userPin, data, findNearestWineWorld]);
 
   // ====== 商品へフォーカス
   const focusOnWine = useCallback((item, opts = {}) => {
