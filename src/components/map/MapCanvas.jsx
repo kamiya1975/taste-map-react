@@ -28,6 +28,9 @@ const FAVORITE_RED = [178, 53, 103, 255];
 const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
+// クリック時に最近傍を許可する半径（px）
+const CLICK_NEAR_PX = 18; // お好みで 14〜24 あたり
+
 // ✅ パンのクランプ切替
 const PAN_CLAMP = true;
 
@@ -554,18 +557,32 @@ const MapCanvas = forwardRef(function MapCanvas(
         scrollZoom: true,
       }}
       onClick={(info) => {
+        // まずは通常のGPUピッキング（点を直タップ）
         const picked = info?.object;
         if (picked?.JAN) {
           onPickWine?.(picked);
           return;
         }
+
+        // クリック座標（world）を取る
         const world = info?.coordinate
           ?? (info?.pixel ? deckRef.current?.deck?.unproject(info.pixel) : null);
         if (!world) return;
 
+        // 最近傍（world座標で）
         const nearest = findNearestWine(world);
         if (!nearest) return;
 
+        // ★ ピクセルしきい値でフィルタ（px→worldへ換算して距離比較）
+        const worldThresh = pxToWorld(viewState.zoom, CLICK_NEAR_PX);
+        const dx = nearest.UMAP1 - world[0];
+        const dy = (-nearest.UMAP2) - world[1];
+        if (dx * dx + dy * dy > worldThresh * worldThresh) {
+          // 近くに点が無いタップ → 何もしない
+          return;
+        }
+
+        // しきい値内なら開く
         onPickWine?.(nearest);
       }}
 
