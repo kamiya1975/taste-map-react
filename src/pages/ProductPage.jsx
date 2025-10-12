@@ -537,7 +537,7 @@ export default function ProductPage() {
                 lineHeight: 1,
                 position: "relative",
                 top: "-11px",
-                marginLeft: "8px" // 横位置を右に動かす
+                marginLeft: "10px" // 横位置を右に動かす
               }}
             >
               飲みたい
@@ -551,8 +551,9 @@ export default function ProductPage() {
           <div
             style={{
               width: 1,
-             background: "#d9d9d9",
-              margin: "0 12px",
+              background: "#d9d9d9",
+              marginLeft: "4px",   // ← 左余白を小さく
+              marginRight: "12px", // ← 右余白はそのまま
               alignSelf: "stretch",
             }}
           />
