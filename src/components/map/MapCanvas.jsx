@@ -570,9 +570,20 @@ const MapCanvas = forwardRef(function MapCanvas(
         }
         const px = info?.pixel?.[0];
         const py = info?.pixel?.[1];
-        const nearest = findNearestWinePixel(px, py, 10);             //近傍値調整
-        if (nearest?.JAN) onPickWine?.(nearest);
+        if (px == null || py == null) return;
+        // ピクセル→ワールドへ変換
+        const world = deckRef.current?.deck?.unproject([px, py]);
+        if (!world) return;
+        const nearest = findNearestWine(world);
+        if (!nearest) return;
+        // （任意）ピクセルしきい値でフィルタしたい場合は、ここで距離を確認
+        // const worldThresh = pxToWorld(viewState.zoom, 10); // 10px 相当
+        // const dx = nearest.UMAP1 - world[0];
+        // const dy = (-nearest.UMAP2) - world[1];
+        // if (dx*dx + dy*dy > worldThresh*worldThresh) return;
+        onPickWine?.(nearest);
       }}
+      
       pickingRadius={8}
       layers={[
         // 背景（紙テクスチャ）

@@ -417,7 +417,7 @@ function MapPage() {
         const world = [userPin[0], -userPin[1], 0];
         const [px, py] = deckRef.current?.deck?.project(world) || [];
         const nearest = (px != null && py != null)
-          ? findNearestWinePixel(px, py, 10)
+          ? findNearestWinePixel(px, py, 10)                        //近傍値調整
           : null;
         if (nearest?.JAN) {
           setHideHeartForJAN(null);
