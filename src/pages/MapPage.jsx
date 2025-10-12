@@ -419,10 +419,7 @@ function MapPage() {
         if (px == null || py == null) return;
 
         // ピクセル→ワールドへ変換して最近傍を取得
-        const unproj = deckRef.current?.deck?.unproject([px, py]);
-        if (!unproj) return;
-
-        const nearest = findNearestWine(unproj); // ← MapCanvas 側の関数に合わせる
+        const nearest = findNearestWinePixel(px, py, 10); // 近傍しきい値
         if (nearest?.JAN) {
           setHideHeartForJAN(null);
           setSelectedJAN(nearest.JAN);
@@ -435,7 +432,7 @@ function MapPage() {
         console.error("auto-open-nearest failed:", e);
       }
     });
-      }, [location.key, userPin, data]);
+      }, [location.key, userPin, data, findNearestWinePixel]);
 
   // ====== 商品へフォーカス
   const focusOnWine = useCallback((item, opts = {}) => {
