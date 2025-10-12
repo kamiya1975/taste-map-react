@@ -414,9 +414,11 @@ function MapPage() {
 
     requestAnimationFrame(() => {
       try {
-        const canvasCoord = [userPin[0], -userPin[1]];
-        const [cx, cy] = canvasCoord;
-        const nearest = findNearestWinePixel(cx, cy, 5);
+        const world = [userPin[0], -userPin[1], 0];
+        const [px, py] = deckRef.current?.deck?.project(world) || [];
+        const nearest = (px != null && py != null)
+          ? findNearestWinePixel(px, py, 10)
+          : null;
         if (nearest?.JAN) {
           setHideHeartForJAN(null);
           setSelectedJAN(nearest.JAN);

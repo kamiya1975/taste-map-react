@@ -568,8 +568,9 @@ const MapCanvas = forwardRef(function MapCanvas(
           onPickWine?.(picked);
           return;
         }
-        const coord = info?.coordinate;
-        const nearest = findNearestWine(coord);
+        const px = info?.pixel?.[0];
+        const py = info?.pixel?.[1];
+        const nearest = findNearestWinePixel(px, py, 10);             //近傍値調整
         if (nearest?.JAN) onPickWine?.(nearest);
       }}
       pickingRadius={8}
