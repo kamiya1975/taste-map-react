@@ -536,7 +536,7 @@ export default function ProductPage() {
                 alignSelf: "flex-start",
                 lineHeight: 1,
                 position: "relative",
-                top: "-12px",
+                top: "-11px",
                 marginLeft: "4px" // 横位置を右に動かす
               }}
             >
