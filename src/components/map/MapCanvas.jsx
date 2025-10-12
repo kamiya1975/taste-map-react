@@ -518,7 +518,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       views={new OrthographicView({ near: -1, far: 1 })}
       viewState={viewState}
       style={{ position: "absolute", inset: 0 }}
-      useDevicePixels
+      useDevicePixels={false}
       // キャンバスサイズ保持
       onResize={({ width, height }) => {
         sizeRef.current = getEffectiveSizePx({ width, height });
@@ -543,12 +543,18 @@ const MapCanvas = forwardRef(function MapCanvas(
         if (!PAN_CLAMP) {
           setViewState(next); // パンは戻さない
         } else {
-          setViewState((curr) =>
-            clampViewState(next, panBounds, sizeRef.current, {
-              xPx: edgeMarginXPx,
-              yPx: edgeMarginYPx,
-            })
-          );
+          if (isInteracting) {
+            // ★ジェスチャー中はパンを拘束しない（ズームだけ反映）
+            setViewState(next);
+          } else {
+            // ★ジェスチャー終了時にだけ“ギリ見える”クランプ適用
+            setViewState((curr) =>
+              clampViewState(next, panBounds, sizeRef.current, {
+                xPx: edgeMarginXPx,
+                yPx: edgeMarginYPx,
+              })
+            );
+          }          
         }
       }}
       onInteractionStateChange={onInteractionStateChange}
@@ -583,7 +589,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         // if (dx*dx + dy*dy > worldThresh*worldThresh) return;
         onPickWine?.(nearest);
       }}
-      
+
       pickingRadius={8}
       layers={[
         // 背景（紙テクスチャ）
