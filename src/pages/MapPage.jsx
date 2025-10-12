@@ -372,7 +372,7 @@ function MapPage() {
   }, [location.state, data, centerToUMAP]);
 
   // 最近傍
-  const findNearestWine = useCallback((coord) => {
+  const findNearestWine = useCallback((coord, threshold = 0.5) => {
     if (!coord || !Array.isArray(data) || data.length === 0) return null;
     const [cx, cy] = coord;
     let best = null, bestD2 = Infinity;
@@ -382,6 +382,7 @@ function MapPage() {
       const d2 = dx * dx + dy * dy;
       if (d2 < bestD2) { bestD2 = d2; best = d; }
     }
+    if (bestD2 > threshold * threshold) return null;
     return best;
   }, [data]);
 
