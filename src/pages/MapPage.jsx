@@ -416,7 +416,7 @@ function MapPage() {
       try {
         const canvasCoord = [userPin[0], -userPin[1]];
         const [cx, cy] = canvasCoord;
-        const nearest = findNearestWinePixel(cx, cy, 40);
+        const nearest = findNearestWinePixel(cx, cy, 10);
         if (nearest?.JAN) {
           setHideHeartForJAN(null);
           setSelectedJAN(nearest.JAN);
