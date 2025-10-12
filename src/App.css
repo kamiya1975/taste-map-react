@@ -242,7 +242,7 @@ body,
 
   display: block;
   width: 80vw;             /* ← 画面幅の80% */
-  max-width: 300px;        /* ← 保険：大きすぎ防止 */
+  max-width: 400px;        /* ← 保険：大きすぎ防止 */
   margin: 0 auto;       /* 中央寄せ */
 
   height: 90px;            /* 縦のタッチ範囲 */
