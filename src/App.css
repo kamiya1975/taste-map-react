@@ -231,57 +231,60 @@ body,
 /* =========================
    スライダー UI（見た目）
    ========================= */
+/* スライダー UI（見た目） */
 .taste-slider {
-  --track-h: 6px;   /* バーの太さ */
-  --thumb:   28px;  /* ●の直径   */
-  --nudge:   -3px;  /* 追加の上方向微調整 */
+  --track-h: 6px;
+  --thumb: 28px;
+  --nudge: -3px;
 
   appearance: none;
   -webkit-appearance: none;
-  width: calc(100% + 80px);
-  margin-left: -40px;
-  margin-right: -40px;
-  height: 90px;
+
+  /* 横のタッチ範囲を+80px、中央に固定 */
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  display: block;
+
+  width: calc(100% + 80px);      /* ← 横を広げる */
+  margin: 0;                      /* ← 負マージンは使わない */
+  /* 画面端に食い込まない保険（必要なら残す） */
+  max-width: calc(100svw - 32px);
+
+  height: 90px;                   /* ← 縦のタッチ範囲を広げる */
   background: transparent;
   margin-top: 6px;
   outline: none;
   touch-action: pan-x;
 }
+
+/* トラック/サムはそのまま */
 .taste-slider::-webkit-slider-runnable-track {
   height: var(--track-h);
   border-radius: 9999px;
-  background: var(--range, rgb(206,206,206)); /* R206 基準ライン */
+  background: var(--range, rgb(206,206,206));
 }
 .taste-slider::-moz-range-track {
   height: var(--track-h);
   border-radius: 9999px;
-  background: var(--range, rgb(206,206,206)); /* R206 基準ライン */
+  background: var(--range, rgb(206,206,206));
 }
-.taste-slider::-webkit-slider-thumb{ 
-  -webkit-appearance:none; 
-  width:22px; height:22px; 
-  border-radius:50%; background:#262626; 
-  border:0; 
-  box-shadow:0 1px 2px rgba(0,0,0,.25); 
-  margin-top:-8px; 
-  cursor:pointer; 
+.taste-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #262626; border: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,.25);
+  margin-top: -8px;
+  cursor: pointer;
 }
-.taste-slider::-moz-range-thumb{ 
-  width:22px; 
-  height:22px; 
-  border-radius:50%; 
-  background:#262626; 
-  border:0; 
-  box-shadow:0 1px 2px rgba(0,0,0,.25); 
-  cursor:pointer; 
+.taste-slider::-moz-range-thumb {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #262626; border: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,.25);
+  cursor: pointer;
 }
-.taste-slider::-webkit-slider-runnable-track { 
-  cursor: pointer; 
-}
-.taste-slider::-moz-range-track { 
-  cursor: pointer; 
-}
-
 
 /* =========================
    iOS Safari: フォーカス時の自動ズーム抑止
