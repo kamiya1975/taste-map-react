@@ -540,7 +540,7 @@ export default function ProductPage() {
                 marginLeft: "10px" // 横位置を右に動かす
               }}
             >
-              飲みたい
+              {rating > 0 ? "飲んだ" : "飲みたい"}
             </div>
 
             {/* hideHeart の時は visibility で非表示（幅は保持） */}
