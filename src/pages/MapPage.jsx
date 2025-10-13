@@ -476,16 +476,12 @@ function MapPage() {
               jan: janStr,
               favorite: isFav,
               rating: nextRatingObj || userRatings[janStr] || null,
-              hideHeart: hideHeartForJAN === janStr,
+              // 後方互換のため送る場合は rating>0 を反映
+              hideHeart: (nextRatingObj?.rating || userRatings[janStr]?.rating || 0) > 0,
             },
             "*"
           );
-          if (hideHeartForJAN === janStr) {
-            iframeRef.current?.contentWindow?.postMessage(
-              { type: "HIDE_HEART", jan: janStr, value: true },
-              "*"
-            );
-          }
+          // HIDE_HEART 明示送信は廃止（子は rating から自律判定）
         } catch {}
       };
 
@@ -965,8 +961,7 @@ function MapPage() {
             <iframe
                ref={iframeRef}
               key={`${selectedJAN}-${iframeNonce}`}
-              src={`${process.env.PUBLIC_URL || ""}/#/products/${selectedJAN}?embed=1&_=${iframeNonce}${
-                hideHeartForJAN === String(selectedJAN) ? "&fromRated=1" : ""}`}
+              src={`${process.env.PUBLIC_URL || ""}/#/products/${selectedJAN}?embed=1&_=${iframeNonce}`}
               style={{ width: "100%", height: "70vh", border: "none" }}
               onLoad={() => {
                 try {

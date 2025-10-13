@@ -79,20 +79,6 @@ const forceFavoriteOff = (jan) => {
   } catch {}
 };
 
-const useHideHeartFromQuery = () => {
-  const [hide, setHide] = useState(false);
-  useEffect(() => {
-    try {
-      const url = new URL(window.location.href);
-      const v = (url.searchParams.get("fromRated") || "").toLowerCase();
-      setHide(v === "1" || v === "true");
-    } catch {
-      setHide(false);
-    }
-  }, []);
-  return hide;
-};
-
 /** =========================
  *  お気に入りスター（☆/★ 画像版）
  * ========================= */
@@ -353,10 +339,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  const hideHeartFromQuery = useHideHeartFromQuery();
-  const [hideHeart, setHideHeart] = useState(hideHeartFromQuery);
-  useEffect(() => setHideHeart(hideHeartFromQuery), [hideHeartFromQuery]);
-
+  // ★は rating>0 なら常に非表示（クエリには依存しない）
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan });
     postToParent({ type: "REQUEST_STATE", jan });
@@ -415,27 +398,18 @@ export default function ProductPage() {
 
   useEffect(() => {
     const onMsgSnapshot = (e) => {
-      const { type, jan: targetJan, rating: ratingPayload, hideHeart } = e.data || {};
+      const { type, jan: targetJan, rating: ratingPayload } = e.data || {};
       if (type !== "STATE_SNAPSHOT") return;
       if (String(targetJan) !== String(jan)) return;
       try {
         setRating(ratingPayload?.rating ?? 0);
-        if (typeof hideHeart === "boolean") setHideHeart(hideHeart);
       } catch {}
     };
     window.addEventListener("message", onMsgSnapshot);
     return () => window.removeEventListener("message", onMsgSnapshot);
   }, [jan]);
 
-  useEffect(() => {
-    const onMsgHide = (e) => {
-      const { type, jan: targetJan, value } = e.data || {};
-      if (String(targetJan) !== String(jan)) return;
-      if (type === "HIDE_HEART") setHideHeart(Boolean(value));
-    };
-    window.addEventListener("message", onMsgHide);
-    return () => window.removeEventListener("message", onMsgHide);
-  }, [jan]);
+　// HIDE_HEART メッセージは今後未使用（ratingにより自動で非表示）
 
   const handleCircleClick = async (value) => {
     if (!requireRatingOrRedirect(navigate, "/my-account")) return;
@@ -566,7 +540,7 @@ export default function ProductPage() {
             </div>
 
             {/* hideHeart の時は visibility で非表示（幅は保持） */}
-            <HeartButton jan={jan} size={28} hidden={hideHeart} />
+            <HeartButton jan={jan} size={28} hidden={rating > 0} />
           </div>
 
           {/* 縦罫線（常に同じ高さに） */}
