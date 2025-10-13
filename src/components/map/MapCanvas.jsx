@@ -5,7 +5,6 @@ import { OrthographicView } from "@deck.gl/core";
 import {
   ScatterplotLayer,
   LineLayer,
-  GridCellLayer,
   PathLayer,
   IconLayer,
   BitmapLayer,
@@ -160,6 +159,41 @@ const MapCanvas = forwardRef(function MapCanvas(
     const K = 8; // 余裕係数
     return [cx - K * halfW, cy - K * halfH, cx + K * halfW, cy + K * halfH];
   }, [viewState.zoom, viewState.target]);
+
+
+  // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
+  const pointBubbles = useMemo(() => {
+    if (!highlight2D) return [];
+
+    // 値分布（外れ値カットは従来ヒートと同じ HEAT_CLIP_PCT を踏襲）
+    const vals = data
+      .map(d => Number(d[highlight2D]))
+      .filter(v => Number.isFinite(v));
+    if (!vals.length) return [];
+
+    vals.sort((a, b) => a - b);
+    const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
+    const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
+    const lo = vals[loIdx];
+    const hi = vals[hiIdx];
+    const vHi = hi - lo < 1e-9 ? lo + 1e-9 : hi;
+
+    // 各商品点へ t と座標を付与
+    return data
+      .map(d => {
+        const v = Number(d[highlight2D]);
+        if (!Number.isFinite(v)) return null;
+        let t = (v - lo) / ((vHi - lo) || 1e-9);
+        t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA))); // ガンマ補正
+        return {
+          jan: String(d.JAN),
+          position: [d.UMAP1, -d.UMAP2, 0],
+          t,
+        };
+      })
+    .filter(Boolean);
+  }, [data, highlight2D]);
+
 
   // 初期クランプ
   useEffect(() => {
@@ -597,72 +631,63 @@ const MapCanvas = forwardRef(function MapCanvas(
           parameters: { depthTest: false },
         }),
 
+      // ① セルの地模様（タイル）は常に表示
+      new IconLayer({
+        id: "cell-tiles",
+        data: cells,
+        getPosition: (d) => d.center,
+        getIcon: (d) => ({
+          url: d.hasRating ? TILE_OCHRE : TILE_GRAY,
+          width: 32,
+          height: 32,
+          anchorX: 16,
+          anchorY: 16,
+        }),
+        sizeUnits: "meters",
+        getSize: GRID_CELL_SIZE,
+        billboard: true,
+        pickable: false,
+        parameters: { depthTest: false },
+        updateTriggers: {
+          getIcon: [JSON.stringify(cells.map((c) => c.hasRating))],
+          getPosition: [GRID_CELL_SIZE],
+          getSize: [GRID_CELL_SIZE],
+        },
+      }),
 
-
-        !highlight2D
-          ? new IconLayer({
-              id: "cell-tiles",
-              data: cells,
-              getPosition: (d) => d.center,
-              getIcon: (d) => ({
-                url: d.hasRating ? TILE_OCHRE : TILE_GRAY,
-                width: 32,
-                height: 32,
-                anchorX: 16,
-                anchorY: 16,
-              }),
-              sizeUnits: "meters",
-              getSize: GRID_CELL_SIZE,
-              billboard: true,
-              pickable: false,
-              parameters: { depthTest: false },
-              updateTriggers: {
-                getIcon: [JSON.stringify(cells.map((c) => c.hasRating))],
-                getPosition: [GRID_CELL_SIZE],
-                getSize: [GRID_CELL_SIZE],
-              },
-            })
-          : new ScatterplotLayer({
-              id: `grid-bubbles-${highlight2D}`,
-              data: heatCells,                       // { position, avg, count }
-              getPosition: (d) => [
-                d.position[0] + GRID_CELL_SIZE / 2,  // セル“中心”へ
-                d.position[1] + GRID_CELL_SIZE / 2,
-                0
-              ],
-              radiusUnits: "meters",
-              // 値→半径: GRID_CELL_SIZE の約 45% を上限に（ガンマ補正も適用）
-              getRadius: (d) => {
-                let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
-                if (!Number.isFinite(t)) t = 0;
-                t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
-                const R_MAX = GRID_CELL_SIZE * 0.45;
-                const R_MIN = GRID_CELL_SIZE * 0.06; // 0だと消えるので最小半径を確保
-                return R_MIN + (R_MAX - R_MIN) * t;
-              },
-              // 色は従来のヒートマップを踏襲
-              getFillColor: (d) => {
-                let t = (d.avg - vMin) / ((vMax - vMin) || 1e-9);
-                if (!Number.isFinite(t)) t = 0;
-                t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
-                const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * t);
-                const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * t);
-                const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * t);
-                const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * t);
-                return [r, g, b, a];
-              },
-              stroked: true,
-              getLineWidth: 1,
-              lineWidthUnits: "pixels",
-              getLineColor: [0, 0, 0, 40],           // うっすら枠
-              pickable: false,
-              parameters: { depthTest: false },
-              updateTriggers: {
-                getRadius: [vMin, vMax, HEAT_GAMMA, GRID_CELL_SIZE, avgHash],
-                getFillColor: [vMin, vMax, HEAT_GAMMA, avgHash],
-              },
-            }),
-
+      // ② 商品打点に付くバブル（highlight2D 選択時のみ）
+      highlight2D
+        ? new ScatterplotLayer({
+            id: `point-bubbles-${highlight2D}`,
+            data: pointBubbles,                 // { position, t }
+            getPosition: d => d.position,
+            radiusUnits: "meters",
+            getRadius: d => {
+              const R_MAX = 0.22;
+              const R_MIN = 0.05;
+              return R_MIN + (R_MAX - R_MIN) * d.t;
+            },
+            getFillColor: d => {
+              const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * d.t);
+              const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * d.t);
+              const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * d.t);
+              const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * d.t);
+              return [r, g, b, a];
+            },
+            stroked: true,
+            getLineWidth: 1,
+            lineWidthUnits: "pixels",
+            getLineColor: [0, 0, 0, 40],
+            pickable: false,
+            parameters: { depthTest: false },
+            updateTriggers: {
+              getRadius: [HEAT_GAMMA],
+              getFillColor: [HEAT_GAMMA, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX,
+                             HEAT_COLOR_LOW?.[0], HEAT_COLOR_LOW?.[1], HEAT_COLOR_LOW?.[2],
+                             HEAT_COLOR_HIGH?.[0], HEAT_COLOR_HIGH?.[1], HEAT_COLOR_HIGH?.[2]],
+            },
+          })
+        : null,
 
 
         // グリッド線
