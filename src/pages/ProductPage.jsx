@@ -60,6 +60,25 @@ const notifyParentClosed = (jan) => {
   } catch {}
 };
 
+// ★ 「飲みたい（favorites）」を即時OFFにするユーティリティ
+const forceFavoriteOff = (jan) => {
+  try {
+    const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
+    if (favs && favs[jan]) {
+      delete favs[jan];
+      localStorage.setItem("favorites", JSON.stringify(favs));
+    }
+  } catch {}
+  // 自ウィンドウの HeartButton を即時同期
+  try {
+    window.postMessage({ type: "SET_FAVORITE", jan, value: false }, "*");
+  } catch {}
+  // 親（MapPage 側）にも伝えて同期
+  try {
+    postToParent({ type: "SET_FAVORITE", jan, value: false });
+  } catch {}
+};
+
 const useHideHeartFromQuery = () => {
   const [hide, setHide] = useState(false);
   useEffect(() => {
@@ -432,7 +451,10 @@ export default function ProductPage() {
     } else {
       payload = { rating: newRating, date: new Date().toISOString() }; // weatherは付けない
       ratings[jan] = payload;
+      // ◎ を入れたら「飲みたい」を必ずOFF（一覧に載っていなくても）
+      forceFavoriteOff(jan);
     }
+  
 
     localStorage.setItem("userRatings", JSON.stringify(ratings));
     postToParent({ type: "RATING_UPDATED", jan, payload });
@@ -540,7 +562,7 @@ export default function ProductPage() {
                 marginLeft: "10px" // 横位置を右に動かす
               }}
             >
-              {rating > 0 ? "飲んだ" : "飲みたい"}
+              {"飲みたい"}
             </div>
 
             {/* hideHeart の時は visibility で非表示（幅は保持） */}
