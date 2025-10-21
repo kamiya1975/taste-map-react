@@ -47,7 +47,35 @@ function MapPage() {
   const fromRatedRef = useRef(false);
   const deckRef = useRef(null);
 
-  // クラスタ配色
+  // ドロワー状態
+  const [isGuideOpen, setIsGuideOpen] = useState(false);        // 「TasteMapとは？」
+  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);  // 「マップガイド」(オーバーレイ)
+  const [isStoreOpen, setIsStoreOpen] = useState(false);        // 店舗登録 (オーバーレイ)
+  const [isMyPageOpen, setIsMyPageOpen] = useState(false);      // アプリガイド（メニュー）
+  const [isAccountOpen, setIsAccountOpen] = useState(false);    // マイアカウント（メニュー）
+  const [isFaqOpen, setIsFaqOpen] = useState(false);            // よくある質問（メニュー）
+
+  const iframeRef = useRef(null);
+  const autoOpenOnceRef = useRef(false);
+
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const lastCommittedRef = useRef({ code: "", at: 0 });
+  const unknownWarnedRef = useRef(new Map());
+
+  const [viewState, setViewState] = useState({ target: [0, 0, 0], zoom: INITIAL_ZOOM });
+
+  // データ & 状態
+  const [data, setData] = useState([]);
+  const [userRatings, setUserRatings] = useState({});
+  const [favorites, setFavorites] = useState({});
+  const [userPin, setUserPin] = useState(null);
+  const [highlight2D, setHighlight2D] = useState("");
+  const [productDrawerOpen, setProductDrawerOpen] = useState(false);
+  const [selectedJAN, setSelectedJAN] = useState(null);
+  const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
+  const [iframeNonce, setIframeNonce] = useState(0);
+
+    // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
   const [clusterColors, setClusterColors] = useState({});
 
@@ -87,34 +115,6 @@ function MapPage() {
   useEffect(() => {
     try { localStorage.setItem("tm_cluster_colors", JSON.stringify(clusterColors || {})); } catch {}
   }, [clusterColors]);
-
-  // ドロワー状態
-  const [isGuideOpen, setIsGuideOpen] = useState(false);        // 「TasteMapとは？」
-  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);  // 「マップガイド」(オーバーレイ)
-  const [isStoreOpen, setIsStoreOpen] = useState(false);        // 店舗登録 (オーバーレイ)
-  const [isMyPageOpen, setIsMyPageOpen] = useState(false);      // アプリガイド（メニュー）
-  const [isAccountOpen, setIsAccountOpen] = useState(false);    // マイアカウント（メニュー）
-  const [isFaqOpen, setIsFaqOpen] = useState(false);            // よくある質問（メニュー）
-
-  const iframeRef = useRef(null);
-  const autoOpenOnceRef = useRef(false);
-
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const lastCommittedRef = useRef({ code: "", at: 0 });
-  const unknownWarnedRef = useRef(new Map());
-
-  const [viewState, setViewState] = useState({ target: [0, 0, 0], zoom: INITIAL_ZOOM });
-
-  // データ & 状態
-  const [data, setData] = useState([]);
-  const [userRatings, setUserRatings] = useState({});
-  const [favorites, setFavorites] = useState({});
-  const [userPin, setUserPin] = useState(null);
-  const [highlight2D, setHighlight2D] = useState("");
-  const [productDrawerOpen, setProductDrawerOpen] = useState(false);
-  const [selectedJAN, setSelectedJAN] = useState(null);
-  const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
-  const [iframeNonce, setIframeNonce] = useState(0);
 
   // 検索・一覧
   const [isSearchOpen, setIsSearchOpen] = useState(false);
