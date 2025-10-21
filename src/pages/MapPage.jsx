@@ -768,43 +768,6 @@ function MapPage() {
         />
       </button>
 
-      {/* 配色編集パネル（ON時だけ表示） */}
-      {clusterColorMode && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100px",
-            left: "10px",
-            zIndex: 12,
-            background: "rgba(255,255,255,0.95)",
-            border: "1px solid #c9c9b0",
-            borderRadius: 8,
-            padding: 8,
-            maxHeight: "40vh",
-            overflowY: "auto",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
-            fontSize: 12,
-          }}
-        >
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>クラスタ配色</div>
-          {clusterList.map((c) => (
-            <div key={c} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span style={{ minWidth: 54 }}>cluster {c}</span>
-              <input
-                type="color"
-                value={clusterColors?.[c] || "#888888"}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setClusterColors((prev) => ({ ...prev, [c]: v }));
-                }}
-                style={{ width: 28, height: 28, border: "none", background: "transparent", padding: 0 }}
-              />
-            </div>
-          ))}
-          <div style={{ marginTop: 8, color: "#666" }}>ボタンを再度押すと元の配色に戻ります。</div>
-        </div>
-      )}
-
       {/* 左下: アプリガイド（メニュー）ボタン */}
       <button
         onClick={() => setIsMyPageOpen((v) => !v)}
@@ -916,6 +879,42 @@ function MapPage() {
           src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
           alt=""
           style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
+          draggable={false}
+        />
+      </button>
+
+      <button
+        onClick={() => setClusterColorMode(v => !v)}
+        style={{
+          position: "absolute",
+          top: "160px",
+          right: "10px",
+          zIndex: 10,
+          width: "40px",
+          height: "40px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+        }}
+        aria-label="クラスタ配色"
+        title={clusterColorMode ? "クラスタ配色（ON）" : "クラスタ配色（OFF）"}
+      >
+        <img
+          src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
+          alt=""
+          style={{
+            width: "100%",
+           height: "100%",
+            objectFit: "contain",
+            display: "block",
+           pointerEvents: "none",
+            opacity: clusterColorMode ? 1.0 : 0.5, // ON/OFFで少し明度差をつける
+            transition: "opacity 0.2s",
+          }}
           draggable={false}
         />
       </button>
