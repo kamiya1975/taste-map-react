@@ -675,14 +675,7 @@ const MapCanvas = forwardRef(function MapCanvas(
               if (t < 0.80) return R_MED;        // 中間60%
               return R_LARGE;                    // 上位20%
             },
-            getFillColor: d => {
-              const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * d.t);
-              const g = Math.round(HEAT_COLOR_LOW[1] + (HEAT_COLOR_HIGH[1] - HEAT_COLOR_LOW[1]) * d.t);
-              const b = Math.round(HEAT_COLOR_LOW[2] + (HEAT_COLOR_HIGH[2] - HEAT_COLOR_LOW[2]) * d.t);
-              const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * d.t);
-              return [r, g, b, a];
-            },
-            // ★ 外輪を無くす
+            getFillColor: () => [180, 180, 180, 200], // ← グレー指定
             stroked: false,
             getLineWidth: 0,
             pickable: false,
