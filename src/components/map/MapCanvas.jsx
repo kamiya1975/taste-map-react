@@ -675,7 +675,7 @@ const MapCanvas = forwardRef(function MapCanvas(
               if (t < 0.90) return R_MED;        // 中間40%
               return R_LARGE;                    // 上位10%
             },
-            getFillColor: () => [210, 210, 205, 50], // ← グレー指定
+            getFillColor: () => [210, 210, 205, 150], // ← グレー指定
             stroked: false,
             getLineWidth: 0,
             pickable: false,
