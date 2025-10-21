@@ -27,6 +27,10 @@ const FAVORITE_RED = [178, 53, 103, 255];
 const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
+const janOf = (d) => String(d?.jan_code ?? d?.JAN ?? "");
+const xOf   = (d) => Number.isFinite(d?.umap_x) ? d.umap_x : d?.UMAP1;
+const yOf   = (d) => Number.isFinite(d?.umap_y) ? d.umap_y : d?.UMAP2;
+
 // クリック時に最近傍を許可する半径（px）
 const CLICK_NEAR_PX = 24; // お好みで 14〜24 あたり
 
@@ -186,8 +190,8 @@ const MapCanvas = forwardRef(function MapCanvas(
         let t = (v - lo) / ((vHi - lo) || 1e-9);
         t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA))); // ガンマ補正
         return {
-          jan: String(d.jan_code),
-          position: [d.umap_x, -d.umap_y, 0],
+          jan: janOf(d),
+          position: [xOf(d), -yOf(d), 0],
           t,
         };
       })
@@ -302,8 +306,8 @@ const MapCanvas = forwardRef(function MapCanvas(
   const cells = useMemo(() => {
     const map = new Map();
     data.forEach((d) => {
-      const ix = toIndex(d.umap_x);
-      const iy = toIndex(-d.umap_y);
+      const ix = toIndex(xOf(d));
+      const iy = toIndex(-yOf(d));
       const key = keyOf(ix, iy);
       if (!map.has(key)) {
         map.set(key, {
@@ -319,7 +323,8 @@ const MapCanvas = forwardRef(function MapCanvas(
           hasRating: false,
         });
       }
-      if ((userRatings[d.jan_code]?.rating ?? 0) > 0) map.get(key).hasRating = true;
+      if ((userRatings[janOf(d)]?.rating ?? 0) > 0) 
+      map.get(key).hasRating = true;
       map.get(key).count += 1;
     });
     return Array.from(map.values());
@@ -333,8 +338,8 @@ const MapCanvas = forwardRef(function MapCanvas(
     for (const d of data) {
       const v = Number(d[highlight2D]);
       if (!Number.isFinite(v)) continue;
-      const ix = toIndex(d.umap_x),
-        iy = toIndex(-d.umap_y);
+      const ix = toIndex(xOf(d)),
+        iy = toIndex(-yOf(d));
       const key = keyOf(ix, iy);
       sumMap.set(key, (sumMap.get(key) || 0) + v);
       cntMap.set(key, (cntMap.get(key) || 0) + 1);
@@ -368,10 +373,10 @@ const MapCanvas = forwardRef(function MapCanvas(
   // ★ ベクタで描く選択ドット（外黒→内白→中心黒）
   const selectedDotLayers = useMemo(() => {
     if (!selectedJAN) return [];
-    const hit = data.find((d) => String(d.jan_code) === String(selectedJAN));
-    if (!hit || !Number.isFinite(hit.umap_x) || !Number.isFinite(hit.umap_y)) return [];
+    const hit = data.find(d => janOf(d) === String(selectedJAN));
+    if (!hit || !Number.isFinite(xOf(hit)) || !Number.isFinite(yOf(hit))) return [];
 
-    const pos = [hit.umap_x, -hit.umap_y, 0];
+    const pos = [xOf(hit), -yOf(hit), 0];
     const R = 0.1; // ベース半径（見た目サイズ。0.14〜0.20で好み調整）
 
     // 外側の黒丸
@@ -407,9 +412,9 @@ const MapCanvas = forwardRef(function MapCanvas(
       new ScatterplotLayer({
         id: "scatter",
         data,
-        getPosition: (d) => [d.umap_x, -d.umap_y, 0],
+        getPosition: (d) => [xOf(d), -yOf(d), 0],
         getFillColor: (d) => {
-          const janStr = String(d.jan_code);
+          const janStr = janOf(d);
           if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;
           if (favorites && favorites[janStr]) return FAVORITE_RED;
           return MAP_POINT_COLOR;
@@ -432,9 +437,8 @@ const MapCanvas = forwardRef(function MapCanvas(
   const ratingCircleLayers = useMemo(() => {
     const lineColor = [255, 0, 0, 255];
     return Object.entries(userRatings || {}).flatMap(([jan_code, ratingObj]) => {
-      const item = data.find((d) => String(d.jan_code) === String(jan_code));
-      if (!item || !Number.isFinite(item.umap_x) || !Number.isFinite(item.umap_y))
-        return [];
+      const item = data.find(d => janOf(d) === String(jan_code));
+      if (!item || !Number.isFinite(xOf(item)) || !Number.isFinite(yOf(item))) return [];
       const count = Math.min(Number(ratingObj?.rating) || 0, 5);
       if (count <= 0) return [];
       const radiusBase = 0.06;
@@ -443,8 +447,8 @@ const MapCanvas = forwardRef(function MapCanvas(
         const path = Array.from({ length: steps }, (_, j) => {
           const angle = (j / steps) * 2 * Math.PI;
           const radius = radiusBase * (i + 1);
-          const x = item.umap_x + Math.cos(angle) * radius;
-          const y = -item.umap_y + Math.sin(angle) * radius;
+          const x = xOf(item) + Math.cos(angle) * radius;
+          const y = -yOf(item) + Math.sin(angle) * radius;
           return [x, y];
         });
         path.push(path[0]);
@@ -513,8 +517,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       let best = null,
         bestD2 = Infinity;
       for (const d of data) {
-        const x = d.umap_x,
-          y = -d.umap_y;
+        const x = xOf(d), y = -yOf(d);
         const dx = x - cx,
           dy = y - cy;
         const d2 = dx * dx + dy * dy;
@@ -593,7 +596,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       onClick={(info) => {
         // まずは通常のGPUピッキング（点を直タップ）
         const picked = info?.object;
-        if (picked?.jan_code) {
+        if (picked && janOf(picked)) {
           onPickWine?.(picked);
           return;
         }
@@ -609,8 +612,8 @@ const MapCanvas = forwardRef(function MapCanvas(
 
         // ★ ピクセルしきい値でフィルタ（px→worldへ換算して距離比較）
         const worldThresh = pxToWorld(viewState.zoom, CLICK_NEAR_PX);
-        const dx = nearest.umap_x - world[0];
-        const dy = (-nearest.umap_y) - world[1];
+        const dx = xOf(nearest) - world[0];
+        const dy = (-yOf(nearest)) - world[1];
         if (dx * dx + dy * dy > worldThresh * worldThresh) {
           // 近くに点が無いタップ → 何もしない
           return;
