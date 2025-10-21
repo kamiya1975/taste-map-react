@@ -14,6 +14,7 @@ const centerGradient = (val) => {
   const a=Math.min(50,v), b=Math.max(50,v);
   return `linear-gradient(to right, ${base} 0%, ${base} ${a}%, ${active} ${a}%, ${active} ${b}%, ${base} ${b}%, ${base} 100%)`;
 };
+const ANCHOR_JAN = "4964044046324";
 
 // 逆行列/近傍写像（既存）
 function invert3x3(M){const [[a,b,c],[d,e,f],[g,h,i]]=M;const A=e*i-f*h,B=-(d*i-f*g),C=d*h-e*g;const D=-(b*i-c*h),E=a*i-c*g,F=-(a*h-b*g);const G=b*f-c*e,H=-(a*f-c*d),I=a*e-b*d;const det=a*A+b*B+c*C;if(Math.abs(det)<1e-12)return null;const s=1/det;return[[A*s,D*s,G*s],[B*s,E*s,H*s],[C*s,F*s,I*s]];}
@@ -79,7 +80,7 @@ export default function SliderPage() {
           UMAP1:num(d.umap_x), UMAP2:num(d.umap_y)
         })).filter(r=>Number.isFinite(r.PC1)&&Number.isFinite(r.PC2)&&Number.isFinite(r.UMAP1)&&Number.isFinite(r.UMAP2));
         setRows(cleaned);
-        const b=cleaned.find(d=>d.jan_code==="blendF");
+        const b = cleaned.find(d => String(d.jan_code) === ANCHOR_JAN || String(d.JAN) === ANCHOR_JAN);
         setBlendF(b?{PC1:b.PC1,PC2:b.PC2,UMAP1:b.umap_x,UMAP2:b.umap_y}:null);
         const pc1s=cleaned.map(r=>r.PC1), pc2s=cleaned.map(r=>r.PC2);
         setPcMinMax({minPC1:Math.min(...pc1s),maxPC1:Math.max(...pc1s),minPC2:Math.min(...pc2s),maxPC2:Math.max(...pc2s)});

@@ -25,6 +25,7 @@ import {
 
 const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
+const ANCHOR_JAN = "4964044046324";
 
 function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
   const worldPerPx = 1 / Math.pow(2, Number(zoom) || 0);
@@ -179,8 +180,11 @@ function MapPage() {
           .map((r) => {
             const toNum = (v) => (v === "" || v == null ? NaN : Number(v));
             return {
-              JAN: String(r.jan_code ?? ""),
+              JAN: String(r.jan_code ?? r.JAN ?? ""),
+              jan_code: String(r.jan_code ?? r.JAN ?? ""),
               Type: r.wine_type ?? "Other",
+              umap_x: Number(r.umap_x),
+              umap_y: Number(r.umap_y),
               UMAP1: Number(r.umap_x),
               UMAP2: Number(r.umap_y),
               PC1: Number(r.PC1),
@@ -196,7 +200,11 @@ function MapPage() {
               コメント: r["コメント"] ?? r["comment"] ?? r["説明"] ?? "",
             };
           })
-          .filter((r) => Number.isFinite(r.umap_x) && Number.isFinite(r.umap_y) && r.JAN !== "");
+          .filter((r) =>
+            Number.isFinite(r.umap_x) &&
+            Number.isFinite(r.umap_y) &&
+            r.jan_code !== ""
+          );
         setData(cleaned);
         localStorage.setItem("umapData", JSON.stringify(cleaned));
       })
@@ -319,7 +327,7 @@ function MapPage() {
     if (didInitialCenterRef.current) return;
     if (!Array.isArray(data) || data.length === 0) return;
 
-    const b = data.find((d) => String(d.JAN) === "blendF");
+    const b = data.find((d) => String(d.jan_code) === ANCHOR_JAN || String(d.JAN) === ANCHOR_JAN);
     if (b && Number.isFinite(b.umap_x) && Number.isFinite(b.umap_y)) {
       centerToUMAP(b.umap_x, b.umap_y, { zoom: INITIAL_ZOOM });
       didInitialCenterRef.current = true;
@@ -358,7 +366,7 @@ function MapPage() {
     } catch {}
 
     if (targetX == null || targetY == null) {
-      const b = data.find((d) => String(d.JAN) === "blendF");
+      const b = data.find((d) => String(d.jan_code) === ANCHOR_JAN || String(d.JAN) === ANCHOR_JAN);
       if (b && Number.isFinite(b.umap_x) && Number.isFinite(b.umap_y)) {
         targetX = b.umap_x; targetY = b.umap_y;
       }
