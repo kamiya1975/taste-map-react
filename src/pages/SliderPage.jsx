@@ -113,6 +113,8 @@ export default function SliderPage() {
 
     const [umapX, umapY] = pca2umap(pc1Value, pc2Value);
     localStorage.setItem("userPinCoords", JSON.stringify({ coordsUMAP: [umapX, umapY], version: 2 }));
+    try { sessionStorage.setItem("tm_center_on_userpin", "1"); } catch {}
+    
     // ガイドドロワーを一度だけ開く（?open=guide）
     navigate("/map?open=guide", { state: { centerOnUserPin: true } });
   };

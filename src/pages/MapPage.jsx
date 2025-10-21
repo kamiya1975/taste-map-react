@@ -149,7 +149,7 @@ function MapPage() {
       if (!open) return;
       (async () => {
         await openPanel(open); // クエリ経由は従来どおり相互排他
-        navigate(location.pathname, { replace: true });
+        navigate(location.pathname, { replace: true, state: location.state });
       })();
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
