@@ -665,10 +665,15 @@ const MapCanvas = forwardRef(function MapCanvas(
             data: pointBubbles,                 // { position, t }
             getPosition: d => d.position,
             radiusUnits: "meters",
+            // ★ 3段階（下位20%/中間60%/上位20%）
             getRadius: d => {
-              const R_MAX = 0.22;
-              const R_MIN = 0.05;
-              return R_MIN + (R_MAX - R_MIN) * d.t;
+              const R_SMALL = 0.07;  // 下位20%
+              const R_MED   = 0.14;  // 中間40%
+              const R_LARGE = 0.22;  // 上位20%
+              const t = Math.max(0, Math.min(1, d.t));  // 0..1（分位点クリップ＆ガンマ後）
+              if (t < 0.20) return R_SMALL;      // 下位20%
+              if (t < 0.80) return R_MED;        // 中間60%
+              return R_LARGE;                    // 上位20%
             },
             getFillColor: d => {
               const r = Math.round(HEAT_COLOR_LOW[0] + (HEAT_COLOR_HIGH[0] - HEAT_COLOR_LOW[0]) * d.t);
@@ -677,14 +682,13 @@ const MapCanvas = forwardRef(function MapCanvas(
               const a = Math.round(HEAT_ALPHA_MIN + (HEAT_ALPHA_MAX - HEAT_ALPHA_MIN) * d.t);
               return [r, g, b, a];
             },
-            stroked: true,
-            getLineWidth: 1,
-            lineWidthUnits: "pixels",
-            getLineColor: [0, 0, 0, 40],
+            // ★ 外輪を無くす
+            stroked: false,
+            getLineWidth: 0,
             pickable: false,
             parameters: { depthTest: false },
             updateTriggers: {
-              getRadius: [HEAT_GAMMA],
+              getRadius: [HEAT_GAMMA], // t生成はHEAT_GAMMA/CLIP依存（pointBubblesで計算）
               getFillColor: [HEAT_GAMMA, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX,
                              HEAT_COLOR_LOW?.[0], HEAT_COLOR_LOW?.[1], HEAT_COLOR_LOW?.[2],
                              HEAT_COLOR_HIGH?.[0], HEAT_COLOR_HIGH?.[1], HEAT_COLOR_HIGH?.[2]],
