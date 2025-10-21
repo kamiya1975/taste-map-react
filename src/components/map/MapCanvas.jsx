@@ -26,6 +26,17 @@ const BLACK = [0, 0, 0, 255];
 const FAVORITE_RED = [178, 53, 103, 255];
 const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
+const hexToRgba = (hex) => {
+  if (!hex || typeof hex !== "string") return [136,136,136,255];
+  const s = hex.replace("#","").trim();
+  const v = s.length === 3
+    ? s.split("").map(ch => ch+ch).join("")
+    : s.padEnd(6,"0").slice(0,6);
+  const r = parseInt(v.slice(0,2),16);
+  const g = parseInt(v.slice(2,4),16);
+  const b = parseInt(v.slice(4,6),16);
+  return [r,g,b,255];
+};
 
 const janOf = (d) => String(d?.jan_code ?? d?.JAN ?? "");
 const xOf   = (d) => Number.isFinite(d?.umap_x) ? d.umap_x : d?.UMAP1;
@@ -142,6 +153,8 @@ const MapCanvas = forwardRef(function MapCanvas(
     onPickWine,
     edgeMarginXPx = 8,
     edgeMarginYPx = 20,
+    clusterColorMode = false,
+    clusterColors = {},
   },
   deckRef   // ★ ref を受け取る
 ) {
@@ -417,6 +430,9 @@ const MapCanvas = forwardRef(function MapCanvas(
           const janStr = janOf(d);
           if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;
           if (favorites && favorites[janStr]) return FAVORITE_RED;
+          if (clusterColorMode && Number.isFinite(d.cluster)) {
+            return hexToRgba(clusterColors?.[Number(d.cluster)]);
+          }
           return MAP_POINT_COLOR;
         },
         updateTriggers: {
@@ -424,13 +440,15 @@ const MapCanvas = forwardRef(function MapCanvas(
             selectedJAN,
             JSON.stringify(favorites || {}),
             JSON.stringify(userRatings || {}),
+            clusterColorMode,
+            JSON.stringify(clusterColors || {}),
           ],
         },
         radiusUnits: "meters",
         getRadius: 0.03,
         pickable: true,
       }),
-    [data, selectedJAN, favorites, userRatings]
+    [data, selectedJAN, favorites, userRatings, clusterColorMode, clusterColors]
   );
 
   // --- レイヤ：評価リング ---
@@ -667,13 +685,13 @@ const MapCanvas = forwardRef(function MapCanvas(
             radiusUnits: "meters",
             // ★ 3段階（下位20%/中間60%/上位20%）
             getRadius: d => {
-              const R_SMALL = 0.06;  // 下位50%
-              const R_MED   = 0.10;  // 中間40%
-              const R_LARGE = 0.22;  // 上位10%
+              const R_SMALL = 0.06;  // 下位サイズ
+              const R_MED   = 0.10;  // 中間サイズ
+              const R_LARGE = 0.22;  // 上位サイズ
               const t = Math.max(0, Math.min(1, d.t));  // 0..1（分位点クリップ＆ガンマ後）
               if (t < 0.50) return R_SMALL;      // 下位50%
-              if (t < 0.90) return R_MED;        // 中間40%
-              return R_LARGE;                    // 上位10%
+              if (t < 0.90) return R_MED;        // 上位10%
+              return R_LARGE;
             },
             getFillColor: () => [210, 210, 205, 150], // ← グレー指定
             stroked: false,

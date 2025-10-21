@@ -47,6 +47,47 @@ function MapPage() {
   const fromRatedRef = useRef(false);
   const deckRef = useRef(null);
 
+  // クラスタ配色
+  const [clusterColorMode, setClusterColorMode] = useState(false);
+  const [clusterColors, setClusterColors] = useState({});
+
+  // デフォルトパレット（足りなければ循環）
+  const DEFAULT_PALETTE = [
+    "#5B8FF9", "#5AD8A6", "#5D7092", "#F6BD16", "#E8684A",
+    "#6DC8EC", "#9270CA", "#FF99C3", "#9DD3A8", "#FF9845",
+    "#1E90FF", "#00C1D4", "#A1A7B3", "#BFBF3F", "#F45D5D",
+    "#2FC25B", "#6A5ACD", "#FF7F50", "#A0522D", "#20B2AA",
+  ];
+
+  // ユニークな cluster 値 → 初期色を決定
+  const clusterList = useMemo(() => {
+    const s = new Set();
+    (data || []).forEach(d => Number.isFinite(d.cluster) && s.add(Number(d.cluster)));
+    return Array.from(s).sort((a,b)=>a-b);
+  }, [data]);
+
+  // 初期化 & localStorage から復元
+  useEffect(() => {
+    const key = "tm_cluster_colors";
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || "{}");
+      const init = {};
+      clusterList.forEach((c, i) => {
+        init[c] = saved?.[c] || DEFAULT_PALETTE[i % DEFAULT_PALETTE.length];
+      });
+      setClusterColors(init);
+    } catch {
+      const init = {};
+      clusterList.forEach((c, i) => init[c] = DEFAULT_PALETTE[i % DEFAULT_PALETTE.length]);
+      setClusterColors(init);
+    }
+  }, [clusterList]);
+
+  // 保存
+  useEffect(() => {
+    try { localStorage.setItem("tm_cluster_colors", JSON.stringify(clusterColors || {})); } catch {}
+  }, [clusterColors]);
+
   // ドロワー状態
   const [isGuideOpen, setIsGuideOpen] = useState(false);        // 「TasteMapとは？」
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);  // 「マップガイド」(オーバーレイ)
@@ -185,6 +226,7 @@ function MapPage() {
               Type: r.wine_type ?? "Other",
               umap_x: Number(r.umap_x),
               umap_y: Number(r.umap_y),
+              cluster: Number(r.cluster),
               UMAP1: Number(r.umap_x),
               UMAP2: Number(r.umap_y),
               PC1: Number(r.PC1),
@@ -675,6 +717,8 @@ function MapPage() {
           setProductDrawerOpen(true);
           focusOnWine(item, { recenter: false });
         }}
+        clusterColorMode={clusterColorMode}
+        clusterColors={clusterColors}
         edgeMarginXPx={50}
         edgeMarginYPx={400}
       />
@@ -699,6 +743,67 @@ function MapPage() {
         <option value="PC1">Body</option>
         <option value="PC3">PC3</option>
       </select>
+
+      {/* 左上: クラスタ配色トグル */}
+      <button
+        onClick={() => setClusterColorMode(v => !v)}
+        style={{
+          position: "absolute",
+          top: "52px",
+          left: "10px",
+          zIndex: 11,
+          width: 40, height: 40,
+          background: "transparent",
+          border: "none", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+        }}
+        aria-label="クラスタ配色"
+        title={clusterColorMode ? "クラスタ配色（ON）" : "クラスタ配色（OFF）"}
+      >
+       <img
+          src={`${process.env.PUBLIC_URL || ""}/img/palette.svg`}
+         alt=""
+          style={{ width: "100%", height: "100%", objectFit: "contain", pointerEvents: "none" }}
+          draggable={false}
+        />
+      </button>
+
+      {/* 配色編集パネル（ON時だけ表示） */}
+      {clusterColorMode && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100px",
+            left: "10px",
+            zIndex: 12,
+            background: "rgba(255,255,255,0.95)",
+            border: "1px solid #c9c9b0",
+            borderRadius: 8,
+            padding: 8,
+            maxHeight: "40vh",
+            overflowY: "auto",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+            fontSize: 12,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>クラスタ配色</div>
+          {clusterList.map((c) => (
+            <div key={c} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <span style={{ minWidth: 54 }}>cluster {c}</span>
+              <input
+                type="color"
+                value={clusterColors?.[c] || "#888888"}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setClusterColors((prev) => ({ ...prev, [c]: v }));
+                }}
+                style={{ width: 28, height: 28, border: "none", background: "transparent", padding: 0 }}
+              />
+            </div>
+          ))}
+          <div style={{ marginTop: 8, color: "#666" }}>ボタンを再度押すと元の配色に戻ります。</div>
+        </div>
+      )}
 
       {/* 左下: アプリガイド（メニュー）ボタン */}
       <button
