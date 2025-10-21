@@ -634,8 +634,8 @@ const MapCanvas = forwardRef(function MapCanvas(
           parameters: { depthTest: false },
         }),
 
-      // ① セルの地模様（タイル）は常に表示
-      new IconLayer({
+      // ① セルの地模様（タイル）は「バブルが出ていない時だけ」表示
+      !highlight2D ? new IconLayer({
         id: "cell-tiles",
         data: cells,
         getPosition: (d) => d.center,
@@ -656,7 +656,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           getPosition: [GRID_CELL_SIZE],
           getSize: [GRID_CELL_SIZE],
         },
-      }),
+      }) : null,
 
       // ② 商品打点に付くバブル（highlight2D 選択時のみ）
       highlight2D
