@@ -667,15 +667,15 @@ const MapCanvas = forwardRef(function MapCanvas(
             radiusUnits: "meters",
             // ★ 3段階（下位20%/中間60%/上位20%）
             getRadius: d => {
-              const R_SMALL = 0.07;  // 下位20%
-              const R_MED   = 0.14;  // 中間40%
-              const R_LARGE = 0.22;  // 上位20%
+              const R_SMALL = 0.05;  // 下位20%
+              const R_MED   = 0.7;  // 中間40%
+              const R_LARGE = 0.20;  // 上位20%
               const t = Math.max(0, Math.min(1, d.t));  // 0..1（分位点クリップ＆ガンマ後）
               if (t < 0.20) return R_SMALL;      // 下位20%
               if (t < 0.80) return R_MED;        // 中間60%
               return R_LARGE;                    // 上位20%
             },
-            getFillColor: () => [180, 180, 180, 180], // ← グレー指定
+            getFillColor: () => [210, 210, 205, 255], // ← グレー指定
             stroked: false,
             getLineWidth: 0,
             pickable: false,
