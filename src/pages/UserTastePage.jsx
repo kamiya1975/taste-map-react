@@ -35,7 +35,7 @@ export default function UserTastePage() {
           if (res.ok) {
             const raw = await res.json();
             products = (raw || []).filter(Boolean).map((r) => ({
-              JAN: String(r.JAN ?? ""),
+              jan_code: String(r.jan_code ?? r.JAN ?? ""),
               商品名: r["商品名"] ?? "",
             }));
           }
@@ -45,9 +45,11 @@ export default function UserTastePage() {
 
         // 結合（JANで商品名を付与）
         const merged = Object.entries(ratings).map(([jan, data]) => {
-          const product = products.find((p) => String(p.jan_code) === String(jan_code));
+          const product = products.find(
+            (p) => String(p?.jan_code ?? p?.JAN ?? "") === String(jan)
+          );
           return {
-            jan: String(jan_code),
+            jan_code: String(jan),
             name: product?.商品名 || "(不明)",
             rating: data?.rating ?? "",
             date: data?.date ?? "",
@@ -137,7 +139,7 @@ export default function UserTastePage() {
             <tbody>
               {records.map((r, idx) => (
                 <tr key={idx}>
-                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>{r.jan}</td>
+                  <td style={{ border: "1px solid #ccc", padding: "6px" }}>{r.jan_code}</td>
                   <td style={{ border: "1px solid #ccc", padding: "6px" }}>{r.name}</td>
                   <td style={{ border: "1px solid #ccc", padding: "6px" }}>{r.rating}</td>
                   <td style={{ border: "1px solid #ccc", padding: "6px" }}>
