@@ -341,10 +341,14 @@ function MapPage() {
   // 初回センタリング（userPin 指定時）
   useEffect(() => {
     if (!userPin) return;
-    const shouldCenter = !!location.state?.centerOnUserPin;
+    const shouldCenter =
+      !!location.state?.centerOnUserPin ||
+      (() => { try { return sessionStorage.getItem("tm_center_on_userpin") === "1"; } catch { return false; } })();
+
     if (shouldCenter) {
       centerToUMAP(userPin[0], userPin[1], { zoom: INITIAL_ZOOM });
       try { window.history.replaceState({}, document.title, window.location.pathname); } catch {}
+      try { sessionStorage.removeItem("tm_center_on_userpin"); } catch {}
     }
   }, [userPin, location.state, centerToUMAP]);
 
