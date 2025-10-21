@@ -45,10 +45,10 @@ export function makePcaToUmap(data, K = 15) {
       (d) =>
         Number.isFinite(d.PC1) &&
         Number.isFinite(d.PC2) &&
-        Number.isFinite(d.UMAP1) &&
-        Number.isFinite(d.UMAP2)
+        Number.isFinite(d.umap_x) &&
+        Number.isFinite(d.umap_y)
     )
-    .map((d) => ({ pc1: d.PC1, pc2: d.PC2, x: d.UMAP1, y: d.UMAP2 }));
+    .map((d) => ({ pc1: d.PC1, pc2: d.PC2, x: d.umap_x, y: d.umap_y }));
 
   return (pc1, pc2) => {
     if (!Number.isFinite(pc1) || !Number.isFinite(pc2) || samples.length === 0)

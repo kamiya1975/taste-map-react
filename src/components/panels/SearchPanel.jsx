@@ -180,7 +180,7 @@ export default function SearchPanel({
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
           {listed.map((item, idx) => (
             <ListRow
-              key={`${item.JAN}-${idx}`}
+              key={`${item.jan_code}-${idx}`}
               index={item.displayIndex}
               item={item}
               onPick={() => pick(idx)}

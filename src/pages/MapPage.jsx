@@ -157,8 +157,8 @@ function MapPage() {
   // ====== パン境界
   const panBounds = useMemo(() => {
     if (!data.length) return { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
-    const xs = data.map((d) => d.UMAP1);
-    const ys = data.map((d) => -d.UMAP2);
+    const xs = data.map((d) => d.umap_x);
+    const ys = data.map((d) => -d.umap_y);
     const xmin = Math.min(...xs), xmax = Math.max(...xs);
     const ymin = Math.min(...ys), ymax = Math.max(...ys);
     const pad = 1.5 + Math.abs(CENTER_Y_OFFSET);
@@ -167,7 +167,7 @@ function MapPage() {
 
   // ====== データ読み込み
   useEffect(() => {
-    const url = `${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`;
+    const url = `${process.env.PUBLIC_URL || ""}/umap_coords_c.json`;
     fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -179,14 +179,14 @@ function MapPage() {
           .map((r) => {
             const toNum = (v) => (v === "" || v == null ? NaN : Number(v));
             return {
-              JAN: String(r.JAN ?? ""),
-              Type: r.Type ?? "Other",
-              UMAP1: Number(r.UMAP1),
-              UMAP2: Number(r.UMAP2),
+              JAN: String(r.jan_code ?? ""),
+              Type: r.wine_type ?? "Other",
+              UMAP1: Number(r.umap_x),
+              UMAP2: Number(r.umap_y),
               PC1: Number(r.PC1),
               PC2: Number(r.PC2),
               PC3: Number(r.PC3),
-              商品名: r["商品名"],
+              商品名: r["temp_name"],
               国: r["国"],
               産地: r["産地"],
               葡萄品種: r["葡萄品種"],
@@ -196,7 +196,7 @@ function MapPage() {
               コメント: r["コメント"] ?? r["comment"] ?? r["説明"] ?? "",
             };
           })
-          .filter((r) => Number.isFinite(r.UMAP1) && Number.isFinite(r.UMAP2) && r.JAN !== "");
+          .filter((r) => Number.isFinite(r.umap_x) && Number.isFinite(r.umap_y) && r.JAN !== "");
         setData(cleaned);
         localStorage.setItem("umapData", JSON.stringify(cleaned));
       })
@@ -249,7 +249,7 @@ function MapPage() {
     if (!data?.length) return [0, 0];
     let sx = 0, sy = 0, n = 0;
     for (const d of data) {
-      if (Number.isFinite(d.UMAP1) && Number.isFinite(d.UMAP2)) { sx += d.UMAP1; sy += d.UMAP2; n++; }
+      if (Number.isFinite(d.umap_x) && Number.isFinite(d.umap_y)) { sx += d.umap_x; sy += d.umap_y; n++; }
     }
     return n ? [sx / n, sy / n] : [0, 0];
   }, [data]);
@@ -320,8 +320,8 @@ function MapPage() {
     if (!Array.isArray(data) || data.length === 0) return;
 
     const b = data.find((d) => String(d.JAN) === "blendF");
-    if (b && Number.isFinite(b.UMAP1) && Number.isFinite(b.UMAP2)) {
-      centerToUMAP(b.UMAP1, b.UMAP2, { zoom: INITIAL_ZOOM });
+    if (b && Number.isFinite(b.umap_x) && Number.isFinite(b.umap_y)) {
+      centerToUMAP(b.umap_x, b.umap_y, { zoom: INITIAL_ZOOM });
       didInitialCenterRef.current = true;
       return;
     }
@@ -359,8 +359,8 @@ function MapPage() {
 
     if (targetX == null || targetY == null) {
       const b = data.find((d) => String(d.JAN) === "blendF");
-      if (b && Number.isFinite(b.UMAP1) && Number.isFinite(b.UMAP2)) {
-        targetX = b.UMAP1; targetY = b.UMAP2;
+      if (b && Number.isFinite(b.umap_x) && Number.isFinite(b.umap_y)) {
+        targetX = b.umap_x; targetY = b.umap_y;
       }
     }
 
@@ -377,7 +377,7 @@ function MapPage() {
     if (!Array.isArray(data) || data.length === 0) return null;
     let best = null, bestD2 = Infinity;
     for (const d of data) {
-      const x = d.UMAP1, y = -d.UMAP2;
+      const x = d.umap_x, y = -d.umap_y;
       const dx = x - wx, dy = y - wy;
       const d2 = dx*dx + dy*dy;
       if (d2 < bestD2) { bestD2 = d2; best = d; }
@@ -420,8 +420,8 @@ function MapPage() {
   // ====== 商品へフォーカス
   const focusOnWine = useCallback((item, opts = {}) => {
     if (!item) return;
-    const tx = Number(item.UMAP1);
-    const tyUMAP = Number(item.UMAP2);
+    const tx = Number(item.umap_x);
+    const tyUMAP = Number(item.umap_y);
     if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
 
     setViewState((prev) => {
@@ -623,8 +623,8 @@ function MapPage() {
     const joined = rated
       .map((r) => {
         const it = data.find((d) => String(d.JAN) === r.jan);
-        if (!it || !Number.isFinite(it.UMAP1) || !Number.isFinite(it.UMAP2)) return null;
-        return { ...r, x: it.UMAP1, y: it.UMAP2 };
+        if (!it || !Number.isFinite(it.umap_x) || !Number.isFinite(it.umap_y)) return null;
+        return { ...r, x: it.umap_x, y: it.umap_y };
       })
       .filter(Boolean);
     if (joined.length === 0) return { point: null, picked: [], rule: "elbow" };
@@ -816,7 +816,7 @@ function MapPage() {
           setSelectedJAN(item.JAN);
           setIframeNonce(Date.now());
           setProductDrawerOpen(true);
-          const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
+          const tx = Number(item.umap_x), ty = Number(item.umap_y);
           if (Number.isFinite(tx) && Number.isFinite(ty)) {
             centerToUMAP(tx, ty, { zoom: viewState.zoom });
           }
@@ -870,7 +870,7 @@ function MapPage() {
             setIframeNonce(Date.now());
             setProductDrawerOpen(true);
             lastCommittedRef.current = { code: jan, at: now };
-            const tx = Number(hit.UMAP1), ty = Number(hit.UMAP2);
+            const tx = Number(hit.umap_x), ty = Number(hit.umap_y);
             if (Number.isFinite(tx) && Number.isFinite(ty)) {
               centerToUMAP(tx, ty, { zoom: INITIAL_ZOOM });
             }
@@ -901,7 +901,7 @@ function MapPage() {
           setIframeNonce(Date.now());
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
-            const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
+            const tx = Number(item.umap_x), ty = Number(item.umap_y);
             if (Number.isFinite(tx) && Number.isFinite(ty)) {
               centerToUMAP(tx, ty, { zoom: INITIAL_ZOOM });
             }
@@ -926,7 +926,7 @@ function MapPage() {
           setIframeNonce(Date.now());
           const item = data.find((d) => String(d.JAN) === String(jan));
           if (item) {
-            const tx = Number(item.UMAP1), ty = Number(item.UMAP2);
+            const tx = Number(item.umap_x), ty = Number(item.umap_y);
             if (Number.isFinite(tx) && Number.isFinite(ty)) {
               centerToUMAP(tx, ty, { zoom: INITIAL_ZOOM });
             }

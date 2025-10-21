@@ -28,7 +28,7 @@ const postToParent = (payload) => {
   } catch {}
 };
 
-const clearScanHints = (jan) => {
+const clearScanHints = (jan_code) => {
   const keys = [
     "selectedJAN",
     "lastScannedJAN",
@@ -50,7 +50,7 @@ const clearScanHints = (jan) => {
   } catch {}
 };
 
-const notifyParentClosed = (jan) => {
+const notifyParentClosed = (jan_code) => {
   postToParent({ type: "PRODUCT_CLOSED", jan, clear: true });
   clearScanHints(jan);
   try {
@@ -61,7 +61,7 @@ const notifyParentClosed = (jan) => {
 };
 
 // ★ 「飲みたい（favorites）」を即時OFFにするユーティリティ
-const forceFavoriteOff = (jan) => {
+const forceFavoriteOff = (jan_code) => {
   try {
     const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
     if (favs && favs[jan]) {
@@ -71,32 +71,32 @@ const forceFavoriteOff = (jan) => {
   } catch {}
   // 自ウィンドウの HeartButton を即時同期
   try {
-    window.postMessage({ type: "SET_FAVORITE", jan, value: false }, "*");
+    window.postMessage({ type: "SET_FAVORITE", jan_code, value: false }, "*");
   } catch {}
   // 親（MapPage 側）にも伝えて同期
   try {
-    postToParent({ type: "SET_FAVORITE", jan, value: false });
+    postToParent({ type: "SET_FAVORITE", jan_code, value: false });
   } catch {}
 };
 
 /** =========================
  *  お気に入りスター（☆/★ 画像版）
  * ========================= */
-function HeartButton({ jan, size = 28, hidden = false }) {
+function HeartButton({ jan_code, size = 28, hidden = false }) {
   const [fav, setFav] = useState(false);
 
   useEffect(() => {
     const readFav = () => {
       try {
         const obj = JSON.parse(localStorage.getItem("favorites") || "{}");
-        setFav(!!obj[jan]);
+        setFav(!!obj[jan_code]);
       } catch { setFav(false); }
     };
     readFav();
 
     const onStorage = (e) => { if (e.key === "favorites") readFav(); };
     const onMsg = (e) => {
-      const { type, jan: targetJan, value } = e.data || {};
+      const { type, jan_code: targetJan, value } = e.data || {};
       if (String(targetJan) !== String(jan)) return;
       if (type === "SET_FAVORITE") setFav(!!value);
     };
@@ -110,11 +110,11 @@ function HeartButton({ jan, size = 28, hidden = false }) {
 
   const toggle = () => {
     const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
-    if (favs[jan]) delete favs[jan];
-    else favs[jan] = { addedAt: new Date().toISOString() };
+    if (favs[jan_code]) delete favs[jan_code];
+    else favs[jan_code] = { addedAt: new Date().toISOString() };
     localStorage.setItem("favorites", JSON.stringify(favs));
-    setFav(!!favs[jan]);
-    postToParent({ type: "TOGGLE_FAVORITE", jan });
+    setFav(!!favs[jan_code]);
+    postToParent({ type: "TOGGLE_FAVORITE", jan_code });
   };
 
   const base = process.env.PUBLIC_URL || "";
@@ -194,14 +194,14 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
   );
 };
 
-function ProductImage({ jan, maxHeight = 225 }) {
+function ProductImage({ jan_code, maxHeight = 225 }) {
   const [loaded, setLoaded] = useState(() => {
     const img = new Image();
-    img.src = `${process.env.PUBLIC_URL || ""}/img/${jan}.png`;
+    img.src = `${process.env.PUBLIC_URL || ""}/img/${jan_code}.png`;
     return img.complete && img.naturalWidth > 0;
   });
 
-  const [src, setSrc] = useState(`${process.env.PUBLIC_URL || ""}/img/${jan}.png`);
+  const [src, setSrc] = useState(`${process.env.PUBLIC_URL || ""}/img/${jan_code}.png`);
   const wasCachedRef = React.useRef(false);
   const imgElRef = React.useRef(null);
 
@@ -335,26 +335,26 @@ function ProductInfoSection() {
  * ========================= */
 export default function ProductPage() {
   const navigate = useNavigate();
-  const jan = useJanParam();
+  const jan_code = useJanParam();
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
   // ★は rating>0 なら常に非表示（クエリには依存しない）
   useEffect(() => {
-    postToParent({ type: "PRODUCT_OPENED", jan });
-    postToParent({ type: "REQUEST_STATE", jan });
-    const onBeforeUnload = () => notifyParentClosed(jan);
+    postToParent({ type: "PRODUCT_OPENED", jan_code });
+    postToParent({ type: "REQUEST_STATE", jajan_coden });
+    const onBeforeUnload = () => notifyParentClosed(jajan_coden);
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
-      notifyParentClosed(jan);
+      notifyParentClosed(jan_code);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
-  }, [jan]);
+  }, [jan_code]);
 
   useEffect(() => {
     let alive = true;
     const normJAN = (d) =>
-      String(d?.JAN ?? d?.jan ?? d?.code ?? d?.barcode ?? "").trim();
+      String(d?.jan_code ?? d?.jan_code ?? d?.code ?? d?.barcode ?? "").trim();
 
     const load = async () => {
       let dataArr = [];
@@ -363,17 +363,17 @@ export default function ProductPage() {
       } catch {}
       let found =
         Array.isArray(dataArr)
-          ? dataArr.find((d) => normJAN(d) === String(jan).trim())
+          ? dataArr.find((d) => normJAN(d) === String(jan_code).trim())
           : null;
 
       if (!found) {
         try {
-          const url = `${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`;
+          const url = `${process.env.PUBLIC_URL || ""}/umap_coords_c.json`;
           const res = await fetch(url, { cache: "no-store" });
           if (res.ok) {
             const json = await res.json();
             const arr = Array.isArray(json) ? json : [];
-            found = arr.find((d) => normJAN(d) === String(jan).trim()) || null;
+            found = arr.find((d) => normJAN(d) === String(jan_code).trim()) || null;
             try {
               localStorage.setItem("umapData", JSON.stringify(arr));
             } catch {}
@@ -388,7 +388,7 @@ export default function ProductPage() {
 
       try {
         const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
-        if (ratings[jan]) setRating(ratings[jan].rating ?? 0);
+        if (ratings[jan_code]) setRating(ratings[jan_code].rating ?? 0);
       } catch {}
     };
 
@@ -424,14 +424,14 @@ export default function ProductPage() {
       delete ratings[jan]; // 評価解除なら削除
     } else {
       payload = { rating: newRating, date: new Date().toISOString() }; // weatherは付けない
-      ratings[jan] = payload;
+      ratings[jan_code] = payload;
       // ◎ を入れたら「飲みたい」を必ずOFF（一覧に載っていなくても）
       forceFavoriteOff(jan);
     }
   
 
     localStorage.setItem("userRatings", JSON.stringify(ratings));
-    postToParent({ type: "RATING_UPDATED", jan, payload });
+    postToParent({ type: "RATING_UPDATED", jan_code, payload });
   };
 
   if (!product) {
@@ -469,7 +469,7 @@ export default function ProductPage() {
 
       {/* 商品画像 */}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
-        <ProductImage jan={jan} maxHeight={225} />
+        <ProductImage jan={jan_code} maxHeight={225} />
       </div>
 
       {/* 商品名 */}
@@ -540,7 +540,7 @@ export default function ProductPage() {
             </div>
 
             {/* hideHeart の時は visibility で非表示（幅は保持） */}
-            <HeartButton jan={jan} size={28} hidden={rating > 0} />
+            <HeartButton jan={jan_code} size={28} hidden={rating > 0} />
           </div>
 
           {/* 縦罫線（常に同じ高さに） */}

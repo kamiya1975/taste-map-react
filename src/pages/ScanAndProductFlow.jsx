@@ -116,7 +116,7 @@ export default function SearchPanel({
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {list.map((item, idx) => (
                 <li
-                  key={`${item.JAN}-${idx}`}
+                  key={`${item.jan_code}-${idx}`}
                   onClick={() => onPick?.(item)}
                   style={{
                     padding: "10px 0",
@@ -160,7 +160,7 @@ export default function SearchPanel({
                       ? item.SweetAxis.toFixed(2)
                       : "—"}
                     <br />
-                    JAN: {item.JAN || "—"}
+                    JAN: {item.jan_code || "—"}
                   </small>
                 </li>
               ))}

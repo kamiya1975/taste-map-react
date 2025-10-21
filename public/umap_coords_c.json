@@ -1,0 +1,1810 @@
+[
+  {
+    "jan_code":"4935919072854",
+    "wine_type":"Red",
+    "temp_name":"エル　ビヒア　デ　ラ　アタラヤ　オーガニック",
+    "umap_x":5.1541228294,
+    "umap_y":5.6321821213,
+    "cluster":19
+  },
+  {
+    "jan_code":"4935919073042",
+    "wine_type":"Rose",
+    "temp_name":"オノロ　ベラ　ロサド",
+    "umap_x":1.6266331673,
+    "umap_y":8.8513784409,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919072304",
+    "wine_type":"Red",
+    "temp_name":"オノロ　ベラ　フミーリャ　モナストレル",
+    "umap_x":5.189494133,
+    "umap_y":5.171438694,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919072311",
+    "wine_type":"Red",
+    "temp_name":"オノロ　ベラ　オーガニック",
+    "umap_x":5.4449677467,
+    "umap_y":5.2289676666,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919080927",
+    "wine_type":"Red",
+    "temp_name":"メルロ　グラン　レセルバ",
+    "umap_x":5.6474537849,
+    "umap_y":5.2812023163,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919073028",
+    "wine_type":"Red",
+    "temp_name":"マナデーロ　コレクシオン　デ　パルセラス",
+    "umap_x":5.8673868179,
+    "umap_y":4.9427957535,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919071802",
+    "wine_type":"Red",
+    "temp_name":"パルデバジェス　ティント　プリエト　ピクード",
+    "umap_x":5.7886805534,
+    "umap_y":4.8964214325,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919072946",
+    "wine_type":"Red",
+    "temp_name":"コモロコ　オーガニック　SO2無添加",
+    "umap_x":6.0214104652,
+    "umap_y":5.6504774094,
+    "cluster":17
+  },
+  {
+    "jan_code":"4935919080668",
+    "wine_type":"Red",
+    "temp_name":"ドンナ　マリア　シラー　アパッシメント",
+    "umap_x":6.3911685944,
+    "umap_y":5.6123409271,
+    "cluster":17
+  },
+  {
+    "jan_code":"4935919080200",
+    "wine_type":"Red",
+    "temp_name":"エスピノ　カベルネ　ソーヴィニヨン",
+    "umap_x":6.4894528389,
+    "umap_y":5.6665077209,
+    "cluster":17
+  },
+  {
+    "jan_code":"4935919070768",
+    "wine_type":"Red",
+    "temp_name":"マルケス　デ　ラ　コンコルディア　リオハ　サンティアゴ",
+    "umap_x":6.3835110664,
+    "umap_y":5.5369172096,
+    "cluster":17
+  },
+  {
+    "jan_code":"4935919050883",
+    "wine_type":"Red",
+    "temp_name":"ファンティーニ　サンジョヴェーゼ　テッレ　ディ　キエティ",
+    "umap_x":5.8761959076,
+    "umap_y":5.1282119751,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919961592",
+    "wine_type":"Red",
+    "temp_name":"シャトー　レ　ヴァレー　ルージュ",
+    "umap_x":6.3244609833,
+    "umap_y":5.7772455215,
+    "cluster":17
+  },
+  {
+    "jan_code":"4935919193559",
+    "wine_type":"White",
+    "temp_name":"ユルツィガー　ヴュルツガルテン　リースリング　ファインヘルプ",
+    "umap_x":-0.6718449593,
+    "umap_y":8.3027696609,
+    "cluster":10
+  },
+  {
+    "jan_code":"4935919058513",
+    "wine_type":"Spa",
+    "temp_name":"ポルタ　モンティカーノ　ロゼ　エクストラ　ドライ",
+    "umap_x":0.8743505478,
+    "umap_y":9.1060771942,
+    "cluster":5
+  },
+  {
+    "jan_code":"4935919080118",
+    "wine_type":"Red",
+    "temp_name":"カベルネ　ソーヴィニヨン　グラン　レセルバ",
+    "umap_x":6.3791499138,
+    "umap_y":6.7270522118,
+    "cluster":11
+  },
+  {
+    "jan_code":"4935919054980",
+    "wine_type":"White",
+    "temp_name":"ファンティーニ　ピノ　グリージョ",
+    "umap_x":1.1914418936,
+    "umap_y":8.4849662781,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919094306",
+    "wine_type":"White",
+    "temp_name":"ミュスカデ　セーヴル　エ　メーヌ",
+    "umap_x":1.5350397825,
+    "umap_y":8.4145994186,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919057967",
+    "wine_type":"White",
+    "temp_name":"ヴェルディッキオ　デイ　カステッリ　ディ　イエージ　クラッシコ",
+    "umap_x":1.4745285511,
+    "umap_y":8.8529205322,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919061360",
+    "wine_type":"Red",
+    "temp_name":"ライセス　マルベック",
+    "umap_x":6.2826275826,
+    "umap_y":6.4429564476,
+    "cluster":11
+  },
+  {
+    "jan_code":"4935919053150",
+    "wine_type":"Red",
+    "temp_name":"ファンティーニ　プリミティーヴォ",
+    "umap_x":5.9543728828,
+    "umap_y":5.3167629242,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919072847",
+    "wine_type":"Red",
+    "temp_name":"エル　ネン　デル　セラー",
+    "umap_x":6.2896223068,
+    "umap_y":6.7904019356,
+    "cluster":11
+  },
+  {
+    "jan_code":"4935919044714",
+    "wine_type":"Red",
+    "temp_name":"コート　デュ　ローヌ　ヴィエイユ　ヴィーニュ",
+    "umap_x":6.4178981781,
+    "umap_y":6.2595038414,
+    "cluster":11
+  },
+  {
+    "jan_code":"4935919052504",
+    "wine_type":"White",
+    "temp_name":"ファレーリオ",
+    "umap_x":0.6362590194,
+    "umap_y":8.8151245117,
+    "cluster":5
+  },
+  {
+    "jan_code":"8410396780219",
+    "wine_type":"Red",
+    "temp_name":"テンプラニーリョ　ドラゴン　ビノ　デ　ラ　ティエラ",
+    "umap_x":4.546025753,
+    "umap_y":6.7012543678,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919055437",
+    "wine_type":"Red",
+    "temp_name":"チ　コルヴィーナ",
+    "umap_x":3.9724943638,
+    "umap_y":6.4308490753,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919360036",
+    "wine_type":"Red",
+    "temp_name":"カステロ　ダルバ　ドウロ　ティント",
+    "umap_x":5.0888376236,
+    "umap_y":6.4629163742,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919070942",
+    "wine_type":"Spa",
+    "temp_name":"カバ　セレクション　エスペシャル　ブルット",
+    "umap_x":0.5528433323,
+    "umap_y":8.6508026123,
+    "cluster":5
+  },
+  {
+    "jan_code":"4935919050579",
+    "wine_type":"White",
+    "temp_name":"ファンティーニ　トレッビアーノ　ダブルッツォ",
+    "umap_x":0.9292517304,
+    "umap_y":7.7907109261,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919071079",
+    "wine_type":"Red",
+    "temp_name":"ナバエルス",
+    "umap_x":4.1011428833,
+    "umap_y":6.7856163979,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919055987",
+    "wine_type":"Red",
+    "temp_name":"モンテプルチャーノ　ダブルッツォ",
+    "umap_x":5.5124111176,
+    "umap_y":6.9975876808,
+    "cluster":12
+  },
+  {
+    "jan_code":"4935919319164",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　アリカンテ　ブーシェ　セパージュ　ウーブリエ　No.5",
+    "umap_x":5.0691342354,
+    "umap_y":7.0178408623,
+    "cluster":12
+  },
+  {
+    "jan_code":"4935919055604",
+    "wine_type":"Spa",
+    "temp_name":"プライヴェート　キュヴェ　ブリュット",
+    "umap_x":-0.3602648079,
+    "umap_y":8.1242647171,
+    "cluster":16
+  },
+  {
+    "jan_code":"4935919098854",
+    "wine_type":"Red",
+    "temp_name":"エリタージュ",
+    "umap_x":4.4735422134,
+    "umap_y":6.729719162,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919056397",
+    "wine_type":"Red",
+    "temp_name":"コメ",
+    "umap_x":3.9939959049,
+    "umap_y":6.3106808662,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919049924",
+    "wine_type":"Red",
+    "temp_name":"コート　デュ　ローヌ　ルージュ　ル　プティ　アンデゾン",
+    "umap_x":5.3971319199,
+    "umap_y":6.8285083771,
+    "cluster":12
+  },
+  {
+    "jan_code":"4935919312981",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　ピノ　ノワール　キュヴェ　ド　ブリュ",
+    "umap_x":5.3632540703,
+    "umap_y":6.8852200508,
+    "cluster":12
+  },
+  {
+    "jan_code":"4935919310598",
+    "wine_type":"White",
+    "temp_name":"ペイ　ドック　シャルドネ",
+    "umap_x":1.2613049746,
+    "umap_y":8.1539468765,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919961554",
+    "wine_type":"Red",
+    "temp_name":"フェフェ　ヴァン　ド　フランス　ルージュ",
+    "umap_x":4.9733943939,
+    "umap_y":7.1089696884,
+    "cluster":12
+  },
+  {
+    "jan_code":"4935919312448",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　カベルネ　ソーヴィニヨン",
+    "umap_x":5.1261534691,
+    "umap_y":6.9930405617,
+    "cluster":12
+  },
+  {
+    "jan_code":"4935919212915",
+    "wine_type":"Red",
+    "temp_name":"コトー　デュ　ポン　デュ　ガール　キュヴェ　デ　ガレ",
+    "umap_x":5.2673397064,
+    "umap_y":6.8613009453,
+    "cluster":12
+  },
+  {
+    "jan_code":"4935919219723",
+    "wine_type":"White",
+    "temp_name":"ペイ　ドック　ヴィオニエ",
+    "umap_x":1.259750843,
+    "umap_y":7.6649241447,
+    "cluster":2
+  },
+  {
+    "jan_code":"4935919316392",
+    "wine_type":"Red",
+    "temp_name":"ヴァン　ド　ペイ　ド　メディテラネ　ルージュ　グルナッシュ",
+    "umap_x":3.9412171841,
+    "umap_y":6.9245147705,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919213578",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　メルロ",
+    "umap_x":2.632481575,
+    "umap_y":6.345161438,
+    "cluster":9
+  },
+  {
+    "jan_code":"4935919312813",
+    "wine_type":"White",
+    "temp_name":"コート　ド　ガスコーニュ　ブラン",
+    "umap_x":1.2418429852,
+    "umap_y":8.0634412766,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919056229",
+    "wine_type":"White",
+    "temp_name":"ザブ　グリッロ",
+    "umap_x":1.3173215389,
+    "umap_y":7.4610652924,
+    "cluster":2
+  },
+  {
+    "jan_code":"4935919319140",
+    "wine_type":"White",
+    "temp_name":"ペイ　ドック　ソーヴィニヨン　ブラン",
+    "umap_x":1.2553107738,
+    "umap_y":7.4905161858,
+    "cluster":2
+  },
+  {
+    "jan_code":"4935919980012",
+    "wine_type":"Spa",
+    "temp_name":"キシナウル　ヴェキ　スプマン　ブリュット",
+    "umap_x":0.0305706356,
+    "umap_y":8.757349968,
+    "cluster":5
+  },
+  {
+    "jan_code":"4935919980029",
+    "wine_type":"Spa",
+    "temp_name":"キシナウル　ヴェキ　スプマン　デミセック",
+    "umap_x":-1.6981226206,
+    "umap_y":7.8042478561,
+    "cluster":20
+  },
+  {
+    "jan_code":"4935919057950",
+    "wine_type":"White",
+    "temp_name":"イル　ビアンコ",
+    "umap_x":1.0860306025,
+    "umap_y":8.9007043839,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919080392",
+    "wine_type":"White",
+    "temp_name":"シャルドネ　レセルバ",
+    "umap_x":1.3873499632,
+    "umap_y":8.8258628845,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919940412",
+    "wine_type":"White",
+    "temp_name":"コルテーゼ　アルト　モンフェッラート　グラッフィティ",
+    "umap_x":1.3463349342,
+    "umap_y":8.1934185028,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919059473",
+    "wine_type":"White",
+    "temp_name":"デッレ　ヴェネツィエ　ピノ　グリージョ",
+    "umap_x":1.6865776777,
+    "umap_y":8.3414735794,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919059435",
+    "wine_type":"White",
+    "temp_name":"クストーツァ",
+    "umap_x":0.8146513104,
+    "umap_y":6.9929838181,
+    "cluster":2
+  },
+  {
+    "jan_code":"4935919360289",
+    "wine_type":"White",
+    "temp_name":"アルトス　ダ　ベイラ　ブランコ",
+    "umap_x":1.2753540277,
+    "umap_y":7.2880725861,
+    "cluster":2
+  },
+  {
+    "jan_code":"4935919980098",
+    "wine_type":"Red",
+    "temp_name":"カベルネ　ソーヴィニヨン",
+    "umap_x":2.4088571072,
+    "umap_y":6.3959646225,
+    "cluster":9
+  },
+  {
+    "jan_code":"4935919980067",
+    "wine_type":"White",
+    "temp_name":"シャルドネ",
+    "umap_x":0.5532076955,
+    "umap_y":6.9857611656,
+    "cluster":2
+  },
+  {
+    "jan_code":"4935919940610",
+    "wine_type":"Red",
+    "temp_name":"カーザ　バリコーニ　サンジョヴェーゼ",
+    "umap_x":3.1516420841,
+    "umap_y":6.2518262863,
+    "cluster":9
+  },
+  {
+    "jan_code":"4935919059459",
+    "wine_type":"Red",
+    "temp_name":"バルドリーノ",
+    "umap_x":2.7500479221,
+    "umap_y":6.1824522018,
+    "cluster":9
+  },
+  {
+    "jan_code":"4935919940658",
+    "wine_type":"Rose",
+    "temp_name":"ファンティーニ　チェラズオーロ　ダブルッツオ",
+    "umap_x":2.2461407185,
+    "umap_y":6.4028091431,
+    "cluster":9
+  },
+  {
+    "jan_code":"4935919072663",
+    "wine_type":"White",
+    "temp_name":"エル　フィスゴン　ルエダ　ベルデホ",
+    "umap_x":1.394392252,
+    "umap_y":7.2809519768,
+    "cluster":2
+  },
+  {
+    "jan_code":"4935919071048",
+    "wine_type":"Red",
+    "temp_name":"ノルテ",
+    "umap_x":3.6944205761,
+    "umap_y":6.8292226791,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919072076",
+    "wine_type":"White",
+    "temp_name":"オノロ　ベラ　ルエダ",
+    "umap_x":0.8344222307,
+    "umap_y":6.9972915649,
+    "cluster":2
+  },
+  {
+    "jan_code":"4935919071024",
+    "wine_type":"White",
+    "temp_name":"オルキデア",
+    "umap_x":0.8542600274,
+    "umap_y":6.8656826019,
+    "cluster":2
+  },
+  {
+    "jan_code":"4935919197175",
+    "wine_type":"Red",
+    "temp_name":"レッド　ヴィンヤード　ドルンフェルダー",
+    "umap_x":-1.8808813095,
+    "umap_y":7.5963726044,
+    "cluster":20
+  },
+  {
+    "jan_code":"4935919198448",
+    "wine_type":"White",
+    "temp_name":"ミュラー　トゥルガウ　フォン　レス",
+    "umap_x":-0.3389774263,
+    "umap_y":7.6334924698,
+    "cluster":8
+  },
+  {
+    "jan_code":"4935919073035",
+    "wine_type":"Red",
+    "temp_name":"ラ　ヴァディーナ",
+    "umap_x":3.0352871418,
+    "umap_y":6.7328391075,
+    "cluster":9
+  },
+  {
+    "jan_code":"4935919072472",
+    "wine_type":"Red",
+    "temp_name":"オノロ　ベラ　リオハ",
+    "umap_x":3.0789437294,
+    "umap_y":6.5667324066,
+    "cluster":9
+  },
+  {
+    "jan_code":"4935919071598",
+    "wine_type":"Red",
+    "temp_name":"コモロコ",
+    "umap_x":3.8377540112,
+    "umap_y":6.847799778,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919080644",
+    "wine_type":"Red",
+    "temp_name":"ピノ　ノワール　レセルバ",
+    "umap_x":2.4780175686,
+    "umap_y":6.4328169823,
+    "cluster":9
+  },
+  {
+    "jan_code":"4935919072571",
+    "wine_type":"Red",
+    "temp_name":"ゴタ　デ　アレーナ",
+    "umap_x":2.7823507786,
+    "umap_y":6.4899654388,
+    "cluster":9
+  },
+  {
+    "jan_code":"4935919319157",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　マルスラン　セパージュ　ウーブリエ　No.7",
+    "umap_x":4.5787482262,
+    "umap_y":6.5628948212,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919072830",
+    "wine_type":"Spa",
+    "temp_name":"ドラゴン　カバ　グラン　トラディション　ブルット",
+    "umap_x":0.0334709026,
+    "umap_y":8.6596441269,
+    "cluster":5
+  },
+  {
+    "jan_code":"4935919046091",
+    "wine_type":"White",
+    "temp_name":"ペイ　ドック　シャルドネ　キュヴェ　ド　ブリュ",
+    "umap_x":1.5540274382,
+    "umap_y":8.371629715,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919213813",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　ピノ　ノワール",
+    "umap_x":4.234705925,
+    "umap_y":6.5689549446,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919052726",
+    "wine_type":"White",
+    "temp_name":"ファンティーニ　シャルドネ",
+    "umap_x":1.5384978056,
+    "umap_y":8.1058797836,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919055413",
+    "wine_type":"White",
+    "temp_name":"エッセ　ソアーヴェ",
+    "umap_x":1.7513058186,
+    "umap_y":8.1844806671,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919311861",
+    "wine_type":"White",
+    "temp_name":"ペイ　ドック　シャルドネ",
+    "umap_x":1.8099131584,
+    "umap_y":8.2265892029,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919311878",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　シラー",
+    "umap_x":4.8165030479,
+    "umap_y":6.9750847816,
+    "cluster":12
+  },
+  {
+    "jan_code":"4935919961547",
+    "wine_type":"White",
+    "temp_name":"フェフェ　コンテ　トロザン　ブラン",
+    "umap_x":1.7171069384,
+    "umap_y":8.2238063812,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919080163",
+    "wine_type":"White",
+    "temp_name":"ラ　ミシオン　デ　ピルケ　シャルドネ　レセルバ",
+    "umap_x":1.7857066393,
+    "umap_y":8.4757709503,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919217569",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　カベルネ　ソーヴィニヨン　キュヴェ　ド　ブリュ",
+    "umap_x":4.4320039749,
+    "umap_y":6.27450037,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919053266",
+    "wine_type":"Red",
+    "temp_name":"ロッソレアーレ",
+    "umap_x":4.587064743,
+    "umap_y":5.5139455795,
+    "cluster":19
+  },
+  {
+    "jan_code":"4935919059480",
+    "wine_type":"Red",
+    "temp_name":"ロッソ　デル　モリーノ",
+    "umap_x":4.3349013329,
+    "umap_y":6.4170928001,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919095303",
+    "wine_type":"Rose",
+    "temp_name":"ロゼ　ダンジュ",
+    "umap_x":-0.9166880846,
+    "umap_y":7.7134919167,
+    "cluster":10
+  },
+  {
+    "jan_code":"4935919045049",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　カベルネ　ソーヴィニヨン",
+    "umap_x":4.6828083992,
+    "umap_y":6.7918748856,
+    "cluster":12
+  },
+  {
+    "jan_code":"4935919311885",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　メルロ",
+    "umap_x":4.8119878769,
+    "umap_y":6.8701958656,
+    "cluster":12
+  },
+  {
+    "jan_code":"4935919059466",
+    "wine_type":"Red",
+    "temp_name":"ガルダ　メルロ",
+    "umap_x":3.8405201435,
+    "umap_y":6.2453989983,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919055833",
+    "wine_type":"Red",
+    "temp_name":"サリチェ　サレンティーノ　ロッソ　フォルテ　インカント",
+    "umap_x":4.8364744186,
+    "umap_y":5.7457466125,
+    "cluster":19
+  },
+  {
+    "jan_code":"4935919092364",
+    "wine_type":"Red",
+    "temp_name":"シャトー　デ　ゼサール　ルージュ",
+    "umap_x":5.4522118568,
+    "umap_y":6.1598381996,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919080354",
+    "wine_type":"Red",
+    "temp_name":"ラ　ミシオン　デ　ピルケ　カベルネ　ソーヴィニヨン　レセルバ",
+    "umap_x":4.0475907326,
+    "umap_y":6.7843604088,
+    "cluster":7
+  },
+  {
+    "jan_code":"4935919058193",
+    "wine_type":"Red",
+    "temp_name":"ロッソ　トスカーナ",
+    "umap_x":4.930431366,
+    "umap_y":5.9605493546,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919318006",
+    "wine_type":"Red",
+    "temp_name":"ビュルル　エスク",
+    "umap_x":5.697930336,
+    "umap_y":6.0441770554,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919054836",
+    "wine_type":"Red",
+    "temp_name":"ピエモンテ　バルベーラ",
+    "umap_x":5.3504829407,
+    "umap_y":5.7503890991,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919059442",
+    "wine_type":"Rose",
+    "temp_name":"バルドリーノ　キアレット",
+    "umap_x":1.3914107084,
+    "umap_y":8.6769933701,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919197182",
+    "wine_type":"White",
+    "temp_name":"ホワイト　ヴィンヤード　モリオ　ムスカート",
+    "umap_x":-0.0780901685,
+    "umap_y":7.5871434212,
+    "cluster":8
+  },
+  {
+    "jan_code":"4935919058605",
+    "wine_type":"White",
+    "temp_name":"コントログエッラ　パッセリーナ",
+    "umap_x":0.4914876223,
+    "umap_y":7.9461379051,
+    "cluster":16
+  },
+  {
+    "jan_code":"4935919050562",
+    "wine_type":"Red",
+    "temp_name":"ファンティーニ　モンテプルチャーノ　ダブルッツォ",
+    "umap_x":3.9162859917,
+    "umap_y":5.1453032494,
+    "cluster":13
+  },
+  {
+    "jan_code":"4935919059503",
+    "wine_type":"White",
+    "temp_name":"エコシステマ　シャルドネ　ビオロジコ",
+    "umap_x":0.1565522105,
+    "umap_y":7.7422838211,
+    "cluster":16
+  },
+  {
+    "jan_code":"4935919940337",
+    "wine_type":"Red",
+    "temp_name":"パッソ　デイ　カプリオーリ　トスカーナ　ロッソ",
+    "umap_x":4.8366322517,
+    "umap_y":5.0776853561,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919056731",
+    "wine_type":"Red",
+    "temp_name":"イ　ムーリ　ネグロアマーロ",
+    "umap_x":4.3474416733,
+    "umap_y":5.0119934082,
+    "cluster":13
+  },
+  {
+    "jan_code":"4935919059527",
+    "wine_type":"Red",
+    "temp_name":"テッレーノ　ネグロアマーロ　ビオロジコ",
+    "umap_x":4.9383506775,
+    "umap_y":5.0450954437,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919055505",
+    "wine_type":"White",
+    "temp_name":"ヴェレノージ　パッセリーナ",
+    "umap_x":0.5447733402,
+    "umap_y":8.1208095551,
+    "cluster":16
+  },
+  {
+    "jan_code":"4935919194624",
+    "wine_type":"White",
+    "temp_name":"ヴァイスブルグンダー　ビショッフスクロイツ　トロッケン",
+    "umap_x":0.9440432191,
+    "umap_y":8.2380876541,
+    "cluster":6
+  },
+  {
+    "jan_code":"4935919940399",
+    "wine_type":"Rose",
+    "temp_name":"チェラズオーロ　ダブルッツォ　スペリオーレ",
+    "umap_x":0.4264369309,
+    "umap_y":7.8886013031,
+    "cluster":16
+  },
+  {
+    "jan_code":"4935919080910",
+    "wine_type":"Red",
+    "temp_name":"ピノ　ノワール　グラン　レセルバ",
+    "umap_x":5.2580566406,
+    "umap_y":5.1982507706,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919057165",
+    "wine_type":"White",
+    "temp_name":"トレッビアーノ　ダブルッツォ　スペリオーレ",
+    "umap_x":0.354811877,
+    "umap_y":8.1329784393,
+    "cluster":16
+  },
+  {
+    "jan_code":"4935919072700",
+    "wine_type":"Red",
+    "temp_name":"エル　ニーニョ　イ　ラ　ルナ　ティント",
+    "umap_x":5.1159296036,
+    "umap_y":4.9445300102,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919080293",
+    "wine_type":"White",
+    "temp_name":"ソーヴィニヨン　ブラン　レセルバ",
+    "umap_x":1.825032711,
+    "umap_y":9.1338186264,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919072670",
+    "wine_type":"White",
+    "temp_name":"シゲ　アル　コネホ　ブランコ　マカベオ",
+    "umap_x":1.663446188,
+    "umap_y":8.8093414307,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919080316",
+    "wine_type":"Red",
+    "temp_name":"サンジョヴェーゼ　レセルバ",
+    "umap_x":5.3985815048,
+    "umap_y":5.1663708687,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919073059",
+    "wine_type":"Red",
+    "temp_name":"カステロ　アフルタード　テンプラニーリョ",
+    "umap_x":5.5247578621,
+    "umap_y":4.8921518326,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919071239",
+    "wine_type":"Red",
+    "temp_name":"アシエンダ　ゾリータ",
+    "umap_x":5.8225440979,
+    "umap_y":5.1630983353,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919071673",
+    "wine_type":"Red",
+    "temp_name":"ドラゴン　レセルバ",
+    "umap_x":5.8880167007,
+    "umap_y":5.4288806915,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919080965",
+    "wine_type":"White",
+    "temp_name":"ソーヴィニヨン　ブラン　グラン　レセルバ",
+    "umap_x":1.6379398108,
+    "umap_y":8.9777145386,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919080903",
+    "wine_type":"White",
+    "temp_name":"シャルドネ　グラン　レセルバ",
+    "umap_x":1.7983874083,
+    "umap_y":9.068570137,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919071819",
+    "wine_type":"Red",
+    "temp_name":"ガバルダ　ウノ",
+    "umap_x":5.4376187325,
+    "umap_y":4.9710388184,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919080385",
+    "wine_type":"Red",
+    "temp_name":"メルロ　レセルバ",
+    "umap_x":6.2439427376,
+    "umap_y":5.9934177399,
+    "cluster":17
+  },
+  {
+    "jan_code":"4935919073011",
+    "wine_type":"Rose",
+    "temp_name":"メディオディア　ロサド",
+    "umap_x":5.948217392,
+    "umap_y":4.8802623749,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919319843",
+    "wine_type":"Red",
+    "temp_name":"シャトー　ムーラン　クーレッシュ",
+    "umap_x":5.0173144341,
+    "umap_y":5.4923615456,
+    "cluster":19
+  },
+  {
+    "jan_code":"4935919050357",
+    "wine_type":"Red",
+    "temp_name":"モンテプルチャーノ　ダブルッツォ",
+    "umap_x":5.2253746986,
+    "umap_y":5.0796761513,
+    "cluster":1
+  },
+  {
+    "jan_code":"4935919316262",
+    "wine_type":"Red",
+    "temp_name":"ヴァントゥー　レ　テール　ルージュ",
+    "umap_x":5.5605230331,
+    "umap_y":5.8401527405,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919314473",
+    "wine_type":"Red",
+    "temp_name":"フィトゥ",
+    "umap_x":5.1030392647,
+    "umap_y":6.0924959183,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919054034",
+    "wine_type":"Red",
+    "temp_name":"モリ　ロッソ",
+    "umap_x":5.45900774,
+    "umap_y":5.5605573654,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919360210",
+    "wine_type":"Red",
+    "temp_name":"ベイラ　ティント",
+    "umap_x":5.2995553017,
+    "umap_y":5.8064198494,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919319171",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　カベルネ　ソーヴィニヨン",
+    "umap_x":5.65321064,
+    "umap_y":6.2316856384,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919314237",
+    "wine_type":"Red",
+    "temp_name":"マルベック　ラ　ヴィーニュ　ア　レオンス",
+    "umap_x":5.8099527359,
+    "umap_y":6.2298383713,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919360258",
+    "wine_type":"White",
+    "temp_name":"ベイラ　ブランコ",
+    "umap_x":1.009352088,
+    "umap_y":8.638417244,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919071604",
+    "wine_type":"Red",
+    "temp_name":"ラヤ",
+    "umap_x":5.3979849815,
+    "umap_y":5.6548314095,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919962865",
+    "wine_type":"Red",
+    "temp_name":"ヴュー　シャトー　ルネサンス",
+    "umap_x":5.9343156815,
+    "umap_y":6.055264473,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919212762",
+    "wine_type":"Red",
+    "temp_name":"メッツオ　ベルジュラック　ルージュ",
+    "umap_x":5.8114414215,
+    "umap_y":6.3289961815,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919080446",
+    "wine_type":"White",
+    "temp_name":"ペドロ　ヒメネス　レセルバ",
+    "umap_x":1.1869724989,
+    "umap_y":8.7851381302,
+    "cluster":18
+  },
+  {
+    "jan_code":"4935919072052",
+    "wine_type":"Red",
+    "temp_name":"ラ　フラウタ　デ　バルトロ　ティント",
+    "umap_x":6.3115119934,
+    "umap_y":6.8144125938,
+    "cluster":11
+  },
+  {
+    "jan_code":"4935919980135",
+    "wine_type":"Red",
+    "temp_name":"インディヴィド　メルロ　カベルネ　ソーヴィニヨン",
+    "umap_x":5.8387227058,
+    "umap_y":6.5633711815,
+    "cluster":11
+  },
+  {
+    "jan_code":"4935919072694",
+    "wine_type":"Red",
+    "temp_name":"シゲ　アル　コネホ　ブランコ　ガルナッチャ",
+    "umap_x":5.5923833847,
+    "umap_y":6.4239473343,
+    "cluster":3
+  },
+  {
+    "jan_code":"4935919080378",
+    "wine_type":"White",
+    "temp_name":"ヴィオニエ　レセルバ",
+    "umap_x":1.1891024113,
+    "umap_y":9.5449142456,
+    "cluster":14
+  },
+  {
+    "jan_code":"4935919980043",
+    "wine_type":"White",
+    "temp_name":"ソーヴィニヨン　ブラン",
+    "umap_x":0.8524796963,
+    "umap_y":9.5058021545,
+    "cluster":14
+  },
+  {
+    "jan_code":"4935919070959",
+    "wine_type":"Spa",
+    "temp_name":"カバ　セレクション　エスペシャル　ブルット　ロゼ",
+    "umap_x":0.3453900218,
+    "umap_y":9.4970626831,
+    "cluster":5
+  },
+  {
+    "jan_code":"4935919072977",
+    "wine_type":"Spa",
+    "temp_name":"シゲ　アル　コネホ　ブランコ　ブルット",
+    "umap_x":0.4167225361,
+    "umap_y":9.7328395844,
+    "cluster":14
+  },
+  {
+    "jan_code":"4935919072687",
+    "wine_type":"White",
+    "temp_name":"エル　ニーニョ　イ　ラ　ルナ　ブランコ",
+    "umap_x":1.191655159,
+    "umap_y":9.4334878922,
+    "cluster":14
+  },
+  {
+    "jan_code":"4935919072069",
+    "wine_type":"White",
+    "temp_name":"ラ　フラウタ　デ　バルトロ　ブランコ",
+    "umap_x":0.7651237845,
+    "umap_y":9.4846582413,
+    "cluster":14
+  },
+  {
+    "jan_code":"4935919980050",
+    "wine_type":"White",
+    "temp_name":"リースリング　デ　ライン",
+    "umap_x":0.8434185982,
+    "umap_y":9.627866745,
+    "cluster":14
+  },
+  {
+    "jan_code":"4935919312455",
+    "wine_type":"Red",
+    "temp_name":"ペイ　ドック　ピノ　ノワール",
+    "umap_x":5.1653203964,
+    "umap_y":7.440715313,
+    "cluster":12
+  },
+  {
+    "jan_code":"4935919054874",
+    "wine_type":"Red",
+    "temp_name":"ザブ　ネーロ　ダーヴォラ",
+    "umap_x":6.1815214157,
+    "umap_y":6.230055809,
+    "cluster":11
+  },
+  {
+    "jan_code":"4935919058186",
+    "wine_type":"White",
+    "temp_name":"ビアンコ　トスカーナ",
+    "umap_x":0.5593397021,
+    "umap_y":9.6003351212,
+    "cluster":14
+  },
+  {
+    "jan_code":"4935919055352",
+    "wine_type":"Red",
+    "temp_name":"ザブ　シラー",
+    "umap_x":6.2071685791,
+    "umap_y":6.7042665482,
+    "cluster":11
+  },
+  {
+    "jan_code":"4935919055970",
+    "wine_type":"Red",
+    "temp_name":"ロッソ　ピチェーノ",
+    "umap_x":6.0440692902,
+    "umap_y":6.6514492035,
+    "cluster":11
+  },
+  {
+    "jan_code":"4935919071758",
+    "wine_type":"Red",
+    "temp_name":"オノロ　ベラ",
+    "umap_x":6.1052193642,
+    "umap_y":6.5387248993,
+    "cluster":11
+  },
+  {
+    "jan_code":"4935919360012",
+    "wine_type":"White",
+    "temp_name":"カステロ　ダルバ　ドウロ　ブランコ",
+    "umap_x":0.705857873,
+    "umap_y":9.2143297195,
+    "cluster":5
+  },
+  {
+    "jan_code":"4935919055420",
+    "wine_type":"White",
+    "temp_name":"チ　シャルドネ",
+    "umap_x":1.253557086,
+    "umap_y":9.469209671,
+    "cluster":14
+  },
+  {
+    "jan_code":"4935919057615",
+    "wine_type":"Spa",
+    "temp_name":"リゾーロ　フリッツァンテ　セッコ",
+    "umap_x":0.5765373707,
+    "umap_y":9.1365385056,
+    "cluster":5
+  },
+  {
+    "jan_code":"4935919061353",
+    "wine_type":"White",
+    "temp_name":"ライセス　シャルドネ",
+    "umap_x":0.6771685481,
+    "umap_y":9.1668863297,
+    "cluster":5
+  },
+  {
+    "jan_code":"4935919055406",
+    "wine_type":"White",
+    "temp_name":"ジ　ガルガネガ",
+    "umap_x":0.4590902328,
+    "umap_y":9.3140954971,
+    "cluster":5
+  },
+  {
+    "jan_code":"4935919072083",
+    "wine_type":"White",
+    "temp_name":"ガバルダ　シャルドネ",
+    "umap_x":0.724278748,
+    "umap_y":9.8565359116,
+    "cluster":14
+  },
+  {
+    "jan_code":"4935919059558 ",
+    "wine_type":"Red",
+    "temp_name":"パッソ　デル　カルディナーレ　プリミティーヴォ　ディ　マンドゥーリア",
+    "umap_x":4.8649163246,
+    "umap_y":5.6273889542,
+    "cluster":19
+  },
+  {
+    "jan_code":"4964044045440 ",
+    "wine_type":"Spa",
+    "temp_name":"ナチュラルオーガニックワイン　ロゼスパークリング",
+    "umap_x":0.0415453427,
+    "umap_y":7.0485219955,
+    "cluster":8
+  },
+  {
+    "jan_code":"4524919310709 ",
+    "wine_type":"White",
+    "temp_name":"シャンモリ　山梨県産葡萄使用　甲州",
+    "umap_x":0.2646365762,
+    "umap_y":9.0321264267,
+    "cluster":5
+  },
+  {
+    "jan_code":"850755000028 ",
+    "wine_type":"White",
+    "temp_name":"オー・ボン・クリマ　シャルドネ　サンタ バーバラ カウンティー",
+    "umap_x":0.3330371082,
+    "umap_y":8.9106960297,
+    "cluster":5
+  },
+  {
+    "jan_code":"4935919080415 ",
+    "wine_type":"White",
+    "temp_name":"エスピノ シャルドネ",
+    "umap_x":0.367908597,
+    "umap_y":8.5214967728,
+    "cluster":5
+  },
+  {
+    "jan_code":"4901777301702 ",
+    "wine_type":"White",
+    "temp_name":"ダークホース シャルドネ",
+    "umap_x":0.9913287163,
+    "umap_y":9.9135885239,
+    "cluster":14
+  },
+  {
+    "jan_code":"850832004260 ",
+    "wine_type":"White",
+    "temp_name":"ブレッド＆バター　シャルドネ",
+    "umap_x":1.0582071543,
+    "umap_y":10.0166301727,
+    "cluster":14
+  },
+  {
+    "jan_code":"4964044046324 ",
+    "wine_type":"Rose",
+    "temp_name":"基準のワイン",
+    "umap_x":4.7448348999,
+    "umap_y":7.667318821,
+    "cluster":12
+  },
+  {
+    "jan_code":"3185370805701 ",
+    "wine_type":"Spa",
+    "temp_name":"モエ・エ・シャンドン ロゼ アンペリアル",
+    "umap_x":-1.0316925049,
+    "umap_y":8.193980217,
+    "cluster":10
+  },
+  {
+    "jan_code":"8008530097943 ",
+    "wine_type":"Spa",
+    "temp_name":"タヴェルネッロ オルガニコ スプマンテ ロザート",
+    "umap_x":-1.3193765879,
+    "umap_y":7.9731225967,
+    "cluster":10
+  },
+  {
+    "jan_code":"8410744014553 ",
+    "wine_type":"Spa",
+    "temp_name":"マルケス　デ　レケーナ　カヴァ　ブリュット",
+    "umap_x":-1.2638880014,
+    "umap_y":8.1713600159,
+    "cluster":10
+  },
+  {
+    "jan_code":"4901777425736 ",
+    "wine_type":"Spa",
+    "temp_name":"フレシネ コルドン ロゼ ",
+    "umap_x":-1.2968196869,
+    "umap_y":8.1728191376,
+    "cluster":10
+  },
+  {
+    "jan_code":"4901777425859 ",
+    "wine_type":"Spa",
+    "temp_name":"フレシネ カルタ ネバダ",
+    "umap_x":-1.6224285364,
+    "umap_y":8.0051717758,
+    "cluster":20
+  },
+  {
+    "jan_code":"4901777425620 ",
+    "wine_type":"Spa",
+    "temp_name":"フレシネ コルドン ネグロ",
+    "umap_x":-1.2467149496,
+    "umap_y":8.3333587646,
+    "cluster":10
+  },
+  {
+    "jan_code":"4901777428096 ",
+    "wine_type":"Spa",
+    "temp_name":"メゾン　アンジュエール　エクストラ　ドライ",
+    "umap_x":-1.1055588722,
+    "umap_y":7.863088131,
+    "cluster":10
+  },
+  {
+    "jan_code":"4901777428102 ",
+    "wine_type":"Spa",
+    "temp_name":"メゾン　アンジュエール　ドミ・セック",
+    "umap_x":-1.704570055,
+    "umap_y":7.8399977684,
+    "cluster":20
+  },
+  {
+    "jan_code":"8008920687082 ",
+    "wine_type":"Spa",
+    "temp_name":"ボッリチーノ フリッツァンテ ビアンコ",
+    "umap_x":-1.3861711025,
+    "umap_y":7.9585886002,
+    "cluster":10
+  },
+  {
+    "jan_code":"8008920687099 ",
+    "wine_type":"Spa",
+    "temp_name":"ボッリチーノ　フリッツァンテ　ロッソ",
+    "umap_x":-1.6972184181,
+    "umap_y":7.9566164017,
+    "cluster":20
+  },
+  {
+    "jan_code":"4901880212957 ",
+    "wine_type":"White",
+    "temp_name":"ブルゴーニュ アリゴテ",
+    "umap_x":-0.8872207999,
+    "umap_y":8.507976532,
+    "cluster":10
+  },
+  {
+    "jan_code":"4902650046338 ",
+    "wine_type":"White",
+    "temp_name":"ミシオネス　レセルバ　シャルドネ",
+    "umap_x":0.1430931389,
+    "umap_y":8.2153539658,
+    "cluster":16
+  },
+  {
+    "jan_code":"4901777429994 ",
+    "wine_type":"White",
+    "temp_name":"カステル バロン ド レスタック ボルドー オーガニック 白",
+    "umap_x":0.0034742884,
+    "umap_y":8.0825071335,
+    "cluster":16
+  },
+  {
+    "jan_code":"3186127818104 ",
+    "wine_type":"White",
+    "temp_name":"スクレ　ド　リュネス　シャルドネ",
+    "umap_x":0.0307366699,
+    "umap_y":8.1416959763,
+    "cluster":16
+  },
+  {
+    "jan_code":"4580506791856 ",
+    "wine_type":"White",
+    "temp_name":"バルーン ピノ グリージョ オーガニック",
+    "umap_x":-0.1864573807,
+    "umap_y":7.9733953476,
+    "cluster":16
+  },
+  {
+    "jan_code":"4901777429956 ",
+    "wine_type":"Red",
+    "temp_name":"カステル バロン ド レスタック ボルドー オーガニック 赤",
+    "umap_x":3.6360394955,
+    "umap_y":5.7105703354,
+    "cluster":13
+  },
+  {
+    "jan_code":"4902650046352 ",
+    "wine_type":"Red",
+    "temp_name":"ミシオネス　レセルバ　カベルネ・ソーヴィニヨン",
+    "umap_x":3.7862670422,
+    "umap_y":5.6883177757,
+    "cluster":13
+  },
+  {
+    "jan_code":"4935919055550 ",
+    "wine_type":"Red",
+    "temp_name":"スクインツァーノ　リゼルヴァ　ウイリエーザ",
+    "umap_x":4.6272768974,
+    "umap_y":5.5741944313,
+    "cluster":19
+  },
+  {
+    "jan_code":"4580506790231 ",
+    "wine_type":"Red",
+    "temp_name":"バルーン ネロ ダヴォラ オーガニック",
+    "umap_x":4.2712469101,
+    "umap_y":5.6968035698,
+    "cluster":19
+  },
+  {
+    "jan_code":"8007116011106 ",
+    "wine_type":"Red",
+    "temp_name":"レオナルド　キャンティ",
+    "umap_x":4.316411972,
+    "umap_y":5.9721956253,
+    "cluster":19
+  },
+  {
+    "jan_code":"3186127818142 ",
+    "wine_type":"Red",
+    "temp_name":"スクレ　ド　リュネス　ピノ・ノワール",
+    "umap_x":4.4015331268,
+    "umap_y":5.9270048141,
+    "cluster":19
+  },
+  {
+    "jan_code":"3666140029423 ",
+    "wine_type":"Rose",
+    "temp_name":"ザ ペール　シャトー デスクラン",
+    "umap_x":0.474119544,
+    "umap_y":8.446767807,
+    "cluster":5
+  },
+  {
+    "jan_code":"4973480349449 ",
+    "wine_type":"Spa",
+    "temp_name":"メルシャン 甘熟ぶどうのおいしいワイン スパークリング 赤",
+    "umap_x":-1.6344465017,
+    "umap_y":7.8594107628,
+    "cluster":20
+  },
+  {
+    "jan_code":"4973480349029 ",
+    "wine_type":"Spa",
+    "temp_name":"サニーサイドＯＧスパークリングロゼ",
+    "umap_x":-1.4658889771,
+    "umap_y":8.0523929596,
+    "cluster":10
+  },
+  {
+    "jan_code":"9315705012007 ",
+    "wine_type":"White",
+    "temp_name":"グラント・バージ GB 32 シャルドネ",
+    "umap_x":0.1194658726,
+    "umap_y":8.4694385529,
+    "cluster":5
+  },
+  {
+    "jan_code":"9315705012403 ",
+    "wine_type":"Red",
+    "temp_name":"グラント・バージ GB 88 カベルネ・ソーヴィニヨン",
+    "umap_x":3.5978841782,
+    "umap_y":5.7248520851,
+    "cluster":13
+  },
+  {
+    "jan_code":"4901777425644 ",
+    "wine_type":"Spa",
+    "temp_name":"フレシネ コルドン ネグロ 中瓶",
+    "umap_x":-1.2134977579,
+    "umap_y":8.2830190659,
+    "cluster":10
+  },
+  {
+    "jan_code":"4962840966471 ",
+    "wine_type":"White",
+    "temp_name":"フローラ・ソーヴィニヨン・ブラン　オーガニック",
+    "umap_x":0.0953011215,
+    "umap_y":7.1270360947,
+    "cluster":8
+  },
+  {
+    "jan_code":"4941495300427 ",
+    "wine_type":"White",
+    "temp_name":"Imamura　Koushu",
+    "umap_x":-0.6586187482,
+    "umap_y":6.3514094353,
+    "cluster":4
+  },
+  {
+    "jan_code":"4941495300434 ",
+    "wine_type":"Red",
+    "temp_name":"Imamura　MuscatBaileyA＆BlackQueen",
+    "umap_x":2.7672591209,
+    "umap_y":5.7821893692,
+    "cluster":15
+  },
+  {
+    "jan_code":"8011510030694 ",
+    "wine_type":"White",
+    "temp_name":"タヴィーノ・トレッビアーノ・ルビコーネ",
+    "umap_x":-0.5717155933,
+    "umap_y":6.564250946,
+    "cluster":4
+  },
+  {
+    "jan_code":"8011510030687 ",
+    "wine_type":"Red",
+    "temp_name":"タヴィーノ・サンジョヴェーゼ・ルビコーネ",
+    "umap_x":2.8381092548,
+    "umap_y":5.7468566895,
+    "cluster":15
+  },
+  {
+    "jan_code":"9352420000872 ",
+    "wine_type":"White",
+    "temp_name":"ピーツ・ピュアシャルドネ",
+    "umap_x":-0.32425192,
+    "umap_y":6.6612319946,
+    "cluster":4
+  },
+  {
+    "jan_code":"9352420000704 ",
+    "wine_type":"Red",
+    "temp_name":"ピーツ・ピュア・カベルネ・ソーヴィニヨン",
+    "umap_x":3.0454154015,
+    "umap_y":5.4199285507,
+    "cluster":15
+  },
+  {
+    "jan_code":"8437002076498 ",
+    "wine_type":"Red",
+    "temp_name":"TANIS  GRANRESERVA",
+    "umap_x":3.1544251442,
+    "umap_y":5.6091451645,
+    "cluster":15
+  },
+  {
+    "jan_code":"8436549544569 ",
+    "wine_type":"Red",
+    "temp_name":"DECRETO  REAL    CRIANZA   TEMPRANILLO",
+    "umap_x":2.9721333981,
+    "umap_y":5.5553297997,
+    "cluster":15
+  },
+  {
+    "jan_code":"7791203000517 ",
+    "wine_type":"Red",
+    "temp_name":"ラ・リンダ　マルベック",
+    "umap_x":2.5138087273,
+    "umap_y":5.5711545944,
+    "cluster":15
+  },
+  {
+    "jan_code":"7791203001316 ",
+    "wine_type":"White",
+    "temp_name":"ラ・リンダ　トロンテス",
+    "umap_x":-0.2430533171,
+    "umap_y":7.4062986374,
+    "cluster":8
+  },
+  {
+    "jan_code":"4560457914320 ",
+    "wine_type":"Red",
+    "temp_name":"Mont-Perat  BORDEUX  ",
+    "umap_x":2.9002444744,
+    "umap_y":5.6463503838,
+    "cluster":15
+  },
+  {
+    "jan_code":"4901592931801 ",
+    "wine_type":"Spa",
+    "temp_name":"ザ・スパニッシュ・クオーター　カヴァブリュット白",
+    "umap_x":-0.6366488338,
+    "umap_y":6.7849507332,
+    "cluster":4
+  },
+  {
+    "jan_code":"8410702064286 ",
+    "wine_type":"Spa",
+    "temp_name":"ムーチョ　升スパーリングワイン",
+    "umap_x":-0.7726718187,
+    "umap_y":6.3963565826,
+    "cluster":4
+  },
+  {
+    "jan_code":"7804320745480 ",
+    "wine_type":"White",
+    "temp_name":"コノスル　オーガニック　シャルドネ",
+    "umap_x":-0.5289319754,
+    "umap_y":6.771499157,
+    "cluster":4
+  },
+  {
+    "jan_code":"4990583310411 ",
+    "wine_type":"White",
+    "temp_name":"北海度ケルナードライJ（辛口）",
+    "umap_x":-0.3356757462,
+    "umap_y":7.1585788727,
+    "cluster":8
+  },
+  {
+    "jan_code":"818051020744 ",
+    "wine_type":"Red",
+    "temp_name":"ブレッド&バラー　カベルネ・ソーヴィニヨン",
+    "umap_x":3.1227347851,
+    "umap_y":5.4575185776,
+    "cluster":15
+  },
+  {
+    "jan_code":"3185370810606 ",
+    "wine_type":"Spa",
+    "temp_name":"MINI MOET   MOET &CHANDON  ROSE IMPERIAL",
+    "umap_x":-0.6696238518,
+    "umap_y":6.6264777184,
+    "cluster":4
+  },
+  {
+    "jan_code":"4973480878888 ",
+    "wine_type":"White",
+    "temp_name":"メルシャン・ワインズ　フルーツスキップ　ホワイト",
+    "umap_x":-0.8541581035,
+    "umap_y":6.3286738396,
+    "cluster":4
+  },
+  {
+    "jan_code":"4973480348824 ",
+    "wine_type":"White",
+    "temp_name":"メルシャン　おいしい酸化防止剤無添加白ワイン",
+    "umap_x":-1.0294029713,
+    "umap_y":6.4159884453,
+    "cluster":4
+  },
+  {
+    "jan_code":"4973480348817 ",
+    "wine_type":"Red",
+    "temp_name":"メルシャン　おいしい酸化防止剤無添加赤ワインふくよか",
+    "umap_x":-1.0089360476,
+    "umap_y":6.3333740234,
+    "cluster":4
+  },
+  {
+    "jan_code":"4973480878673 ",
+    "wine_type":"White",
+    "temp_name":"カッシェロ・デル・ディアブロ　デビルズ・カルナバルインクレディブルシャルドネ　",
+    "umap_x":-0.9589959383,
+    "umap_y":6.3436608315,
+    "cluster":4
+  },
+  {
+    "jan_code":"4973480878871 ",
+    "wine_type":"Red",
+    "temp_name":"メルシャン・ワインズ　フルーツスキップ　レッド",
+    "umap_x":-0.6520516276,
+    "umap_y":6.0253634453,
+    "cluster":4
+  },
+  {
+    "jan_code":"4904230040323 ",
+    "wine_type":"White",
+    "temp_name":"サンタ・ヘレナ　アルパカ　ソーヴィニヨン・ブラン",
+    "umap_x":-0.3257451952,
+    "umap_y":7.2529511452,
+    "cluster":8
+  },
+  {
+    "jan_code":"3262152954755 ",
+    "wine_type":"White",
+    "temp_name":"バロン・フィリップ・ド・ロスチャイルド　ムートン・カデ・ブラン",
+    "umap_x":0.0493194722,
+    "umap_y":6.9596962929,
+    "cluster":8
+  },
+  {
+    "jan_code":"9421003814202 ",
+    "wine_type":"Red",
+    "temp_name":"シレー二　クリアセレクション　ピノノアール　",
+    "umap_x":2.7292208672,
+    "umap_y":5.6935563087,
+    "cluster":15
+  },
+  {
+    "jan_code":"85000034064 ",
+    "wine_type":"White",
+    "temp_name":"カリフォルニア・トラディションズ　シャルドネ",
+    "umap_x":-0.7019968033,
+    "umap_y":6.4448552132,
+    "cluster":4
+  },
+  {
+    "jan_code":"8410591004783 ",
+    "wine_type":"White",
+    "temp_name":"クネ ルエダ 2023 クネ 750ml [白]",
+    "umap_x":-0.1471329033,
+    "umap_y":6.8496365547,
+    "cluster":4
+  },
+  {
+    "jan_code":"4962840966006 ",
+    "wine_type":"Red",
+    "temp_name":"ダンシング　フレイム　メルロー",
+    "umap_x":2.8622796535,
+    "umap_y":5.5077447891,
+    "cluster":15
+  },
+  {
+    "jan_code":"4901777282834 ",
+    "wine_type":"Red",
+    "temp_name":"ウィリアムヒル　ナパヴァレー　カベルネソーヴィニヨン",
+    "umap_x":3.2916023731,
+    "umap_y":5.7219996452,
+    "cluster":15
+  },
+  {
+    "jan_code":"8008530072209 ",
+    "wine_type":"Spa",
+    "temp_name":"タヴェルネッロ　ランブルスコ　ロッソ",
+    "umap_x":-1.6539120674,
+    "umap_y":7.6610307693,
+    "cluster":20
+  },
+  {
+    "jan_code":"8008530029524 ",
+    "wine_type":"White",
+    "temp_name":"タヴェルネッロ　オルガニコ　トレッビアーノ　シャルドネ250mlテトラパック",
+    "umap_x":-0.6347686648,
+    "umap_y":7.5220537186,
+    "cluster":8
+  },
+  {
+    "jan_code":"8008530029531 ",
+    "wine_type":"Red",
+    "temp_name":"タヴェルネッロ　オルガニコ　サンジョヴェーゼ　250mlテトラパック",
+    "umap_x":3.1253371239,
+    "umap_y":5.9972877502,
+    "cluster":9
+  },
+  {
+    "jan_code":"8008530008062 ",
+    "wine_type":"Red",
+    "temp_name":"タヴェルネッロ　オルガニコ　シラー　250mlテトラパック",
+    "umap_x":3.1167621613,
+    "umap_y":5.9986286163,
+    "cluster":9
+  },
+  {
+    "jan_code":"4901777440128 ",
+    "wine_type":"White",
+    "temp_name":"酸化防止剤無添加のおいしいワイン　琥珀のコク　ポリフェノール2倍",
+    "umap_x":-1.243499279,
+    "umap_y":7.5487203598,
+    "cluster":10
+  },
+  {
+    "jan_code":"4582385520756 ",
+    "wine_type":"White",
+    "temp_name":"ロスカロス バッグインボックス 白 ",
+    "umap_x":0.4995335042,
+    "umap_y":6.7987852097,
+    "cluster":2
+  },
+  {
+    "jan_code":"4582385520732 ",
+    "wine_type":"Red",
+    "temp_name":"ロスカロス バッグインボックス 赤",
+    "umap_x":3.1586663723,
+    "umap_y":5.4850010872,
+    "cluster":15
+  }
+]

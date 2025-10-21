@@ -19,14 +19,14 @@ const centerGradient = (val) => {
 function invert3x3(M){const [[a,b,c],[d,e,f],[g,h,i]]=M;const A=e*i-f*h,B=-(d*i-f*g),C=d*h-e*g;const D=-(b*i-c*h),E=a*i-c*g,F=-(a*h-b*g);const G=b*f-c*e,H=-(a*f-c*d),I=a*e-b*d;const det=a*A+b*B+c*C;if(Math.abs(det)<1e-12)return null;const s=1/det;return[[A*s,D*s,G*s],[B*s,E*s,H*s],[C*s,F*s,I*s]];}
 function mulMatVec(M,v){return[M[0][0]*v[0]+M[0][1]*v[1]+M[0][2]*v[2],M[1][0]*v[0]+M[1][1]*v[1]+M[1][2]*v[2],M[2][0]*v[0]+M[2][1]*v[1]+M[2][2]*v[2]];}
 function fitLocalAffineAndPredict(px,py,neigh){
-  if(neigh.length<3){let wsum=0,u1=0,u2=0;for(const n of neigh){wsum+=n.w;u1+=n.w*n.UMAP1;u2+=n.w*n.UMAP2;}if(!wsum)return[0,0];return[u1/wsum,u2/wsum];}
+  if(neigh.length<3){let wsum=0,u1=0,u2=0;for(const n of neigh){wsum+=n.w;u1+=n.w*n.umap_x;u2+=n.w*n.umap_y;}if(!wsum)return[0,0];return[u1/wsum,u2/wsum];}
   let Sxx=0,Sxy=0,Sx1=0,Syx=0,Syy=0,Sy1=0,S1x=0,S1y=0,S11=0,Tx1=0,Ty1=0,T11=0,Tx2=0,Ty2=0,T12=0;
   for(const n of neigh){const w=n.w,x=n.PC1,y=n.PC2,u1=n.UMAP1,u2=n.UMAP2;const wx=w*x,wy=w*y;
     Sxx+=wx*x; Sxy+=wx*y; Sx1+=wx; Syx+=wy*x; Syy+=wy*y; Sy1+=wy; S1x+=w*x; S1y+=w*y; S11+=w;
     Tx1+=wx*u1; Ty1+=wy*u1; T11+=w*u1; Tx2+=wx*u2; Ty2+=wy*u2; T12+=w*u2;
   }
   const M=[[Sxx,Sxy,Sx1],[Syx,Syy,Sy1],[S1x,S1y,S11]], invM=invert3x3(M);
-  if(!invM){let wsum=0,u1=0,u2=0;for(const n of neigh){wsum+=n.w;u1+=n.w*n.UMAP1;u2+=n.w*n.UMAP2;}if(!wsum)return[0,0];return[u1/wsum,u2/wsum];}
+  if(!invM){let wsum=0,u1=0,u2=0;for(const n of neigh){wsum+=n.w;u1+=n.w*n.umap_x;u2+=n.w*n.umap_y;}if(!wsum)return[0,0];return[u1/wsum,u2/wsum];}
   const a1=mulMatVec(invM,[Tx1,Ty1,T11]); const a2=mulMatVec(invM,[Tx2,Ty2,T12]);
   return[a1[0]*px+a1[1]*py+a1[2],a2[0]*px+a2[1]*py+a2[2]];
 }
@@ -75,12 +75,12 @@ export default function SliderPage() {
       .then((r)=>{ if(!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((data)=>{
         const cleaned=(data||[]).map(d=>({
-          JAN:String(d.JAN??""), PC1:num(d.PC1), PC2:num(d.PC2),
-          UMAP1:num(d.UMAP1), UMAP2:num(d.UMAP2)
+          JAN:String(d.jan_code??""), PC1:num(d.PC1), PC2:num(d.PC2),
+          UMAP1:num(d.umap_x), UMAP2:num(d.umap_y)
         })).filter(r=>Number.isFinite(r.PC1)&&Number.isFinite(r.PC2)&&Number.isFinite(r.UMAP1)&&Number.isFinite(r.UMAP2));
         setRows(cleaned);
-        const b=cleaned.find(d=>d.JAN==="blendF");
-        setBlendF(b?{PC1:b.PC1,PC2:b.PC2,UMAP1:b.UMAP1,UMAP2:b.UMAP2}:null);
+        const b=cleaned.find(d=>d.jan_code==="blendF");
+        setBlendF(b?{PC1:b.PC1,PC2:b.PC2,UMAP1:b.umap_x,UMAP2:b.umap_y}:null);
         const pc1s=cleaned.map(r=>r.PC1), pc2s=cleaned.map(r=>r.PC2);
         setPcMinMax({minPC1:Math.min(...pc1s),maxPC1:Math.max(...pc1s),minPC2:Math.min(...pc2s),maxPC2:Math.max(...pc2s)});
       })

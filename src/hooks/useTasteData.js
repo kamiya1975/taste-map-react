@@ -8,7 +8,7 @@ export default function useTasteData() {
   const [error, setErr] = useState(null);
 
   useEffect(() => {
-    const url = `${process.env.PUBLIC_URL || ""}/UMAP_PCA_coordinates.json`;
+    const url = `${process.env.PUBLIC_URL || ""}/umap_coords_c.json`;
     fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -18,20 +18,20 @@ export default function useTasteData() {
         const cleaned = (raw || [])
           .filter(Boolean)
           .map((r) => ({
-            JAN: String(r.JAN ?? ""),
+            JAN: String(r.jan_code ?? ""),
             商品名: r["商品名"],
             Type: r.Type ?? "Other",
             // UMAP
-            UMAP1: num(r.UMAP1),
-            UMAP2: num(r.UMAP2),
+            umap_x: num(r.umap_x),
+            umap_y: num(r.umap_y),
             // PCA
             PC1: num(r.PC1),
             PC2: num(r.PC2),
           }))
           .filter(
             (r) =>
-              Number.isFinite(r.UMAP1) &&
-              Number.isFinite(r.UMAP2) &&
+              Number.isFinite(r.umap_x) &&
+              Number.isFinite(r.umap_y) &&
               r.JAN !== ""
           );
 

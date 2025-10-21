@@ -45,9 +45,9 @@ export default function UserTastePage() {
 
         // 結合（JANで商品名を付与）
         const merged = Object.entries(ratings).map(([jan, data]) => {
-          const product = products.find((p) => String(p.JAN) === String(jan));
+          const product = products.find((p) => String(p.jan_code) === String(jan_code));
           return {
-            jan: String(jan),
+            jan: String(jan_code),
             name: product?.商品名 || "(不明)",
             rating: data?.rating ?? "",
             date: data?.date ?? "",
@@ -73,9 +73,9 @@ export default function UserTastePage() {
   }, []);
 
   const exportCSV = () => {
-    const headers = ["JAN", "商品名", "評価", "日時", "気温", "湿度", "気圧"];
+    const headers = ["jan_code", "商品名", "評価", "日時", "気温", "湿度", "気圧"];
     const rows = records.map((r) => [
-      csvCell(r.jan),
+      csvCell(r.jan_code),
       csvCell(r.name),
       csvCell(r.rating),
       csvCell(r.date),
@@ -96,7 +96,7 @@ export default function UserTastePage() {
 
   const columns = useMemo(
     () => [
-      { key: "jan", label: "JAN", width: "12ch" },
+      { key: "jan_code", label: "JAN", width: "12ch" },
       { key: "name", label: "商品名", width: "auto" },
       { key: "rating", label: "評価", width: "8ch" },
       { key: "date", label: "日時", width: "20ch" },
