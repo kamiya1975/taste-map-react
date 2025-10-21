@@ -371,7 +371,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     const hit = data.find((d) => String(d.jan_code) === String(selectedJAN));
     if (!hit || !Number.isFinite(hit.umap_x) || !Number.isFinite(hit.umap_y)) return [];
 
-    const pos = [hit.UMAP1, -hit.UMAP2, 0];
+    const pos = [hit.umap_x, -hit.umap_y, 0];
     const R = 0.1; // ベース半径（見た目サイズ。0.14〜0.20で好み調整）
 
     // 外側の黒丸
@@ -409,10 +409,10 @@ const MapCanvas = forwardRef(function MapCanvas(
         data,
         getPosition: (d) => [d.umap_x, -d.umap_y, 0],
         getFillColor: (d) => {
-          const jan = String(d.JAN);
-          if (Number(userRatings?.[jan]?.rating) > 0) return BLACK; // 評価済み＝黒
-          if (favorites && favorites[jan]) return FAVORITE_RED; // お気に入り＝赤
-          return MAP_POINT_COLOR; // その他＝固定グレー
+          const janStr = String(d.jan_code);
+          if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;
+          if (favorites && favorites[janStr]) return FAVORITE_RED;
+          return MAP_POINT_COLOR;
         },
         updateTriggers: {
           getFillColor: [
@@ -432,7 +432,7 @@ const MapCanvas = forwardRef(function MapCanvas(
   const ratingCircleLayers = useMemo(() => {
     const lineColor = [255, 0, 0, 255];
     return Object.entries(userRatings || {}).flatMap(([jan_code, ratingObj]) => {
-      const item = data.find((d) => String(d.JAN) === String(jan));
+      const item = data.find((d) => String(d.jan_code) === String(jan_code));
       if (!item || !Number.isFinite(item.umap_x) || !Number.isFinite(item.umap_y))
         return [];
       const count = Math.min(Number(ratingObj?.rating) || 0, 5);

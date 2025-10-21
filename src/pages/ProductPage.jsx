@@ -45,17 +45,17 @@ const clearScanHints = (jan_code) => {
   try {
     localStorage.setItem(
       "product_page_closed",
-      JSON.stringify({ jan, at: Date.now() })
+      JSON.stringify({ jan: jan_code, at: Date.now() })
     );
   } catch {}
 };
 
 const notifyParentClosed = (jan_code) => {
-  postToParent({ type: "PRODUCT_CLOSED", jan, clear: true });
-  clearScanHints(jan);
+  postToParent({ type: "PRODUCT_CLOSED", jan: jan_code, clear: true });
+  clearScanHints(jan_code);
   try {
     const bc = new BroadcastChannel("product_bridge");
-    bc.postMessage({ type: "PRODUCT_CLOSED", jan, clear: true, at: Date.now() });
+    bc.postMessage({ type: "PRODUCT_CLOSED", jan: jan_code, clear: true, at: Date.now() });
     bc.close();
   } catch {}
 };
@@ -64,18 +64,18 @@ const notifyParentClosed = (jan_code) => {
 const forceFavoriteOff = (jan_code) => {
   try {
     const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
-    if (favs && favs[jan]) {
-      delete favs[jan];
+    if (favs && favs[jan_code]) {
+      delete favs[jan_code];
       localStorage.setItem("favorites", JSON.stringify(favs));
     }
   } catch {}
   // 自ウィンドウの HeartButton を即時同期
   try {
-    window.postMessage({ type: "SET_FAVORITE", jan_code, value: false }, "*");
+    window.postMessage({ type: "SET_FAVORITE", jan: jan_code, value: false }, "*");
   } catch {}
   // 親（MapPage 側）にも伝えて同期
   try {
-    postToParent({ type: "SET_FAVORITE", jan_code, value: false });
+    postToParent({ type: "SET_FAVORITE", jan: jan_code, value: false });
   } catch {}
 };
 
@@ -96,8 +96,8 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
 
     const onStorage = (e) => { if (e.key === "favorites") readFav(); };
     const onMsg = (e) => {
-      const { type, jan_code: targetJan, value } = e.data || {};
-      if (String(targetJan) !== String(jan)) return;
+      const { type, jan: targetJan, value } = e.data || {};
+      if (String(targetJan) !== String(jan_code)) return;
       if (type === "SET_FAVORITE") setFav(!!value);
     };
     window.addEventListener("storage", onStorage);
@@ -106,7 +106,7 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("message", onMsg);
     };
-  }, [jan]);
+  }, [jan_code]);
 
   const toggle = () => {
     const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
@@ -212,8 +212,8 @@ function ProductImage({ jan_code, maxHeight = 225 }) {
 
   useEffect(() => {
     setLoaded(false);
-    setSrc(`${process.env.PUBLIC_URL || ""}/img/${jan}.png`);
-  }, [jan]);
+    setSrc(`${process.env.PUBLIC_URL || ""}/img/${jan_code}.png`);
+  }, [jan_code]);
 
   useEffect(() => {
     const img = imgElRef.current;
@@ -341,9 +341,9 @@ export default function ProductPage() {
 
   // ★は rating>0 なら常に非表示（クエリには依存しない）
   useEffect(() => {
-    postToParent({ type: "PRODUCT_OPENED", jan_code });
-    postToParent({ type: "REQUEST_STATE", jajan_coden });
-    const onBeforeUnload = () => notifyParentClosed(jajan_coden);
+    postToParent({ type: "PRODUCT_OPENED", jan: jan_code });
+    postToParent({ type: "REQUEST_STATE", jan: jan_code });
+    const onBeforeUnload = () => notifyParentClosed(jan_code);
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
       notifyParentClosed(jan_code);
@@ -394,22 +394,22 @@ export default function ProductPage() {
 
     load();
     return () => { alive = false; };
-  }, [jan]);
+  }, [jan_code]);
 
   useEffect(() => {
     const onMsgSnapshot = (e) => {
       const { type, jan: targetJan, rating: ratingPayload } = e.data || {};
       if (type !== "STATE_SNAPSHOT") return;
-      if (String(targetJan) !== String(jan)) return;
+      if (String(targetJan) !== String(jan_code)) return;
       try {
         setRating(ratingPayload?.rating ?? 0);
       } catch {}
     };
     window.addEventListener("message", onMsgSnapshot);
     return () => window.removeEventListener("message", onMsgSnapshot);
-  }, [jan]);
+  }, [jan_code]);
 
-　// HIDE_HEART メッセージは今後未使用（ratingにより自動で非表示）
+  // HIDE_HEART メッセージは今後未使用（ratingにより自動で非表示）
 
   const handleCircleClick = async (value) => {
     if (!requireRatingOrRedirect(navigate, "/my-account")) return;
@@ -421,17 +421,17 @@ export default function ProductPage() {
     let payload = null;
 
     if (newRating === 0) {
-      delete ratings[jan]; // 評価解除なら削除
+      delete ratings[jan_code]; // 評価解除なら削除
     } else {
       payload = { rating: newRating, date: new Date().toISOString() }; // weatherは付けない
       ratings[jan_code] = payload;
       // ◎ を入れたら「飲みたい」を必ずOFF（一覧に載っていなくても）
-      forceFavoriteOff(jan);
+      forceFavoriteOff(jan_code);
     }
   
 
     localStorage.setItem("userRatings", JSON.stringify(ratings));
-    postToParent({ type: "RATING_UPDATED", jan_code, payload });
+    postToParent({ type: "RATING_UPDATED", jan: jan_code, payload });
   };
 
   if (!product) {
@@ -469,7 +469,7 @@ export default function ProductPage() {
 
       {/* 商品画像 */}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
-        <ProductImage jan={jan_code} maxHeight={225} />
+        <ProductImage jan_code={jan_code} maxHeight={225} />
       </div>
 
       {/* 商品名 */}
@@ -540,7 +540,7 @@ export default function ProductPage() {
             </div>
 
             {/* hideHeart の時は visibility で非表示（幅は保持） */}
-            <HeartButton jan={jan_code} size={28} hidden={rating > 0} />
+            <HeartButton jan_code={jan_code} size={28} hidden={rating > 0} />
           </div>
 
           {/* 縦罫線（常に同じ高さに） */}
