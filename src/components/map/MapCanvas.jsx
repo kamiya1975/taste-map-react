@@ -652,8 +652,8 @@ const MapCanvas = forwardRef(function MapCanvas(
           parameters: { depthTest: false },
         }),
 
-      // ① セルの地模様（タイル）は「バブルが出ていない時だけ」表示
-      !highlight2D ? new IconLayer({
+      // ① セルの地模様（タイル）は「バブル無し かつ クラスタ色OFFのときだけ」表示
+      (!highlight2D && !clusterColorMode) ? new IconLayer({
         id: "cell-tiles",
         data: cells,
         getPosition: (d) => d.center,
