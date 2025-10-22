@@ -20,6 +20,7 @@ import {
   HEAT_COLOR_HIGH,
   MAP_POINT_COLOR,
   ORANGE,
+  getClusterRGBA,
 } from "../../ui/constants";
 import { getClusterRGBA } from "../../ui/constants";
 
@@ -195,6 +196,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           jan: janOf(d),
           position: [xOf(d), -yOf(d), 0],
           t,
+          cluster: Number(d.cluster),
         };
       })
     .filter(Boolean);
@@ -681,16 +683,23 @@ const MapCanvas = forwardRef(function MapCanvas(
               if (t < 0.90) return R_MED;        // 上位10%
               return R_LARGE;
             },
-            getFillColor: () => [210, 210, 205, 150], // ← グレー指定
+            getFillColor: (d) => {
+              // クラスタ配色ONのときだけ、クラスタごとの色でバブルを描く
+              if (clusterColorMode && Number.isFinite(d.cluster)) {
+                const c = getClusterRGBA(d.cluster) || [210,210,205,255];
+                // バブルは少し透けさせたいのでαを上書き（好みで調整）
+                return [c[0], c[1], c[2], 150];
+              }
+              // 通常は従来どおりグレー
+              return [210, 210, 205, 150];
+            },
             stroked: false,
             getLineWidth: 0,
             pickable: false,
             parameters: { depthTest: false },
             updateTriggers: {
               getRadius: [HEAT_GAMMA], // t生成はHEAT_GAMMA/CLIP依存（pointBubblesで計算）
-              getFillColor: [HEAT_GAMMA, HEAT_ALPHA_MIN, HEAT_ALPHA_MAX,
-                             HEAT_COLOR_LOW?.[0], HEAT_COLOR_LOW?.[1], HEAT_COLOR_LOW?.[2],
-                             HEAT_COLOR_HIGH?.[0], HEAT_COLOR_HIGH?.[1], HEAT_COLOR_HIGH?.[2]],
+              getFillColor: [clusterColorMode],
             },
           })
         : null,
