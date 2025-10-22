@@ -749,30 +749,6 @@ function MapPage() {
         <option value="PC3">PC3</option>
       </select>
 
-      {/* 左上: クラスタ配色トグル */}
-      <button
-        onClick={() => setClusterColorMode(v => !v)}
-        style={{
-          position: "absolute",
-          top: "52px",
-          left: "10px",
-          zIndex: 11,
-          width: 40, height: 40,
-          background: "transparent",
-          border: "none", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
-        }}
-        aria-label="クラスタ配色"
-        title={clusterColorMode ? "クラスタ配色（ON）" : "クラスタ配色（OFF）"}
-      >
-       <img
-          src={`${process.env.PUBLIC_URL || ""}/img/palette.svg`}
-         alt=""
-          style={{ width: "100%", height: "100%", objectFit: "contain", pointerEvents: "none" }}
-          draggable={false}
-        />
-      </button>
-
       {/* 左下: アプリガイド（メニュー）ボタン */}
       <button
         onClick={() => setIsMyPageOpen((v) => !v)}
