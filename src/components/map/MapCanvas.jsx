@@ -22,7 +22,6 @@ import {
   ORANGE,
   getClusterRGBA,
 } from "../../ui/constants";
-import { getClusterRGBA } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
 const FAVORITE_RED = [178, 53, 103, 255];
