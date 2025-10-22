@@ -864,7 +864,19 @@ function MapPage() {
       </button>
 
       <button
-        onClick={() => setClusterColorMode(v => !v)}
+        onClick={() => {
+          setClusterColorMode((prev) => {
+            const next = !prev;
+            if (next) {
+              // OFF → ON：配色ONにして説明パネルを開く
+              setIsClusterOpen(true);
+            } else {
+              // ON → OFF：配色を消す。パネルは出さない（開いてたら閉じる）
+              setIsClusterOpen(false);
+             }
+             return next;
+            });
+          }}
         style={{
           position: "absolute",
           top: "160px",
@@ -1029,6 +1041,11 @@ function MapPage() {
           }
           setProductDrawerOpen(true);
         }}
+      />
+
+      <ClusterPalettePanel
+        isOpen={isClusterOpen}
+        onClose={() => setIsClusterOpen(false)}
       />
 
       {/* 「TasteMapとは？」（PanelShell 版） */}
