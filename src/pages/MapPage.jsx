@@ -15,7 +15,7 @@ import StorePanelContent from "../components/panels/StorePanelContent";
 import FaqPanelContent from "../components/panels/FaqPanelContent";
 import MyPagePanelContent from "../components/panels/MyPagePanelContent";
 import ClusterPalettePanel from "../components/panels/ClusterPalettePanel";
-import AboutTasteMapPanel from "./components/panels/AboutTasteMapPanel";
+import AboutTasteMapPanel from "../components/panels/AboutTasteMapPanel";
 import {
   drawerModalProps,
   paperBaseStyle,
