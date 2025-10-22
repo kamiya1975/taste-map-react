@@ -12,14 +12,9 @@ import {
 import {
   ZOOM_LIMITS,
   GRID_CELL_SIZE,
-  HEAT_ALPHA_MIN,
-  HEAT_ALPHA_MAX,
   HEAT_GAMMA,
   HEAT_CLIP_PCT,
-  HEAT_COLOR_LOW,
-  HEAT_COLOR_HIGH,
   MAP_POINT_COLOR,
-  ORANGE,
   getClusterRGBA,
 } from "../../ui/constants";
 
@@ -333,46 +328,6 @@ const MapCanvas = forwardRef(function MapCanvas(
     return Array.from(map.values());
   }, [data, userRatings]);
 
-  // --- ハイライト（平均値のヒート） ---
-  const { heatCells, vMin, vMax, avgHash } = useMemo(() => {
-    if (!highlight2D) return { heatCells: [], vMin: 0, vMax: 1, avgHash: "empty" };
-    const sumMap = new Map(),
-      cntMap = new Map();
-    for (const d of data) {
-      const v = Number(d[highlight2D]);
-      if (!Number.isFinite(v)) continue;
-      const ix = toIndex(xOf(d)),
-        iy = toIndex(-yOf(d));
-      const key = keyOf(ix, iy);
-      sumMap.set(key, (sumMap.get(key) || 0) + v);
-      cntMap.set(key, (cntMap.get(key) || 0) + 1);
-    }
-    const vals = [],
-      cellsArr = [];
-    for (const [key, sum] of sumMap.entries()) {
-      const count = cntMap.get(key) || 1;
-      const avg = sum / count;
-      vals.push(avg);
-      const [ix, iy] = key.split(",").map(Number);
-      cellsArr.push({
-        ix,
-        iy,
-        position: [toCorner(ix), toCorner(iy)],
-        avg,
-        count,
-      });
-    }
-    if (!vals.length) return { heatCells: [], vMin: 0, vMax: 1, avgHash: "none" };
-    vals.sort((a, b) => a - b);
-    const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
-    const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
-    const lo = vals[loIdx],
-      hi = vals[hiIdx];
-    const epsHi = hi - lo < 1e-9 ? lo + 1e-9 : hi;
-    const hash = `${cellsArr.length}|${lo.toFixed(3)}|${epsHi.toFixed(3)}|${highlight2D}`;
-    return { heatCells: cellsArr, vMin: lo, vMax: epsHi, avgHash: hash };
-  }, [data, highlight2D]);
-
   // ★ ベクタで描く選択ドット（外黒→内白→中心黒）
   const selectedDotLayers = useMemo(() => {
     if (!selectedJAN) return [];
@@ -427,7 +382,6 @@ const MapCanvas = forwardRef(function MapCanvas(
         },
         updateTriggers: {
           getFillColor: [
-            selectedJAN,
             JSON.stringify(favorites || {}),
             JSON.stringify(userRatings || {}),
             clusterColorMode,
