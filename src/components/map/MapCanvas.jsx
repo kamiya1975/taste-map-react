@@ -435,7 +435,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       data: [{ position: [compassPoint[0], -compassPoint[1], 0] }],
       getPosition: (d) => d.position,
       getIcon: () => ({
-        url: `${process.env.PUBLIC_URL || ""}/img/account.png`,
+        url: `${process.env.PUBLIC_URL || ""}/img/account.svg`,
         width: 310,
         height: 310,
         anchorX: 155,
@@ -456,7 +456,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       data: [{ position: [userPin[0], -userPin[1], 0] }],
       getPosition: (d) => d.position,
       getIcon: () => ({
-        url: `${process.env.PUBLIC_URL || ""}/img/account.png`,
+        url: `${process.env.PUBLIC_URL || ""}/img/account.svg`,
         width: 310,
         height: 310,
         anchorX: 155,
