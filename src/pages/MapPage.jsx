@@ -1264,7 +1264,7 @@ function MapPage() {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
             zIndex: 1500,
-            height: "70vh",                // 他と揃えるなら 85vh でもOK
+            height: "85vh",                // 他と揃えるなら 85vh でもOK
             display: "flex",
             flexDirection: "column",
           },
