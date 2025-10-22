@@ -723,7 +723,6 @@ function MapPage() {
           focusOnWine(item, { recenter: false });
         }}
         clusterColorMode={clusterColorMode}
-        clusterColors={clusterColors}
         edgeMarginXPx={50}
         edgeMarginYPx={400}
       />
@@ -865,17 +864,7 @@ function MapPage() {
       </button>
 
       <button
-        onClick={async () => {
-          if (!clusterColorMode) {
-            // OFF → ON：配色を有効化してパネルも開く
-            setClusterColorMode(true);
-            await openPanel("cluster");
-          } else {
-            // ON → OFF：配色を無効化。パネルは出さない（開いていたら閉じる）
-            setClusterColorMode(false);
-            setIsClusterOpen(false);
-          }
-        }}
+        onClick={() => setClusterColorMode(v => !v)}
         style={{
           position: "absolute",
           top: "160px",
@@ -1040,18 +1029,6 @@ function MapPage() {
           }
           setProductDrawerOpen(true);
         }}
-      />
-
-      {/* クラスタ配色パネル（PanelShell 版） */}
-      <ClusterPalettePanel
-        isOpen={isClusterOpen}
-        onClose={() => setIsClusterOpen(false)}
-        clusterColorMode={clusterColorMode}
-        setClusterColorMode={setClusterColorMode}
-        clusterList={clusterList}
-        clusterColors={clusterColors}
-        setClusterColors={setClusterColors}
-        DEFAULT_PALETTE={DEFAULT_PALETTE}
       />
 
       {/* 「TasteMapとは？」（PanelShell 版） */}

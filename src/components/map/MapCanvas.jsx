@@ -21,22 +21,12 @@ import {
   MAP_POINT_COLOR,
   ORANGE,
 } from "../../ui/constants";
+import { getClusterRGBA } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
 const FAVORITE_RED = [178, 53, 103, 255];
 const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
-const hexToRgba = (hex) => {
-  if (!hex || typeof hex !== "string") return [136,136,136,255];
-  const s = hex.replace("#","").trim();
-  const v = s.length === 3
-    ? s.split("").map(ch => ch+ch).join("")
-    : s.padEnd(6,"0").slice(0,6);
-  const r = parseInt(v.slice(0,2),16);
-  const g = parseInt(v.slice(2,4),16);
-  const b = parseInt(v.slice(4,6),16);
-  return [r,g,b,255];
-};
 
 const janOf = (d) => String(d?.jan_code ?? d?.JAN ?? "");
 const xOf   = (d) => Number.isFinite(d?.umap_x) ? d.umap_x : d?.UMAP1;
@@ -154,7 +144,6 @@ const MapCanvas = forwardRef(function MapCanvas(
     edgeMarginXPx = 8,
     edgeMarginYPx = 20,
     clusterColorMode = false,
-    clusterColors = {},
   },
   deckRef   // ★ ref を受け取る
 ) {
@@ -431,7 +420,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;
           if (favorites && favorites[janStr]) return FAVORITE_RED;
           if (clusterColorMode && Number.isFinite(d.cluster)) {
-            return hexToRgba(clusterColors?.[Number(d.cluster)]);
+            return getClusterRGBA(d.cluster);
           }
           return MAP_POINT_COLOR;
         },
@@ -441,14 +430,13 @@ const MapCanvas = forwardRef(function MapCanvas(
             JSON.stringify(favorites || {}),
             JSON.stringify(userRatings || {}),
             clusterColorMode,
-            JSON.stringify(clusterColors || {}),
           ],
         },
         radiusUnits: "meters",
         getRadius: 0.03,
         pickable: true,
       }),
-    [data, selectedJAN, favorites, userRatings, clusterColorMode, clusterColors]
+    [data, selectedJAN, favorites, userRatings, clusterColorMode]
   );
 
   // --- レイヤ：評価リング ---
