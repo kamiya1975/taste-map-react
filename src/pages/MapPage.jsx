@@ -77,17 +77,8 @@ function MapPage() {
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
   const [iframeNonce, setIframeNonce] = useState(0);
 
-    // クラスタ配色
+  // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
-  const [clusterColors, setClusterColors] = useState({});
-
-  // デフォルトパレット（足りなければ循環）
-  const DEFAULT_PALETTE = [
-    "#5B8FF9", "#5AD8A6", "#5D7092", "#F6BD16", "#E8684A",
-    "#6DC8EC", "#9270CA", "#FF99C3", "#9DD3A8", "#FF9845",
-    "#1E90FF", "#00C1D4", "#A1A7B3", "#BFBF3F", "#F45D5D",
-    "#2FC25B", "#6A5ACD", "#FF7F50", "#A0522D", "#20B2AA",
-  ];
 
   // ユニークな cluster 値 → 初期色を決定
   const clusterList = useMemo(() => {
@@ -95,28 +86,6 @@ function MapPage() {
     (data || []).forEach(d => Number.isFinite(d.cluster) && s.add(Number(d.cluster)));
     return Array.from(s).sort((a,b)=>a-b);
   }, [data]);
-
-  // 初期化 & localStorage から復元
-  useEffect(() => {
-    const key = "tm_cluster_colors";
-    try {
-      const saved = JSON.parse(localStorage.getItem(key) || "{}");
-      const init = {};
-      clusterList.forEach((c, i) => {
-        init[c] = saved?.[c] || DEFAULT_PALETTE[i % DEFAULT_PALETTE.length];
-      });
-      setClusterColors(init);
-    } catch {
-      const init = {};
-      clusterList.forEach((c, i) => init[c] = DEFAULT_PALETTE[i % DEFAULT_PALETTE.length]);
-      setClusterColors(init);
-    }
-  }, [clusterList]);
-
-  // 保存
-  useEffect(() => {
-    try { localStorage.setItem("tm_cluster_colors", JSON.stringify(clusterColors || {})); } catch {}
-  }, [clusterColors]);
 
   // 検索・一覧
   const [isSearchOpen, setIsSearchOpen] = useState(false);
