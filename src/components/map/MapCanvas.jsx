@@ -27,29 +27,7 @@ const janOf = (d) => String(d?.jan_code ?? d?.JAN ?? "");
 const xOf   = (d) => Number.isFinite(d?.umap_x) ? d.umap_x : d?.UMAP1;
 const yOf   = (d) => Number.isFinite(d?.umap_y) ? d.umap_y : d?.UMAP2;
 
-// --- レイヤ：基準のワイン（常時表示） ---
-const ANCHOR_JAN = "4964044046324"; // ← 基準ワインのJAN
-const anchorCompassLayer = useMemo(() => {
-  const item = data.find(d => String(d.JAN) === ANCHOR_JAN);
-  if (!item || !Number.isFinite(item.umap_x) || !Number.isFinite(item.umap_y)) return null;
-  return new IconLayer({
-    id: "anchor-compass",
-    data: [{ position: [item.umap_x, -item.umap_y, 0] }],
-    getPosition: d => d.position,
-    getIcon: () => ({
-      url: `${process.env.PUBLIC_URL || ""}/img/compass.png`, // ← アイコン画像
-      width: 310,
-      height: 310,
-      anchorX: 155,
-      anchorY: 155,
-    }),
-    sizeUnits: "meters",
-    getSize: 0.55,
-    billboard: true,
-    pickable: false,
-    parameters: { depthTest: false },
-  });
-}, [data]);
+const ANCHOR_JAN = "4964044046324";
 
 // クリック時に最近傍を許可する半径（px）
 const CLICK_NEAR_PX = 24; // お好みで 14〜24 あたり
