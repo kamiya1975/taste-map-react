@@ -54,6 +54,7 @@ function MapPage() {
   const [isMyPageOpen, setIsMyPageOpen] = useState(false);      // アプリガイド（メニュー）
   const [isAccountOpen, setIsAccountOpen] = useState(false);    // マイアカウント（メニュー）
   const [isFaqOpen, setIsFaqOpen] = useState(false);            // よくある質問（メニュー）
+  const [isClusterOpen, setIsClusterOpen] = useState(false); // ← 追加：配色パネルの開閉
 
   const iframeRef = useRef(null);
   const autoOpenOnceRef = useRef(false);
@@ -884,7 +885,7 @@ function MapPage() {
       </button>
 
       <button
-        onClick={() => setClusterColorMode(v => !v)}
+        onClick={() => setIsClusterOpen(true)}   // ← Drawer を開く
         style={{
           position: "absolute",
           top: "160px",
@@ -901,7 +902,7 @@ function MapPage() {
           padding: 0,
         }}
         aria-label="クラスタ配色"
-        title={clusterColorMode ? "クラスタ配色（ON）" : "クラスタ配色（OFF）"}
+        title="クラスタ配色"
       >
         <img
           src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
@@ -1251,6 +1252,82 @@ function MapPage() {
         </div>
       </Drawer>
 
+      {/* クラスタ配色パネル */}
+      <Drawer
+        anchor="bottom"
+        open={isClusterOpen}
+        onClose={() => setIsClusterOpen(false)}
+        BackdropProps={{ style: { background: "transparent" } }}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            zIndex: 1500,
+            height: "70vh",                // 他と揃えるなら 85vh でもOK
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+      >
+        <PanelHeader
+          title="クラスタ配色"
+          icon="hyouka.svg"               // ← 仮アイコン
+          onClose={() => setIsClusterOpen(false)}
+        />
+
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto", padding: 12 }}>
+          {/* ON/OFF トグル（地図の配色を反映） */}
+          <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 14 }}>
+            <input
+             type="checkbox"
+              checked={clusterColorMode}
+              onChange={(e) => setClusterColorMode(e.target.checked)}
+            />
+            配色を使う（クラスタごとに色分け）
+          </label>
+
+          {/* 色一覧 */}
+          <div style={{ display: "grid", gridTemplateColumns: "auto auto", rowGap: 8, columnGap: 12 }}>
+            {clusterList.map((c) => (
+              <React.Fragment key={c}>
+                <div style={{ lineHeight: "32px" }}>cluster {c}</div>
+                <input
+                  type="color"
+                  value={clusterColors?.[c] || "#888888"}
+                  onChange={(e) => setClusterColors((prev) => ({ ...prev, [c]: e.target.value }))}
+                  style={{ width: 32, height: 32, border: "none", background: "transparent", padding: 0 }}
+                />
+              </React.Fragment>
+            ))}
+          </div>
+
+         {/* 操作用リンク */}
+          <div style={{ marginTop: 12, display: "flex", gap: 12, fontSize: 12 }}>
+            <button
+              onClick={() => setClusterColorMode(false)}
+              style={{ border: "1px solid #c9c9b0", borderRadius: 6, padding: "6px 10px", background: "#fff" }}
+           >
+              元の配色に戻す（OFF）
+            </button>
+            <button
+              onClick={() => {
+                // デフォルトパレットで再割当て
+                const next = {};
+                clusterList.forEach((c, i) => (next[c] = DEFAULT_PALETTE[i % DEFAULT_PALETTE.length]));
+                setClusterColors(next);
+              }}
+              style={{ border: "1px solid #c9c9b0", borderRadius: 6, padding: "6px 10px", background: "#fff" }}
+            >
+              デフォルトに戻す
+            </button>
+          </div>
+
+          <p style={{ marginTop: 10, color: "#666", fontSize: 12 }}>
+            ※ 色は自動保存されます。配色を使うをOFFにすると通常配色に戻ります。
+          </p>
+        </div>
+      </Drawer>
 
       {/* 「TasteMapとは？」（必要なら重ね表示に） */}
       <Drawer
