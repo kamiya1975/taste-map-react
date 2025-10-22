@@ -642,6 +642,7 @@ function MapPage() {
     return bestK + 1;
   };
 
+  // ===== 嗜好重心計算
   const compass = useMemo(() => {
     const rated = Object.entries(userRatings || {})
       .map(([jan, v]) => ({ jan: String(jan), rating: Number(v?.rating) }))

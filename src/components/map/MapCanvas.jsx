@@ -682,7 +682,6 @@ const MapCanvas = forwardRef(function MapCanvas(
           })
         : null,
 
-
         // グリッド線
         new LineLayer({
           id: "grid-lines-thin",
