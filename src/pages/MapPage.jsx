@@ -16,7 +16,13 @@ import FaqPanelContent from "../components/panels/FaqPanelContent";
 import MyPagePanelContent from "../components/panels/MyPagePanelContent";
 import ClusterPalettePanel from "../components/panels/ClusterPalettePanel";
 import AboutTasteMapPanel from "../components/panels/AboutTasteMapPanel";
-import {drawerModalProps,paperBaseStyle,ZOOM_LIMITS,INITIAL_ZOOMCENTER_Y_OFFSET,} from "../ui/constants";
+import {
+  drawerModalProps,
+  paperBaseStyle,
+  ZOOM_LIMITS,
+  INITIAL_ZOOM,
+  CENTER_Y_OFFSET,
+} from "../ui/constants";
 
 const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
