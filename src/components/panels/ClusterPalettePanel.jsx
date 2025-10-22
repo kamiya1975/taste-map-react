@@ -12,11 +12,6 @@ export default function ClusterPalettePanel({
   return (
     <PanelShell isOpen={isOpen} onClose={onClose} title="クラスタ配色" icon="hyouka.svg">
       <div style={{ padding: 12 }}>
-        <label style={{ display:"flex", alignItems:"center", gap:8, marginBottom: 10, fontSize: 14 }}>
-          <input type="checkbox" checked={clusterColorMode} onChange={(e)=>setClusterColorMode(e.target.checked)} />
-          配色を使う（クラスタごとに色分け）
-        </label>
-
         <div style={{ display:"grid", gridTemplateColumns:"auto auto", rowGap:8, columnGap:12 }}>
           {clusterList.map((c)=>(
             <React.Fragment key={c}>
@@ -33,12 +28,6 @@ export default function ClusterPalettePanel({
 
         <div style={{ marginTop: 12, display: "flex", gap: 12, fontSize: 12 }}>
           <button
-            onClick={()=> setClusterColorMode(false)}
-            style={{ border:"1px solid #c9c9b0", borderRadius:6, padding:"6px 10px", background:"#fff" }}
-          >
-            元の配色に戻す（OFF）
-          </button>
-          <button
             onClick={()=>{
               const next = {};
               clusterList.forEach((c,i)=> next[c] = DEFAULT_PALETTE[i % DEFAULT_PALETTE.length]);
@@ -51,7 +40,7 @@ export default function ClusterPalettePanel({
         </div>
 
         <p style={{ marginTop: 10, color: "#666", fontSize: 12 }}>
-          ※ 色は自動保存されます。配色を使うをOFFにすると通常配色に戻ります。
+           ※ 色は自動保存されます。配色のON/OFFは右側の丸アイコンで切り替えできます。
         </p>
       </div>
     </PanelShell>

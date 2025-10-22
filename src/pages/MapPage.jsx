@@ -865,7 +865,17 @@ function MapPage() {
       </button>
 
       <button
-        onClick={() => openPanel("cluster")} 
+        onClick={async () => {
+          if (!clusterColorMode) {
+            // OFF → ON：配色を有効化してパネルも開く
+            setClusterColorMode(true);
+            await openPanel("cluster");
+          } else {
+            // ON → OFF：配色を無効化。パネルは出さない（開いていたら閉じる）
+            setClusterColorMode(false);
+            setIsClusterOpen(false);
+          }
+        }}
         style={{
           position: "absolute",
           top: "160px",
