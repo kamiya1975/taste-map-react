@@ -3,8 +3,8 @@ import React, { useEffect, useState, useMemo, useRef, useCallback } from "react"
 import { useLocation, useNavigate } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
 
-import MapGuidePanelContent from "./components/panels/MapGuidePanelContent";
-import SearchPanel from "./components/panels/SearchPanel";
+import MapGuidePanelContent from "../components/panels/MapGuidePanelContent";
+import SearchPanel from "../components/panels/SearchPanel";
 import BarcodeScanner from "../components/BarcodeScanner";
 import FavoritePanel from "../components/panels/FavoritePanel";
 import RatedPanel from "../components/panels/RatedPanel";
@@ -14,8 +14,8 @@ import PanelHeader from "../components/ui/PanelHeader";
 import StorePanelContent from "../components/panels/StorePanelContent";
 import FaqPanelContent from "../components/panels/FaqPanelContent";
 import MyPagePanelContent from "../components/panels/MyPagePanelContent";
-import ClusterPalettePanel from "./components/panels/ClusterPalettePanel";
-import AboutTasteMapPanel from "./components/panels/AboutTasteMapPanel";
+import ClusterPalettePanel from "../components/panels/ClusterPalettePanel";
+import AboutTasteMapPanel from "../components/panels/AboutTasteMapPanel";
 import {
   drawerModalProps,
   paperBaseStyle,
