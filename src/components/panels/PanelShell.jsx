@@ -16,14 +16,21 @@ export default function PanelShell({
   rightExtra = null,
   children,
   height = DRAWER_HEIGHT,
-  onHeaderClick,                // ★ 追加：ヘッダー帯タップ時のハンドラ（任意）
-  motionPreset = "mui",
+  onHeaderClick,
+  motionPreset = "mui", // 'spring' | 'mui' | 'snap'
 }) {
-  // 閉じる押下時はトグルを発火させない
   const handleClose = (e) => {
     e?.stopPropagation?.();
     onClose?.();
   };
+
+  // --- transition プリセット ---
+  const transitions = {
+    spring: { type: "spring", stiffness: 200, damping: 25 },
+    mui: { type: "tween", ease: [0.4, 0.0, 0.2, 1], duration: 0.22 },
+    snap: { type: "tween", duration: 0 },
+  };
+  const transition = transitions[motionPreset] || transitions.mui;
 
   return (
     <AnimatePresence>
@@ -35,93 +42,9 @@ export default function PanelShell({
           transition={transition}
           style={{
             position: "absolute",
-            left: 0, right: 0, bottom: 0,
-            height,
-            backgroundColor: "#fff",
-            boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
-            borderTopLeftRadius: 12,
-            borderTopRightRadius: 12,
-            display: "flex",
-            flexDirection: "column",
-            zIndex: 1500,
-          }}
-        >
-          <div
-            onClick={onHeaderClick}           // ★ ヘッダー全域をトグル領域に
-            style={{
-              cursor: onHeaderClick ? "pointer" : "default",
-              userSelect: "none",
-            }}
-          >
-            <PanelHeader
-              title={title}
-              icon={icon}
-              onClose={handleClose}           // ★ 伝播止めるラッパー
-              rightExtra={rightExtra}
-            />
-          </div>
-
-          <div
-            className="drawer-scroll"
-            style={{
-              height: `calc(${height} - ${PANEL_HEADER_H}px)`,
-              overflowY: "auto",
-              background: "#fff",
-              borderTop: PANEL_HEADER_BORDER,
-            }}
-          >
-            {children}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-// src/components/panels/PanelShell.jsx
-import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  DRAWER_HEIGHT,
-  PANEL_HEADER_H,
-  PANEL_HEADER_BORDER,
-} from "../../ui/constants";
-import PanelHeader from "../ui/PanelHeader";
-
-export default function PanelShell({
-  isOpen,
-  onClose,
-  title,
-  icon,
-  rightExtra = null,
-  children,
-  height = DRAWER_HEIGHT,
-  onHeaderClick,
-  motionPreset = "mui",   // 'spring' | 'mui' | 'snap'
-}) {
-  const handleClose = (e) => {
-    e?.stopPropagation?.();
-    onClose?.();
-  };
-
-  // ★ ここを追加：プリセットからtransitionを決定
-  const transitions = {
-    spring: { type: "spring", stiffness: 200, damping: 25 },
-    mui:    { type: "tween", ease: [0.4, 0.0, 0.2, 1], duration: 0.22 },
-    snap:   { type: "tween", duration: 0 },
-  };
-  const transition = transitions[motionPreset] || transitions.mui;
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={transition}   // ← これで参照OK
-          style={{
-            position: "absolute",
-            left: 0, right: 0, bottom: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             height,
             backgroundColor: "#fff",
             boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
@@ -134,7 +57,10 @@ export default function PanelShell({
         >
           <div
             onClick={onHeaderClick}
-            style={{ cursor: onHeaderClick ? "pointer" : "default", userSelect: "none" }}
+            style={{
+              cursor: onHeaderClick ? "pointer" : "default",
+              userSelect: "none",
+            }}
           >
             <PanelHeader
               title={title}
