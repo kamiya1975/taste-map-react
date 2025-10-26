@@ -6,7 +6,7 @@ import {
   CLUSTER_DRAWER_HEIGHT,          // 例: "calc(56svh - env(safe-area-inset-bottom))"
 } from "../../ui/constants";
 
-const COLLAPSED_HEIGHT = "calc(20svh - env(safe-area-inset-bottom))"; // ★ 10%
+const COLLAPSED_HEIGHT = "calc(15svh - env(safe-area-inset-bottom))";
 
 const rgbaToCss = (arr) => {
   if (!Array.isArray(arr)) return "rgba(200,200,200,1)";
