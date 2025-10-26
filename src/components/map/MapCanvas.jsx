@@ -29,6 +29,34 @@ const yOf   = (d) => Number.isFinite(d?.umap_y) ? d.umap_y : d?.UMAP2;
 
 const ANCHOR_JAN = "4964044046324";
 
+// （嗜好重心ピン）
+const makePinSVG = ({
+  fill = "#2A6CF7",        // 本体色
+  stroke = "#FFFFFF",      // 縁取り
+  strokeWidth = 2,
+  innerFill = "#FFFFFF",   // 中の丸
+} = {}) => {
+  const w = 64, h = 96; // 描画サイズ（アンカー基準用）
+  // しずく型のピン（先端は下）
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <path d="M32 4
+             C19 4 9 14 9 28
+             C9 47 32 79 32 79
+             C32 79 55 47 55 28
+             C55 14 45 4 32 4 Z"
+          fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" />
+    <circle cx="32" cy="28" r="9" fill="${innerFill}"/>
+  </svg>`;
+  return {
+    url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`,
+    width: w,
+    height: h,
+    anchorX: w / 2,   // 先端が座標に刺さるよう、Xは中央
+    anchorY: h - 1,   // Yは最下点付近（微調整は -1/-2 で）
+  };
+};
+
 // クリック時に最近傍を許可する半径（px）
 const CLICK_NEAR_PX = 24; // お好みで 14〜24 あたり
 
@@ -429,43 +457,44 @@ const MapCanvas = forwardRef(function MapCanvas(
     });
   }, [data, userRatings]);
 
-  // --- レイヤ：嗜好コンパス/ユーザーピン ---
+  // --- レイヤ：嗜好コンパス（ユーザー重心）をピン化 ---
   const compassLayer = useMemo(() => {
     if (!compassPoint) return null;
+    const icon = makePinSVG({
+      fill: "#2A6CF7",       // お好みでブランドカラー等
+      stroke: "#FFFFFF",
+      strokeWidth: 2,
+      innerFill: "#FFFFFF",
+    });
     return new IconLayer({
-      id: "preference-compass",
+      id: "preference-pin",
       data: [{ position: [compassPoint[0], -compassPoint[1], 0] }],
-      getPosition: (d) => d.position,
-      getIcon: () => ({
-        url: `${process.env.PUBLIC_URL || ""}/img/account.png`,
-        width: 310,
-        height: 310,
-        anchorX: 155,
-        anchorY: 155,
-      }),
+      getPosition: d => d.position,
+      getIcon: () => icon,
       sizeUnits: "meters",
-      getSize: 0.4,
+      getSize: 0.55,          // 見た目サイズ（調整ポイント）
       billboard: true,
       pickable: false,
       parameters: { depthTest: false },
     });
   }, [compassPoint]);
 
+  // --- レイヤ：任意ユーザーピンをピン化（色違い） ---
   const userPinCompassLayer = useMemo(() => {
     if (!userPin) return null;
+    const icon = makePinSVG({
+      fill: "#F2415A",        // こちらは赤系などで区別
+      stroke: "#FFFFFF",
+      strokeWidth: 2,
+      innerFill: "#FFFFFF",
+    });
     return new IconLayer({
-      id: "user-pin-compass",
+      id: "user-pin",
       data: [{ position: [userPin[0], -userPin[1], 0] }],
-      getPosition: (d) => d.position,
-      getIcon: () => ({
-        url: `${process.env.PUBLIC_URL || ""}/img/account.png`,
-        width: 310,
-        height: 310,
-        anchorX: 155,
-        anchorY: 155,
-      }),
+      getPosition: d => d.position,
+      getIcon: () => icon,
       sizeUnits: "meters",
-      getSize: 0.5,
+      getSize: 0.60,
       billboard: true,
       pickable: false,
       parameters: { depthTest: false },
