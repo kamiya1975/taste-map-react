@@ -37,6 +37,7 @@ export default function ClusterPalettePanel({
       icon="palette.svg"
       height={collapsed ? COLLAPSED_HEIGHT : height}   // ★ 高さ切替
       onHeaderClick={() => setCollapsed(v => !v)}      // ★ 帯タップでトグル
+      motionPreset="mui"
     >
       {/* 折りたたみ時は中身を簡略化するなら以下で条件分岐も可 */}
       {!collapsed ? (

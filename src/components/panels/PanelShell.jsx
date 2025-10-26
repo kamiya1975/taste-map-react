@@ -17,6 +17,7 @@ export default function PanelShell({
   children,
   height = DRAWER_HEIGHT,
   onHeaderClick,                // ★ 追加：ヘッダー帯タップ時のハンドラ（任意）
+  motionPreset = "mui",
 }) {
   // 閉じる押下時はトグルを発火させない
   const handleClose = (e) => {
@@ -31,7 +32,7 @@ export default function PanelShell({
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
-          transition={{ type: "spring", stiffness: 200, damping: 25 }}
+          transition={transition}
           style={{
             position: "absolute",
             left: 0, right: 0, bottom: 0,
