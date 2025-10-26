@@ -1016,7 +1016,7 @@ function MapPage() {
       <ClusterPalettePanel
         isOpen={isClusterOpen}
         onClose={() => setIsClusterOpen(false)}
-        height="56vh"
+        height="40vh"
       />
 
       {/* 「TasteMapとは？」（PanelShell 版） */}
