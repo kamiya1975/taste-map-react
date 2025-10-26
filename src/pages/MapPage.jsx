@@ -835,52 +835,51 @@ function MapPage() {
       </button>
 
       <button
-      onClick={async () => {
-        setClusterColorMode(async (prev) => {
-          const next = !prev;
+        onClick={async () => {
+          const next = !clusterColorMode;
           if (next) {
-            // ★ 他のドロワーをすべて閉じる（アニメ完了まで待つ）
+            // ON にする時だけ他ドロワーを先に閉じてから開く
             await closeUIsThen();
             setIsClusterOpen(true);
           } else {
+            // OFF の時はそのまま閉じる
             setIsClusterOpen(false);
-          }
-          return next;
-        });
-      }}
-      style={{
-        position: "absolute",
-        top: "160px",
-        right: "10px",
-        zIndex: 10,
-        width: "40px",
-        height: "40px",
-        background: "transparent",
-        border: "none",
-       cursor: "pointer",
-       display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 0,
-      }}
-      aria-label="クラスタ配色"
-      title="クラスタ配色"
-    >
-      <img
-        src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
-        alt=""
+            }
+          setClusterColorMode(next);
+          }}
         style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "contain",
-          display: "block",
-          pointerEvents: "none",
-          opacity: clusterColorMode ? 1.0 : 0.5,
-          transition: "opacity 0.2s",
+          position: "absolute",
+          top: "160px",
+          right: "10px",
+          zIndex: 10,
+          width: "40px",
+          height: "40px",
+          background: "transparent",
+          border: "none",
+         cursor: "pointer",
+         display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
         }}
-        draggable={false}
-      />
-    </button>
+        aria-label="クラスタ配色"
+        title="クラスタ配色"
+      >
+        <img
+          src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
+          alt=""
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            display: "block",
+            pointerEvents: "none",
+            opacity: clusterColorMode ? 1.0 : 0.5,
+            transition: "opacity 0.2s",
+          }}
+          draggable={false}
+        />
+      </button>
 
       {/* ====== 検索パネル ====== */}
       <SearchPanel
