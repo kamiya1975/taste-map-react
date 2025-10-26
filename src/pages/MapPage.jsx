@@ -144,6 +144,7 @@ function MapPage() {
     else if (kind === "rated")   setIsRatedOpen(true);
     else if (kind === "guide")   setIsGuideOpen(true);
     else if (kind === "cluster")  setIsClusterOpen(true);
+    else if (kind === "cluster")  setIsClusterOpen(true);
   }, [closeUIsThen]);
 
   /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
@@ -834,52 +835,52 @@ function MapPage() {
       </button>
 
       <button
-        onClick={() => {
-          setClusterColorMode((prev) => {
-            const next = !prev;
-            if (next) {
-              // OFF → ON：配色ONにして説明パネルを開く
-              setIsClusterOpen(true);
-            } else {
-              // ON → OFF：配色を消す。パネルは出さない（開いてたら閉じる）
-              setIsClusterOpen(false);
-             }
-             return next;
-            });
-          }}
+      onClick={async () => {
+        setClusterColorMode(async (prev) => {
+          const next = !prev;
+          if (next) {
+            // ★ 他のドロワーをすべて閉じる（アニメ完了まで待つ）
+            await closeUIsThen();
+            setIsClusterOpen(true);
+          } else {
+            setIsClusterOpen(false);
+          }
+          return next;
+        });
+      }}
+      style={{
+        position: "absolute",
+        top: "160px",
+        right: "10px",
+        zIndex: 10,
+        width: "40px",
+        height: "40px",
+        background: "transparent",
+        border: "none",
+       cursor: "pointer",
+       display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 0,
+      }}
+      aria-label="クラスタ配色"
+      title="クラスタ配色"
+    >
+      <img
+        src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
+        alt=""
         style={{
-          position: "absolute",
-          top: "160px",
-          right: "10px",
-          zIndex: 10,
-          width: "40px",
-          height: "40px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          display: "block",
+          pointerEvents: "none",
+          opacity: clusterColorMode ? 1.0 : 0.5,
+          transition: "opacity 0.2s",
         }}
-        aria-label="クラスタ配色"
-        title="クラスタ配色"
-      >
-        <img
-          src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
-          alt=""
-          style={{
-            width: "100%",
-           height: "100%",
-            objectFit: "contain",
-            display: "block",
-           pointerEvents: "none",
-            opacity: clusterColorMode ? 1.0 : 0.5, // ON/OFFで少し明度差をつける
-            transition: "opacity 0.2s",
-          }}
-          draggable={false}
-        />
-      </button>
+        draggable={false}
+      />
+    </button>
 
       {/* ====== 検索パネル ====== */}
       <SearchPanel
