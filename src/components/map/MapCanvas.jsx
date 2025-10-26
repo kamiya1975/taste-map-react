@@ -483,7 +483,7 @@ const MapCanvas = forwardRef(function MapCanvas(
   const userPinCompassLayer = useMemo(() => {
     if (!userPin) return null;
     const icon = makePinSVG({
-      fill: "#F2415A",        // こちらは赤系などで区別
+      fill: "#F7931E",        // こちらは赤系などで区別
       stroke: "#FFFFFF",
       strokeWidth: 2,
       innerFill: "#FFFFFF",
