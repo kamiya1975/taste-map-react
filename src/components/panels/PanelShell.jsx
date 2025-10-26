@@ -13,10 +13,17 @@ export default function PanelShell({
   onClose,
   title,
   icon,
-  rightExtra = null,       // 右上に並び替えカプセル等を置きたい時
-  children,                // パネル中身
-  height = DRAWER_HEIGHT,  // 必要なら可変
+  rightExtra = null,
+  children,
+  height = DRAWER_HEIGHT,
+  onHeaderClick,                // ★ 追加：ヘッダー帯タップ時のハンドラ（任意）
 }) {
+  // 閉じる押下時はトグルを発火させない
+  const handleClose = (e) => {
+    e?.stopPropagation?.();
+    onClose?.();
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -35,10 +42,24 @@ export default function PanelShell({
             borderTopRightRadius: 12,
             display: "flex",
             flexDirection: "column",
-            zIndex: 1500, // 他と同等
+            zIndex: 1500,
           }}
         >
-          <PanelHeader title={title} icon={icon} onClose={onClose} rightExtra={rightExtra} />
+          <div
+            onClick={onHeaderClick}           // ★ ヘッダー全域をトグル領域に
+            style={{
+              cursor: onHeaderClick ? "pointer" : "default",
+              userSelect: "none",
+            }}
+          >
+            <PanelHeader
+              title={title}
+              icon={icon}
+              onClose={handleClose}           // ★ 伝播止めるラッパー
+              rightExtra={rightExtra}
+            />
+          </div>
+
           <div
             className="drawer-scroll"
             style={{
