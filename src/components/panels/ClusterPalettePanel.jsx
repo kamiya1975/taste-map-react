@@ -21,6 +21,10 @@ export default function ClusterPalettePanel({
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
+  React.useEffect(() => {
+    if (!isOpen) setCollapsed(false);
+  }, [isOpen]);
+
   const entries = useMemo(
     () => Array.from({ length: 20 }, (_, i) => {
       const id = i + 1;
