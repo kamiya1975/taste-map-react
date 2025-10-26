@@ -1,4 +1,3 @@
-// src/components/panels/SearchPanel.jsx
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import Drawer from "@mui/material/Drawer";
 import { makeIndexed, searchItems, normalizeJP } from "../../utils/search";
@@ -6,17 +5,10 @@ import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/consta
 import ListRow from "../ui/ListRow";
 import PanelHeader from "../ui/PanelHeader";
 
-export default function SearchPanel({
-  open,
-  onClose,
-  data = [],
-  onPick,      // (item) => void
-  onScanClick, // () => void
-}) {
+export default function SearchPanel({ open, onClose, data = [], onPick, onScanClick }) {
   const [q, setQ] = useState("");
   const [active, setActive] = useState(-1);
 
-  // パネルが閉じたら検索語と状態をクリア
   useEffect(() => {
     if (!open) {
       setQ("");
@@ -24,25 +16,43 @@ export default function SearchPanel({
     }
   }, [open]);
 
-  // スクロール位置の保存・復元
   const scrollRef = useRef(null);
   const SCROLL_KEY = "searchPanel.scrollTop";
 
   const indexed = useMemo(() => makeIndexed(data), [data]);
-  const results = useMemo(() => searchItems(indexed, q, 200), [indexed, q]);
+
+  // ★ 初期一覧（検索語なし）の並び：希望小売価格 昇順、未登録は最後
+  const initialSorted = useMemo(() => {
+    const arr = Array.isArray(data) ? [...data] : [];
+    arr.sort((a, b) => {
+      const pa = Number.isFinite(a?.["希望小売価格"]) ? a["希望小売価格"] : Infinity;
+      const pb = Number.isFinite(b?.["希望小売価格"]) ? b["希望小売価格"] : Infinity;
+      if (pa !== pb) return pa - pb;
+      // 同額時の安定ソート用（任意）：商品名 or JAN
+      const na = String(a?.["商品名"] ?? a?.JAN ?? "");
+      const nb = String(b?.["商品名"] ?? b?.JAN ?? "");
+      return na.localeCompare(nb, "ja");
+    });
+    return arr;
+  }, [data]);
+
+  // ★ 検索語がある時は従来検索、空の時は「全件・価格昇順」
+  const results = useMemo(() => {
+    const nq = normalizeJP(q);
+    if (nq) return searchItems(indexed, q, 200);
+    return initialSorted;
+  }, [indexed, q, initialSorted]);
 
   const pick = (i) => {
     const it = results[i] ?? results[0];
-    if (it) onPick?.(it); // 一覧は閉じない（MapPage側も同様の運用）
+    if (it) onPick?.(it);
   };
 
-  // 表示用モデル（番号は 1,2,3...）
   const listed = useMemo(
     () => results.map((x, i) => ({ ...x, addedAt: null, displayIndex: i + 1 })),
     [results]
   );
 
-  // Drawerを開いたらスクロール位置を復元
   useEffect(() => {
     if (!open) return;
     const el = scrollRef.current;
@@ -55,7 +65,6 @@ export default function SearchPanel({
     }
   }, [open]);
 
-  // スクロール位置を保存（軽スロットル）
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -70,86 +79,43 @@ export default function SearchPanel({
     return () => el.removeEventListener("scroll", onScroll);
   }, [open]);
 
-  // 共通ヘッダー定義（商品ページと同一トーン）
   const HEADER_H = 42;
-  const HEADER_BG = "rgb(221, 211, 198)";
-  const HEADER_BORDER = "1px solid rgb(201, 201, 176)";
 
   return (
     <Drawer
       anchor="bottom"
       open={open}
-      onClose={onClose}           // 明示的に閉じたときだけ閉じる
-      hideBackdrop                // 背面操作可＆誤閉じ防止
+      onClose={onClose}
+      hideBackdrop
       ModalProps={{ ...drawerModalProps, keepMounted: true }}
       PaperProps={{ style: paperBaseStyle }}
     >
-      {/* ===== ヘッダー ===== */}
       <PanelHeader
-       title="検索"
-       icon="search2.svg"
-       iconFallback="search2.svg"
-       onClose={() => { setQ(""); setActive(-1); onClose?.(); }}
-     />
+        title="検索"
+        icon="search2.svg"
+        iconFallback="search2.svg"
+        onClose={() => { setQ(""); setActive(-1); onClose?.(); }}
+      />
 
-      {/* ===== 検索ボックス行 ===== */}
-      <div
-        style={{ 
-          padding: "8px 12px 6px",  
-          borderBottom:"1px solid #eee", 
-          background:"#f9f9f9" ,
-        }}
-      >
-        <div
-          style={{
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            border: "1px solid #ccc",
-            borderRadius: 8,
-            background: "#fff",
-            padding: "6px 10px",
-          }}
-        >
+      {/* 検索行 */}
+      <div style={{ padding: "8px 12px 6px", borderBottom: "1px solid #eee", background:"#f9f9f9" }}>
+        <div style={{ position: "relative", display: "flex", alignItems: "center", border: "1px solid #ccc", borderRadius: 8, background: "#fff", padding: "6px 10px" }}>
           <input
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
               setActive(-1);
-              sessionStorage.setItem(SCROLL_KEY, "0"); // クエリ変更時は先頭へ
+              sessionStorage.setItem(SCROLL_KEY, "0");
             }}
             onKeyDown={(e) => { if (e.key === "Enter") pick(0); }}
             placeholder="キーワードまたはJANコードから検索"
-            style={{
-              border: "none",
-              outline: "none",
-              width: "100%",
-              fontSize: 16,
-              paddingRight: 44, // 右端のバーコードボタン分
-              lineHeight: 1,
-            }}
+            style={{ border: "none", outline: "none", width: "100%", fontSize: 16, paddingRight: 44, lineHeight: 1 }}
           />
-
-          {/* 右端：バーコード読み取り */}
           <button
             onClick={onScanClick}
             title="バーコード読み取り"
             aria-label="バーコード読み取り"
-            style={{
-              position: "absolute",
-              right: 6,
-              top: "50%",
-              transform: "translateY(-50%)",
-              width: 34,
-              height: 22,
-              borderRadius: 6,
-              border: "1px solid #d0d0d0",
-              background: "#fff",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
+            style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", width: 34, height: 22, borderRadius: 6, border: "1px solid #d0d0d0", background: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
           >
             <div style={{ display: "flex", gap: 2, height: 14, alignItems: "stretch" }}>
               {[3, 1, 2, 1, 2, 1].map((w, i) => (
@@ -160,11 +126,10 @@ export default function SearchPanel({
         </div>
       </div>
 
-      {/* ===== リスト ===== */}
+      {/* リスト */}
       <div
         ref={scrollRef}
         style={{
-          // 60px(ヘッダー) + ~58px(検索行) を引く
           height: `calc(${DRAWER_HEIGHT} - ${HEADER_H}px - 52px)`,
           overflowY: "auto",
           padding: "6px 10px 12px",
@@ -184,10 +149,10 @@ export default function SearchPanel({
               index={item.displayIndex}
               item={item}
               onPick={() => pick(idx)}
-              showDate={false}            // 検索は日付非表示（レイアウトは確保）
-              accentColor="#6b2e2e"       // ワイン色の小ドット
+              showDate={false}
+              accentColor="#6b2e2e"
               hoverHighlight={true}
-              onMouseEnter={() => setActive(idx)} // 既存の active を残すなら必要に応じて利用
+              onMouseEnter={() => setActive(idx)}
             />
           ))}
         </ul>
