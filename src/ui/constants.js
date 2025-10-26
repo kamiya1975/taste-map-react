@@ -117,4 +117,4 @@ export const getTypeColorCSS = (type, fallback = "rgb(180,180,180)") => {
 };
 
 // src/ui/constants.js
-export const CLUSTER_DRAWER_HEIGHT = "56vh"; // 好みで 50–65vh
+export const CLUSTER_DRAWER_HEIGHT = "calc(56svh - env(safe-area-inset-bottom))";
