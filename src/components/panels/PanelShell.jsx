@@ -18,6 +18,8 @@ export default function PanelShell({
   height = DRAWER_HEIGHT,
   onHeaderClick,
   motionPreset = "mui", // 'spring' | 'mui' | 'snap'
+  animateHeight = false,
+  heightDurationMs = 225,
 }) {
   const handleClose = (e) => {
     e?.stopPropagation?.();
@@ -53,6 +55,10 @@ export default function PanelShell({
             display: "flex",
             flexDirection: "column",
             zIndex: 1500,
+            // ★ 高さだけ CSS トランジション（MUIと同じカーブ）
+            transition: animateHeight
+              ? `height ${heightDurationMs}ms cubic-bezier(0.4, 0.0, 0.2, 1)`
+              : undefined,
           }}
         >
           <div

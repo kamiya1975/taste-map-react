@@ -38,6 +38,8 @@ export default function ClusterPalettePanel({
       height={collapsed ? COLLAPSED_HEIGHT : height}   // ★ 高さ切替
       onHeaderClick={() => setCollapsed(v => !v)}      // ★ 帯タップでトグル
       motionPreset="mui"
+      animateHeight={true}
+      heightDurationMs={225}
     >
       {/* 折りたたみ時は中身を簡略化するなら以下で条件分岐も可 */}
       {!collapsed ? (
