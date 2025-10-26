@@ -1,23 +1,36 @@
 // src/components/panels/ClusterPalettePanel.jsx
-import React from "react";
+import React, { useMemo } from "react";
 import PanelShell from "./PanelShell";
-import { CLUSTER_COLORS_FIXED } from "../../ui/constants";
+import { CLUSTER_COLORS_FIXED, CLUSTER_DRAWER_HEIGHT } from "../../ui/constants";
 
 const rgbaToCss = (arr) => {
   if (!Array.isArray(arr)) return "rgba(200,200,200,1)";
-  const [r,g,b,a=255] = arr;
-  return `rgba(${r}, ${g}, ${b}, ${a/255})`;
+  const [r, g, b, a = 255] = arr;
+  return `rgba(${r}, ${g}, ${b}, ${a / 255})`;
 };
 
-export default function ClusterPalettePanel({ isOpen, onClose }) {
+export default function ClusterPalettePanel({
+  isOpen,
+  onClose,
+  height = CLUSTER_DRAWER_HEIGHT, // ★ ここで低めの既定値
+}) {
   // 固定配色の凡例を 1..20 で並べる
-  const entries = Array.from({ length: 20 }, (_, i) => {
-    const id = i + 1;
-    return { id, color: CLUSTER_COLORS_FIXED[id] };
-  });
+  const entries = useMemo(
+    () => Array.from({ length: 20 }, (_, i) => {
+      const id = i + 1;
+      return { id, color: CLUSTER_COLORS_FIXED[id] };
+    }),
+    []
+  );
 
   return (
-    <PanelShell isOpen={isOpen} onClose={onClose} title="クラスタ配色（説明）" icon="hyouka.svg">
+    <PanelShell
+      isOpen={isOpen}
+      onClose={onClose}
+      title="クラスタ配色ガイド"
+      icon="palette.svg"
+      height={height}
+    >
       <div style={{ padding: 12 }}>
         <p style={{ margin: "4px 0 12px", color: "#444", fontSize: 13 }}>
           マップのクラスタ配色は管理者がコードで固定しています。ボタンでONにするとこの配色で点が色分けされます。パネルを閉じても配色は維持され、もう一度ボタンを押すと配色がOFFになります。

@@ -115,3 +115,6 @@ export const getTypeColorCSS = (type, fallback = "rgb(180,180,180)") => {
   if (norm.includes("rose")  || norm.includes("ros"))   return TYPE_COLOR_CSS.Rose;
   return fallback;
 };
+
+// src/ui/constants.js
+export const CLUSTER_DRAWER_HEIGHT = "56vh"; // 好みで 50–65vh
