@@ -3,7 +3,7 @@
 // ==============================
 
 // Drawer の共通高さやスタイル
-export const DRAWER_HEIGHT = "60vh";
+export const DRAWER_HEIGHT = "calc(66svh - env(safe-area-inset-bottom))";
 
 // 透明なモーダルにして、背面の DeckGL を操作可能にする共通 props
 export const drawerModalProps = {

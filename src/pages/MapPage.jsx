@@ -1084,7 +1084,7 @@ function MapPage() {
                ref={iframeRef}
               key={`${selectedJAN}-${iframeNonce}`}
               src={`${process.env.PUBLIC_URL || ""}/#/products/${selectedJAN}?embed=1&_=${iframeNonce}`}
-              style={{ width: "100%", height: "70vh", border: "none" }}
+              style={{ width: "100%", height: "100%", border: "none" }}
               onLoad={() => {
                 try {
                   requestAnimationFrame(() => {
