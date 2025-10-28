@@ -917,7 +917,6 @@ useEffect(() => {
         data={data}
         onPick={async (item) => {
           if (!item) return;
-          await closeUIsThen({ preserveMyPage: true });
           setOpenFromRated(false);
           setHideHeartForJAN(null);
           setSelectedJANFromSearch(null);

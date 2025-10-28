@@ -87,6 +87,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
       open={open}
       onClose={onClose}
       hideBackdrop
+      sx={{ zIndex: 1450 }} 
       ModalProps={{ ...drawerModalProps, keepMounted: true }}
       PaperProps={{ style: paperBaseStyle }}
     >
