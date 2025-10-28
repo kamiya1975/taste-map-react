@@ -22,6 +22,7 @@ import {
   ZOOM_LIMITS,
   INITIAL_ZOOM,
   CENTER_Y_OFFSET,
+  DRAWER_HEIGHT,
 } from "../ui/constants";
 
 const REREAD_LS_KEY = "tm_reread_until";
@@ -93,7 +94,7 @@ function MapPage() {
   const [isFavoriteOpen, setIsFavoriteOpen] = useState(false);
   const [isRatedOpen, setIsRatedOpen] = useState(false);
 
-  const PANEL_ANIM_MS = 320;
+  const PANEL_ANIM_MS = 260;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
   /** まとめて閉じ、閉じアニメ分だけ待つ（preserveMyPage=true ならメニューは残す） */
@@ -1078,7 +1079,7 @@ function MapPage() {
             setHideHeartForJAN(null);
           }}
         />
-        <div className="drawer-scroll">
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
           {selectedJAN ? (
             <iframe
                ref={iframeRef}
@@ -1116,7 +1117,7 @@ function MapPage() {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
             zIndex: 1400,
-            height: "85vh",
+            height: DRAWER_HEIGHT,
             display: "flex",
             flexDirection: "column",
           },
