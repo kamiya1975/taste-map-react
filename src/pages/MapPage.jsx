@@ -732,7 +732,7 @@ function MapPage() {
               top: "50%",
               transform: "translateY(-50%)",
               pointerEvents: "none",
-              fontSize: 8,
+              fontSize: 12,
               lineHeight: 1,
               color: "#444",
             }}
