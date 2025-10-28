@@ -1063,13 +1063,13 @@ useEffect(() => {
           setSelectedJAN(null);
           setHideHeartForJAN(null);
         }}
+        sx={{ zIndex: 1700 }}
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{ ...drawerModalProps, keepMounted: true }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
-            zIndex: 1600,             // ← MyPage(1400)より上に
           },
         }}
       >
@@ -1113,13 +1113,13 @@ useEffect(() => {
         anchor="bottom"
         open={isMyPageOpen}
         onClose={() => setIsMyPageOpen(false)}
+        sx={{ zIndex: 1400 }}
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{ ...drawerModalProps, keepMounted: true }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
-            zIndex: 1400,
             height: DRAWER_HEIGHT,
             display: "flex",
             flexDirection: "column",
@@ -1148,6 +1148,7 @@ useEffect(() => {
         anchor="bottom"
         open={isMapGuideOpen}
         onClose={() => setIsMapGuideOpen(false)}
+        sx={{ zIndex: 1500 }}
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{
           ...drawerModalProps,
@@ -1157,7 +1158,6 @@ useEffect(() => {
           style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
-            zIndex: 1500,          // ← メニュー(1400)より上
             height: DRAWER_HEIGHT,
             display: "flex",
             flexDirection: "column",
@@ -1179,13 +1179,13 @@ useEffect(() => {
         anchor="bottom"
         open={isAccountOpen}
         onClose={() => setIsAccountOpen(false)}
+        sx={{ zIndex: 1500 }}
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{ ...drawerModalProps, keepMounted: true }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
-            zIndex: 1500,
             height: DRAWER_HEIGHT,
             display: "flex",
             flexDirection: "column",
@@ -1207,6 +1207,7 @@ useEffect(() => {
         anchor="bottom"
         open={isStoreOpen}
         onClose={() => setIsStoreOpen(false)}
+        sx={{ zIndex: 1500 }}
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{
           ...drawerModalProps,
@@ -1216,7 +1217,6 @@ useEffect(() => {
           style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
-            zIndex: 1500,          // ← メニューの上
             height: DRAWER_HEIGHT,
             display: "flex",
             flexDirection: "column",
@@ -1238,13 +1238,13 @@ useEffect(() => {
         anchor="bottom"
         open={isFaqOpen}
         onClose={() => setIsFaqOpen(false)}
+        sx={{ zIndex: 1500 }}
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{ ...drawerModalProps, keepMounted: true }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
-            zIndex: 1500,
             height: DRAWER_HEIGHT,
             display: "flex",
             flexDirection: "column",
