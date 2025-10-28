@@ -17,8 +17,6 @@ import {
   MAP_POINT_COLOR,
   getClusterRGBA,
 } from "../../ui/constants";
-import { IconLayer } from "@deck.gl/layers";
-import { COMPASS_URL } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
 const FAVORITE_RED = [178, 53, 103, 255];
