@@ -718,7 +718,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           getSourcePosition: (d) => d.sourcePosition,
           getTargetPosition: (d) => d.targetPosition,
           getColor: [214, 214, 214, 255],
-          getWidth: 1,
+          getWidth: 0.5,
           widthUnits: "pixels",
         }),
         new LineLayer({
@@ -727,7 +727,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           getSourcePosition: (d) => d.sourcePosition,
           getTargetPosition: (d) => d.targetPosition,
           getColor: [144, 144, 144, 255],
-          getWidth: 1,
+          getWidth: 0.5,
           widthUnits: "pixels",
         }),
         // ピン/コンパス
