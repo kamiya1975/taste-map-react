@@ -707,7 +707,7 @@ function MapPage() {
             style={{
               padding: "6px 28px 6px 8px",     // 右に矢印分の余白
               fontSize: "8px",
-              color: "#000",
+              color: "#444",
               backgroundColor: "#fff",
               border: "0.5px solid #000",        // 黒枠
               borderRadius: "6px",             // 角をやや尖らせる（3〜6で調整）
