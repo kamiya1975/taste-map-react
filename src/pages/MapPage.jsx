@@ -913,9 +913,9 @@ useEffect(() => {
       {/* ====== 検索パネル ====== */}
       <SearchPanel
         open={isSearchOpen}
-        onClose={async () => { await closeUIsThen(); }} 
+        onClose={() => setIsSearchOpen(false)}
         data={data}
-        onPick={async (item) => {
+        onPick={(item) => {
           if (!item) return;
           setOpenFromRated(false);
           setHideHeartForJAN(null);
