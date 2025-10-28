@@ -166,6 +166,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     viewState,
     setViewState,
     onPickWine,
+    onOpenSlider,
     edgeMarginXPx = 8,
     edgeMarginYPx = 20,
     clusterColorMode = false,
@@ -612,7 +613,11 @@ const MapCanvas = forwardRef(function MapCanvas(
         // まずは通常のGPUピッキング（点を直タップ）
         const picked = info?.object;
         if (picked && janOf(picked)) {
-          onPickWine?.(picked);
+          if (janOf(picked) === ANCHOR_JAN) {
+            onOpenSlider?.();
+          } else {
+            onPickWine?.(picked);
+          }
           return;
         }
 
@@ -635,7 +640,11 @@ const MapCanvas = forwardRef(function MapCanvas(
         }
 
         // しきい値内なら開く
-        onPickWine?.(nearest);
+        if (janOf(nearest) === ANCHOR_JAN) {
+          onOpenSlider?.();
+        } else {
+          onPickWine?.(nearest);
+        }
       }}
 
       pickingRadius={8}
