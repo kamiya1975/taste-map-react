@@ -15,7 +15,6 @@ import StorePanelContent from "../components/panels/StorePanelContent";
 import FaqPanelContent from "../components/panels/FaqPanelContent";
 import MyPagePanelContent from "../components/panels/MyPagePanelContent";
 import ClusterPalettePanel from "../components/panels/ClusterPalettePanel";
-import AboutTasteMapPanel from "../components/panels/AboutTasteMapPanel";
 import {
   drawerModalProps,
   paperBaseStyle,
@@ -139,7 +138,8 @@ function MapPage() {
     await closeUIsThen(); // すべて閉じる
     if (kind === "mypage")       setIsMyPageOpen(true);
     else if (kind === "mapguide") setIsMapGuideOpen(true);
-    else if (kind === "store")   setIsStoreOpen(true);
+    else if (kind === "guide")    setIsMapGuideOpen(true);
+    else if (kind === "store")    setIsStoreOpen(true);
     else if (kind === "search")  setIsSearchOpen(true);
     else if (kind === "favorite") setIsFavoriteOpen(true);
     else if (kind === "rated")   setIsRatedOpen(true);
