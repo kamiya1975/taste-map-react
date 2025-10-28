@@ -379,7 +379,7 @@ useEffect(() => {
     navigate(location.pathname, { replace: true, state: {} });
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [location.state, userPin, centerToUMAP]);
+}, [location.state, location.key, userPin, centerToUMAP]);
 
   // 初回センタリング（userPin 指定時）
   useEffect(() => {
