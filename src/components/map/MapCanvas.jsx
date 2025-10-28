@@ -17,6 +17,7 @@ import {
   MAP_POINT_COLOR,
   getClusterRGBA,
 } from "../../ui/constants";
+import { COMPASS_URL } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
 const FAVORITE_RED = [178, 53, 103, 255];
@@ -351,7 +352,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           hasRating: false,
         });
       }
-      if ((userRatings[janOf(d)]?.rating ?? 0) > 0) 
+      if ((userRatings?.[janOf(d)]?.rating ?? 0) > 0)
       map.get(key).hasRating = true;
       map.get(key).count += 1;
     });
@@ -458,7 +459,7 @@ const MapCanvas = forwardRef(function MapCanvas(
   }, [data, userRatings]);
 
   // --- レイヤ：嗜好コンパス（ユーザー重心）をピン化 ---
-  const compassLayer = useMemo(() => {
+  const preferencePinLayer = useMemo(() => {
     if (!compassPoint) return null;
     const icon = makePinSVG({
       fill: "#2A6CF7",       // お好みでブランドカラー等
@@ -566,6 +567,28 @@ const MapCanvas = forwardRef(function MapCanvas(
     },
     [panBounds, setViewState, edgeMarginXPx, edgeMarginYPx]
   );
+
+  // (0,0) 固定コンパス
+  const originCompassLayer = useMemo(() => {
+    return new IconLayer({
+      id: "origin-compass",
+      data: [{ x: 0, y: 0 }],
+      getPosition: d => [d.x, -d.y, 0], // Y反転
+      getIcon: () => ({
+        url: COMPASS_URL,
+        width: 512,
+        height: 512,
+        anchorX: 256,   // 画像中央
+        anchorY: 512,   // 画像下端（ピン先が座標に刺さる）
+      }),
+     // ピクセル基準サイズ（ズームしても見た目一定）
+      getSize: 4,      // 512px * sizeScale(20) * 4/100 =  ~調整値
+     sizeScale: 20,
+      billboard: true,
+      pickable: false,
+      parameters: { depthTest: false },
+    });
+  }, []);
 
   return (
     <DeckGL
@@ -711,6 +734,9 @@ const MapCanvas = forwardRef(function MapCanvas(
           })
         : null,
 
+        // (0,0) コンパス
+        originCompassLayer,
+
         // グリッド線
         new LineLayer({
           id: "grid-lines-thin",
@@ -732,8 +758,8 @@ const MapCanvas = forwardRef(function MapCanvas(
         }),
         // ピン/コンパス
         userPinCompassLayer,
-        compassLayer,
-        anchorCompassLayer,
+        preferencePinLayer,
+        // anchorCompassLayer, // ←使わないならコメントアウト
 
         // 打点
         mainLayer,
