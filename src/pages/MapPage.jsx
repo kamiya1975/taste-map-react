@@ -675,7 +675,7 @@ useEffect(() => {
         viewState={viewState}
         setViewState={setViewState}
         onOpenSlider={() => navigate("/slider")}
-        onPickWine={(item) => {
+        onPickWine={async (item) => {
           if (!item) return;
           // ★ 基準のワインだけ SliderPage へ
           const jan = String(item.JAN ?? item.jan_code ?? "");
@@ -683,7 +683,7 @@ useEffect(() => {
             navigate("/slider", { state: { from: "anchor" } });
             return;
           }
-          setHideHeartForJAN(null);
+          await closeUIsThen({ preserveMyPage: true }); // ★メニューだけ残して前面化
           setSelectedJAN(item.JAN);
           setIframeNonce(Date.now());
           setProductDrawerOpen(true);
@@ -915,8 +915,9 @@ useEffect(() => {
         open={isSearchOpen}
         onClose={async () => { await closeUIsThen(); }} 
         data={data}
-        onPick={(item) => {
+        onPick={async (item) => {
           if (!item) return;
+          await closeUIsThen({ preserveMyPage: true });
           setOpenFromRated(false);
           setHideHeartForJAN(null);
           setSelectedJANFromSearch(null);
@@ -938,7 +939,7 @@ useEffect(() => {
       <BarcodeScanner
         open={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
-        onDetected={(codeText) => {
+        onDetected={async (codeText) => {
           const isValidEan13 = (ean) => {
             if (!/^\d{13}$/.test(ean)) return false;
             let sum = 0;
@@ -972,6 +973,7 @@ useEffect(() => {
 
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
+            await closeUIsThen({ preserveMyPage: true });
             setHideHeartForJAN(null);
             setSelectedJAN(hit.JAN);
             setIframeNonce(Date.now());
@@ -1000,7 +1002,8 @@ useEffect(() => {
         favorites={favorites}
         data={data}
         userRatings={userRatings}
-        onSelectJAN={(jan) => {
+        onSelectJAN={async (jan) => {
+          await closeUIsThen({ preserveMyPage: true });
           setOpenFromRated(false);
           setHideHeartForJAN(null);
           setSelectedJANFromSearch(null);
@@ -1064,6 +1067,7 @@ useEffect(() => {
           setHideHeartForJAN(null);
         }}
         sx={{ zIndex: 1700 }}
+        hideBackdrop
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{ ...drawerModalProps, keepMounted: true }}
         PaperProps={{
@@ -1085,7 +1089,7 @@ useEffect(() => {
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
           {selectedJAN ? (
             <iframe
-               ref={iframeRef}
+              ref={iframeRef}
               key={`${selectedJAN}-${iframeNonce}`}
               src={`${process.env.PUBLIC_URL || ""}/#/products/${selectedJAN}?embed=1&_=${iframeNonce}`}
               style={{ width: "100%", height: "100%", border: "none" }}
@@ -1114,7 +1118,7 @@ useEffect(() => {
         open={isMyPageOpen}
         onClose={() => setIsMyPageOpen(false)}
         sx={{ zIndex: 1400 }}
-        BackdropProps={{ style: { background: "transparent" } }}
+        BackdropProps={{ invisible: true, style: { background: "transparent" } }}
         ModalProps={{ ...drawerModalProps, keepMounted: true }}
         PaperProps={{
           style: {
