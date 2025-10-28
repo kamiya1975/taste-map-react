@@ -734,7 +734,7 @@ function MapPage() {
               pointerEvents: "none",
               fontSize: 8,
               lineHeight: 1,
-              color: "#000",
+              color: "#444",
             }}
           >
             ▼
