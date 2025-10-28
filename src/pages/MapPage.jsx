@@ -506,6 +506,20 @@ function MapPage() {
         } catch {}
       };
 
+      // ★ 評価を子iframeに明示的に適用させるための補助メッセージ
+      const sendRatingToChild = (janStr, ratingObjOrNull) => {
+        try {
+          iframeRef.current?.contentWindow?.postMessage(
+            {
+              type: "SET_RATING",          // 子側でこれを受けてUIを即時更新させる
+              jan: janStr,
+              rating: ratingObjOrNull,     // { rating, date } もしくは null（クリア）
+            },
+            "*"
+          );
+        } catch {}
+      };
+
       if (type === "OPEN_MYACCOUNT") {
         await closeUIsThen({ preserveMyPage: true });
         setIsMyPageOpen(true);
@@ -547,7 +561,10 @@ function MapPage() {
             );
           } catch {}
         }
+        // ★ まずスナップショットを送る
         sendSnapshotToChild(janStr, msg.payload || null);
+        // ★ さらに評価を明示適用（特に「評価クリア(null)」時のUI遅延対策）
+        sendRatingToChild(janStr, (payload && Number(payload.rating) > 0) ? payload : null);
         return;
       }
 
@@ -592,7 +609,11 @@ function MapPage() {
           } catch {}
         }
 
-        sendSnapshotToChild(janStr, rating > 0 ? { rating, date } : null);
+        // ★ スナップショット
+        const nextRating = rating > 0 ? { rating, date } : null;
+        sendSnapshotToChild(janStr, nextRating);
+        // ★ 明示適用（評価クリア時のズレ解消）
+        sendRatingToChild(janStr, nextRating);
         return;
       }
 
