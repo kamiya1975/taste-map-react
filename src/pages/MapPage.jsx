@@ -621,55 +621,6 @@ function MapPage() {
     navigate,
   ]);
 
-  const hasAnyRating = useMemo(
-    () => Object.values(userRatings || {}).some((v) => Number(v?.rating) > 0),
-    [userRatings]
-  );
-
-  // ===== 嗜好コンパス
-  const detectElbowIndex = (valsDesc) => {
-    const n = valsDesc.length;
-    if (n <= 3) return n;
-    const x1 = 0, y1 = valsDesc[0];
-    const x2 = n - 1, y2 = valsDesc[n - 1];
-    const dx = x2 - x1, dy = y2 - y1;
-    const denom = Math.hypot(dx, dy) || 1;
-    let bestK = 1, bestDist = -Infinity;
-    for (let i = 1; i < n - 1; i++) {
-      const num = Math.abs(dy * (i - x1) - dx * (valsDesc[i] - y1));
-      const dist = num / denom;
-      if (dist > bestDist) { bestDist = dist; bestK = i; }
-    }
-    return bestK + 1;
-  };
-
-  // ===== 嗜好重心計算
-  const compass = useMemo(() => {
-    const rated = Object.entries(userRatings || {})
-      .map(([jan, v]) => ({ jan: String(jan), rating: Number(v?.rating) }))
-      .filter((r) => Number.isFinite(r.rating) && r.rating > 0);
-    if (rated.length === 0) return { point: null, picked: [], rule: "elbow" };
-
-    const joined = rated
-      .map((r) => {
-        const it = data.find((d) => String(d.JAN) === r.jan);
-        if (!it || !Number.isFinite(it.umap_x) || !Number.isFinite(it.umap_y)) return null;
-        return { ...r, x: it.umap_x, y: it.umap_y };
-      })
-      .filter(Boolean);
-    if (joined.length === 0) return { point: null, picked: [], rule: "elbow" };
-
-    joined.sort((a, b) => b.rating - a.rating);
-    const scores = joined.map((r) => r.rating);
-    const kelbow = detectElbowIndex(scores);
-    const picked = joined.slice(0, Math.min(kelbow, joined.length));
-
-    let sw = 0, sx = 0, sy = 0;
-    picked.forEach((p) => { sw += p.rating; sx += p.rating * p.x; sy += p.rating * p.y; });
-    if (sw <= 0) return { point: null, picked, rule: "elbow" };
-    return { point: [sx / sw, sy / sw], picked, rule: "elbow" };
-  }, [userRatings, data]);
-
   // ====== レンダリング
   return (
     <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}>
@@ -680,8 +631,7 @@ function MapPage() {
         selectedJAN={selectedJAN}
         favorites={favorites}
         highlight2D={highlight2D}
-        userPin={hasAnyRating ? null : userPin}
-        compassPoint={compass?.point || null}
+        userPin={userPin}
         panBounds={panBounds}
         viewState={viewState}
         setViewState={setViewState}
