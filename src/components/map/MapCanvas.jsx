@@ -17,6 +17,7 @@ import {
   MAP_POINT_COLOR,
   getClusterRGBA,
 } from "../../ui/constants";
+import { IconLayer } from "@deck.gl/layers";
 import { COMPASS_URL } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
@@ -352,7 +353,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           hasRating: false,
         });
       }
-      if ((userRatings?.[janOf(d)]?.rating ?? 0) > 0)
+      if ((userRatings[janOf(d)]?.rating ?? 0) > 0) 
       map.get(key).hasRating = true;
       map.get(key).count += 1;
     });
@@ -459,7 +460,7 @@ const MapCanvas = forwardRef(function MapCanvas(
   }, [data, userRatings]);
 
   // --- レイヤ：嗜好コンパス（ユーザー重心）をピン化 ---
-  const preferencePinLayer = useMemo(() => {
+  const compassLayer = useMemo(() => {
     if (!compassPoint) return null;
     const icon = makePinSVG({
       fill: "#2A6CF7",       // お好みでブランドカラー等
@@ -567,52 +568,6 @@ const MapCanvas = forwardRef(function MapCanvas(
     },
     [panBounds, setViewState, edgeMarginXPx, edgeMarginYPx]
   );
-
-  // 全打点の中心を計算（平均とBBox中心の両方を用意）
-  const dataCenter = useMemo(() => {
-    let count = 0;
-    let sumX = 0, sumY = 0;
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-    for (const d of (data || [])) {
-      const x = xOf(d), y = yOf(d);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-      count += 1;
-      sumX += x; sumY += y;
-      if (x < minX) minX = x; if (x > maxX) maxX = x;
-      if (y < minY) minY = y; if (y > maxY) maxY = y;
-    }
-    if (count === 0) return { meanX: 0, meanY: 0, bboxX: 0, bboxY: 0 };
-    const meanX = sumX / count, meanY = sumY / count;
-    const bboxX = (minX + maxX) / 2, bboxY = (minY + maxY) / 2;
-    return { meanX, meanY, bboxX, bboxY };
-  }, [data]);
-
-  // 全打点中心に固定コンパス（平均中心を採用。外れ値に強くしたい場合は bbox を使う）
-  const originCompassLayer = useMemo(() => {
-    const x = dataCenter.meanX;       // ←平均中心
-    const y = dataCenter.meanY;
-    // const x = dataCenter.bboxX;    // ←外れ値耐性を重視するならこちらに変更
-    // const y = dataCenter.bboxY;
-    return new IconLayer({
-      id: "origin-compass",
-      data: [{ x, y }],
-      getPosition: d => [d.x, -d.y, 0], // Y反転
-      getIcon: () => ({
-        url: COMPASS_URL,
-        width: 512,
-        height: 512,
-        anchorX: 256,    // 画像中央
-        anchorY: 512,    // 画像下端（ピン先が座標に刺さる）
-      }),
-      // ピクセル基準サイズ（ズームしても見た目一定）
-      getSize: 4,
-      sizeScale: 20,
-      billboard: true,
-      pickable: false,
-      parameters: { depthTest: false },
-    });
-  }, [dataCenter]);
 
   return (
     <DeckGL
@@ -758,9 +713,6 @@ const MapCanvas = forwardRef(function MapCanvas(
           })
         : null,
 
-        // (0,0) コンパス
-        originCompassLayer,
-
         // グリッド線
         new LineLayer({
           id: "grid-lines-thin",
@@ -782,8 +734,8 @@ const MapCanvas = forwardRef(function MapCanvas(
         }),
         // ピン/コンパス
         userPinCompassLayer,
-        preferencePinLayer,
-        // anchorCompassLayer, // ←使わないならコメントアウト
+        compassLayer,
+        anchorCompassLayer,
 
         // 打点
         mainLayer,
