@@ -709,7 +709,7 @@ function MapPage() {
           zIndex: 10,
           // 見た目
           padding: "6px 28px 6px 8px", // 右に余白（矢印分）
-          fontSize: "10px",
+          fontSize: "8px",
           color: "#000",
           backgroundColor: "#fff",
 
