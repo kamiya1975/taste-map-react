@@ -527,7 +527,7 @@ function MapPage() {
         return;
       }
 
-      const janStr = String(msg.jan || "");
+      const janStr = String(msg.jan ?? msg.jan_code ?? "");
       if (!janStr) return;
 
       if (type === "TOGGLE_FAVORITE") {

@@ -402,11 +402,34 @@ export default function ProductPage() {
       if (type !== "STATE_SNAPSHOT") return;
       if (String(targetJan) !== String(jan_code)) return;
       try {
-        setRating(ratingPayload?.rating ?? 0);
+        const v = Number(ratingPayload?.rating) || 0;
+        setRating(v);
       } catch {}
     };
     window.addEventListener("message", onMsgSnapshot);
     return () => window.removeEventListener("message", onMsgSnapshot);
+  }, [jan_code]);
+
+  // 親からの“明示適用”を受けて即時に◎を反映（nullならクリア）
+  useEffect(() => {
+    const onMsgSet = (e) => {
+      const { type, jan: targetJan, rating: payload } = e.data || {};
+      if (type !== "SET_RATING") return;
+      if (String(targetJan) !== String(jan_code)) return;
+
+      const next = payload && Number(payload?.rating) > 0 ? Number(payload.rating) : 0;
+      setRating(next);
+
+      // LSも同期（任意だが再読込時のズレ防止に有効）
+      try {
+        const store = JSON.parse(localStorage.getItem("userRatings") || "{}");
+        if (next > 0) store[jan_code] = { rating: next, date: payload?.date || new Date().toISOString() };
+        else delete store[jan_code];
+        localStorage.setItem("userRatings", JSON.stringify(store));
+      } catch {}
+    };
+    window.addEventListener("message", onMsgSet);
+    return () => window.removeEventListener("message", onMsgSet);
   }, [jan_code]);
 
   // HIDE_HEART メッセージは今後未使用（ratingにより自動で非表示）
