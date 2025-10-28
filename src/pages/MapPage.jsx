@@ -1063,8 +1063,15 @@ useEffect(() => {
           setSelectedJAN(null);
           setHideHeartForJAN(null);
         }}
-        ModalProps={drawerModalProps}
-        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
+        BackdropProps={{ style: { background: "transparent" } }}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            zIndex: 1600,             // ← MyPage(1400)より上に
+          },
+        }}
       >
         <PanelHeader
           title="商品ページ"
