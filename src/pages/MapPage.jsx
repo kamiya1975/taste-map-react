@@ -355,6 +355,32 @@ function MapPage() {
     didInitialCenterRef.current = true;
   }, [data, centerToUMAP, umapCentroid]);
 
+  // ★ SliderPageから戻った直後にユーザーピンへセンタリング
+useEffect(() => {
+  // state か sessionStorage の合図を読む
+  const byState = location.state?.centerOnUserPin === true;
+  let byFlag = false;
+  try { byFlag = sessionStorage.getItem("tm_center_on_userpin") === "1"; } catch {}
+
+  if (!(byState || byFlag)) return;
+
+  // 保存済みピン座標を取得（既存の reader を利用）
+  const pin = readUserPinFromStorage() || userPin;
+  const [x, y] = Array.isArray(pin) ? pin : [];
+
+  if (Number.isFinite(x) && Number.isFinite(y)) {
+    centerToUMAP(x, y, { zoom: INITIAL_ZOOM });
+  }
+
+  // 使い終わったフラグ類を掃除
+  try { sessionStorage.removeItem("tm_center_on_userpin"); } catch {}
+  // URLの state をクリア（戻る履歴を汚さない）
+  if (byState) {
+    navigate(location.pathname, { replace: true, state: {} });
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [location.state, userPin, centerToUMAP]);
+
   // 初回センタリング（userPin 指定時）
   useEffect(() => {
     // 評価後に商品ページを閉じてもマップが勝手に動かないよう、ユーザーピンへの自動センタリングを無効化
