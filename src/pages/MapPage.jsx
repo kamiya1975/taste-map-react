@@ -144,7 +144,6 @@ function MapPage() {
     else if (kind === "rated")   setIsRatedOpen(true);
     else if (kind === "guide")   setIsGuideOpen(true);
     else if (kind === "cluster")  setIsClusterOpen(true);
-    else if (kind === "cluster")  setIsClusterOpen(true);
   }, [closeUIsThen]);
 
   /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
@@ -763,9 +762,9 @@ function MapPage() {
           }}
           style={{
             width: "30px",
-           height: "30px",
+            height: "30px",
             background: "transparent",
-            border: "1px solid #000",
+            border: "0.5px solid #000",
             borderRadius: "6px",
             cursor: "pointer",
             display: "flex",
@@ -793,14 +792,19 @@ function MapPage() {
         </button>
       </div>
 
-      {/* 左下: アプリガイド（メニュー）ボタン */}
+      {/* 右上: アプリガイド（メニュー）ボタン */}
       <button
-        onClick={() => setIsMyPageOpen((v) => !v)}
+        onClick={async () => {
+          if (isMyPageOpen) {
+            await closeUIsThen();
+            return;
+          }
+          await openPanel("mypage");
+        }}
         style={{
           position: "absolute",
           top: "10px",
           right: "10px",
-          bottom: "max(12px, env(safe-area-inset-bottom))",
           zIndex: 10,
           width: "40px",
           height: "40px",
