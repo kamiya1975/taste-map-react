@@ -699,40 +699,48 @@ function MapPage() {
       />
 
       {/* 左上: 指標セレクタ */}
-      <select
-        value={highlight2D}
-        onChange={(e) => setHighlight2D(e.target.value)}
-        style={{
-          position: "absolute",
-          top: "10px",
-          left: "10px",
-          zIndex: 10,
-          // 見た目
-          padding: "6px 28px 6px 8px", // 右に余白（矢印分）
-          fontSize: "8px",
-          color: "#000",
-          backgroundColor: "#fff",
+      <div style={{ position: "absolute", top: 10, left: 10, zIndex: 10 }}>
+        <div style={{ position: "relative", display: "inline-block" }}>
+          <select
+            value={highlight2D}
+            onChange={(e) => setHighlight2D(e.target.value)}
+            style={{
+              padding: "6px 28px 6px 8px",     // 右に矢印分の余白
+              fontSize: "8px",
+              color: "#000",
+              backgroundColor: "#fff",
+              border: "0.5px solid #000",        // 黒枠
+              borderRadius: "6px",             // 角をやや尖らせる（3〜6で調整）
+              outline: "none",
+              appearance: "none",
+              WebkitAppearance: "none",
+              MozAppearance: "none",
+            }}
+          >
+            <option value="">基本マップ</option>
+            <option value="PC2">Sweet</option>
+            <option value="PC1">Body</option>
+            <option value="PC3">PC3</option>
+          </select>
 
-          border: "1px solid #000",   // 黒枠
-          borderRadius: "6px",         // 角をやや尖らせる（3〜6で調整）
-          outline: "none",
-
-          // ★ native 矢印を消してカスタムに
-          appearance: "none",
-          WebkitAppearance: "none",
-          MozAppearance: "none",
-
-          backgroundImage: `url(${process.env.PUBLIC_URL || ""}/img/caret-down.svg)`,
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "right 8px center",
-          backgroundSize: "12px 12px",
-        }}
-      >
-        <option value="">基本マップ</option>
-        <option value="PC2">Sweet</option>
-        <option value="PC1">Body</option>
-        <option value="PC3">PC3</option>
-      </select>
+          {/* ▼ テキスト矢印 */}
+         <span
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              right: 8,
+              top: "50%",
+              transform: "translateY(-50%)",
+              pointerEvents: "none",
+              fontSize: 8,
+              lineHeight: 1,
+              color: "#000",
+            }}
+          >
+            ▼
+          </span>
+        </div>
+      </div>
 
       {/* 左下: アプリガイド（メニュー）ボタン */}
       <button
