@@ -685,8 +685,15 @@ function MapPage() {
         panBounds={panBounds}
         viewState={viewState}
         setViewState={setViewState}
+        onOpenSlider={() => navigate("/slider")}
         onPickWine={(item) => {
           if (!item) return;
+          // ★ 基準のワインだけ SliderPage へ
+          const jan = String(item.JAN ?? item.jan_code ?? "");
+          if (jan === ANCHOR_JAN) {
+            navigate("/slider", { state: { from: "anchor" } });
+            return;
+          }
           setHideHeartForJAN(null);
           setSelectedJAN(item.JAN);
           setIframeNonce(Date.now());
