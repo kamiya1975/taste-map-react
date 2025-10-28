@@ -49,7 +49,6 @@ function MapPage() {
   const deckRef = useRef(null);
 
   // ドロワー状態
-  const [isGuideOpen, setIsGuideOpen] = useState(false);        // 「TasteMapとは？」
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);  // 「マップガイド」(オーバーレイ)
   const [isStoreOpen, setIsStoreOpen] = useState(false);        // 店舗登録 (オーバーレイ)
   const [isMyPageOpen, setIsMyPageOpen] = useState(false);      // アプリガイド（メニュー）
@@ -108,7 +107,6 @@ function MapPage() {
       willClose = true;
     }
     if (isClusterOpen)  { setIsClusterOpen(false);  willClose = true; }
-    if (isGuideOpen)     { setIsGuideOpen(false);     willClose = true; }
     if (isMapGuideOpen)  { setIsMapGuideOpen(false);  willClose = true; }
     if (isStoreOpen)     { setIsStoreOpen(false);     willClose = true; }
     if (isSearchOpen)    { setIsSearchOpen(false);    willClose = true; }
@@ -124,7 +122,6 @@ function MapPage() {
   }, [
     productDrawerOpen,
     isClusterOpen,
-    isGuideOpen,
     isMapGuideOpen,
     isStoreOpen,
     isSearchOpen,
@@ -143,7 +140,6 @@ function MapPage() {
     else if (kind === "search")  setIsSearchOpen(true);
     else if (kind === "favorite") setIsFavoriteOpen(true);
     else if (kind === "rated")   setIsRatedOpen(true);
-    else if (kind === "guide")   setIsGuideOpen(true);
     else if (kind === "cluster")  setIsClusterOpen(true);
   }, [closeUIsThen]);
 
@@ -152,7 +148,7 @@ function MapPage() {
     await closeUIsThen({ preserveMyPage: true });
     if (kind === "mapguide") setIsMapGuideOpen(true);
     else if (kind === "store") setIsStoreOpen(true);
-    else if (kind === "guide") setIsGuideOpen(true);
+    else if (kind === "guide") setIsMapGuideOpen(true);
     else if (kind === "account") setIsAccountOpen(true);
     else if (kind === "faq") setIsFaqOpen(true);
   }, [closeUIsThen]);
@@ -1048,12 +1044,6 @@ useEffect(() => {
         isOpen={isClusterOpen}
         onClose={() => setIsClusterOpen(false)}
         height="calc(50svh - env(safe-area-inset-bottom))" //ドロワー高さ調整
-      />
-
-      {/* 「TasteMapとは？」（PanelShell 版） */}
-      <AboutTasteMapPanel
-        isOpen={isGuideOpen}
-        onClose={() => setIsGuideOpen(false)}
       />
 
       {/* 商品ページドロワー */}
