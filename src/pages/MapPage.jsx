@@ -708,13 +708,24 @@ function MapPage() {
           left: "10px",
           zIndex: 10,
           // 見た目
-          padding: "6px 8px",
+          padding: "6px 28px 6px 8px", // 右に余白（矢印分）
           fontSize: "10px",
           color: "#000",
           backgroundColor: "#fff",
+
           border: "1px solid #000",   // 黒枠
           borderRadius: "6px",         // 角をやや尖らせる（3〜6で調整）
           outline: "none",
+
+          // ★ native 矢印を消してカスタムに
+          appearance: "none",
+          WebkitAppearance: "none",
+          MozAppearance: "none",
+
+          backgroundImage: `url(${process.env.PUBLIC_URL || ""}/img/caret-down.svg)`,
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "right 8px center",
+          backgroundSize: "12px 12px",
         }}
       >
         <option value="">基本マップ</option>
