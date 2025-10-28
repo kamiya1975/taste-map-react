@@ -698,19 +698,30 @@ function MapPage() {
         edgeMarginYPx={400}
       />
 
-      {/* 左上: 指標セレクタ */}
-      <div style={{ position: "absolute", top: 10, left: 10, zIndex: 10 }}>
+      {/* 左上: 指標セレクタ + クラスタ配色ボタン */}
+      <div
+        style={{
+          position: "absolute",
+          top: "10px",
+          left: "10px",
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          gap: "6px", // セレクタとボタンの間隔
+        }}
+      >
+        {/* セレクタ */}
         <div style={{ position: "relative", display: "inline-block" }}>
           <select
-            value={highlight2D}
+           value={highlight2D}
             onChange={(e) => setHighlight2D(e.target.value)}
             style={{
-              padding: "6px 28px 6px 8px",     // 右に矢印分の余白
+              padding: "6px 28px 6px 8px",
               fontSize: "8px",
               color: "#666",
               backgroundColor: "#fff",
-              border: "0.5px solid #000",        // 黒枠
-              borderRadius: "6px",             // 角をやや尖らせる（3〜6で調整）
+              border: "0.5px solid #000",
+              borderRadius: "6px",
               outline: "none",
               appearance: "none",
               WebkitAppearance: "none",
@@ -722,9 +733,7 @@ function MapPage() {
             <option value="PC1">Body</option>
             <option value="PC3">PC3</option>
           </select>
-
-          {/* ▼ テキスト矢印 */}
-         <span
+          <span
             aria-hidden="true"
             style={{
               position: "absolute",
@@ -733,13 +742,55 @@ function MapPage() {
               transform: "translateY(-50%)",
               pointerEvents: "none",
               fontSize: 12,
-              lineHeight: 1,
               color: "#666",
             }}
           >
             ▼
           </span>
         </div>
+
+        {/* クラスタ配色ボタン（右横配置） */}
+        <button
+          onClick={async () => {
+            const next = !clusterColorMode;
+            if (next) {
+              await closeUIsThen();
+              setIsClusterOpen(true);
+            } else {
+             setIsClusterOpen(false);
+            }
+            setClusterColorMode(next);
+          }}
+          style={{
+            width: "30px",
+           height: "30px",
+            background: "transparent",
+            border: "1px solid #000",
+            borderRadius: "6px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+          }}
+          aria-label="クラスタ配色"
+          title="クラスタ配色"
+        >
+          <img
+            src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
+            alt=""
+            style={{
+              width: "70%",
+              height: "70%",
+              objectFit: "contain",
+              display: "block",
+              pointerEvents: "none",
+              opacity: clusterColorMode ? 1.0 : 0.5,
+              transition: "opacity 0.2s",
+            }}
+            draggable={false}
+          />
+        </button>
       </div>
 
       {/* 左下: アプリガイド（メニュー）ボタン */}
