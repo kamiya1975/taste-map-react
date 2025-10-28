@@ -798,7 +798,8 @@ function MapPage() {
         onClick={() => setIsMyPageOpen((v) => !v)}
         style={{
           position: "absolute",
-          left: "12px",
+          top: "10px",
+          right: "10px",
           bottom: "max(12px, env(safe-area-inset-bottom))",
           zIndex: 10,
           width: "40px",
@@ -827,7 +828,7 @@ function MapPage() {
         onClick={() => openPanel("search")}
         style={{
           position: "absolute",
-          top: "10px",
+          top: "60px",
           right: "10px",
           zIndex: 10,
           width: "40px",
@@ -856,7 +857,7 @@ function MapPage() {
         onClick={() => openPanel("favorite")}
         style={{
           position: "absolute",
-          top: "60px",
+          top: "110px",
           right: "10px",
           zIndex: 10,
           width: "40px",
@@ -884,7 +885,7 @@ function MapPage() {
         onClick={() => openPanel("rated")}
         style={{
           position: "absolute",
-          top: "110px",
+          top: "160px",
           right: "10px",
           zIndex: 10,
           width: "40px",
@@ -904,53 +905,6 @@ function MapPage() {
           src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
           alt=""
           style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
-          draggable={false}
-        />
-      </button>
-
-      <button
-        onClick={async () => {
-          const next = !clusterColorMode;
-          if (next) {
-            // ON にする時だけ他ドロワーを先に閉じてから開く
-            await closeUIsThen();
-            setIsClusterOpen(true);
-          } else {
-            // OFF の時はそのまま閉じる
-            setIsClusterOpen(false);
-            }
-          setClusterColorMode(next);
-          }}
-        style={{
-          position: "absolute",
-          top: "160px",
-          right: "10px",
-          zIndex: 10,
-          width: "40px",
-          height: "40px",
-          background: "transparent",
-          border: "none",
-         cursor: "pointer",
-         display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
-        }}
-        aria-label="クラスタ配色"
-        title="クラスタ配色"
-      >
-        <img
-          src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
-          alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            display: "block",
-            pointerEvents: "none",
-            opacity: clusterColorMode ? 1.0 : 0.5,
-            transition: "opacity 0.2s",
-          }}
           draggable={false}
         />
       </button>
