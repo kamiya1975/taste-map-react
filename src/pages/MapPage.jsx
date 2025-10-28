@@ -707,13 +707,17 @@ function MapPage() {
           top: "10px",
           left: "10px",
           zIndex: 10,
-          padding: "6px",
+          // 見た目
+          padding: "6px 8px",
           fontSize: "10px",
           color: "#000",
           backgroundColor: "#fff",
+          border: "1px solid #000",   // 黒枠
+          borderRadius: "6px",         // 角をやや尖らせる（3〜6で調整）
+          outline: "none",
         }}
       >
-        <option value="">Mapガイド</option>
+        <option value="">基本マップ</option>
         <option value="PC2">Sweet</option>
         <option value="PC1">Body</option>
         <option value="PC3">PC3</option>
