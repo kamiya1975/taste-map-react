@@ -51,11 +51,6 @@ export default function MyPagePanelContent({
         onClick={() => onOpenMapGuide?.()} 
       />
       <Row
-        icon={ICONS.compass}
-        label="基準のワイン 再設定"
-        onClick={() => onOpenSlider?.()}
-      />
-      <Row
         icon={ICONS.account}
         label="マイアカウント"
         onClick={() => onOpenAccount?.()}
