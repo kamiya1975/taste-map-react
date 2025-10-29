@@ -101,7 +101,6 @@ function MapPage() {
       preserveMyPage = false,
       preserveFavorite = false,
       preserveRated = false,
-      preserveCluster = false,
     } = opts;
     let willClose = false;
 
@@ -111,7 +110,6 @@ function MapPage() {
       setSelectedJANFromSearch(null);
       willClose = true;
     }
-    if (isClusterOpen && !preserveCluster)  { setIsClusterOpen(false);  willClose = true; }
     if (isMapGuideOpen)  { setIsMapGuideOpen(false);  willClose = true; }
     if (isStoreOpen)     { setIsStoreOpen(false);     willClose = true; }
     if (isSearchOpen)    { setIsSearchOpen(false);    willClose = true; }
@@ -126,7 +124,6 @@ function MapPage() {
     if (willClose) await wait(PANEL_ANIM_MS);
   }, [
     productDrawerOpen,
-    isClusterOpen,
     isMapGuideOpen,
     isStoreOpen,
     isSearchOpen,
@@ -751,7 +748,6 @@ useEffect(() => {
           onClick={async () => {
             const next = !clusterColorMode;
             if (next) {
-              await closeUIsThen({ preserveCluster: true });  // ← 他を閉じても自分は残す
               setIsClusterOpen(true);
             } else {
              setIsClusterOpen(false);

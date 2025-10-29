@@ -20,6 +20,7 @@ export default function PanelShell({
   motionPreset = "mui", // 'spring' | 'mui' | 'snap'
   animateHeight = false,
   heightDurationMs = 225,
+  zIndex = 1500,
 }) {
   const handleClose = (e) => {
     e?.stopPropagation?.();
@@ -54,7 +55,7 @@ export default function PanelShell({
             borderTopRightRadius: 12,
             display: "flex",
             flexDirection: "column",
-            zIndex: 1500,
+            zIndex,
             // ★ 高さだけ CSS トランジション（MUIと同じカーブ）
             transition: animateHeight
               ? `height ${heightDurationMs}ms cubic-bezier(0.4, 0.0, 0.2, 1)`

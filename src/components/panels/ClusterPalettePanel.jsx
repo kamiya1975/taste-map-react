@@ -44,6 +44,7 @@ export default function ClusterPalettePanel({
       motionPreset="mui"
       animateHeight={true}
       heightDurationMs={225}
+      zIndex={2000}
     >
       {/* 折りたたみ時は中身を簡略化するなら以下で条件分岐も可 */}
       {!collapsed ? (
