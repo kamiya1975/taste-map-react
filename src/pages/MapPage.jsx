@@ -97,7 +97,11 @@ function MapPage() {
 
   /** まとめて閉じ、閉じアニメ分だけ待つ（preserveMyPage=true ならメニューは残す） */
   const closeUIsThen = useCallback(async (opts = {}) => {
-    const { preserveMyPage = false } = opts;
+    const {
+      preserveMyPage = false,
+      preserveFavorite = false,
+      preserveRated = false,
+    } = opts;
     let willClose = false;
 
     if (productDrawerOpen) {
@@ -110,8 +114,8 @@ function MapPage() {
     if (isMapGuideOpen)  { setIsMapGuideOpen(false);  willClose = true; }
     if (isStoreOpen)     { setIsStoreOpen(false);     willClose = true; }
     if (isSearchOpen)    { setIsSearchOpen(false);    willClose = true; }
-    if (isFavoriteOpen)  { setIsFavoriteOpen(false);  willClose = true; }
-    if (isRatedOpen)     { setIsRatedOpen(false);     willClose = true; }
+    if (isFavoriteOpen && !preserveFavorite)  { setIsFavoriteOpen(false);  willClose = true; }
+    if (isRatedOpen && !preserveRated)        { setIsRatedOpen(false);     willClose = true; }
     if (isAccountOpen)   { setIsAccountOpen(false);   willClose = true; }
     if (isFaqOpen)       { setIsFaqOpen(false);       willClose = true; }
 
@@ -998,7 +1002,7 @@ useEffect(() => {
         data={data}
         userRatings={userRatings}
         onSelectJAN={async (jan) => {
-          await closeUIsThen({ preserveMyPage: true });
+          await closeUIsThen({ preserveMyPage: true, preserveFavorite: true }); // ← 一覧を残す
           setOpenFromRated(false);
           setHideHeartForJAN(null);
           setSelectedJANFromSearch(null);
@@ -1022,6 +1026,7 @@ useEffect(() => {
         userRatings={userRatings}
         data={data}
         onSelectJAN={(jan) => {
+          closeUIsThen({ preserveMyPage: true, preserveRated: true });
           setOpenFromRated(true);
           fromRatedRef.current = true;
           try { sessionStorage.setItem("tm_from_rated_jan", String(jan)); } catch {}
