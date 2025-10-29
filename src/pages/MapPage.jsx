@@ -1146,7 +1146,7 @@ useEffect(() => {
         anchor="bottom"
         open={isMapGuideOpen}
         onClose={() => setIsMapGuideOpen(false)}
-        sx={{ zIndex: 1500 }}
+        sx={{ zIndex: 1800 }}
         BackdropProps={{ style: { background: "transparent" } }}
         ModalProps={{
           ...drawerModalProps,
