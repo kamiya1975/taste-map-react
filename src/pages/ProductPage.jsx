@@ -500,7 +500,7 @@ export default function ProductPage() {
         {product.商品名 || "（名称不明）"}
       </h2>
 
-      {/* タイプマーク＋価格＋産地/年 */}
+      {/* タイプマーク＋価格*/}
       <div style={{ display: "flex", alignItems: "center", margin: "4px 0 12px 0" }}>
         <span
           style={{
@@ -513,16 +513,7 @@ export default function ProductPage() {
           }}
         />
         <span style={{ marginLeft: 8 }}>¥{Number(price).toLocaleString()}</span>
-        <span style={{ marginLeft: 24 }}>
-          {(product.産地 || product.生産地 || "シチリア / イタリア")} /{" "}
-          {(product.ヴィンテージ || product.ビンテージ || product.年 || product.vintage || "-")}
-        </span>
       </div>
-
-      {/* 味データ */}
-      <p style={{ margin: "4px 0" }}>
-        Sweet: {Number(product.PC2).toFixed(2)} / Body: {Number(product.PC1).toFixed(2)}
-      </p>
 
       {/* 評価（◎） */}
       <div
