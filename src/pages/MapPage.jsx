@@ -723,9 +723,8 @@ useEffect(() => {
             }}
           >
             <option value="">基本マップ</option>
-            <option value="PC2">Sweet</option>
-            <option value="PC1">Body</option>
-            <option value="PC3">PC3</option>
+            <option value="PC2">甘味</option>
+            <option value="PC1">ボディ</option>
           </select>
           <span
             aria-hidden="true"
