@@ -658,6 +658,26 @@ const MapCanvas = forwardRef(function MapCanvas(
           parameters: { depthTest: false },
         }),
 
+         // グリッド線
+        new LineLayer({
+          id: "grid-lines-thin",
+          data: thinLines,
+          getSourcePosition: (d) => d.sourcePosition,
+          getTargetPosition: (d) => d.targetPosition,
+          getColor: [214, 214, 214, 255],
+          getWidth: 0.5,
+          widthUnits: "pixels",
+        }),
+        new LineLayer({
+          id: "grid-lines-thick",
+          data: thickLines,
+          getSourcePosition: (d) => d.sourcePosition,
+          getTargetPosition: (d) => d.targetPosition,
+          getColor: [144, 144, 144, 255],
+          getWidth: 0.5,
+          widthUnits: "pixels",
+        }),
+
       // ① セルの地模様（タイル）は「バブル無し かつ クラスタ色OFFのときだけ」表示
       (!highlight2D && !clusterColorMode) ? new IconLayer({
         id: "cell-tiles",
@@ -720,25 +740,6 @@ const MapCanvas = forwardRef(function MapCanvas(
           })
         : null,
 
-        // グリッド線
-        new LineLayer({
-          id: "grid-lines-thin",
-          data: thinLines,
-          getSourcePosition: (d) => d.sourcePosition,
-          getTargetPosition: (d) => d.targetPosition,
-          getColor: [214, 214, 214, 255],
-          getWidth: 0.5,
-          widthUnits: "pixels",
-        }),
-        new LineLayer({
-          id: "grid-lines-thick",
-          data: thickLines,
-          getSourcePosition: (d) => d.sourcePosition,
-          getTargetPosition: (d) => d.targetPosition,
-          getColor: [144, 144, 144, 255],
-          getWidth: 0.5,
-          widthUnits: "pixels",
-        }),
         // ピン/コンパス
         userPinCompassLayer,
         compassLayer,
