@@ -4,9 +4,7 @@ import PanelShell from "./PanelShell";
 import {
   CLUSTER_DRAWER_HEIGHT,
   CLUSTER_COLORS_FIXED,
-  CLUSTER_META,
-  CLUSTER_COUNT,
-  getClusterMeta,
+  CLUSTER_META,         // 並び順をこの配列そのままにする
 } from "../../ui/constants";
 
 const COLLAPSED_HEIGHT = "calc(10svh - env(safe-area-inset-bottom))";
@@ -23,8 +21,9 @@ export default function ClusterPalettePanel({
   isOpen,
   onClose,
   height = CLUSTER_DRAWER_HEIGHT,
-  onPickCluster = null, // ← 追加：タップ時にクラスターIDを親へ通知
-  clusterMeta = null, // ← 集約：未指定なら constants の CLUSTER_META を使う
+  onPickCluster = null,   // タップ時にクラスターIDを親へ通知
+  clusterMeta = null,     // 未指定なら constants の CLUSTER_META を使う
+  availableIds = null,    // 追加：表示対象を制限する（順序は維持）
   maxNameLen = 10,
   maxHintLen = 30,
 }) {
@@ -34,19 +33,25 @@ export default function ClusterPalettePanel({
     if (!isOpen) setCollapsed(false);
   }, [isOpen]);
 
+  // ★ 並び順は「source（= CLUSTER_META等）の定義順」をそのまま使う
   const entries = useMemo(() => {
-    const source = clusterMeta ?? CLUSTER_META; // props優先／未指定は定数
-    return Array.from({ length: CLUSTER_COUNT }, (_, i) => {
-      const id = i + 1;
-      const meta = source.find((m) => m.id === id) || getClusterMeta(id);
-      return {
-        id,
-        color: CLUSTER_COLORS_FIXED?.[id],
-        name: truncate(meta.name, maxNameLen),
-        hint: truncate(meta.hint, maxHintLen),
-      };
-    });
-  }, [clusterMeta, maxNameLen, maxHintLen]);
+    const source = (clusterMeta ?? CLUSTER_META); // ここに希望順で定義しておく
+    const allow = Array.isArray(availableIds) && availableIds.length > 0
+      ? new Set(availableIds.map(Number))
+      : null;
+
+    return source
+      .filter(m => (allow ? allow.has(Number(m.id)) : true))
+      .map(m => {
+        const id = Number(m.id);
+        return {
+          id,
+          color: CLUSTER_COLORS_FIXED?.[id],
+          name: truncate(m.name, maxNameLen),
+          hint: truncate(m.hint, maxHintLen),
+        };
+      });
+  }, [clusterMeta, availableIds, maxNameLen, maxHintLen]);
 
   return (
     <PanelShell
@@ -67,13 +72,7 @@ export default function ClusterPalettePanel({
             マップのクラスタ配色は管理者が固定しています。ボタンでONにするとこの配色で点が色分けされます。
           </p>
 
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-            }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {entries.map(({ id, color, name, hint }) => (
               <div
                 key={id}

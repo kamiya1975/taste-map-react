@@ -1063,6 +1063,7 @@ useEffect(() => {
         onClose={() => setIsClusterOpen(false)}
         height="calc(50svh - env(safe-area-inset-bottom))" //ドロワー高さ調整
         onPickCluster={centerToCluster}
+        availableIds={clusterList} // 追加：存在クラスターのみ出す場合
       />
 
       {/* 商品ページドロワー */}
