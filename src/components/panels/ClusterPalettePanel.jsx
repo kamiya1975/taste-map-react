@@ -23,6 +23,7 @@ export default function ClusterPalettePanel({
   isOpen,
   onClose,
   height = CLUSTER_DRAWER_HEIGHT,
+  onPickCluster = null, // ← 追加：タップ時にクラスターIDを親へ通知
   clusterMeta = null, // ← 集約：未指定なら constants の CLUSTER_META を使う
   maxNameLen = 10,
   maxHintLen = 30,
@@ -84,7 +85,12 @@ export default function ClusterPalettePanel({
                   borderRadius: 10,
                   background: "#fff",
                   width: "100%",
+                  cursor: onPickCluster ? "pointer" : "default",
                 }}
+                role="button"
+                tabIndex={0}
+                onClick={() => onPickCluster?.(id)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPickCluster?.(id); }}
               >
                 <div
                   title={`Cluster ${id}`}

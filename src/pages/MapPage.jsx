@@ -79,6 +79,23 @@ function MapPage() {
   // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
 
+  // クラスタ重心に移動
+  const centerToCluster = useCallback((clusterId) => {
+    const cid = Number(clusterId);
+    if (!Array.isArray(data) || data.length === 0 || !Number.isFinite(cid)) return;
+    const items = data.filter(d => Number(d.cluster) === cid);
+    if (!items.length) return;
+    const sx = items.reduce((s, d) => s + Number(d.umap_x || 0), 0);
+    const sy = items.reduce((s, d) => s + Number(d.umap_y || 0), 0);
+    const cx = sx / items.length;
+    const cy = sy / items.length;
+    // 少しだけ寄る（好みで調整）
+    const z = Math.min(ZOOM_LIMITS.max, (viewState.zoom ?? INITIAL_ZOOM) + 0.4);
+    // 色分けがOFFならONにしておく（任意）
+    setClusterColorMode(true);
+    centerToUMAP(cx, cy, { zoom: z });
+  }, [data, viewState.zoom, centerToUMAP]);
+
   // ユニークな cluster 値 → 初期色を決定
   const clusterList = useMemo(() => {
     const s = new Set();
@@ -1045,6 +1062,7 @@ useEffect(() => {
         isOpen={isClusterOpen}
         onClose={() => setIsClusterOpen(false)}
         height="calc(50svh - env(safe-area-inset-bottom))" //ドロワー高さ調整
+        onPickCluster={centerToCluster}
       />
 
       {/* 商品ページドロワー */}
