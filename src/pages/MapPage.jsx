@@ -1134,8 +1134,15 @@ useEffect(() => {
         open={isMyPageOpen}
         onClose={() => setIsMyPageOpen(false)}
         sx={{ zIndex: 1400 }}
-        BackdropProps={{ invisible: true, style: { background: "transparent" } }}
-        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        hideBackdrop
+        BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
+        ModalProps={{
+          ...drawerModalProps,
+          keepMounted: true,
+          disableEnforceFocus: true,  // ★ フォーカスロック解除
+          disableAutoFocus: true,     // ★ 自動フォーカスを抑止
+          disableRestoreFocus: true,  // ★ 閉じた後のフォーカス復元も抑止
+        }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
