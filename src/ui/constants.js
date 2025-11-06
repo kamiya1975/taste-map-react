@@ -1,11 +1,11 @@
 // ==============================
-// src/ui/constants.js（完全版）
+// src/ui/constants.js（集約・完全版）
 // ==============================
 
-// Drawer の共通高さやスタイル
+// ===== Drawer共通 =====
 export const DRAWER_HEIGHT = "calc(66svh - env(safe-area-inset-bottom))";
+export const CLUSTER_DRAWER_HEIGHT = "calc(56svh - env(safe-area-inset-bottom))"; // ← ここに統一
 
-// 透明なモーダルにして、背面の DeckGL を操作可能にする共通 props
 export const drawerModalProps = {
   keepMounted: true,
   hideBackdrop: true,
@@ -14,7 +14,6 @@ export const drawerModalProps = {
   },
 };
 
-// Drawer 本体は操作できるように pointerEvents を戻す
 export const paperBaseStyle = {
   width: "100%",
   height: DRAWER_HEIGHT,
@@ -24,86 +23,44 @@ export const paperBaseStyle = {
   pointerEvents: "auto",
 };
 
-// === Map共通定数 ===
+// ===== Map共通 =====
 export const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 export const CENTER_Y_OFFSET = -3.5;
 export const ZOOM_LIMITS = { min: 5.5, max: 7.25 };
 export const INITIAL_ZOOM = 5.5;
 
-// === Mapの打点カラー（タイプ無関係で固定グレー） ===
-// 透過ありの RGBA（DeckGL は [r,g,b] も可。必要に応じて 4成分で）
-export const MAP_POINT_COLOR = [160, 160, 160, 220];   // 通常点
-export const MAP_POINT_HOVER = [120, 120, 120, 255];   // ホバー時
-export const MAP_POINT_SELECTED = [80, 80, 80, 255];   // 選択時
-
-// 選択枠などで使うアクセント
+// 打点カラー
+export const MAP_POINT_COLOR    = [160, 160, 160, 220];
+export const MAP_POINT_HOVER    = [120, 120, 120, 255];
+export const MAP_POINT_SELECTED = [ 80,  80,  80, 255];
 export const ORANGE = [255, 140, 0];
 
-// === ヒート/グリッド ===
+// ===== ヒート/グリッド =====
 export const GRID_CELL_SIZE = 0.2;
 export const HEAT_ALPHA_MIN = 24;
 export const HEAT_ALPHA_MAX = 255;
 export const HEAT_GAMMA = 0.65;
 export const HEAT_CLIP_PCT = [0.0, 0.98];
-export const HEAT_COLOR_LOW = [255, 255, 255];
-export const HEAT_COLOR_HIGH = [255, 165, 0];
+export const HEAT_COLOR_LOW  = [255, 255, 255];
+export const HEAT_COLOR_HIGH = [255, 165,   0];
 
-// ===== Panel Header (実機で揃う見えの高さ) =====
-export const PANEL_HEADER_H       = 42;                               // 実機で一致した値
-export const PANEL_HEADER_BG      = "rgb(221, 211, 198)";             // ベージュ
-export const PANEL_HEADER_BORDER  = "1px solid rgb(201, 201, 176)";   // 下線
-export const PANEL_HEADER_PADDING = "0 8px 0 12px";                   // 左右パディング
+// ===== Panel Header =====
+export const PANEL_HEADER_H       = 42;
+export const PANEL_HEADER_BG      = "rgb(221, 211, 198)";
+export const PANEL_HEADER_BORDER  = "1px solid rgb(201, 201, 176)";
+export const PANEL_HEADER_PADDING = "0 8px 0 12px";
 
-// === リスト/バッジ用：タイプ別カラー（CSS文字列） ===
-// 指定：Spa(111,151,173) / White(213,213,102) / Red(131,39,72) / Rose(224,123,143)
+// ===== タイプ別カラー（CSS / Array）=====
 export const TYPE_COLOR_CSS = {
-  Spa:       "rgb(111,151,173)",
-  Sparkling: "rgb(111,151,173)",
-  White:     "rgb(213,213,102)",
-  Red:       "rgb(131,39,72)",
-  Rose:      "rgb(224,123,143)",
-  Other:     "rgb(180,180,180)",
+  Spa: "rgb(111,151,173)", Sparkling: "rgb(111,151,173)",
+  White: "rgb(213,213,102)", Red: "rgb(131,39,72)",
+  Rose: "rgb(224,123,143)",  Other: "rgb(180,180,180)",
 };
-
-// 配列RGB版（DeckGL等で必要な場合）
 export const TYPE_COLOR_MAP = {
-  Spa: [111, 151, 173],
-  Sparkling: [111, 151, 173],
-  White: [213, 213, 102],
-  Red: [131, 39, 72],
-  Rose: [224, 123, 143],
-  Other: [180, 180, 180],
+  Spa: [111,151,173], Sparkling: [111,151,173],
+  White: [213,213,102], Red: [131,39,72],
+  Rose: [224,123,143],  Other: [180,180,180],
 };
-// === クラスタ固定配色（管理者指定 / 全ユーザー共通） ===
-// 値は [R, G, B, A] (0..255)。必要に応じて色を入れ替えてください。
-export const CLUSTER_COLORS_FIXED = {
-  1:  [ 91, 143, 249, 255], // 青
-  2:  [ 90, 216, 166, 255], // ミント
-  3:  [ 93, 112, 146, 255], // スチール
-  4:  [246, 189,  22, 255], // 黄
-  5:  [232, 104,  74, 255], // コーラル
-  6:  [109, 200, 236, 255], // シアン
-  7:  [146, 112, 202, 255], // ラベンダ
-  8:  [255, 153, 195, 255], // ピンク
-  9:  [157, 211, 168, 255], // セージ
-  10: [255, 152,  69, 255], // オレンジ
-  11: [ 30, 144, 255, 255], // ドジャーブルー
-  12: [  0, 193, 212, 255], // ティール
-  13: [161, 167, 179, 255], // グレイ
-  14: [191, 191,  63, 255], // オリーブ
-  15: [244,  93,  93, 255], // レッド
-  16: [ 47, 194,  91, 255], // グリーン
-  17: [106,  90, 205, 255], // スレートブルー
-  18: [255, 127,  80, 255], // コーラル2
-  19: [160,  82,  45, 255], // セピア
-  20: [ 32, 178, 170, 255], // ライトシーグリーン
-};
-
-// クラスタID(数値)→RGBAを取得（未定義は薄グレー）
-export const getClusterRGBA = (clusterId, fallback = [200,200,200,255]) =>
-  CLUSTER_COLORS_FIXED?.[Number(clusterId)] ?? fallback;
-
-// ゆるい表記ゆれ吸収（リストの色分け用）
 export const getTypeColorCSS = (type, fallback = "rgb(180,180,180)") => {
   if (!type) return fallback;
   const key = String(type).trim();
@@ -116,5 +73,39 @@ export const getTypeColorCSS = (type, fallback = "rgb(180,180,180)") => {
   return fallback;
 };
 
-// src/ui/constants.js
-export const CLUSTER_DRAWER_HEIGHT = "calc(56svh - env(safe-area-inset-bottom))";
+// ===== クラスタ配色・メタ（集約ポイント）=====
+export const CLUSTER_COUNT = 10; // ← 運用は10クラスター
+
+// 配色（1..20用意。COUNTが10でも余剰は無視）
+export const CLUSTER_COLORS_FIXED = {
+  1:  [ 91, 143, 249, 255],  2:  [ 90, 216, 166, 255],
+  3:  [ 93, 112, 146, 255],  4:  [246, 189,  22, 255],
+  5:  [232, 104,  74, 255],  6:  [109, 200, 236, 255],
+  7:  [146, 112, 202, 255],  8:  [255, 153, 195, 255],
+  9:  [157, 211, 168, 255],  10: [255, 152,  69, 255],
+  11: [ 30, 144, 255, 255],  12: [  0, 193, 212, 255],
+  13: [161, 167, 179, 255],  14: [191, 191,  63, 255],
+  15: [244,  93,  93, 255],  16: [ 47, 194,  91, 255],
+  17: [106,  90, 205, 255],  18: [255, 127,  80, 255],
+  19: [160,  82,  45, 255],  20: [ 32, 178, 170, 255],
+};
+export const getClusterRGBA = (clusterId, fallback = [200,200,200,255]) =>
+  CLUSTER_COLORS_FIXED?.[Number(clusterId)] ?? fallback;
+
+// クラスタ名・“買う目安”解説（ここで一元管理）
+export const CLUSTER_META = [
+  { id: 1,  name: "軽快フルーティ",   hint: "果実感中心。冷やして手軽に" },
+  { id: 2,  name: "柑橘爽快",         hint: "酸スッキリ。普段の食卓に" },
+  { id: 3,  name: "白旨コク",         hint: "樽の甘香。週末のご褒美に" },
+  { id: 4,  name: "ミネラル辛口",     hint: "キレ辛口。刺身や寿司に" },
+  { id: 5,  name: "軽赤チャーミー",   hint: "軽やか赤。和食と好相性" },
+  { id: 6,  name: "スパイス中庸",     hint: "程よい渋み。日常飲みに良" },
+  { id: 7,  name: "黒果実リッチ",     hint: "濃厚果実。肉料理の日に" },
+  { id: 8,  name: "樽香フルボディ",   hint: "樽しっかり。特別な一皿に" },
+  { id: 9,  name: "熟成まろやか",     hint: "丸い口当たり。ゆったり" },
+  { id: 10, name: "泡・辛口寄り",     hint: "泡しっかり。集まりに最適" },
+];
+
+// 取得ヘルパ
+export const getClusterMeta = (id) =>
+  CLUSTER_META.find((m) => m.id === Number(id)) || { id, name: `Cluster_${id}`, hint: "" };

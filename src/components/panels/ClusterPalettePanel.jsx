@@ -2,8 +2,11 @@
 import React, { useMemo, useState } from "react";
 import PanelShell from "./PanelShell";
 import {
+  CLUSTER_DRAWER_HEIGHT,
   CLUSTER_COLORS_FIXED,
-  CLUSTER_DRAWER_HEIGHT, // 例: "calc(56svh - env(safe-area-inset-bottom))"
+  CLUSTER_META,
+  CLUSTER_COUNT,
+  getClusterMeta,
 } from "../../ui/constants";
 
 const COLLAPSED_HEIGHT = "calc(10svh - env(safe-area-inset-bottom))";
@@ -14,31 +17,14 @@ const rgbaToCss = (arr) => {
   return `rgba(${r}, ${g}, ${b}, ${a / 255})`;
 };
 
-const truncate = (s, n) => {
-  if (!s) return "";
-  return s.length > n ? s.slice(0, n - 1) + "…" : s;
-};
-
-// デフォルトのクラスター名と “買う目安” 解説（適宜書き換えてください）
-const CLUSTER_META_DEFAULT = [
-  { id: 1,  name: "軽快フルーティ",   hint: "果実感中心。冷やして手軽に" },
-  { id: 2,  name: "柑橘爽快",         hint: "酸スッキリ。普段の食卓に" },
-  { id: 3,  name: "白旨コク",         hint: "樽の甘香。週末のご褒美に" },
-  { id: 4,  name: "ミネラル辛口",     hint: "キレの辛口。刺身や寿司に" },
-  { id: 5,  name: "軽赤チャーミー",   hint: "軽やか赤。和食と好相性" },
-  { id: 6,  name: "スパイス中庸",     hint: "程よい渋み。日常飲みに良" },
-  { id: 7,  name: "黒果実リッチ",     hint: "濃厚果実。肉料理の日に" },
-  { id: 8,  name: "樽香フルボディ",   hint: "樽しっかり。特別な一皿に" },
-  { id: 9,  name: "熟成まろやか",     hint: "丸い口当たり。ゆったり" },
-  { id: 10, name: "旨辛スパークリン", hint: "泡しっかり。集まりに最適" },
-];
+const truncate = (s, n) => (!s ? "" : s.length > n ? s.slice(0, n - 1) + "…" : s);
 
 export default function ClusterPalettePanel({
   isOpen,
   onClose,
   height = CLUSTER_DRAWER_HEIGHT,
-  clusterMeta = CLUSTER_META_DEFAULT, // ← 外から差し替え可
-  maxNameLen = 10,                     // 表示上の安全長
+  clusterMeta = null, // ← 集約：未指定なら constants の CLUSTER_META を使う
+  maxNameLen = 10,
   maxHintLen = 30,
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -47,11 +33,11 @@ export default function ClusterPalettePanel({
     if (!isOpen) setCollapsed(false);
   }, [isOpen]);
 
-  // クラスター数は 10 固定（1..10）
   const entries = useMemo(() => {
-    return Array.from({ length: 10 }, (_, i) => {
+    const source = clusterMeta ?? CLUSTER_META; // props優先／未指定は定数
+    return Array.from({ length: CLUSTER_COUNT }, (_, i) => {
       const id = i + 1;
-      const meta = clusterMeta.find((m) => m.id === id) || { name: `Cluster_${id}`, hint: "" };
+      const meta = source.find((m) => m.id === id) || getClusterMeta(id);
       return {
         id,
         color: CLUSTER_COLORS_FIXED?.[id],
