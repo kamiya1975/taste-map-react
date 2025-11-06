@@ -68,9 +68,9 @@ export default function ClusterPalettePanel({
 
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(180px,1fr))",
-              gap: 10,
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
             }}
           >
             {entries.map(({ id, color, name, hint }) => (
@@ -79,11 +79,11 @@ export default function ClusterPalettePanel({
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
+                  gap: 12,
                   border: "1px solid #e5e5d6",
-                  borderRadius: 8,
-                  padding: "8px 10px",
+                  borderRadius: 10,
                   background: "#fff",
+                  width: "100%",
                 }}
               >
                 <div
