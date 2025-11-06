@@ -79,6 +79,15 @@ function MapPage() {
   // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
 
+  /** ===== UMAP座標へセンタリング ===== */
+  const centerToUMAP = useCallback((xUMAP, yUMAP, opts = {}) => {
+    if (!Number.isFinite(xUMAP) || !Number.isFinite(yUMAP)) return;
+    const yCanvas = -yUMAP;
+    const zoomTarget = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM));
+    const yOffset = getYOffsetWorld(zoomTarget, CENTER_Y_FRAC);
+    setViewState((prev) => ({ ...prev, target: [xUMAP, yCanvas - yOffset, 0], zoom: zoomTarget }));
+  }, []);
+
   // クラスタ重心に移動
   const centerToCluster = useCallback((clusterId) => {
     const cid = Number(clusterId);
@@ -344,15 +353,6 @@ function MapPage() {
       window.removeEventListener("storage", onStorage);
     };
   }, [readUserPinFromStorage]);
-
-  /** ===== UMAP座標へセンタリング ===== */
-  const centerToUMAP = useCallback((xUMAP, yUMAP, opts = {}) => {
-    if (!Number.isFinite(xUMAP) || !Number.isFinite(yUMAP)) return;
-    const yCanvas = -yUMAP;
-    const zoomTarget = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM));
-    const yOffset = getYOffsetWorld(zoomTarget, CENTER_Y_FRAC);
-    setViewState((prev) => ({ ...prev, target: [xUMAP, yCanvas - yOffset, 0], zoom: zoomTarget }));
-  }, []);
 
   // 初期センタリング
   useEffect(() => {
