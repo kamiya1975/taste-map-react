@@ -39,7 +39,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
   // ★ 検索語がある時は従来検索、空の時は「全件・価格昇順」
   const results = useMemo(() => {
     const nq = normalizeJP(q);
-    if (nq) return searchItems(indexed, q, 200);
+    if (nq) return searchItems(indexed, nq, 200); // 正規化後を使用（任意）
     return initialSorted;
   }, [indexed, q, initialSorted]);
 
@@ -88,8 +88,22 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
       onClose={onClose}
       hideBackdrop
       sx={{ zIndex: 1450 }} 
-      ModalProps={{ ...drawerModalProps, keepMounted: true }}
-      PaperProps={{ style: paperBaseStyle }}
+      BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
+      ModalProps={{
+        ...drawerModalProps,
+        keepMounted: true,
+        disableEnforceFocus: true,  // フォーカス囲い込みを解除
+        disableAutoFocus: true,     // 自動フォーカス抑止
+        disableRestoreFocus: true,  // 閉じた後の復元抑止
+      }}
+      PaperProps={{
+        style: {
+          ...paperBaseStyle,
+          height: DRAWER_HEIGHT,
+          display: "flex",
+          flexDirection: "column",
+        },
+      }}
     >
       <PanelHeader
         title="検索"
@@ -146,7 +160,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
           {listed.map((item, idx) => (
             <ListRow
-              key={`${item.jan_code}-${idx}`}
+              key={`${item?.JAN ?? item?.jan_code ?? idx}`}
               index={item.displayIndex}
               item={item}
               onPick={() => pick(idx)}
