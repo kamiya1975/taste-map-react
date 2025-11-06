@@ -715,10 +715,11 @@ useEffect(() => {
           position: "absolute",
           top: "10px",
           left: "10px",
-          zIndex: 10,
+          zIndex: 2200,
           display: "flex",
           alignItems: "center",
           gap: "6px", // セレクタとボタンの間隔
+          pointerEvents: "auto",
         }}
       >
         {/* セレクタ */}
@@ -815,7 +816,7 @@ useEffect(() => {
           position: "absolute",
           top: "10px",
           right: "10px",
-          zIndex: 10,
+          zIndex: 2200,
           width: "40px",
           height: "40px",
           background: "transparent",
