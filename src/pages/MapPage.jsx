@@ -83,10 +83,12 @@ function MapPage() {
   const centerToUMAP = useCallback((xUMAP, yUMAP, opts = {}) => {
     if (!Number.isFinite(xUMAP) || !Number.isFinite(yUMAP)) return;
     const yCanvas = -yUMAP;
-    const zoomTarget = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, opts.zoom ?? INITIAL_ZOOM));
+    // 既定は最小ズーム。維持したい時だけ opts.keepZoom=true を明示
+    const baseZoom = opts.keepZoom ? (opts.zoom ?? viewState.zoom ?? INITIAL_ZOOM) : ZOOM_LIMITS.min;
+    const zoomTarget = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, baseZoom));
     const yOffset = getYOffsetWorld(zoomTarget, CENTER_Y_FRAC);
     setViewState((prev) => ({ ...prev, target: [xUMAP, yCanvas - yOffset, 0], zoom: zoomTarget }));
-  }, []);
+  }, [viewState.zoom]);
 
   // クラスタ重心に移動
   const centerToCluster = useCallback((clusterId) => {
@@ -98,12 +100,10 @@ function MapPage() {
     const sy = items.reduce((s, d) => s + Number(d.umap_y || 0), 0);
     const cx = sx / items.length;
     const cy = sy / items.length;
-    // 少しだけ寄る（好みで調整）
-    const z = Math.min(ZOOM_LIMITS.max, (viewState.zoom ?? INITIAL_ZOOM) + 0.4);
     // 色分けがOFFならONにしておく（任意）
     setClusterColorMode(true);
-    centerToUMAP(cx, cy, { zoom: z });
-  }, [data, viewState.zoom, centerToUMAP]);
+    centerToUMAP(cx, cy); // 既定で最小ズーム
+  }, [data, centerToUMAP]);
 
   // ユニークな cluster 値 → 初期色を決定
   const clusterList = useMemo(() => {
