@@ -1078,8 +1078,14 @@ useEffect(() => {
         }}
         sx={{ zIndex: 1700 }}
         hideBackdrop
-        BackdropProps={{ style: { background: "transparent" } }}
-        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
+        ModalProps={{
+          ...drawerModalProps,
+          keepMounted: true,
+          disableEnforceFocus: true,  // ★ フォーカスロック解除
+          disableAutoFocus: true,     // ★ 自動フォーカスを抑止
+          disableRestoreFocus: true,  // ★ 閉じた後のフォーカス復元も抑止
+        }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
