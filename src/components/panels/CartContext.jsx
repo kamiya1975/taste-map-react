@@ -265,10 +265,19 @@ export function CartProvider({ children }) {
       return null;
     }
     if (!cartId) return await createCartIfNeeded();
+
     setLoading(true); setError("");
     try {
       const data = await shopifyFetchGQL(GQL_CART_QUERY, { id: cartId });
-      const nc = normalizeCart(data?.cart || null);
+      const found = data?.cart || null;
+      if (!found) {
+        // ★ 期限切れ/存在しない場合は cartId を破棄して即作り直す
+        try { localStorage.removeItem(CART_ID_KEY); } catch {}
+        setCartId(null);
+        setLoading(false);
+        return await createCartIfNeeded();
+      }
+      const nc = normalizeCart(found);
       setCartAndId(nc);
       setLoading(false);
       return nc;
@@ -628,15 +637,17 @@ export function CartProvider({ children }) {
       console.warn("[CartContext] flushStagedToOnline failed:", e?.message || e);
     }
     try {
-      // 2) 最新のカート状態を取得（Shopify接続時は checkoutUrl を持つ）
-      const c = await reload();
-      // reload() が null を返すケースもあるので cart のフォールバックも見る
+      let c = await reload();
+      // ★ ここでも空なら「新規作成→URL取得」を最後に試す
+      if (!c?.checkoutUrl) {
+        c = await createCartIfNeeded();
+      }
       return c?.checkoutUrl || cart?.checkoutUrl || "";
     } catch (e) {
       console.warn("[CartContext] reload for checkoutUrl failed:", e?.message || e);
       return cart?.checkoutUrl || "";
     }
-  }, [flushStagedToOnline, reload, cart?.checkoutUrl]);
+  }, [flushStagedToOnline, reload, createCartIfNeeded, cart?.checkoutUrl]);
 
   const value = useMemo(() => ({
   // 状態
