@@ -7,7 +7,7 @@
 import React, { useMemo } from "react";
 import Drawer from "@mui/material/Drawer";
 import PanelHeader from "../ui/PanelHeader";
-import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../ui/constants";
+import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
 import { useCart } from "./CartContext";
 
 export default function CartPanel({ isOpen, onClose }) {
