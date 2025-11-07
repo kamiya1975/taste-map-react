@@ -25,6 +25,14 @@ const EP             = SHOP_READY
   ? `https://${SHOP_SUBDOMAIN}.myshopify.com/api/${API_VER}/graphql.json`
   : "";
 
+// ★ デバッグ（後で消してOK）
+console.log("[SHOP]", {
+  SHOP_SUBDOMAIN,
+  TOKEN: TOKEN ? "set" : "missing",
+  EP,
+  SHOP_READY
+});
+
 // ---- Utils ----
 const readJSON = (key, def = []) => { try { const v = JSON.parse(localStorage.getItem(key) || "null"); return v ?? def; } catch { return def; } };
 
