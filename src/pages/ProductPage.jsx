@@ -296,6 +296,7 @@ export default function ProductPage() {
   const jan_code = useJanParam();
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
+  const [adding, setAdding] = useState(false);
 
   // ★ CartContext（ローカル積み → カートで同期）
   const { addItem, totalQuantity, shopReady } = useCart();
@@ -394,9 +395,7 @@ export default function ProductPage() {
     postToParent({ type: "RATING_UPDATED", jan: jan_code, payload });
   };
 
-  if (!product) {
-    return <div style={{ padding: 16 }}>商品が見つかりませんでした。</div>;
-  }
+  if (!product) return <div style={{ padding: 16 }}>商品が見つかりませんでした。</div>;
 
   const price = product.希望小売価格 ?? product.価格 ?? 1800;
 
@@ -405,7 +404,6 @@ export default function ProductPage() {
   const typeColor = typeColors[product.Type] || typeColors.Other;
 
   // ★ カート追加（ローカルに積む → カートで同期）
-  const [adding, setAdding] = useState(false);
   const handleAddToCart = async () => {
     try {
       setAdding(true);
