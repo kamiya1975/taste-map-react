@@ -382,7 +382,7 @@ export function CartProvider({ children }) {
 
   // --- 数量更新 ---
   const updateQty = useCallback(async (lineId, quantity) => {
-    if (!SHOP_READY) {
+    if (!SHOP_READY || String(lineId || "").startsWith("local:")) {
       const lc = loadLocalCart();
       const idx = lc.lines.findIndex(l => l.id === lineId);
       if (idx >= 0) {
@@ -392,11 +392,14 @@ export function CartProvider({ children }) {
       }
       return lc;
     }
-    if (!cartId) await createCartIfNeeded();
+    if (!cartId) {
+        const c = await createCartIfNeeded();
+        if (!c) return loadLocalCart(); // ← フォールバック
+    }
     setLoading(true); setError("");
     try {
       const data = await shopifyFetchGQL(GQL_CART_UPDATE, {
-        cartId: cartId || (await createCartIfNeeded()).id,
+        cartId: cartId,
         lines: [{ id: lineId, quantity: Number(quantity) }],
       });
       const errs = data?.cartLinesUpdate?.userErrors || [];
@@ -414,17 +417,20 @@ export function CartProvider({ children }) {
 
   // --- 行削除 ---
   const removeLine = useCallback(async (lineId) => {
-    if (!SHOP_READY) {
+    if (!SHOP_READY || String(lineId || "").startsWith("local:")) {
       const lc = loadLocalCart();
       const next = lc.lines.filter(l => l.id !== lineId);
       saveLocalCart(next);
       return loadLocalCart();
     }
-    if (!cartId) await createCartIfNeeded();
+    if (!cartId) {
+      const c = await createCartIfNeeded();
+      if (!c) return loadLocalCart(); // ← フォールバック
+    }
     setLoading(true); setError("");
     try {
       const data = await shopifyFetchGQL(GQL_CART_REMOVE, {
-        cartId: cartId || (await createCartIfNeeded()).id,
+        cartId: cartId,
         lineIds: [lineId],
       });
       const errs = data?.cartLinesRemove?.userErrors || [];
@@ -459,7 +465,7 @@ export function CartProvider({ children }) {
 
   const value = useMemo(() => ({
     // 状態
-    shopReady: !!(SHOP_SUBDOMAIN && TOKEN), 
+    shopReady: SHOP_READY,  // ← 定数をそのまま公開 
     endpoint: EP,
     cart, cartId,
     loading,

@@ -485,9 +485,6 @@ export default function ProductPage() {
         >
           🛒 カートに入れる
         </button>
-        <div style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
-          {shopReady ? "オンライン連携: 有効" : "オンライン連携: なし（ローカル保存）"} / 点数: {totalQuantity}
-        </div>
       </div>
 
       {/* 評価（◎） */}
