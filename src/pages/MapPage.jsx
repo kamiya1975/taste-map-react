@@ -1159,6 +1159,7 @@ useEffect(() => {
           onClose={() => setIsMyPageOpen(false)}
         />
         <MyPagePanelContent
+          onOpenCart={() => openOverlayAboveMenu("cart")}
           onOpenMapGuide={() => openOverlayAboveMenu("mapguide")}
           onOpenStore={() => openOverlayAboveMenu("store")}
           onOpenAccount={() => openOverlayAboveMenu("account")}
@@ -1191,6 +1192,11 @@ useEffect(() => {
           },
         }}
       >
+        <CartPanel
+          isOpen={isCartOpen}
+         onClose={() => setIsCartOpen(false)}
+        />
+
         <PanelHeader
           title="マップガイド"
           icon="map-guide.svg"

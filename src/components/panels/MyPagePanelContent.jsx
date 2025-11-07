@@ -37,6 +37,7 @@ function Row({ icon, label, onClick, last = false }) {
 
 export default function MyPagePanelContent({
   onClose,
+  onOpenCart,
   onOpenSlider,
   onOpenMapGuide,
   onOpenStore,
@@ -45,6 +46,12 @@ export default function MyPagePanelContent({
 }) {
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
+      {/* 🛒 カート */}
+      <Row
+        icon={ICONS.cart}
+        label="カート"
+        onClick={() => onOpenCart?.()}
+      />
       <Row
         icon={ICONS.mapGuide}
         label="マップガイド"
