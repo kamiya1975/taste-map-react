@@ -4,6 +4,9 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-
 import "./App.css";
 import { bootstrapIdentity } from "./utils/auth";
 
+// CartContext をインポート
+import { CartProvider } from "./components/panels/CartContext";
+
 // Pages
 import IntroPage from "./pages/IntroPage";
 import MapPage from "./pages/MapPage";
@@ -17,11 +20,9 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // スタンドアロン起動の初回だけ /map へ寄せる
   useEffect(() => {
-    // ★ まずIDを復元（Safari→ホーム起動でも引き継ぐ）
     bootstrapIdentity();
-    
+
     const isStandalone =
       window.matchMedia?.("(display-mode: standalone)")?.matches ||
       window.navigator.standalone === true; // iOS
@@ -38,30 +39,19 @@ export default function App() {
   }, [navigate, location.pathname]);
 
   return (
-    <Routes>
-      {/* ランディング（通常ブラウザ） */}
-      <Route path="/" element={<IntroPage />} />
-
-      {/* 固定店舗の設定（Introフロー） */}
-      <Route path="/store" element={<StorePage />} />
-
-      {/* 基準ワインの嗜好スライダー */}
-      <Route path="/slider" element={<SliderPage />} />
-
-      {/* 地図ページ */}
-      <Route path="/map" element={<MapPage />} />
-
-      {/* 商品詳細（埋め込み用） */}
-      <Route path="/products/:jan" element={<ProductPage />} />
-
-      {/* ユーザー評価ログ */}
-      <Route path="/taste-log" element={<UserTastePage />} />
-
-      {/* スキャン＆商品フロー */}
-      <Route path="/scan-flow" element={<ScanAndProductFlow />} />
-
-      {/* それ以外は地図へ */}
-      <Route path="*" element={<Navigate to="/map" replace />} />
-    </Routes>
+    // 👇 ここで全体を CartProvider でラップ
+    <CartProvider>
+      <Routes>
+        <Route path="/" element={<IntroPage />} />
+        <Route path="/store" element={<StorePage />} />
+        <Route path="/slider" element={<SliderPage />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/products/:jan" element={<ProductPage />} />
+        <Route path="/taste-log" element={<UserTastePage />} />
+        <Route path="/scan-flow" element={<ScanAndProductFlow />} />
+        <Route path="*" element={<Navigate to="/map" replace />} />
+      </Routes>
+    </CartProvider>
   );
 }
+
