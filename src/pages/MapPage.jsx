@@ -58,6 +58,23 @@ function MapPage() {
   const [isClusterOpen, setIsClusterOpen] = useState(false); // ← 追加：配色パネルの開閉
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+  // ✅ Shopify チェックアウトから戻った直後の後処理（ローカル側のカート情報を掃除）
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("from") === "checkout") {
+        // ローカル側（即時格納ぶん）をクリア
+        localStorage.removeItem("tm_cart_stage_v1");
+        localStorage.removeItem("tm_cart_local_v1");
+        // 軽いトースト
+        alert("ご注文ありがとうございました。続けてお買い物いただけます。");
+        // クエリを消して履歴を書き換え（戻るで何度も発火しないように）
+        url.searchParams.delete("from");
+        window.history.replaceState({}, "", url.toString());
+      }
+    } catch {}
+  }, []);
+
   const iframeRef = useRef(null);
   const autoOpenOnceRef = useRef(false);
 

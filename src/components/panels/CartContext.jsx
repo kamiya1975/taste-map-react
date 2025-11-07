@@ -619,43 +619,66 @@ export function CartProvider({ children }) {
     };
   }, [cart, _localItems, _stagedItems]);
 
+  // チェックアウト前に：staged をオンラインへ反映 → 最新 checkoutUrl を返す
+  const syncAndGetCheckoutUrl = useCallback(async () => {
+    try {
+      // 1) 未同期(staged)をできるだけオンラインへ
+      await flushStagedToOnline();
+    } catch (e) {
+      console.warn("[CartContext] flushStagedToOnline failed:", e?.message || e);
+    }
+    try {
+      // 2) 最新のカート状態を取得（Shopify接続時は checkoutUrl を持つ）
+      const c = await reload();
+      // reload() が null を返すケースもあるので cart のフォールバックも見る
+      return c?.checkoutUrl || cart?.checkoutUrl || "";
+    } catch (e) {
+      console.warn("[CartContext] reload for checkoutUrl failed:", e?.message || e);
+      return cart?.checkoutUrl || "";
+    }
+  }, [flushStagedToOnline, reload, cart?.checkoutUrl]);
+
   const value = useMemo(() => ({
-    // 状態
-    shopReady: SHOP_READY,
-    endpoint: EP,
-    cart, cartId,
-    loading,
-    error,
+  // 状態
+  shopReady: SHOP_READY,
+  endpoint: EP,
+  cart, cartId,
+  loading,
+  error,
 
-    // 表示集計
-    subtotal: snapshot.subtotal,                 // 表示合計（確定+推定）
-    onlineSubtotal: snapshot.onlineSubtotal,     // 確定小計（Shopify）
-    stagedSubtotal: snapshot.stagedSubtotal,     // 推定小計（staged+local）
-    currency: snapshot.currency,
-    totalQuantity: snapshot.totalQuantity,
-    lines: snapshot.lines,
-    checkoutUrl: snapshot.checkoutUrl,
-    isLocal: snapshot.isLocal,
+  // 表示集計（snapshot 由来）
+  subtotal: snapshot.subtotal,             // 表示合計（確定 + 推定）
+  onlineSubtotal: snapshot.onlineSubtotal, // 確定小計（Shopify）
+  stagedSubtotal: snapshot.stagedSubtotal, // 推定小計（staged+local）
+  currency: snapshot.currency,
+  totalQuantity: snapshot.totalQuantity,
+  lines: snapshot.lines,
+  checkoutUrl: snapshot.checkoutUrl,
+  isLocal: snapshot.isLocal,
 
-    // 操作
-    reload,
-    addByJan,
-    addByVariantId,
-    addItem,
-    updateQty,
-    removeLine,
-    flushStagedToOnline,
+  // 操作
+  reload,
+  addByJan,
+  addByVariantId,
+  addItem,
+  updateQty,
+  removeLine,
+  flushStagedToOnline,
 
-    // ローカル操作（任意で使用）
-    setLocalItems,
-    setStagedItems,
-    clearLocal:  () => setLocalItems([]),
-    clearStaged: () => setStagedItems([]),
-  }), [
-    cart, cartId, loading, error, snapshot,
-    reload, addByJan, addByVariantId, addItem, updateQty, removeLine, flushStagedToOnline,
-    setLocalItems, setStagedItems
-  ]);
+  // ← 新規公開：チェックアウトURLを安全に取得（未同期の同期込み）
+  syncAndGetCheckoutUrl,
+
+  // ローカル操作（任意で使用）
+  setLocalItems,
+  setStagedItems,
+  clearLocal:  () => setLocalItems([]),
+  clearStaged: () => setStagedItems([]),
+}), [
+  cart, cartId, loading, error, snapshot,
+  reload, addByJan, addByVariantId, addItem, updateQty, removeLine, flushStagedToOnline,
+  setLocalItems, setStagedItems,
+  syncAndGetCheckoutUrl, // ★ 依存に追加
+]);
 
   return (
     <CartContext.Provider value={value}>

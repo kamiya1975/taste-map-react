@@ -4,7 +4,7 @@
 // - カートを開いたら staged → Shopify 同期（flush）＆ reload
 // - 行ごとに origin バッジ（online/staged/local）と syncState を表示
 // ------------------------------------------------------------
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import Drawer from "@mui/material/Drawer";
 import PanelHeader from "../ui/PanelHeader";
 import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
@@ -26,7 +26,36 @@ export default function CartPanel({ isOpen, onClose }) {
     removeLine,
     reload,
     flushStagedToOnline,
+    syncAndGetCheckoutUrl,
+    hasPending,
+    onlineOnlyCount,
   } = useCart();
+
+  // 追加
+  const [checkingOut, setCheckingOut] = useState(false);
+  const isInAppWebView = () => {
+    const ua = navigator.userAgent || "";
+    return /(FBAN|FBAV|Instagram|Line|Twitter|WebView|wv)/i.test(ua);
+  };
+
+  const handleCheckout = async () => {
+    if (checkingOut) return;
+    setCheckingOut(true);
+    try {
+      const url = await syncAndGetCheckoutUrl(); // ← 未同期をflush→reload→URL取得
+      if (!url) throw new Error("チェックアウトURLが取得できませんでした");
+      if (isInAppWebView()) {
+        window.location.href = url;     // WebViewは同タブ
+      } else {
+        const w = window.open(url, "_blank", "noopener"); // 通常は新規タブ
+        if (!w) window.location.href = url;               // ポップアップブロック時フォールバック
+      }
+    } catch (e) {
+      alert(`チェックアウト準備に失敗: ${e?.message || e}`);
+    } finally {
+      setCheckingOut(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -193,39 +222,38 @@ export default function CartPanel({ isOpen, onClose }) {
       </div>
 
       {/* フッター（表示合計・チェックアウト） */}
-      <div
-        style={{
-          position: "sticky",
-          bottom: 0,
-          padding: "10px 12px",
-          borderTop: "1px solid #ddd",
-          background: "#faf9f5",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
+      <div style={{
+        position: "sticky", bottom: 0, padding: "10px 12px",
+        borderTop: "1px solid #ddd", background: "#faf9f5",
+        display: "flex", alignItems: "center", gap: 12,
+      }}>
         <div style={{ fontSize: 14 }}>
-          表示合計：<b>{fmt(subtotal)}</b>
+          小計：<b>{fmt(subtotal)}</b>
+          {hasPending && (
+            <span style={{ marginLeft: 8, fontSize: 12, color: "#a00" }}>
+              （未同期の商品があります）
+            </span>
+          )}
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          <a
-            href={checkoutUrl || "#"}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => { if (!checkoutUrl) e.preventDefault(); }}
+          <button
+            onClick={handleCheckout}
+            disabled={checkingOut || (!shopReady && onlineOnlyCount === 0)}
             style={{
               display: "inline-block",
-              textDecoration: "none",
-              background: "#111",
+              background: checkingOut ? "#999" : "#111",
               color: "#fff",
               padding: "10px 14px",
               borderRadius: 8,
               fontSize: 14,
+              border: "1px solid #111",
+              cursor: checkingOut ? "default" : "pointer",
+              opacity: checkingOut ? 0.8 : 1,
             }}
+            title={hasPending ? "未同期商品は購入手続きに含まれません（カート表示時に自動同期を試みます）" : ""}
           >
-            チェックアウトへ
-          </a>
+            {checkingOut ? "決済ページを開いています…" : "チェックアウトへ"}
+          </button>
         </div>
       </div>
     </Drawer>
