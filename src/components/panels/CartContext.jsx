@@ -12,8 +12,8 @@ import React, {
 import { getVariantGidByJan } from "../../lib/ecLinks";
 
 const CART_ID_KEY      = "tm_cart_id";
-const LOCAL_CART_KEY   = "tm_cart_local_v1";     // 永続ローカル（明示的に保存されたカート）
-const STAGE_CART_KEY   = "tm_cart_stage_v1";     // ★ 一時ステージ（楽観追加）
+const LOCAL_CART_KEY   = "tm_cart_local_v1";     // 永続ローカル（明示保存）
+const STAGE_CART_KEY   = "tm_cart_stage_v1";     // 一時ステージ（楽観追加）
 
 const SHOP_SUBDOMAIN = (process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN || "").trim();
 const TOKEN          = (process.env.REACT_APP_SHOPIFY_STOREFRONT_TOKEN || "").trim();
@@ -22,6 +22,26 @@ const SHOP_READY     = !!(SHOP_SUBDOMAIN && TOKEN);
 const EP             = SHOP_READY
   ? `https://${SHOP_SUBDOMAIN}.myshopify.com/api/${API_VER}/graphql.json`
   : "";
+
+// ---------- 小物 ----------
+const readJSON = (key, def) => {
+  try {
+    const v = JSON.parse(localStorage.getItem(key) || "null");
+    return v ?? def;
+  } catch {
+    return def;
+  }
+};
+// 「関数アップデータ/値」の両方に対応しつつ localStorage にも同時保存するラッパ
+function createPersistSetter(key, setState) {
+  return (nextOrUpdater) => {
+    setState(prev => {
+      const next = typeof nextOrUpdater === "function" ? nextOrUpdater(prev) : nextOrUpdater;
+      try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+}
 
 // ---------- Shopify GraphQL ----------
 async function shopifyFetchGQL(query, variables = {}) {
@@ -146,7 +166,6 @@ function normalizeCart(raw) {
 
 // ---------- ローカル行ビルド ----------
 function buildLocalLine(item) {
-  // item: {jan,title,price,qty,imageUrl,variantId?}
   const qty   = Number(item.qty || item.quantity || 1);
   const price = Number(item.price || 0);
   return {
@@ -166,11 +185,6 @@ function buildLocalLine(item) {
   };
 }
 
-const readJSON = (key, def = []) => {
-  try { const v = JSON.parse(localStorage.getItem(key) || "null"); return v ?? def; }
-  catch { return def; }
-};
-
 // ---------- Context ----------
 const CartContext = createContext(null);
 export const useCart = () => useContext(CartContext);
@@ -185,13 +199,12 @@ export function CartProvider({ children }) {
     try { return localStorage.getItem(CART_ID_KEY) || null; } catch { return null; }
   });
 
-  // 永続ローカル（明示保存ぶん）
-  const [localItems, setLocalItems]   = useState(() => readJSON(LOCAL_CART_KEY, []));
-  // ★ 楽観用ステージ（押した瞬間にここへ入りUI反映）
-  const [stagedItems, setStagedItems] = useState(() => readJSON(STAGE_CART_KEY, []));
+  // 永続ローカル / 楽観ステージ
+  const [localItems,  _setLocalItems ] = useState(() => readJSON(LOCAL_CART_KEY, []));
+  const [stagedItems, _setStagedItems] = useState(() => readJSON(STAGE_CART_KEY, []));
 
-  const saveLocal  = useCallback(arr => { setLocalItems(arr);  try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(arr)); } catch {} }, []);
-  const saveStaged = useCallback(arr => { setStagedItems(arr); try { localStorage.setItem(STAGE_CART_KEY, JSON.stringify(arr)); } catch {} }, []);
+  const saveLocal  = useCallback(createPersistSetter(LOCAL_CART_KEY,  _setLocalItems),  []);
+  const saveStaged = useCallback(createPersistSetter(STAGE_CART_KEY, _setStagedItems), []);
 
   const creatingRef = useRef(false);
 
@@ -238,9 +251,9 @@ export function CartProvider({ children }) {
 
   const reload = useCallback(async () => {
     if (!SHOP_READY) {
-      // ローカルは state を localStorage で再同期
-      setLocalItems(readJSON(LOCAL_CART_KEY, []));
-      setStagedItems(readJSON(STAGE_CART_KEY, []));
+      // ローカルは state を localStorage と再同期
+      _setLocalItems(readJSON(LOCAL_CART_KEY, []));
+      _setStagedItems(readJSON(STAGE_CART_KEY, []));
       setCart(null);
       setError("");
       return null;
@@ -302,11 +315,13 @@ export function CartProvider({ children }) {
     // ローカルのみ
     const j = String(jan);
     const q = Number(quantity || 1);
-    const base = readJSON(LOCAL_CART_KEY, []);
-    const idx  = base.findIndex(x => (x?.jan + "") === j);
-    if (idx >= 0) base[idx] = { ...base[idx], qty: Number(base[idx].qty || 0) + q };
-    else base.push({ jan: j, title: j, price: 0, qty: q, imageUrl: null, variantId: "" });
-    saveLocal(base);
+    saveLocal(base => {
+      const arr = Array.isArray(base) ? [...base] : [];
+      const idx = arr.findIndex(x => (x?.jan + "") === j);
+      if (idx >= 0) arr[idx] = { ...arr[idx], qty: Number(arr[idx].qty || 0) + q };
+      else arr.push({ jan: j, title: j, price: 0, qty: q, imageUrl: null, variantId: "" });
+      return arr;
+    });
     return null;
   }, [addByVariantId, saveLocal]);
 
@@ -317,7 +332,7 @@ export function CartProvider({ children }) {
 
     // 1) 楽観ステージへ（UI 即時反映）
     saveStaged(prev => {
-      const base = Array.isArray(prev) ? [...prev] : prev;
+      const base = Array.isArray(prev) ? [...prev] : [];
       const idx  = base.findIndex(x => (x?.jan + "") === jan);
       if (idx >= 0) {
         base[idx] = {
@@ -349,9 +364,9 @@ export function CartProvider({ children }) {
         const gid = payload?.variantId || (jan ? await getVariantGidByJan(jan) : "");
         if (gid) {
           await addByVariantId(gid, qty);
-          // 成功：staged から相当分を消す（同JANの数量を減算/ゼロなら削除）
+          // 成功：staged から相当分を差し引き
           saveStaged(prev => {
-            let base = Array.isArray(prev) ? [...prev] : [];
+            const base = Array.isArray(prev) ? [...prev] : [];
             const idx = base.findIndex(x => (x?.jan + "") === jan);
             if (idx >= 0) {
               const left = Math.max(0, Number(base[idx].qty || 0) - qty);
@@ -362,7 +377,6 @@ export function CartProvider({ children }) {
           });
         }
       } catch (e) {
-        // ここでは何もしない（在庫切れ・variant未登録等は staged に残す）
         console.warn("[CartContext] addItem: 即時同期失敗", e?.message || e);
       }
     }
@@ -381,7 +395,6 @@ export function CartProvider({ children }) {
         if (i >= 0) {
           if (q === 0) arr.splice(i, 1);
           else arr[i] = { ...arr[i], qty: q };
-          return arr;
         }
         return arr;
       });
@@ -391,7 +404,6 @@ export function CartProvider({ children }) {
         if (i >= 0) {
           if (q === 0) arr.splice(i, 1);
           else arr[i] = { ...arr[i], qty: q };
-          return arr;
         }
         return arr;
       });
@@ -465,7 +477,6 @@ export function CartProvider({ children }) {
     if (!c?.id) return;
 
     setLoading(true); setError("");
-    // まとめてではなく1商品ずつ安全に積む（在庫エラー時に他へ影響しない）
     try {
       for (const item of pending) {
         const gid = item?.variantId || (item?.jan ? await getVariantGidByJan(String(item.jan)) : "");
@@ -477,17 +488,15 @@ export function CartProvider({ children }) {
           });
           const errs = data?.cartLinesAdd?.userErrors || [];
           if (errs.length) {
-            // 在庫不足など → 残す
             console.warn("cartLinesAdd error:", errs);
             continue;
           }
           const nc = normalizeCart(data?.cartLinesAdd?.cart || null);
           setCartAndId(nc);
-          // 成功したアイテムは staged から削除
+          // 成功分は staged から削除
           saveStaged(prev => (Array.isArray(prev) ? prev.filter(x => String(x.jan) !== String(item.jan)) : []));
         } catch (e) {
           console.warn("flush add error:", e?.message || e);
-          // 残す
         }
       }
     } finally {
@@ -550,9 +559,9 @@ export function CartProvider({ children }) {
     addItem,
     updateQty,
     removeLine,
-    flushStagedToOnline,   // ★ カート開時に同期実行
+    flushStagedToOnline,
 
-    // ローカル操作（必要なら）
+    // ローカル操作
     setLocalItems: saveLocal,
     setStagedItems: saveStaged,
     clearLocal: () => saveLocal([]),
