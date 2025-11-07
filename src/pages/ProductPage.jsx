@@ -344,6 +344,7 @@ export default function ProductPage() {
   // --- Shopify: 今すぐ購入（テスト） ---
   const handleBuyNow = async () => {
     try {
+      console.log("[BUY] jan_code=", jan_code);
       const gid = await getVariantGidByJan(jan_code);
       if (!gid) throw new Error("EC対象外（variant未登録）");
       const { checkoutUrl } = await createCart(gid, 1);
