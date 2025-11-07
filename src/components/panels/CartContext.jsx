@@ -1,19 +1,11 @@
 // ------------------------------------------------------------
-// TasteMap カート（即時格納 + Shopify同期）全文
-// - staged(即時) → カート表示時などに flush でShopifyへ同期
-// - 行には origin: "online" | "staged" | "local" と syncState を付与
-// - 合計は「確定小計(Shopify) / 推定小計(staged+local)」を分離
-// - 端末内の別フレーム/別ツリーとも BroadcastChannel + storage + postMessage で同期待ち受け
+// TasteMap カート（即時格納 + Shopify同期）完全版（置き換え用）
 // ------------------------------------------------------------
 import React, {
   createContext, useCallback, useContext, useEffect,
   useMemo, useRef, useState
 } from "react";
 import { getVariantGidByJan } from "../../lib/ecLinks";
-
- // --- DEBUG: いまの設定を覗けるようにする ---
- console.debug("[Cart] SHOP_READY:", SHOP_READY);
- console.debug("[Cart] EP:", EP);
 
 // ---- Keys / Constants ----
 const CART_ID_KEY    = "tm_cart_id";
@@ -29,7 +21,7 @@ const EP             = SHOP_READY
   ? `https://${SHOP_SUBDOMAIN}.myshopify.com/api/${API_VER}/graphql.json`
   : "";
 
-// ★ デバッグ（後で消してOK）
+// ★ デバッグ（必要なら残してOK）
 console.log("[SHOP]", {
   SHOP_SUBDOMAIN,
   TOKEN: TOKEN ? "set" : "missing",
@@ -65,8 +57,6 @@ async function shopifyFetchGQL(query, variables = {}) {
     err.code = "ENV_MISSING";
     throw err;
   }
-  console.debug("[Cart] POST", EP, { hasToken: !!TOKEN, qlen: query.length });
-
   const res = await fetch(EP, {
     method: "POST",
     headers: {
@@ -307,7 +297,7 @@ export function CartProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- 変更通知の購読（お気に入り方式と同じ）----
+  // ---- 変更通知の購読 ----
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key === LOCAL_CART_KEY)  _setLocalItems(readJSON(LOCAL_CART_KEY, []));
@@ -391,7 +381,7 @@ export function CartProvider({ children }) {
     const jan = String(payload?.jan || "");
     const qty = Number(payload?.qty || 1);
 
-    // 1) staged に即時反映（お気に入り方式）
+    // 1) staged に即時反映
     setStagedItems(prev => {
       const base = Array.isArray(prev) ? [...prev] : [];
       const idx  = base.findIndex(x => String(x?.jan) === jan);
@@ -419,7 +409,7 @@ export function CartProvider({ children }) {
       return base;
     });
 
-    // 2) 可能なら即オンライン同期トライ（失敗してもstagedは残す）
+    // 2) 可能なら即オンライン同期
     if (SHOP_READY) {
       try {
         const gid = payload?.variantId || (jan ? await getVariantGidByJan(jan) : "");
@@ -437,9 +427,8 @@ export function CartProvider({ children }) {
             return base;
           });
         }
-      } catch (e) {
-        // 在庫切れ等：stagedに残す（必要なら syncState を "error_oos" などに更新）
-        // ここでは黙っておく
+      } catch {
+        // 在庫切れ/通信エラー等：stagedに残す
       }
     }
     return null;
@@ -575,7 +564,7 @@ export function CartProvider({ children }) {
           setCartAndId(nc);
           // 成功したJANを staged から削除
           setStagedItems(prev => (Array.isArray(prev) ? prev.filter(x => String(x.jan) !== String(item.jan)) : []));
-        } catch (e) {
+        } catch {
           // 通信系: 残す
         }
       }
@@ -642,20 +631,16 @@ export function CartProvider({ children }) {
     };
   }, [cart, _localItems, _stagedItems]);
 
-  // チェックアウト前に：staged をオンラインへ反映 → 最新 checkoutUrl を返す
+  // ---- チェックアウトURL取得（未同期の同期込み）----
   const syncAndGetCheckoutUrl = useCallback(async () => {
     try {
-      // 1) 未同期(staged)をできるだけオンラインへ
-      await flushStagedToOnline();
+      await flushStagedToOnline(); // 未同期分をできるだけ反映
     } catch (e) {
       console.warn("[CartContext] flushStagedToOnline failed:", e?.message || e);
     }
     try {
       let c = await reload();
-      // ★ ここでも空なら「新規作成→URL取得」を最後に試す
-      if (!c?.checkoutUrl) {
-        c = await createCartIfNeeded();
-      }
+      if (!c?.checkoutUrl) c = await createCartIfNeeded();
       return c?.checkoutUrl || cart?.checkoutUrl || "";
     } catch (e) {
       console.warn("[CartContext] reload for checkoutUrl failed:", e?.message || e);
@@ -663,59 +648,61 @@ export function CartProvider({ children }) {
     }
   }, [flushStagedToOnline, reload, createCartIfNeeded, cart?.checkoutUrl]);
 
-  const value = useMemo(() => ({
-  // 状態
-  shopReady: SHOP_READY,
-  endpoint: EP,
-  cart, cartId,
-  loading,
-  error,
-
-  // 表示集計（snapshot 由来）
-  subtotal: snapshot.subtotal,             // 表示合計（確定 + 推定）
-  onlineSubtotal: snapshot.onlineSubtotal, // 確定小計（Shopify）
-  stagedSubtotal: snapshot.stagedSubtotal, // 推定小計（staged+local）
-  currency: snapshot.currency,
-  totalQuantity: snapshot.totalQuantity,
-  lines: snapshot.lines,
-  checkoutUrl: snapshot.checkoutUrl,
-  isLocal: snapshot.isLocal,
-
-  // 操作
-  reload,
-  addByJan,
-  addByVariantId,
-  addItem,
-  updateQty,
-  removeLine,
-  flushStagedToOnline,
-
-  // ← 新規公開：チェックアウトURLを安全に取得（未同期の同期込み）
-  syncAndGetCheckoutUrl,
-
-  // ローカル操作（任意で使用）
-  setLocalItems,
-  setStagedItems,
-  clearLocal:  () => setLocalItems([]),
-  clearStaged: () => setStagedItems([]),
-
-  // --- デバッグ用: Shopify接続テスト ---
-  __debugTest: async () => {
+  // ---- デバッグAPI（安全な宣言順で定義してから value へ入れる）----
+  const __debugTest = useCallback(async () => {
     try {
       const data = await shopifyFetchGQL("query { shop { name primaryDomain { url } } }");
       console.log("[Cart][OK] shop =", data?.shop);
+      return data?.shop;
     } catch (e) {
       console.error("[Cart][NG] test failed:", e?.message || e);
       throw e;
     }
-  },
+  }, []);
 
-}), [
-  cart, cartId, loading, error, snapshot,
-  reload, addByJan, addByVariantId, addItem, updateQty, removeLine, flushStagedToOnline,
-  setLocalItems, setStagedItems,
-  syncAndGetCheckoutUrl, // ★ 依存に追加
-]);
+  const value = useMemo(() => ({
+    // 状態
+    shopReady: SHOP_READY,
+    endpoint: EP,
+    cart, cartId,
+    loading,
+    error,
+
+    // 表示集計（snapshot 由来）
+    subtotal: snapshot.subtotal,             // 表示合計（確定 + 推定）
+    onlineSubtotal: snapshot.onlineSubtotal, // 確定小計（Shopify）
+    stagedSubtotal: snapshot.stagedSubtotal, // 推定小計（staged+local）
+    currency: snapshot.currency,
+    totalQuantity: snapshot.totalQuantity,
+    lines: snapshot.lines,
+    checkoutUrl: snapshot.checkoutUrl,
+    isLocal: snapshot.isLocal,
+
+    // 操作
+    reload,
+    addByJan,
+    addByVariantId,
+    addItem,
+    updateQty,
+    removeLine,
+    flushStagedToOnline,
+
+    // チェックアウトURL取得
+    syncAndGetCheckoutUrl,
+
+    // ローカル操作
+    setLocalItems,
+    setStagedItems,
+    clearLocal:  () => setLocalItems([]),
+    clearStaged: () => setStagedItems([]),
+
+    // デバッグ
+    __debugTest,
+  }), [
+    cart, cartId, loading, error, snapshot,
+    reload, addByJan, addByVariantId, addItem, updateQty, removeLine, flushStagedToOnline,
+    setLocalItems, setStagedItems, syncAndGetCheckoutUrl, __debugTest,
+  ]);
 
   return (
     <CartContext.Provider value={value}>
