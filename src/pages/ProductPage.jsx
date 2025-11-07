@@ -348,7 +348,8 @@ export default function ProductPage() {
       const gid = await getVariantGidByJan(jan_code);
       if (!gid) throw new Error("EC対象外（variant未登録）");
       const { checkoutUrl } = await createCart(gid, 1);
-      window.open(checkoutUrl, "_blank", "noopener");
+      const w = window.open(checkoutUrl, "_blank", "noopener");
+      if (!w) window.location.href = checkoutUrl;
     } catch (e) {
       alert(e.message || "購入処理に失敗しました");
       console.error(e);
