@@ -3,6 +3,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { requireRatingOrRedirect } from "../utils/auth";
 import "../index.css";
+import { createCart } from "../lib/shopify";
+import { getVariantGidByJan } from "../lib/ecLinks";
 
 /** =========================
  *  ユーティリティ
@@ -339,6 +341,19 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
+  // --- Shopify: 今すぐ購入（テスト） ---
+  const handleBuyNow = async () => {
+    try {
+      const gid = await getVariantGidByJan(jan_code);
+      if (!gid) throw new Error("EC対象外（variant未登録）");
+      const { checkoutUrl } = await createCart(gid, 1);
+      window.open(checkoutUrl, "_blank", "noopener");
+    } catch (e) {
+      alert(e.message || "購入処理に失敗しました");
+      console.error(e);
+    }
+  };
+
   // ★は rating>0 なら常に非表示（クエリには依存しない）
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan: jan_code });
@@ -513,6 +528,24 @@ export default function ProductPage() {
           }}
         />
         <span style={{ marginLeft: 8 }}>¥{Number(price).toLocaleString()}</span>
+      </div>
+
+      {/* 購入へ（テスト） */}
+      <div style={{ margin: "8px 0 16px" }}>
+        <button
+          onClick={handleBuyNow}
+          style={{
+            display: "inline-block",
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: "1px solid #ddd",
+            background: "#fff",
+            cursor: "pointer",
+            fontSize: 14
+          }}
+        >
+          購入へ（テスト）
+        </button>
       </div>
 
       {/* 評価（◎） */}
