@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { requireRatingOrRedirect } from "../utils/auth";
 import "../index.css";
-import { useCart } from "./components/panels/CartContext"; // ★ 追加：CartContext
+import { useCart } from "../components/panels/CartContext";
 
 /** =========================
  *  ユーティリティ
