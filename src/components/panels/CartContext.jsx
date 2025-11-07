@@ -12,7 +12,7 @@ import React, {
 } from "react";
 import { getVariantGidByJan } from "../../lib/ecLinks";
 
-const CART_ID_KEY = "tm_cart_id";                 // Shopify cartId
+const CART_ID_KEY    = "tm_cart_id";           // Shopify cartId
 const LOCAL_CART_KEY = "tm_cart_local_v1";
 
 const SHOP_SUBDOMAIN = (process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN || "").trim(); // 例: "tastemap"
@@ -114,9 +114,9 @@ function normalizeCart(raw) {
   if (!raw) return null;
   const edges = raw.lines?.edges || [];
   const lines = edges.map(e => {
-    const n = e.node || {};
+    const n  = e.node || {};
     const md = n.merchandise || {};
-    const v = md?.__typename === "ProductVariant" ? md : {};
+    const v  = md?.__typename === "ProductVariant" ? md : {};
     return {
       id: n.id,
       quantity: Number(n.quantity || 0),
@@ -149,12 +149,12 @@ function normalizeCart(raw) {
 // 1行の標準フォーマット（Shopifyと合わせる）
 function buildLocalLine(item) {
   // item: {jan,title,price,qty,imageUrl,variantId?}
-  const qty = Number(item.qty || item.quantity || 1);
+  const qty   = Number(item.qty || item.quantity || 1);
   const price = Number(item.price || 0);
   return {
     id: `local:${item.jan}`,                 // lineId 相当
     quantity: qty,
-    merchandiseId: item.variantId || "",     // あるなら保存（後でオンライン化できる）
+    merchandiseId: item.variantId || "",     // あれば保存（後でオンライン化できる）
     title: item.title || item.jan,
     sku: item.jan,
     productTitle: item.title || item.jan,
@@ -179,19 +179,6 @@ function loadLocalCart() {
     return { id: null, checkoutUrl: "", subtotal: 0, totalQuantity: 0, currency: "JPY", lines: [], isLocal: true };
   }
 }
-function saveLocalCart(lines) {
-  try {
-    const compact = lines.map(l => ({
-      jan: l.jan || l.sku || "",
-      title: l.title,
-      price: l.price ?? 0,
-      qty: l.quantity,
-      imageUrl: l.imageUrl || null,
-      variantId: l.merchandiseId || "",
-    }));
-    localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(compact));
-  } catch {}
-}
 
 // ================= Context 本体 ============================
 const CartContext = createContext(null);
@@ -199,7 +186,7 @@ export const useCart = () => useContext(CartContext);
 
 export function CartProvider({ children }) {
   // 共通状態
-  const [error, setError] = useState("");
+  const [error, setError]   = useState("");
   const [loading, setLoading] = useState(false);
 
   // --- Shopifyモード用 ---
@@ -207,10 +194,13 @@ export function CartProvider({ children }) {
   const [cartId, setCartId] = useState(() => {
     try { return localStorage.getItem(CART_ID_KEY) || null; } catch { return null; }
   });
+
   // ---- ローカル積み（オフライン用） --------------------------------------
+  // compact: [{ jan, title, price, qty, imageUrl, variantId }]
   const [localItems, setLocalItems] = useState(() => {
     try { return JSON.parse(localStorage.getItem(LOCAL_CART_KEY) || "[]"); } catch { return []; }
   });
+
   const saveLocal = useCallback((arr) => {
     setLocalItems(arr);
     try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(arr)); } catch {}
@@ -220,24 +210,26 @@ export function CartProvider({ children }) {
     const j = String(jan || "").trim();
     const q = Math.max(0, Number(qty) || 0);
     setLocalItems((prev) => {
-      const next = prev.map((x) => (String(x.jan) === j ? { ...x, qty: q } : x)).filter((x) => x.qty > 0);
-      saveLocal(next);
+      const next = (Array.isArray(prev) ? prev : [])
+        .map((x) => (String(x.jan) === j ? { ...x, qty: q } : x))
+        .filter((x) => x.qty > 0);
+      try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(next)); } catch {}
       return next;
     });
-  }, [saveLocal]);
+  }, []);
 
   const removeLocalItem = useCallback((jan) => {
     const j = String(jan || "").trim();
     setLocalItems((prev) => {
-      const next = prev.filter((x) => String(x.jan) !== j);
-      saveLocal(next);
+      const next = (Array.isArray(prev) ? prev : []).filter((x) => String(x.jan) !== j);
+      try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(next)); } catch {}
       return next;
     });
-  }, [saveLocal]);
+  }, []);
 
   const clearLocal = useCallback(() => saveLocal([]), [saveLocal]);
 
-
+  // ---------------------------------------------------------
   const creatingRef = useRef(false);
 
   const setCartAndId = useCallback((c) => {
@@ -285,11 +277,14 @@ export function CartProvider({ children }) {
 
   const reload = useCallback(async () => {
     if (!SHOP_READY) {
-      // ローカル再読込
-      const lc = loadLocalCart();
+      // ローカル再読込：state を最新localStorageで置き換え
+      try {
+        const raw = JSON.parse(localStorage.getItem(LOCAL_CART_KEY) || "[]");
+        setLocalItems(Array.isArray(raw) ? raw : []);
+      } catch { setLocalItems([]); }
       setCart(null);
       setError("");
-      return lc;
+      return null;
     }
     if (!cartId) return await createCartIfNeeded();
     setLoading(true); setError("");
@@ -309,7 +304,7 @@ export function CartProvider({ children }) {
   useEffect(() => {
     // 起動時：Shopifyモードなら軽くウォーム
     if (SHOP_READY) createCartIfNeeded().catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- 追加（Variant 直指定） ---
@@ -350,16 +345,18 @@ export function CartProvider({ children }) {
       }
       return addByVariantId(gid, quantity);
     } else {
-      // ローカル：JANのみで最小情報行を積む（タイトル等は後述の addItem で埋めるのが推奨）
-      const lc = loadLocalCart();
-      const idx = lc.lines.findIndex(l => (l.jan || l.sku) === String(jan));
-      if (idx >= 0) {
-        lc.lines[idx].quantity += Number(quantity || 1);
-      } else {
-        lc.lines.push(buildLocalLine({ jan: String(jan), title: String(jan), price: 0, qty: quantity }));
-      }
-      saveLocalCart(lc.lines);
-      return lc;
+      // ローカル：state を更新（localStorage 同期）
+      const j = String(jan);
+      const q = Number(quantity || 1);
+      setLocalItems(prev => {
+        const base = Array.isArray(prev) ? [...prev] : [];
+        const idx  = base.findIndex(x => (x?.jan + "") === j);
+        if (idx >= 0) base[idx] = { ...base[idx], qty: Number(base[idx].qty || 0) + q };
+        else base.push({ jan: j, title: j, price: 0, qty: q, imageUrl: null, variantId: "" });
+        try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(base)); } catch {}
+        return base;
+      });
+      return null;
     }
   }, [addByVariantId]);
 
@@ -370,36 +367,61 @@ export function CartProvider({ children }) {
     if (SHOP_READY && payload?.variantId) {
       return addByVariantId(payload.variantId, qty);
     }
-    // ローカル（または variantId 不明）
-    const lc = loadLocalCart();
+    // ローカル（または variantId 不明）: state を更新（localStorage 同期）
     const jan = String(payload.jan || "");
-    const idx = lc.lines.findIndex(l => (l.jan || l.sku) === jan);
-    if (idx >= 0) lc.lines[idx].quantity += qty;
-    else lc.lines.push(buildLocalLine({ ...payload, qty }));
-    saveLocalCart(lc.lines);
-    return lc;
+    setLocalItems(prev => {
+      const base = Array.isArray(prev) ? [...prev] : [];
+      const idx  = base.findIndex(x => (x?.jan + "") === jan);
+      if (idx >= 0) {
+        base[idx] = { ...base[idx],
+          title: payload.title ?? base[idx].title,
+          price: Number(payload.price ?? base[idx].price ?? 0),
+          qty: Number(base[idx].qty || 0) + qty,
+          imageUrl: payload.imageUrl ?? base[idx].imageUrl,
+          variantId: payload.variantId ?? base[idx].variantId ?? "",
+        };
+      } else {
+        base.push({
+          jan,
+          title: payload.title || jan,
+          price: Number(payload.price || 0),
+          qty,
+          imageUrl: payload.imageUrl || null,
+          variantId: payload.variantId || "",
+        });
+      }
+      try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(base)); } catch {}
+      return base;
+    });
+    return null;
   }, [addByVariantId]);
 
   // --- 数量更新 ---
   const updateQty = useCallback(async (lineId, quantity) => {
     if (!SHOP_READY || String(lineId || "").startsWith("local:")) {
-      const lc = loadLocalCart();
-      const idx = lc.lines.findIndex(l => l.id === lineId);
-      if (idx >= 0) {
-        lc.lines[idx].quantity = Math.max(0, Number(quantity));
-        if (lc.lines[idx].quantity === 0) lc.lines.splice(idx, 1);
-        saveLocalCart(lc.lines);
-      }
-      return lc;
+      // local:JAN から JAN を抽出して state を更新
+      const jan = String(lineId || "").startsWith("local:") ? String(lineId).slice(6) : "";
+      const q   = Math.max(0, Number(quantity) || 0);
+      setLocalItems(prev => {
+        const next = (Array.isArray(prev) ? prev : [])
+          .map(x => (String(x.jan) === jan ? { ...x, qty: q } : x))
+          .filter(x => x.qty > 0);
+        try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(next)); } catch {}
+        return next;
+      });
+      return null;
     }
-    if (!cartId) {
-        const c = await createCartIfNeeded();
-        if (!c) return loadLocalCart(); // ← フォールバック
+    // Shopify
+    let currentId = cartId;
+    if (!currentId) {
+      const c = await createCartIfNeeded();
+      if (!c) return loadLocalCart(); // フォールバック
+      currentId = c.id;
     }
     setLoading(true); setError("");
     try {
       const data = await shopifyFetchGQL(GQL_CART_UPDATE, {
-        cartId: cartId,
+        cartId: currentId,
         lines: [{ id: lineId, quantity: Number(quantity) }],
       });
       const errs = data?.cartLinesUpdate?.userErrors || [];
@@ -418,19 +440,25 @@ export function CartProvider({ children }) {
   // --- 行削除 ---
   const removeLine = useCallback(async (lineId) => {
     if (!SHOP_READY || String(lineId || "").startsWith("local:")) {
-      const lc = loadLocalCart();
-      const next = lc.lines.filter(l => l.id !== lineId);
-      saveLocalCart(next);
-      return loadLocalCart();
+      const jan = String(lineId || "").startsWith("local:") ? String(lineId).slice(6) : "";
+      setLocalItems(prev => {
+        const next = (Array.isArray(prev) ? prev : []).filter(x => String(x.jan) !== jan);
+        try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(next)); } catch {}
+        return next;
+      });
+      return null;
     }
-    if (!cartId) {
+    // Shopify
+    let currentId = cartId;
+    if (!currentId) {
       const c = await createCartIfNeeded();
-      if (!c) return loadLocalCart(); // ← フォールバック
+      if (!c) return loadLocalCart(); // フォールバック
+      currentId = c.id;
     }
     setLoading(true); setError("");
     try {
       const data = await shopifyFetchGQL(GQL_CART_REMOVE, {
-        cartId: cartId,
+        cartId: currentId,
         lineIds: [lineId],
       });
       const errs = data?.cartLinesRemove?.userErrors || [];
@@ -448,6 +476,7 @@ export function CartProvider({ children }) {
 
   // --- 公開値（常に「現在モードの見え方」を返す） ---
   const snapshot = useMemo(() => {
+    // Shopifyモード（オンライン）
     if (SHOP_READY && cart && !cart.isLocal) {
       return {
         id: cart.id,
@@ -459,17 +488,21 @@ export function CartProvider({ children }) {
         isLocal: false,
       };
     }
-    const lc = loadLocalCart();
-    return lc;
-  }, [cart]);
+    // ローカルモード：localItems から都度再構成（これで再レンダーが走る）
+    const lines = (Array.isArray(localItems) ? localItems : []).map(buildLocalLine);
+    const subtotal = lines.reduce((s, l) => s + l.lineAmount, 0);
+    const totalQuantity = lines.reduce((s, l) => s + l.quantity, 0);
+    return { id: null, checkoutUrl: "", subtotal, totalQuantity, currency: "JPY", lines, isLocal: true };
+  }, [cart, localItems]);
 
   const value = useMemo(() => ({
     // 状態
-    shopReady: SHOP_READY,  // ← 定数をそのまま公開 
+    shopReady: SHOP_READY,  // ← 定数をそのまま公開
     endpoint: EP,
     cart, cartId,
     loading,
     error,                       // Shopify通信エラーのみ。ENV_MISSINGは入れない
+
     // ▼ ここから snapshot を採用（ローカル/Shopify どちらでも正しい見え方を返す）
     subtotal: snapshot.subtotal,
     currency: snapshot.currency,
@@ -479,20 +512,22 @@ export function CartProvider({ children }) {
     isLocal: snapshot.isLocal,
 
     // 操作
-     reload,
-     addByJan,
-     addByVariantId,
-     updateQty,
-     removeLine,
+    reload,
+    addByJan,
+    addByVariantId,
+    updateQty,
+    removeLine,
+
     // ローカル操作
     addItem,
     setLocalQty,
     removeLocalItem,
     clearLocal,
-   }), [
-    cart, cartId, loading, error, snapshot, reload, addByJan, addByVariantId, updateQty, removeLine,
+  }), [
+    cart, cartId, loading, error, snapshot,
+    reload, addByJan, addByVariantId, updateQty, removeLine,
     addItem, setLocalQty, removeLocalItem, clearLocal
-   ]);
+  ]);
 
   return (
     <CartContext.Provider value={value}>
