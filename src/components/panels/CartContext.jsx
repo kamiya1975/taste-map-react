@@ -13,7 +13,7 @@ import React, {
 import { getVariantGidByJan } from "../../lib/ecLinks";
 
 const CART_ID_KEY = "tm_cart_id";                 // Shopify cartId
-const LS_LOCAL_KEY = "tm_cart_local_v1";          // ローカルカートの保存キー
+const LOCAL_CART_KEY = "tm_cart_local_v1";
 
 const SHOP_SUBDOMAIN = (process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN || "").trim(); // 例: "tastemap"
 const TOKEN          = (process.env.REACT_APP_SHOPIFY_STOREFRONT_TOKEN || "").trim();
@@ -170,7 +170,7 @@ function buildLocalLine(item) {
 
 function loadLocalCart() {
   try {
-    const raw = JSON.parse(localStorage.getItem(LS_LOCAL_KEY) || "[]");
+    const raw = JSON.parse(localStorage.getItem(LOCAL_CART_KEY) || "[]");
     const lines = (Array.isArray(raw) ? raw : []).map(buildLocalLine);
     const subtotal = lines.reduce((s, l) => s + l.lineAmount, 0);
     const totalQuantity = lines.reduce((s, l) => s + l.quantity, 0);
@@ -189,7 +189,7 @@ function saveLocalCart(lines) {
       imageUrl: l.imageUrl || null,
       variantId: l.merchandiseId || "",
     }));
-    localStorage.setItem(LS_LOCAL_KEY, JSON.stringify(compact));
+    localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(compact));
   } catch {}
 }
 
@@ -207,6 +207,52 @@ export function CartProvider({ children }) {
   const [cartId, setCartId] = useState(() => {
     try { return localStorage.getItem(CART_ID_KEY) || null; } catch { return null; }
   });
+  // ---- ローカル積み（オフライン用） --------------------------------------
+  const [localItems, setLocalItems] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(LOCAL_CART_KEY) || "[]"); } catch { return []; }
+  });
+  const saveLocal = useCallback((arr) => {
+    setLocalItems(arr);
+    try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(arr)); } catch {}
+  }, []);
+
+  // ProductPage から呼ばれる：ローカルに1件追加
+  const addItem = useCallback(({ jan, title, price = 0, qty = 1, imageUrl = "" }) => {
+    const j = String(jan || "").trim();
+    if (!j) throw new Error("JANが空です");
+    const q = Math.max(1, Number(qty) || 1);
+    setLocalItems((prev) => {
+      const next = [...prev];
+      const i = next.findIndex((x) => String(x.jan) === j);
+      if (i >= 0) next[i] = { ...next[i], qty: (Number(next[i].qty) || 0) + q };
+      else next.push({ jan: j, title: title || "(無題)", price: Number(price) || 0, qty: q, imageUrl });
+      try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, []);
+
+  const setLocalQty = useCallback((jan, qty) => {
+    const j = String(jan || "").trim();
+    const q = Math.max(0, Number(qty) || 0);
+    setLocalItems((prev) => {
+      const next = prev.map((x) => (String(x.jan) === j ? { ...x, qty: q } : x)).filter((x) => x.qty > 0);
+      saveLocal(next);
+      return next;
+    });
+  }, [saveLocal]);
+
+  const removeLocalItem = useCallback((jan) => {
+    const j = String(jan || "").trim();
+    setLocalItems((prev) => {
+      const next = prev.filter((x) => String(x.jan) !== j);
+      saveLocal(next);
+      return next;
+    });
+  }, [saveLocal]);
+
+  const clearLocal = useCallback(() => saveLocal([]), [saveLocal]);
+
+
   const creatingRef = useRef(false);
 
   const setCartAndId = useCallback((c) => {
@@ -428,26 +474,34 @@ export function CartProvider({ children }) {
 
   const value = useMemo(() => ({
     // 状態
-    shopReady: SHOP_READY,
+    shopReady: !!(SHOP_SUBDOMAIN && TOKEN), 
     endpoint: EP,
+    cart, cartId,
     loading,
-    error,                       // Shopifyの通信エラーのみ。ENV_MISSINGは入れない
-    cartId: snapshot.id,
-    lines: snapshot.lines,
+    error,                       // Shopify通信エラーのみ。ENV_MISSINGは入れない
+    // ▼ ここから snapshot を採用（ローカル/Shopify どちらでも正しい見え方を返す）
     subtotal: snapshot.subtotal,
-    totalQuantity: snapshot.totalQuantity,
     currency: snapshot.currency,
-    checkoutUrl: snapshot.checkoutUrl,  // ローカルは空
+    totalQuantity: snapshot.totalQuantity,
+    lines: snapshot.lines,
+    checkoutUrl: snapshot.checkoutUrl,
     isLocal: snapshot.isLocal,
 
     // 操作
-    reload,
-    addByJan,
-    addByVariantId,
-    addItem,            // ← 推奨：商品詳細から jan/title/price 付きで追加
-    updateQty,
-    removeLine,
-  }), [loading, error, snapshot, reload, addByJan, addByVariantId, addItem, updateQty, removeLine]);
+     reload,
+     addByJan,
+     addByVariantId,
+     updateQty,
+     removeLine,
+    // ローカル操作
+    addItem,
+    setLocalQty,
+    removeLocalItem,
+    clearLocal,
+   }), [
+    cart, cartId, loading, error, snapshot, reload, addByJan, addByVariantId, updateQty, removeLine,
+    addItem, setLocalQty, removeLocalItem, clearLocal
+   ]);
 
   return (
     <CartContext.Provider value={value}>
