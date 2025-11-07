@@ -11,6 +11,10 @@ import React, {
 } from "react";
 import { getVariantGidByJan } from "../../lib/ecLinks";
 
+ // --- DEBUG: いまの設定を覗けるようにする ---
+ console.debug("[Cart] SHOP_READY:", SHOP_READY);
+ console.debug("[Cart] EP:", EP);
+
 // ---- Keys / Constants ----
 const CART_ID_KEY    = "tm_cart_id";
 const LOCAL_CART_KEY = "tm_cart_local_v1";    // 明示保存
@@ -61,6 +65,8 @@ async function shopifyFetchGQL(query, variables = {}) {
     err.code = "ENV_MISSING";
     throw err;
   }
+  console.debug("[Cart] POST", EP, { hasToken: !!TOKEN, qlen: query.length });
+
   const res = await fetch(EP, {
     method: "POST",
     headers: {
@@ -692,6 +698,18 @@ export function CartProvider({ children }) {
   setStagedItems,
   clearLocal:  () => setLocalItems([]),
   clearStaged: () => setStagedItems([]),
+
+  // --- デバッグ用: Shopify接続テスト ---
+  __debugTest: async () => {
+    try {
+      const data = await shopifyFetchGQL("query { shop { name primaryDomain { url } } }");
+      console.log("[Cart][OK] shop =", data?.shop);
+    } catch (e) {
+      console.error("[Cart][NG] test failed:", e?.message || e);
+      throw e;
+    }
+  },
+
 }), [
   cart, cartId, loading, error, snapshot,
   reload, addByJan, addByVariantId, addItem, updateQty, removeLine, flushStagedToOnline,
