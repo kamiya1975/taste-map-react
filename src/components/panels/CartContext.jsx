@@ -103,7 +103,7 @@ const GQL_CART_UPDATE = `
 const GQL_CART_REMOVE = `
   ${GQL_CART_FRAGMENT}
   mutation RemoveLines($cartId: ID!, $lineIds: [ID!]!) {
-    cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
+    cartLinesRemove(cartId: $cartId, lineIds: [ID!]) {
       cart { ...CartFields } userErrors { field message }
     }
   }
@@ -168,16 +168,9 @@ function buildLocalLine(item) {
   };
 }
 
-function loadLocalCart() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(LOCAL_CART_KEY) || "[]");
-    const lines = (Array.isArray(raw) ? raw : []).map(buildLocalLine);
-    const subtotal = lines.reduce((s, l) => s + l.lineAmount, 0);
-    const totalQuantity = lines.reduce((s, l) => s + l.quantity, 0);
-    return { id: null, checkoutUrl: "", subtotal, totalQuantity, currency: "JPY", lines, isLocal: true };
-  } catch {
-    return { id: null, checkoutUrl: "", subtotal: 0, totalQuantity: 0, currency: "JPY", lines: [], isLocal: true };
-  }
+function loadLocalRaw() {
+  try { return JSON.parse(localStorage.getItem(LOCAL_CART_KEY) || "[]"); }
+  catch { return []; }
 }
 
 // ================= Context 本体 ============================
@@ -186,7 +179,7 @@ export const useCart = () => useContext(CartContext);
 
 export function CartProvider({ children }) {
   // 共通状態
-  const [error, setError]   = useState("");
+  const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
 
   // --- Shopifyモード用 ---
@@ -197,9 +190,7 @@ export function CartProvider({ children }) {
 
   // ---- ローカル積み（オフライン用） --------------------------------------
   // compact: [{ jan, title, price, qty, imageUrl, variantId }]
-  const [localItems, setLocalItems] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(LOCAL_CART_KEY) || "[]"); } catch { return []; }
-  });
+  const [localItems, setLocalItems] = useState(() => loadLocalRaw());
 
   const saveLocal = useCallback((arr) => {
     setLocalItems(arr);
@@ -279,7 +270,7 @@ export function CartProvider({ children }) {
     if (!SHOP_READY) {
       // ローカル再読込：state を最新localStorageで置き換え
       try {
-        const raw = JSON.parse(localStorage.getItem(LOCAL_CART_KEY) || "[]");
+        const raw = loadLocalRaw();
         setLocalItems(Array.isArray(raw) ? raw : []);
       } catch { setLocalItems([]); }
       setCart(null);
@@ -363,17 +354,29 @@ export function CartProvider({ children }) {
   // --- 追加（推奨：商品詳細から必要情報付きで積む） ---
   const addItem = useCallback(async (payload) => {
     // payload: { jan, title, price, qty=1, imageUrl?, variantId? }
+    const jan = String(payload?.jan || "");
     const qty = Number(payload?.qty || 1);
-    if (SHOP_READY && payload?.variantId) {
-      return addByVariantId(payload.variantId, qty);
+
+    // オンライン接続がある場合は、JAN→variant を可能な限り解決してオンラインに追加
+    if (SHOP_READY) {
+      try {
+        const gid = payload?.variantId || (jan ? await getVariantGidByJan(jan) : "");
+        if (gid) {
+          return await addByVariantId(gid, qty);
+        }
+      } catch (e) {
+        // 解決失敗はローカルフォールバックへ
+        console.warn("[CartContext] addItem: variant解決失敗→ローカルに積みます:", e);
+      }
     }
-    // ローカル（または variantId 不明）: state を更新（localStorage 同期）
-    const jan = String(payload.jan || "");
+
+    // ローカル（または variant解決不可）：state を更新（localStorage 同期）
     setLocalItems(prev => {
       const base = Array.isArray(prev) ? [...prev] : [];
       const idx  = base.findIndex(x => (x?.jan + "") === jan);
       if (idx >= 0) {
-        base[idx] = { ...base[idx],
+        base[idx] = {
+          ...base[idx],
           title: payload.title ?? base[idx].title,
           price: Number(payload.price ?? base[idx].price ?? 0),
           qty: Number(base[idx].qty || 0) + qty,
@@ -415,7 +418,7 @@ export function CartProvider({ children }) {
     let currentId = cartId;
     if (!currentId) {
       const c = await createCartIfNeeded();
-      if (!c) return loadLocalCart(); // フォールバック
+      if (!c) return { ...normalizeCart(null) }; // フォールバック不可時
       currentId = c.id;
     }
     setLoading(true); setError("");
@@ -452,7 +455,7 @@ export function CartProvider({ children }) {
     let currentId = cartId;
     if (!currentId) {
       const c = await createCartIfNeeded();
-      if (!c) return loadLocalCart(); // フォールバック
+      if (!c) return { ...normalizeCart(null) };
       currentId = c.id;
     }
     setLoading(true); setError("");
@@ -476,23 +479,41 @@ export function CartProvider({ children }) {
 
   // --- 公開値（常に「現在モードの見え方」を返す） ---
   const snapshot = useMemo(() => {
+    const localLines = (Array.isArray(localItems) ? localItems : []).map(buildLocalLine);
+
     // Shopifyモード（オンライン）
     if (SHOP_READY && cart && !cart.isLocal) {
-      return {
+      const online = {
         id: cart.id,
         checkoutUrl: cart.checkoutUrl || "",
-        subtotal: cart.subtotal || 0,
-        totalQuantity: cart.totalQuantity || 0,
+        subtotal: Number(cart.subtotal || 0),
+        totalQuantity: Number(cart.totalQuantity || 0),
         currency: cart.currency || "JPY",
         lines: cart.lines || [],
         isLocal: false,
       };
+      // ローカル分がある場合は UI 上で合算表示（Checkout はオンライン分のみ）
+      if (localLines.length > 0) {
+        const mergedLines = [...online.lines, ...localLines];
+        const subtotal = online.subtotal + localLines.reduce((s, l) => s + l.lineAmount, 0);
+        const totalQuantity = online.totalQuantity + localLines.reduce((s, l) => s + l.quantity, 0);
+        return {
+          id: online.id,
+          checkoutUrl: online.checkoutUrl,
+          subtotal,
+          totalQuantity,
+          currency: online.currency,
+          lines: mergedLines,
+          isLocal: false,
+        };
+      }
+      return online;
     }
-    // ローカルモード：localItems から都度再構成（これで再レンダーが走る）
-    const lines = (Array.isArray(localItems) ? localItems : []).map(buildLocalLine);
-    const subtotal = lines.reduce((s, l) => s + l.lineAmount, 0);
-    const totalQuantity = lines.reduce((s, l) => s + l.quantity, 0);
-    return { id: null, checkoutUrl: "", subtotal, totalQuantity, currency: "JPY", lines, isLocal: true };
+
+    // ローカルモード（またはオンライン未確立）
+    const subtotal = localLines.reduce((s, l) => s + l.lineAmount, 0);
+    const totalQuantity = localLines.reduce((s, l) => s + l.quantity, 0);
+    return { id: null, checkoutUrl: "", subtotal, totalQuantity, currency: "JPY", lines: localLines, isLocal: true };
   }, [cart, localItems]);
 
   const value = useMemo(() => ({
@@ -515,18 +536,18 @@ export function CartProvider({ children }) {
     reload,
     addByJan,
     addByVariantId,
+    addItem,
     updateQty,
     removeLine,
 
     // ローカル操作
-    addItem,
     setLocalQty,
     removeLocalItem,
     clearLocal,
   }), [
     cart, cartId, loading, error, snapshot,
-    reload, addByJan, addByVariantId, updateQty, removeLine,
-    addItem, setLocalQty, removeLocalItem, clearLocal
+    reload, addByJan, addByVariantId, addItem, updateQty, removeLine,
+    setLocalQty, removeLocalItem, clearLocal
   ]);
 
   return (

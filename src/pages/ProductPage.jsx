@@ -273,7 +273,7 @@ function ProductInfoSection() {
         <div style={{ fontSize: 14, lineHeight: 1.9 }}>
           {[
             ["タイプ", "赤ワイン"],
-            ["商品名", "（サンプル）"],
+            ["生産者名", "（サンプル）"],
             ["容量", "750ml"],
           ].map(([label, value]) => (
             <div key={label} style={{ display: "flex", marginTop: 2 }}>
