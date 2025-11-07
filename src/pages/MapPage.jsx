@@ -15,6 +15,7 @@ import StorePanelContent from "../components/panels/StorePanelContent";
 import FaqPanelContent from "../components/panels/FaqPanelContent";
 import MyPagePanelContent from "../components/panels/MyPagePanelContent";
 import ClusterPalettePanel from "../components/panels/ClusterPalettePanel";
+import CartPanel from "../components/panels/CartPanel";
 import {
   drawerModalProps,
   paperBaseStyle,
@@ -55,6 +56,7 @@ function MapPage() {
   const [isAccountOpen, setIsAccountOpen] = useState(false);    // マイアカウント（メニュー）
   const [isFaqOpen, setIsFaqOpen] = useState(false);            // よくある質問（メニュー）
   const [isClusterOpen, setIsClusterOpen] = useState(false); // ← 追加：配色パネルの開閉
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   const iframeRef = useRef(null);
   const autoOpenOnceRef = useRef(false);
@@ -169,6 +171,7 @@ function MapPage() {
     else if (kind === "favorite") setIsFavoriteOpen(true);
     else if (kind === "rated")   setIsRatedOpen(true);
     else if (kind === "cluster")  setIsClusterOpen(true);
+    else if (kind === "cart") setIsCartOpen(true);
   }, [closeUIsThen]);
 
   /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
@@ -179,6 +182,7 @@ function MapPage() {
     else if (kind === "guide") setIsMapGuideOpen(true);
     else if (kind === "account") setIsAccountOpen(true);
     else if (kind === "faq") setIsFaqOpen(true);
+    else if (kind === "cart") setIsCartOpen(true);
   }, [closeUIsThen]);
 
   // ★ クエリで各パネルを開く（/ ?open=mypage|search|favorite|rated|mapguide|guide|store）
