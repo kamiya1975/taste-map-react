@@ -3,6 +3,10 @@ const TOKEN = process.env.REACT_APP_SHOPIFY_STOREFRONT_TOKEN;
 const EP = `https://${SHOP}/api/2025-01/graphql.json`;
 
 export async function storefrontGraphQL(query, variables = {}) {
+  console.log("[Shopify] SHOP=", SHOP, "EP=", EP, "TOKEN_LEN=", (TOKEN||"").length);
+  if (!SHOP || !TOKEN) {
+    throw new Error(`ENV missing: SHOP='${SHOP}' TOKEN_LEN=${(TOKEN||"").length}`);
+  }
   const r = await fetch(EP, {
     method: "POST",
     headers: {
