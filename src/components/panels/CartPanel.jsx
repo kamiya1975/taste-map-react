@@ -9,6 +9,7 @@ import Drawer from "@mui/material/Drawer";
 import PanelHeader from "../ui/PanelHeader";
 import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
 import { useCart } from "./CartContext";
+import { useEffect } from "react";
 
 export default function CartPanel({ isOpen, onClose }) {
   const {
@@ -23,7 +24,17 @@ export default function CartPanel({ isOpen, onClose }) {
     updateQty,
     removeLine,
     reload,
+    flushStagedToOnline,
   } = useCart();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    // カートを開いたタイミングで：staged → Shopify 同期を試みる & 最新リロード
+    (async () => {
+      try { await flushStagedToOnline(); } catch {}
+      try { await reload(); } catch {}
+    })();
+  }, [isOpen, flushStagedToOnline, reload]);
 
   const fmt = (v) => {
     const n = Number(v || 0);
