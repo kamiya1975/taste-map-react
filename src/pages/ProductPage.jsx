@@ -3,8 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { requireRatingOrRedirect } from "../utils/auth";
 import "../index.css";
-import { createCart } from "../lib/shopify";
-import { getVariantGidByJan } from "../lib/ecLinks";
+import { useCart } from "./components/panels/CartContext"; // ★ 追加：CartContext
 
 /** =========================
  *  ユーティリティ
@@ -25,19 +24,11 @@ const useJanParam = () => {
 };
 
 const postToParent = (payload) => {
-  try {
-    window.parent?.postMessage(payload, "*");
-  } catch {}
+  try { window.parent?.postMessage(payload, "*"); } catch {}
 };
 
 const clearScanHints = (jan_code) => {
-  const keys = [
-    "selectedJAN",
-    "lastScannedJAN",
-    "scan_last_jan",
-    "scanTriggerJAN",
-    "scanner_selected_jan",
-  ];
+  const keys = ["selectedJAN","lastScannedJAN","scan_last_jan","scanTriggerJAN","scanner_selected_jan"];
   try {
     keys.forEach((k) => {
       localStorage.removeItem(k);
@@ -45,10 +36,7 @@ const clearScanHints = (jan_code) => {
     });
   } catch {}
   try {
-    localStorage.setItem(
-      "product_page_closed",
-      JSON.stringify({ jan: jan_code, at: Date.now() })
-    );
+    localStorage.setItem("product_page_closed", JSON.stringify({ jan: jan_code, at: Date.now() }));
   } catch {}
 };
 
@@ -71,11 +59,9 @@ const forceFavoriteOff = (jan_code) => {
       localStorage.setItem("favorites", JSON.stringify(favs));
     }
   } catch {}
-  // 自ウィンドウの HeartButton を即時同期
   try {
     window.postMessage({ type: "SET_FAVORITE", jan: jan_code, value: false }, "*");
   } catch {}
-  // 親（MapPage 側）にも伝えて同期
   try {
     postToParent({ type: "SET_FAVORITE", jan: jan_code, value: false });
   } catch {}
@@ -95,7 +81,6 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
       } catch { setFav(false); }
     };
     readFav();
-
     const onStorage = (e) => { if (e.key === "favorites") readFav(); };
     const onMsg = (e) => {
       const { type, jan: targetJan, value } = e.data || {};
@@ -118,9 +103,6 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
     setFav(!!favs[jan_code]);
     postToParent({ type: "TOGGLE_FAVORITE", jan_code });
   };
-
-  const base = process.env.PUBLIC_URL || "";
-  const iconSrc = fav ? `${base}/img/store.svg` : `${base}/img/store2.svg`;
 
   return (
     <button
@@ -265,38 +247,19 @@ function ProductInfoSection() {
   return (
     <div
       className="pb-safe"
-      style={{
-        // 固定余白 + セーフエリア（envが0でも固定分は効く）
-        paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
-      }}
+      style={{ paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))" }}
     >
-      {/* 商品キャッチ＋コメント */}
+      {/* ここはダミーの説明文。必要に応じて実データに置換 */}
       <div style={{ marginTop: 20, fontSize: 14, lineHeight: 1.6 }}>
-        <div style={{ fontWeight: "bold", marginBottom: 4 }}>
-          ひと口で広がる華やかな香りと余韻
-        </div>
-        <div>
-          このワインは、飲み始めから最後の一滴まで一貫して心地よい調和を感じさせる仕上がりです。グラスを近づけた瞬間に広がる華やかなアロマは、熟した果実の甘やかさと爽やかな酸味を同時に連想させます。口に含むと、果実味の豊かさと引き締まった酸がバランスよく調和し、余韻にはほのかなスパイスと樽由来の複雑さが重なります。ミディアムボディながら深みを備え、軽やかさと重厚感の両方を楽しめる点が特徴です。赤身の肉料理やトマトソースを使ったパスタと合わせることで、お互いの味わいをより引き立て合います。日常の食卓にも特別な日の演出にもふさわしい万能な一本として、幅広いシーンで活躍するワインです。
-        </div>
+        <div style={{ fontWeight: "bold", marginBottom: 4 }}>ひと口で広がる華やかな香りと余韻</div>
+        <div>…（略）…</div>
       </div>
-
-      {/* スペース */}
       <div style={{ height: 20 }} />
-
-      {/* 生産者キャッチ＋コメント */}
       <div style={{ fontSize: 14, lineHeight: 1.6 }}>
-        <div style={{ fontWeight: "bold", marginBottom: 4 }}>
-          伝統と革新が息づく情熱の造り手
-        </div>
-        <div>
-          このワインを手掛ける生産者は、長年培ってきた伝統的な醸造技術と最新の研究成果を融合させ、常に最高品質のワインを追求してきました。畑は恵まれた気候と土壌条件に支えられ、手摘みによる収穫や徹底した温度管理が実施されています。小規模ながらも丁寧なアプローチを大切にし、一房一房に生産者のこだわりが込められています。また、持続可能な農業にも力を注ぎ、環境に配慮した栽培と醸造を実践。そうした取り組みが、複雑さと繊細さを併せ持つ独自のスタイルを生み出しています。地域を代表する存在として国内外から高く評価され、受賞歴も多数。造り手の情熱と土地の恵みが見事に調和した一本が、グラスを通して飲む人の心に語りかけます。
-        </div>
+        <div style={{ fontWeight: "bold", marginBottom: 4 }}>伝統と革新が息づく情熱の造り手</div>
+        <div>…（略）…</div>
       </div>
-
-      {/* スペース */}
       <div style={{ height: 20 }} />
-
-      {/* 基本情報（評価欄と同じ直線で囲む） */}
       <div
         style={{
           marginTop: 24,
@@ -304,19 +267,14 @@ function ProductInfoSection() {
           paddingBottom: 8,
           borderTop: "1px solid #ccc",
           borderBottom: "1px solid #ccc",
-          marginBottom: 0, // 末尾marginは相殺されがちなので0
+          marginBottom: 0,
         }}
       >
         <div style={{ fontSize: 14, lineHeight: 1.9 }}>
           {[
             ["タイプ", "赤ワイン"],
-            ["商品名", "プティ・ムートン"],
-            ["生産者名", "シャトー・ムートン・ロートシルト"],
-            ["生産国", "フランス"],
-            ["生産地", "ボルドー"],
+            ["商品名", "（サンプル）"],
             ["容量", "750ml"],
-            ["ブドウ品種", "カベルネ・ソーヴィニョン、メルロー、マルベック、プティ・ヴェルド他"],
-            ["成分分析", "2024年産：酒類総合情報センター調べ"],
           ].map(([label, value]) => (
             <div key={label} style={{ display: "flex", marginTop: 2 }}>
               <div style={{ width: 96, flexShrink: 0 }}>{label}</div>
@@ -325,8 +283,6 @@ function ProductInfoSection() {
           ))}
         </div>
       </div>
-
-      {/* ページ終端の余白（保険） */}
       <div style={{ height: 100 }} />
     </div>
   );
@@ -341,22 +297,10 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
 
-  // --- Shopify: 今すぐ購入（テスト） ---
-  const handleBuyNow = async () => {
-    try {
-      console.log("[BUY] jan_code=", jan_code);
-      const gid = await getVariantGidByJan(jan_code);
-      if (!gid) throw new Error("EC対象外（variant未登録）");
-      const { checkoutUrl } = await createCart(gid, 1);
-      const w = window.open(checkoutUrl, "_blank", "noopener");
-      if (!w) window.location.href = checkoutUrl;
-    } catch (e) {
-      alert(e.message || "購入処理に失敗しました");
-      console.error(e);
-    }
-  };
+  // ★ CartContext（ローカル積み → カートで同期）
+  const { addItem, totalQuantity, shopReady } = useCart();
 
-  // ★は rating>0 なら常に非表示（クエリには依存しない）
+  // 画面オープン/クローズ通知
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan: jan_code });
     postToParent({ type: "REQUEST_STATE", jan: jan_code });
@@ -368,21 +312,17 @@ export default function ProductPage() {
     };
   }, [jan_code]);
 
+  // 商品データ/評価のロード
   useEffect(() => {
     let alive = true;
     const normJAN = (d) =>
-      String(d?.jan_code ?? d?.jan_code ?? d?.code ?? d?.barcode ?? "").trim();
-
+      String(d?.jan_code ?? d?.jan ?? d?.code ?? d?.barcode ?? "").trim();
     const load = async () => {
       let dataArr = [];
-      try {
-        dataArr = JSON.parse(localStorage.getItem("umapData") || "[]");
-      } catch {}
-      let found =
-        Array.isArray(dataArr)
-          ? dataArr.find((d) => normJAN(d) === String(jan_code).trim())
-          : null;
-
+      try { dataArr = JSON.parse(localStorage.getItem("umapData") || "[]"); } catch {}
+      let found = Array.isArray(dataArr)
+        ? dataArr.find((d) => normJAN(d) === String(jan_code).trim())
+        : null;
       if (!found) {
         try {
           const url = `${process.env.PUBLIC_URL || ""}/umap_coords_c.json`;
@@ -391,24 +331,19 @@ export default function ProductPage() {
             const json = await res.json();
             const arr = Array.isArray(json) ? json : [];
             found = arr.find((d) => normJAN(d) === String(jan_code).trim()) || null;
-            try {
-              localStorage.setItem("umapData", JSON.stringify(arr));
-            } catch {}
+            try { localStorage.setItem("umapData", JSON.stringify(arr)); } catch {}
           }
         } catch (e) {
-          console.warn("UMAP_PCA_coordinates.json の読込に失敗:", e);
+          console.warn("umap_coords_c.json の読込に失敗:", e);
         }
       }
-
       if (!alive) return;
       setProduct(found || null);
-
       try {
         const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
         if (ratings[jan_code]) setRating(ratings[jan_code].rating ?? 0);
       } catch {}
     };
-
     load();
     return () => { alive = false; };
   }, [jan_code]);
@@ -418,26 +353,19 @@ export default function ProductPage() {
       const { type, jan: targetJan, rating: ratingPayload } = e.data || {};
       if (type !== "STATE_SNAPSHOT") return;
       if (String(targetJan) !== String(jan_code)) return;
-      try {
-        const v = Number(ratingPayload?.rating) || 0;
-        setRating(v);
-      } catch {}
+      try { setRating(Number(ratingPayload?.rating) || 0); } catch {}
     };
     window.addEventListener("message", onMsgSnapshot);
     return () => window.removeEventListener("message", onMsgSnapshot);
   }, [jan_code]);
 
-  // 親からの“明示適用”を受けて即時に◎を反映（nullならクリア）
   useEffect(() => {
     const onMsgSet = (e) => {
       const { type, jan: targetJan, rating: payload } = e.data || {};
       if (type !== "SET_RATING") return;
       if (String(targetJan) !== String(jan_code)) return;
-
       const next = payload && Number(payload?.rating) > 0 ? Number(payload.rating) : 0;
       setRating(next);
-
-      // LSも同期（任意だが再読込時のズレ防止に有効）
       try {
         const store = JSON.parse(localStorage.getItem("userRatings") || "{}");
         if (next > 0) store[jan_code] = { rating: next, date: payload?.date || new Date().toISOString() };
@@ -449,27 +377,19 @@ export default function ProductPage() {
     return () => window.removeEventListener("message", onMsgSet);
   }, [jan_code]);
 
-  // HIDE_HEART メッセージは今後未使用（ratingにより自動で非表示）
-
   const handleCircleClick = async (value) => {
     if (!requireRatingOrRedirect(navigate, "/my-account")) return;
-
     const newRating = value === rating ? 0 : value;
     setRating(newRating);
-
     const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
     let payload = null;
-
     if (newRating === 0) {
-      delete ratings[jan_code]; // 評価解除なら削除
+      delete ratings[jan_code];
     } else {
-      payload = { rating: newRating, date: new Date().toISOString() }; // weatherは付けない
+      payload = { rating: newRating, date: new Date().toISOString() };
       ratings[jan_code] = payload;
-      // ◎ を入れたら「飲みたい」を必ずOFF（一覧に載っていなくても）
       forceFavoriteOff(jan_code);
     }
-  
-
     localStorage.setItem("userRatings", JSON.stringify(ratings));
     postToParent({ type: "RATING_UPDATED", jan: jan_code, payload });
   };
@@ -480,15 +400,31 @@ export default function ProductPage() {
 
   const price = product.希望小売価格 ?? product.価格 ?? 1800;
 
-  // Typeごとの色マップ
-  const typeColors = {
-    Spa: "#6BAED6",
-    White: "#D9D76C",
-    Red: "#8B2E3B",
-    Rose: "#E48E8E",
-    Other: "#CCCCCC",
-  };
+  // タイプ色
+  const typeColors = { Spa: "#6BAED6", White: "#D9D76C", Red: "#8B2E3B", Rose: "#E48E8E", Other: "#CCCCCC" };
   const typeColor = typeColors[product.Type] || typeColors.Other;
+
+  // ★ カート追加（ローカルに積む → カートで同期）
+  const [adding, setAdding] = useState(false);
+  const handleAddToCart = async () => {
+    try {
+      setAdding(true);
+      await addItem({
+        jan: jan_code,
+        title: product.商品名 || "(無題)",
+        price: Number(price) || 0,
+        qty: 1,
+        imageUrl: `${process.env.PUBLIC_URL || ""}/images/products/${jan_code}.jpg`,
+      });
+      // 親（MapPage）に「カート開いて」の合図（任意）
+      try { window.parent?.postMessage({ type: "OPEN_CART" }, "*"); } catch {}
+      alert("カートに追加しました。");
+    } catch (e) {
+      alert(`追加に失敗: ${e?.message || e}`);
+    } finally {
+      setAdding(false);
+    }
+  };
 
   return (
     <div
@@ -506,7 +442,6 @@ export default function ProductPage() {
         boxSizing: "border-box",
       }}
     >
-
       {/* 商品画像 */}
       <div style={{ textAlign: "center", marginBottom: 16 }}>
         <ProductImage jan_code={jan_code} maxHeight={225} />
@@ -517,7 +452,7 @@ export default function ProductPage() {
         {product.商品名 || "（名称不明）"}
       </h2>
 
-      {/* タイプマーク＋価格*/}
+      {/* タイプマーク＋価格 */}
       <div style={{ display: "flex", alignItems: "center", margin: "4px 0 12px 0" }}>
         <span
           style={{
@@ -532,119 +467,58 @@ export default function ProductPage() {
         <span style={{ marginLeft: 8 }}>¥{Number(price).toLocaleString()}</span>
       </div>
 
-      {/* 購入へ（テスト） */}
+      {/* ★ カートに入れる */}
       <div style={{ margin: "8px 0 16px" }}>
         <button
-          onClick={handleBuyNow}
+          onClick={handleAddToCart}
+          disabled={adding}
           style={{
             display: "inline-block",
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: "1px solid #ddd",
-            background: "#fff",
-            cursor: "pointer",
-            fontSize: 14
+            width: "100%",
+            padding: "12px 16px",
+            borderRadius: 10,
+            border: "1px solid #111",
+            background: adding ? "#eee" : "#111",
+            color: adding ? "#999" : "#fff",
+            cursor: adding ? "default" : "pointer",
+            fontSize: 16,
+            fontWeight: 700,
           }}
         >
-          購入へ（テスト）
+          🛒 カートに入れる
         </button>
+        <div style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
+          {shopReady ? "オンライン連携: 有効" : "オンライン連携: なし（ローカル保存）"} / 点数: {totalQuantity}
+        </div>
       </div>
 
       {/* 評価（◎） */}
-      <div
-        style={{
-          marginTop: 24,
-          paddingTop: 8,
-          paddingBottom: 8,
-         borderTop: "1px solid #ccc",
-          borderBottom: "1px solid #ccc",
-        }}
-      >
-        {/* ▼ ここを alignItems: "center" に変更 */}
+      <div style={{ marginTop: 24, paddingTop: 8, paddingBottom: 8, borderTop: "1px solid #ccc", borderBottom: "1px solid #ccc" }}>
         <div style={{ display: "flex", alignItems: "center" }}>
-          {/* ★列（固定幅） */}
-          <div
-            style={{
-              flex: "0 0 64px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "6px 4px",
-            }}
-          >
-            {/* ▼ 「飲みたい」を少し上げる */}
-            <div
-              style={{
-                fontSize: 12,
-                color: "#666",
-                alignSelf: "flex-start",
-                lineHeight: 1,
-                position: "relative",
-                top: "-11px",
-                marginLeft: "10px" // 横位置を右に動かす
-              }}
-            >
+          {/* 左：お気に入り */}
+          <div style={{ flex: "0 0 64px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px 4px" }}>
+            <div style={{ fontSize: 12, color: "#666", alignSelf: "flex-start", lineHeight: 1, position: "relative", top: "-11px", marginLeft: "10px" }}>
               {"飲みたい"}
             </div>
-
-            {/* hideHeart の時は visibility で非表示（幅は保持） */}
             <HeartButton jan_code={jan_code} size={28} hidden={rating > 0} />
           </div>
-
-          {/* 縦罫線（常に同じ高さに） */}
-          <div
-            style={{
-              width: 1,
-              background: "#d9d9d9",
-              marginLeft: "4px",   // ← 左余白を小さく
-              marginRight: "12px", // ← 右余白はそのまま
-              alignSelf: "stretch",
-            }}
-          />
-
-          {/* 右側（ラベル + リング） */}
+          <div style={{ width: 1, background: "#d9d9d9", marginLeft: "4px", marginRight: "12px", alignSelf: "stretch" }} />
+          {/* 右：◎ */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* ラベル行 */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                fontSize: 12,
-                color: "#666",
-                padding: "0 4px",
-                marginBottom: 6,
-              }}
-            >
+            <div style={{ display: "flex", alignItems: "center", fontSize: 12, color: "#666", padding: "0 4px", marginBottom: 6 }}>
               <span style={{ flex: 1, textAlign: "center", marginLeft: -175 }}>イマイチ</span>
               <span style={{ flex: "0 0 60px", textAlign: "right", marginLeft: 0 }}>好き</span>
             </div>
-
-            {/* リング行 */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 8,
-                paddingRight: 4,
-                maxWidth: 320,
-              }}
-            >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, paddingRight: 4, maxWidth: 320 }}>
               {[1, 2, 3, 4, 5].map((v) => (
-                <CircleRating
-                  key={v}
-                  value={v}
-                  currentRating={rating}
-                  onClick={handleCircleClick}
-                />
+                <CircleRating key={v} value={v} currentRating={rating} onClick={handleCircleClick} />
               ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* 説明セクション（末尾余白込み） */}
+      {/* 説明 */}
       <ProductInfoSection />
     </div>
   );
