@@ -216,21 +216,6 @@ export function CartProvider({ children }) {
     try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(arr)); } catch {}
   }, []);
 
-  // ProductPage から呼ばれる：ローカルに1件追加
-  const addItem = useCallback(({ jan, title, price = 0, qty = 1, imageUrl = "" }) => {
-    const j = String(jan || "").trim();
-    if (!j) throw new Error("JANが空です");
-    const q = Math.max(1, Number(qty) || 1);
-    setLocalItems((prev) => {
-      const next = [...prev];
-      const i = next.findIndex((x) => String(x.jan) === j);
-      if (i >= 0) next[i] = { ...next[i], qty: (Number(next[i].qty) || 0) + q };
-      else next.push({ jan: j, title: title || "(無題)", price: Number(price) || 0, qty: q, imageUrl });
-      try { localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(next)); } catch {}
-      return next;
-    });
-  }, []);
-
   const setLocalQty = useCallback((jan, qty) => {
     const j = String(jan || "").trim();
     const q = Math.max(0, Number(qty) || 0);
