@@ -38,10 +38,11 @@ export default function CartPanel({ isOpen, onClose }) {
   const ranRef = useRef(false);
 
   // パネルOPEN時：在庫チェック → staged同期 → reload
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!isOpen) {
       ranRef.current = false;
-      return; 
+      return;
     }
     if (ranRef.current) return;
     ranRef.current = true;
