@@ -1,5 +1,6 @@
 // src/pages/CartPage.jsx
 import React, { useEffect, useState } from "react";
+import { useCart } from "../components/panels/CartContext";
 
 export default function CartPage() {
   const {
