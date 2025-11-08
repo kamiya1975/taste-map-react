@@ -3,7 +3,7 @@
 // ・オープン時：在庫チェック → staged flush → reload（順も最適化）
 // ・「チェックアウト」ボタンを /cart ページに変更（チェックアウト直行ボタンも残す場合は両方）
 // ------------------------------------------------------------
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Drawer from "@mui/material/Drawer";
 import PanelHeader from "../ui/PanelHeader";
 import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
