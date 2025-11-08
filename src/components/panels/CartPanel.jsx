@@ -1,7 +1,9 @@
 // ------------------------------------------------------------
-// CartPanel（置き換え版）
-// ・オープン時：在庫チェック → staged flush → reload（順も最適化）
-// ・「チェックアウト」ボタンを /cart ページに変更（チェックアウト直行ボタンも残す場合は両方）
+// CartPanel（完全差し替え版）
+// ・パネルOPEN時：在庫チェック → staged同期 → reload
+// ・/cart ページを開くボタンを追加（チェックアウト直行も併置）
+// ・lines が未定義/nullでも安全に描画（safeLines）
+// ・行keyは id→origin:sku/jan→fallback の順で安定化
 // ------------------------------------------------------------
 import React, { useEffect, useState } from "react";
 import Drawer from "@mui/material/Drawer";
@@ -28,12 +30,12 @@ export default function CartPanel({ isOpen, onClose }) {
     hasPending,
     onlineOnlyCount,
     checkAvailability,
-    buildCartPageUrl,           // ★ 追加
+    buildCartPageUrl,
   } = useCart();
 
   const [checkingOut, setCheckingOut] = useState(false);
 
-  // カートオープン時：在庫チェック → staged同期 → reload
+  // パネルOPEN時：在庫チェック → staged同期 → reload
   useEffect(() => {
     if (!isOpen) return;
     (async () => {
@@ -65,7 +67,7 @@ export default function CartPanel({ isOpen, onClose }) {
       border: "1px solid #aaa",
       color: "#555",
       background: "#fff",
-      marginLeft: 6
+      marginLeft: 6,
     };
     if (ln.origin === "online") return <span style={{ ...base, borderColor: "#2a7", color: "#2a7" }}>online</span>;
     if (ln.origin === "staged") {
@@ -103,6 +105,17 @@ export default function CartPanel({ isOpen, onClose }) {
     } finally {
       setCheckingOut(false);
     }
+  };
+
+  const btnMiniStyle = {
+    minWidth: 28,
+    height: 28,
+    padding: "0 8px",
+    border: "1px solid #888",
+    borderRadius: 6,
+    background: "#fff",
+    cursor: "pointer",
+    fontSize: 14,
   };
 
   return (
@@ -150,19 +163,23 @@ export default function CartPanel({ isOpen, onClose }) {
         )}
       </div>
 
-
       {/* 本体 */}
       <div
         className="drawer-scroll"
-        style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "6px 10px 80px" }}
+        style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "6px 10px 80px", background: "#fff" }}
       >
         {(() => {
           const safeLines = Array.isArray(lines) ? lines.filter(Boolean) : [];
           const hasItems = safeLines.length > 0;
 
+          // 可視デバッグ（必要なら残す/消す）
+          // <div style={{padding:"4px 8px", margin:"0 0 6px", fontSize:12, color:"#333", background:"#f3f3f3", border:"1px solid #ddd", borderRadius:6}}>
+          //   debug: lines.length = <b>{safeLines.length}</b>
+          // </div>;
+
           if (!hasItems) {
             return (
-              <div style={{ padding: 16, color: "#777" }}>
+              <div style={{ padding: 16, color: "#333" }}>
                 カートは空です。商品ページの「カートに入れる」から追加してください。
               </div>
             );
@@ -185,9 +202,9 @@ export default function CartPanel({ isOpen, onClose }) {
                   padding: "10px 8px",
                   borderBottom: "1px dashed #ddd",
                   alignItems: "center",
+                  background: "#fff",
                 }}
               >
-                {/* ←↓↓ この中に “行の中身（タイトル/バッジ/数量ボタン/削除ボタン）” を入れる */}
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>
                     {title}
@@ -245,7 +262,6 @@ export default function CartPanel({ isOpen, onClose }) {
         })()}
       </div>
 
-
       {/* フッター */}
       <div style={{
         position: "sticky", bottom: 0, padding: "10px 12px",
@@ -261,7 +277,6 @@ export default function CartPanel({ isOpen, onClose }) {
           )}
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          {/* ★ 追加：/cart ページへ */}
           <button
             onClick={openCartPage}
             disabled={checkingOut || !shopReady}
@@ -281,7 +296,6 @@ export default function CartPanel({ isOpen, onClose }) {
             カートページを開く
           </button>
 
-          {/* 既存：チェックアウト直行（残す場合） */}
           <button
             onClick={openCheckoutDirect}
             disabled={checkingOut || (!shopReady && onlineOnlyCount === 0)}
@@ -305,14 +319,3 @@ export default function CartPanel({ isOpen, onClose }) {
     </Drawer>
   );
 }
-
-const btnMiniStyle = {
-  minWidth: 28,
-  height: 28,
-  padding: "0 8px",
-  border: "1px solid #888",
-  borderRadius: 6,
-  background: "#fff",
-  cursor: "pointer",
-  fontSize: 14,
-};
