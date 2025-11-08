@@ -511,7 +511,6 @@ useEffect(() => {
      if (nearest?.JAN) {
        setHideHeartForJAN(null);
        setSelectedJAN(nearest.JAN);
-       setSelectedJANFromSearch(null);
        setIframeNonce(Date.now());
        setProductDrawerOpen(true);
        focusOnWine(nearest, { zoom: INITIAL_ZOOM });
