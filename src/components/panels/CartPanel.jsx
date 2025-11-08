@@ -37,7 +37,7 @@ export default function CartPanel({ isOpen, onClose }) {
   // ★ 追加：1回だけ実行するためのフラグ
   const ranRef = useRef(false);
 
-  // パネルOPEN時：在庫チェック → staged同期 → reload
+// パネルOPEN時：在庫チェック → staged同期 → reload
 // eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {
   if (!isOpen) {
