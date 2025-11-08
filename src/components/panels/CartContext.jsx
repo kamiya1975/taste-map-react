@@ -16,13 +16,22 @@ const LOCAL_CART_KEY = "tm_cart_local_v1";
 const STAGE_CART_KEY = "tm_cart_stage_v1";
 const CART_CHANNEL   = "cart_bus";
 
-const SHOP_SUBDOMAIN = (process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN || "").trim();
+const RAW_SHOP       = (process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN || "").trim();
 const TOKEN          = (process.env.REACT_APP_SHOPIFY_STOREFRONT_TOKEN || "").trim();
 const API_VER        = "2025-01";
-const SHOP_READY     = !!(SHOP_SUBDOMAIN && TOKEN);
-const EP             = SHOP_READY
-  ? `https://${SHOP_SUBDOMAIN}.myshopify.com/api/${API_VER}/graphql.json`
-  : "";
+
+// どんな入力でも "tastemap.myshopify.com" に正規化（例: "tastemap" / "tastemap.myshopify.com" / "https://tastemap.myshopify.com/"）
+function toShopHost(v) {
+  if (!v) return "";
+  let h = String(v).trim()
+    .replace(/^https?:\/\//i, "")   // プロトコル除去
+    .replace(/\/.*$/, "");          // パス除去
+  if (!/\.myshopify\.com$/i.test(h)) h = `${h}.myshopify.com`;
+  return h.toLowerCase();
+}
+const SHOP_HOST  = toShopHost(RAW_SHOP);
+const SHOP_READY = !!(SHOP_HOST && TOKEN);
+const EP         = SHOP_READY ? `https://${SHOP_HOST}/api/${API_VER}/graphql.json` : "";
 
 // ---- Utils ----
 const readJSON = (key, def = []) => { try { const v = JSON.parse(localStorage.getItem(key) || "null"); return v ?? def; } catch { return def; } };
@@ -214,7 +223,7 @@ function extractNumericIdFromGid(gid = "") {
 }
 
 // ★ 追加：/cart パーマリンクを生成（既存の online 行 + staged/local をすべて反映）
-function buildCartPermalink(shopSubdomain, lines = []) {
+function buildCartPermalink(shopHost, lines = []) {
   const pairs = [];
   for (const ln of lines) {
     const gid = ln.merchandiseId || "";
@@ -223,7 +232,7 @@ function buildCartPermalink(shopSubdomain, lines = []) {
     if (num && qty > 0) pairs.push(`${num}:${qty}`);
   }
   // ペアが無い場合は単に /cart を返す
-  const base = `https://${shopSubdomain}.myshopify.com/cart`;
+  const base = `https://${shopHost}/cart`;
   return pairs.length ? `${base}/${pairs.join(",")}` : base;
 }
 
@@ -763,7 +772,7 @@ export function CartProvider({ children }) {
         linesForPermalink.push({ merchandiseId: gid, quantity: Number(it.qty) });
       }
     }
-    return buildCartPermalink(SHOP_SUBDOMAIN, linesForPermalink);
+    return buildCartPermalink(SHOP_HOST, linesForPermalink);
   }, [reload, flushStagedToOnline]);
 
   // デバッグ
