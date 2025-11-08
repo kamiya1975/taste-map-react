@@ -640,7 +640,7 @@ export function CartProvider({ children }) {
     const local  = readJSON(LOCAL_CART_KEY, []);
     const janList = Array.from(new Set([
       ...staged.map(it => String(it?.jan || "")).filter(Boolean),
-      ...local .map(it => String(it?.jan || "")).filter(Boolean),
+      ...local.map(it => String(it?.jan || "")).filter(Boolean),
     ]));
 
     const gidMap = {};
