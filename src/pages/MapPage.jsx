@@ -88,6 +88,7 @@ function MapPage() {
   const [favorites, setFavorites] = useState({});
   const [userPin, setUserPin] = useState(null);
   const [highlight2D, setHighlight2D] = useState("");
+  const [selectedJAN, setSelectedJAN] = useState(null);
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
   const [iframeNonce, setIframeNonce] = useState(0);
