@@ -131,7 +131,6 @@ function MapPage() {
 
   // 検索・一覧
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [selectedJANFromSearch, setSelectedJANFromSearch] = useState(null);
   const [isFavoriteOpen, setIsFavoriteOpen] = useState(false);
   const [isRatedOpen, setIsRatedOpen] = useState(false);
 
@@ -150,7 +149,6 @@ function MapPage() {
     if (productDrawerOpen) {
       setProductDrawerOpen(false);
       setSelectedJAN(null);
-      setSelectedJANFromSearch(null);
       willClose = true;
     }
     if (isMapGuideOpen)  { setIsMapGuideOpen(false);  willClose = true; }
