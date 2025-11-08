@@ -153,17 +153,32 @@ export default function CartPanel({ isOpen, onClose }) {
       </div>
 
       {/* 本体 */}
-      <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto", padding: "6px 10px 80px" }}>
-        {(!Array.isArray(lines) || isEmpty) ? (
-          <div style={{ padding: 16, color: "#777" }}>
-            カートは空です。商品ページの「カートに入れる」から追加してください。
-          </div>
-        ) : (
-          (lines || []).map((ln) => {
-            const title = ln.productTitle || ln.title || "(無題)";
+      <div
+        className="drawer-scroll"
+        style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "6px 10px 80px" }}
+      >
+        {(() => {
+          const safeLines = Array.isArray(lines) ? lines.filter(Boolean) : [];
+          const hasItems = safeLines.length > 0;
+
+          if (!hasItems) {
+            return (
+              <div style={{ padding: 16, color: "#777" }}>
+                カートは空です。商品ページの「カートに入れる」から追加してください。
+              </div>
+            );
+          }
+
+          return safeLines.map((ln, idx) => {
+            const title = ln?.productTitle || ln?.title || "(無題)";
+            const key =
+              ln?.id ||
+              (ln?.origin && (ln?.sku || ln?.jan) && `${ln.origin}:${ln.sku || ln.jan}`) ||
+              `ln-${idx}`;
+
             return (
               <div
-                key={ln.id}
+                key={key}
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr auto",
@@ -181,7 +196,7 @@ export default function CartPanel({ isOpen, onClose }) {
                       <span style={{ marginLeft: 6, fontSize: 10, color: "#a33" }}>
                         {ln.syncState === "error_no_variant" ? "未登録商品（要登録）" :
                          ln.syncState === "error_oos" ? "在庫不足" : ""}
-                      </span>
+                     </span>
                     )}
                     {ln.origin === "online" && typeof ln.availableForSale === "boolean" && (
                       <span style={{ marginLeft: 6, fontSize: 10, color: ln.availableForSale ? "#2a7" : "#a33" }}>
@@ -217,7 +232,7 @@ export default function CartPanel({ isOpen, onClose }) {
                   </button>
                   <button
                     onClick={() => removeLine(ln.id)}
-                    style={{ ...btnMiniStyle, borderColor: "#b66", color: "#b66" }}
+                   style={{ ...btnMiniStyle, borderColor: "#b66", color: "#b66" }}
                     aria-label="削除"
                     title="削除"
                   >
@@ -226,8 +241,8 @@ export default function CartPanel({ isOpen, onClose }) {
                 </div>
               </div>
             );
-          })
-        )}
+          });
+        })()}
       </div>
 
       {/* フッター */}
