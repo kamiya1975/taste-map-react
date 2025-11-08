@@ -1,31 +1,45 @@
 // src/components/panels/CartPanel.jsx
-// Drawer カート（安全描画版）
-// - useCart() が未定義/未初期化でも落ちない
-// - lines が null/undefined でも安全にレンダリング
-// - /cart ページを開くボタンを常設
-
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import Drawer from "@mui/material/Drawer";
 import PanelHeader from "../ui/PanelHeader";
 import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
-
-// ★ import パスはプロジェクトの実ファイル構成に合わせてください
 import { useCart } from "./CartContext";
 
 export default function CartPanel({ isOpen, onClose }) {
-  // useCart が未定義でもクラッシュしないよう防御
-  const ctx = (typeof useCart === "function" ? useCart() : {}) || {};
+  // ★ Hooks は無条件で先頭で呼ぶ
+  const cart = useCart();
 
+  // cart がまだ undefined の場合でも落ちないようデフォルト
   const {
-    lines = [],
-    currency = "¥",
+    shopReady = false,
     loading = false,
     error = null,
+    lines = [],
+    currency = "¥",
+    subtotal = 0,
     updateQty = () => {},
     removeLine = () => {},
+    reload = () => {},
+    flushStagedToOnline = () => {},
+    checkAvailability = () => {},
     buildCartPageUrl = () => "#/cart",
     syncAndGetCheckoutUrl = async () => null,
-  } = ctx;
+    hasPending = false,
+  } = cart || {};
+
+  // パネルが開いた時だけ副作用を実行（Hook 自体は常に定義済み）
+  useEffect(() => {
+    if (!isOpen) return;
+    (async () => {
+      try {
+        await checkAvailability();
+        await flushStagedToOnline();
+        await reload();
+      } catch (_e) {
+        // 失敗は握りつぶす（UI 側で error を表示）
+      }
+    })();
+  }, [isOpen, checkAvailability, flushStagedToOnline, reload]);
 
   const safeLines = useMemo(() => (Array.isArray(lines) ? lines : []), [lines]);
 
@@ -35,72 +49,80 @@ export default function CartPanel({ isOpen, onClose }) {
       open={!!isOpen}
       onClose={onClose}
       ModalProps={drawerModalProps}
-      PaperProps={{ style: { ...paperBaseStyle, height: DRAWER_HEIGHT } }}
+      PaperProps={{ sx: { ...paperBaseStyle, height: DRAWER_HEIGHT } }}
     >
-      <PanelHeader title="カート" onClose={onClose} />
-
+      <PanelHeader
+        title="カート"
+        onClose={onClose}
+        rightExtra={
+          <div style={{ fontSize: 12, opacity: 0.8 }}>
+            {shopReady ? "オンライン連携: 有効" : "ローカル保存"}
+          </div>
+        }
+      />
       <div style={{ padding: 12 }}>
-        {loading && <div style={{ fontSize: 12, opacity: 0.7 }}>読み込み中…</div>}
         {error && (
-          <div style={{ color: "#b00", fontSize: 12, marginBottom: 8 }}>
-            エラー: {String(error)}
+          <div style={{ color: "#b71c1c", marginBottom: 8 }}>
+            同期エラーが発生しました。リロードしてください。
           </div>
         )}
 
-        {safeLines.length === 0 ? (
-          <div style={{ padding: "24px 0", color: "#666" }}>カートは空です。</div>
-        ) : (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-            {safeLines.map((ln, i) => {
+        {loading && <div>読み込み中…</div>}
+
+        {!loading && safeLines.length === 0 && <div>カートは空です。</div>}
+
+        {!loading && safeLines.length > 0 && (
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {safeLines.map((ln, idx) => {
+              // 安定 key: id → origin:sku/jan → idx フォールバック
               const key =
-                ln.id || ln.sku || ln.jan || ln.variantId || `line-${i}`;
-              const qty = Number(ln.quantity || 0);
-              const price = Number(ln.price || ln.unitPrice || 0);
-              const name =
-                ln.title || ln.name || ln.productName || ln.jan || "商品";
+                ln.id ||
+                [ln.origin, ln.sku, ln.jan_code, ln.jan].filter(Boolean).join(":") ||
+                `k-${idx}`;
+              const qty = Number(ln.quantity ?? 1);
+              const price = Number(ln.price ?? 0);
 
               return (
                 <li
                   key={key}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+                    display: "grid",
+                    gridTemplateColumns: "1fr auto",
+                    gap: 8,
                     padding: "8px 0",
                     borderBottom: "1px solid #eee",
-                    gap: 8,
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {name}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#666" }}>
-                      {currency}
-                      {price.toLocaleString()} / 本
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{ln.title || ln.name || ln.jan_code || "-"}</div>
+                    <div style={{ fontSize: 12, opacity: 0.8 }}>
+                      {ln.volume_ml ? `${ln.volume_ml}ml` : null}
+                      {ln.volume_ml && ln.price ? " / " : ""}
+                      {ln.price != null ? `${currency}${price.toLocaleString()}` : null}
                     </div>
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <button
-                      onClick={() => updateQty(key, Math.max(qty - 1, 0))}
-                      style={{ width: 28, height: 28 }}
-                      aria-label="減らす"
+                      onClick={() => updateQty(ln, Math.max(1, qty - 1))}
+                      aria-label="decrement"
                     >
                       −
                     </button>
-                    <div style={{ width: 24, textAlign: "center" }}>{qty}</div>
-                    <button
-                      onClick={() => updateQty(key, qty + 1)}
-                      style={{ width: 28, height: 28 }}
-                      aria-label="増やす"
-                    >
+                    <input
+                      type="number"
+                      value={qty}
+                      min={1}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value || "1", 10);
+                        updateQty(ln, isNaN(v) ? 1 : Math.max(1, v));
+                      }}
+                      style={{ width: 56, textAlign: "right" }}
+                    />
+                    <button onClick={() => updateQty(ln, qty + 1)} aria-label="increment">
                       ＋
                     </button>
-                    <button
-                      onClick={() => removeLine(key)}
-                      style={{ marginLeft: 8 }}
-                    >
+                    <button onClick={() => removeLine(ln)} style={{ marginLeft: 8 }}>
                       削除
                     </button>
                   </div>
@@ -110,29 +132,28 @@ export default function CartPanel({ isOpen, onClose }) {
           </ul>
         )}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-          <a
-            href={buildCartPageUrl()}
-            style={{
-              display: "inline-block",
-              border: "1px solid #ccc",
-              padding: "8px 12px",
-              textDecoration: "none",
-            }}
-          >
-            /cart を開く
+        {/* 合計 */}
+        {!loading && safeLines.length > 0 && (
+          <div style={{ marginTop: 12, textAlign: "right", fontWeight: 600 }}>
+            小計: {currency}
+            {Number(subtotal || 0).toLocaleString()}
+          </div>
+        )}
+
+        {/* アクション */}
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <a href={buildCartPageUrl()} style={{ flex: 1, textAlign: "center" }}>
+            /cart ページへ
           </a>
           <button
+            style={{ flex: 1 }}
             onClick={async () => {
-              try {
-                const url = await syncAndGetCheckoutUrl();
-                if (url) window.open(url, "_blank");
-              } catch (e) {
-                console.error("checkout error:", e);
-              }
+              const url = await syncAndGetCheckoutUrl();
+              if (url) window.open(url, "_blank");
             }}
+            disabled={loading || hasPending || safeLines.length === 0}
           >
-            チェックアウトへ
+            チェックアウト
           </button>
         </div>
       </div>
