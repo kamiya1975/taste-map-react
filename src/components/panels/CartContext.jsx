@@ -1,5 +1,8 @@
 // ------------------------------------------------------------
-// TasteMap カート（即時格納 + Shopify同期）完全版（置き換え用）
+// CartContext（置き換え版）
+// ・staged/local をカートオープン時に在庫チェック（availableForSale）
+// ・Shopifyの /cart ページ用URL（permalink）を生成して開けるようにする
+// ・hasPending / onlineOnlyCount を公開
 // ------------------------------------------------------------
 import React, {
   createContext, useCallback, useContext, useEffect,
@@ -9,8 +12,8 @@ import { getVariantGidByJan } from "../../lib/ecLinks";
 
 // ---- Keys / Constants ----
 const CART_ID_KEY    = "tm_cart_id";
-const LOCAL_CART_KEY = "tm_cart_local_v1";    // 明示保存
-const STAGE_CART_KEY = "tm_cart_stage_v1";    // 即時格納
+const LOCAL_CART_KEY = "tm_cart_local_v1";
+const STAGE_CART_KEY = "tm_cart_stage_v1";
 const CART_CHANNEL   = "cart_bus";
 
 const SHOP_SUBDOMAIN = (process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN || "").trim();
@@ -21,25 +24,15 @@ const EP             = SHOP_READY
   ? `https://${SHOP_SUBDOMAIN}.myshopify.com/api/${API_VER}/graphql.json`
   : "";
 
-// ★ デバッグ（必要なら残してOK）
-console.log("[SHOP]", {
-  SHOP_SUBDOMAIN,
-  TOKEN: TOKEN ? "set" : "missing",
-  EP,
-  SHOP_READY
-});
-
 // ---- Utils ----
 const readJSON = (key, def = []) => { try { const v = JSON.parse(localStorage.getItem(key) || "null"); return v ?? def; } catch { return def; } };
 
-// 値保存 + 全フレームへ更新通知
 function writeJSONAndBroadcast(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
   try { window.postMessage({ type: "CART_UPDATED", key, at: Date.now() }, "*"); } catch {}
   try { const bc = new BroadcastChannel(CART_CHANNEL); bc.postMessage({ type: "cart_updated", key, at: Date.now() }); bc.close(); } catch {}
 }
 
-// ReactのsetStateとlocalStorageをまとめるセッタ（値/アップデータ両対応）
 function createPersistSetter(key, setState) {
   return (nextOrUpdater) => {
     setState(prev => {
@@ -93,6 +86,7 @@ const GQL_CART_FRAGMENT = `
               id
               title
               sku
+              availableForSale
               product { title handle }
             }
           }
@@ -136,6 +130,20 @@ const GQL_CART_REMOVE = `
   }
 `;
 
+// ★ 追加：バリアント在庫可否をまとめて取得
+const GQL_VARIANTS_AVAIL = `
+  query VariantsAvail($ids: [ID!]!) {
+    nodes(ids: $ids) {
+      ... on ProductVariant {
+        id
+        availableForSale
+        title
+        product { title }
+      }
+    }
+  }
+`;
+
 // ---- 正規化（Shopify → 共通）----
 function normalizeCart(raw) {
   if (!raw) return null;
@@ -145,7 +153,7 @@ function normalizeCart(raw) {
     const md = n.merchandise || {};
     const v  = md?.__typename === "ProductVariant" ? md : {};
     return {
-      id: n.id,                                        // Shopify lineId (GID)
+      id: n.id,
       origin: "online",
       syncState: null,
       quantity: Number(n.quantity || 0),
@@ -160,6 +168,7 @@ function normalizeCart(raw) {
       price: NaN,
       imageUrl: null,
       isLocal: false,
+      availableForSale: !!v.availableForSale,
     };
   });
   return {
@@ -173,28 +182,49 @@ function normalizeCart(raw) {
   };
 }
 
-// ---- ローカル行ビルド（staged/local 共通）----
+// ---- ローカル行ビルド ----
 function buildLocalLine(item, origin = "local", syncState = "pending") {
-  // item: { jan, title, price, qty, imageUrl, variantId? }
   const qty   = Number(item.qty || item.quantity || 1);
   const price = Number(item.price || 0);
   return {
     id: `${origin}:${item.jan}`,
-    origin,               // "staged" | "local"
-    syncState,            // "pending" | "error_no_variant" | "error_oos" | null
+    origin,
+    syncState,                 // "pending" | "error_no_variant" | "error_oos" | null
     quantity: qty,
     merchandiseId: item.variantId || "",
     title: item.title || item.jan,
     sku: item.jan,
     productTitle: item.title || item.jan,
     productHandle: "",
-    lineAmount: Math.max(0, price * qty), // 概算
+    lineAmount: Math.max(0, price * qty),
     currency: "JPY",
     jan: item.jan,
     price,
     imageUrl: item.imageUrl || null,
     isLocal: origin !== "online",
+    availableForSale: undefined, // 後で在庫チェックで埋める
   };
+}
+
+// ★ 追加：GID から数値IDを抜き出す（/cart permalink 用）
+function extractNumericIdFromGid(gid = "") {
+  // gid://shopify/ProductVariant/1234567890
+  const m = String(gid).match(/\/(\d+)$|\D(\d+)$/);
+  return m ? (m[1] || m[2]) : "";
+}
+
+// ★ 追加：/cart パーマリンクを生成（既存の online 行 + staged/local をすべて反映）
+function buildCartPermalink(shopSubdomain, lines = []) {
+  const pairs = [];
+  for (const ln of lines) {
+    const gid = ln.merchandiseId || "";
+    const num = extractNumericIdFromGid(gid);
+    const qty = Math.max(0, Number(ln.quantity || 0));
+    if (num && qty > 0) pairs.push(`${num}:${qty}`);
+  }
+  // ペアが無い場合は単に /cart を返す
+  const base = `https://${shopSubdomain}.myshopify.com/cart`;
+  return pairs.length ? `${base}/${pairs.join(",")}` : base;
 }
 
 // ------------------------------------------------------------
@@ -261,7 +291,6 @@ export function CartProvider({ children }) {
 
   const reload = useCallback(async () => {
     if (!SHOP_READY) {
-      // ローカルのみ再同期
       _setLocalItems(readJSON(LOCAL_CART_KEY, []));
       _setStagedItems(readJSON(STAGE_CART_KEY, []));
       setCart(null);
@@ -275,7 +304,6 @@ export function CartProvider({ children }) {
       const data = await shopifyFetchGQL(GQL_CART_QUERY, { id: cartId });
       const found = data?.cart || null;
       if (!found) {
-        // ★ 期限切れ/存在しない場合は cartId を破棄して即作り直す
         try { localStorage.removeItem(CART_ID_KEY); } catch {}
         setCartId(null);
         setLoading(false);
@@ -306,8 +334,7 @@ export function CartProvider({ children }) {
     window.addEventListener("storage", onStorage);
 
     const bc = new BroadcastChannel(CART_CHANNEL);
-    const onBC = (ev) => {
-      if (ev?.data?.type !== "cart_updated") return;
+    const onBC = () => {
       _setLocalItems(readJSON(LOCAL_CART_KEY, []));
       _setStagedItems(readJSON(STAGE_CART_KEY, []));
     };
@@ -328,7 +355,7 @@ export function CartProvider({ children }) {
     };
   }, []);
 
-  // ---- 追加（variant 直）----
+  // ---- 追加（variant直）----
   const addByVariantId = useCallback(async (variantGid, quantity = 1) => {
     if (!variantGid) throw new Error("variantId is empty");
     if (!SHOP_READY) throw new Error("オンライン連携未設定：variantId 追加は無効です");
@@ -363,7 +390,7 @@ export function CartProvider({ children }) {
       }
       return addByVariantId(gid, quantity);
     }
-    // ローカルのみ（local保存）
+    // ローカルのみ
     const j = String(jan);
     const q = Number(quantity || 1);
     setLocalItems(base => {
@@ -381,7 +408,7 @@ export function CartProvider({ children }) {
     const jan = String(payload?.jan || "");
     const qty = Number(payload?.qty || 1);
 
-    // 1) staged に即時反映
+    // staged に即時反映
     setStagedItems(prev => {
       const base = Array.isArray(prev) ? [...prev] : [];
       const idx  = base.findIndex(x => String(x?.jan) === jan);
@@ -409,13 +436,12 @@ export function CartProvider({ children }) {
       return base;
     });
 
-    // 2) 可能なら即オンライン同期
+    // 可能なら即オンライン同期
     if (SHOP_READY) {
       try {
         const gid = payload?.variantId || (jan ? await getVariantGidByJan(jan) : "");
         if (gid) {
           await addByVariantId(gid, qty);
-          // 成功分を staged から差し引き/削除
           setStagedItems(prev => {
             const base = Array.isArray(prev) ? [...prev] : [];
             const i = base.findIndex(x => String(x.jan) === jan);
@@ -428,7 +454,7 @@ export function CartProvider({ children }) {
           });
         }
       } catch {
-        // 在庫切れ/通信エラー等：stagedに残す
+        // 残す
       }
     }
     return null;
@@ -439,7 +465,6 @@ export function CartProvider({ children }) {
     const q = Math.max(0, Number(quantity) || 0);
     const id = String(lineId || "");
 
-    // staged / local
     if (id.startsWith("staged:") || id.startsWith("local:")) {
       const isStaged = id.startsWith("staged:");
       const jan = id.slice(isStaged ? 7 : 6);
@@ -521,7 +546,7 @@ export function CartProvider({ children }) {
     }
   }, [cartId, createCartIfNeeded, setCartAndId, setLocalItems, setStagedItems]);
 
-  // ---- staged → Shopify 同期（カートを開いた時などに実行）----
+  // ---- staged → Shopify 同期 ----
   const flushStagedToOnline = useCallback(async () => {
     if (!SHOP_READY) return;
     const pending = readJSON(STAGE_CART_KEY, []);
@@ -535,7 +560,6 @@ export function CartProvider({ children }) {
       for (const item of pending) {
         const gid = item?.variantId || (item?.jan ? await getVariantGidByJan(String(item.jan)) : "");
         if (!gid) {
-          // variant 未登録：syncState の付与例（必要ならUIで表示）
           setStagedItems(prev => {
             const arr = Array.isArray(prev) ? [...prev] : [];
             const i = arr.findIndex(x => String(x.jan) === String(item.jan));
@@ -551,7 +575,6 @@ export function CartProvider({ children }) {
           });
           const errs = data?.cartLinesAdd?.userErrors || [];
           if (errs.length) {
-            // 在庫エラー等
             setStagedItems(prev => {
               const arr = Array.isArray(prev) ? [...prev] : [];
               const i = arr.findIndex(x => String(x.jan) === String(item.jan));
@@ -562,10 +585,9 @@ export function CartProvider({ children }) {
           }
           const nc = normalizeCart(data?.cartLinesAdd?.cart || null);
           setCartAndId(nc);
-          // 成功したJANを staged から削除
           setStagedItems(prev => (Array.isArray(prev) ? prev.filter(x => String(x.jan) !== String(item.jan)) : []));
         } catch {
-          // 通信系: 残す
+          // 残す
         }
       }
     } finally {
@@ -573,16 +595,81 @@ export function CartProvider({ children }) {
     }
   }, [SHOP_READY, cart, createCartIfNeeded, setStagedItems, setCartAndId]);
 
-  // ---- 統合スナップショット（表示用）----
+  // ★ 追加：在庫チェック（staged/local + online）→ syncState/availableForSale を付与
+  const checkAvailability = useCallback(async () => {
+    if (!SHOP_READY) return;
+
+    // 1) staged/local の variant GID を解決
+    const staged = readJSON(STAGE_CART_KEY, []);
+    const local  = readJSON(LOCAL_CART_KEY, []);
+    const janList = [];
+    staged.forEach(it => it?.jan && janList.push(String(it.jan)));
+    local.forEach(it => it?.jan && janList.push(String(it.jan)));
+
+    const gidMap = {};
+    await Promise.all(janList.map(async (j) => {
+      try {
+        gidMap[j] = await getVariantGidByJan(j);
+      } catch { gidMap[j] = ""; }
+    }));
+    // 2) オンライン行 + 解決済みの GID をまとめて nodes で問い合わせ
+    const ids = [];
+    if (cart?.lines?.length) {
+      for (const ln of cart.lines) if (ln.merchandiseId) ids.push(ln.merchandiseId);
+    }
+    Object.values(gidMap).forEach(g => { if (g) ids.push(g); });
+    const uniq = Array.from(new Set(ids));
+    if (uniq.length === 0) return;
+
+    try {
+      const data = await shopifyFetchGQL(GQL_VARIANTS_AVAIL, { ids: uniq });
+      const availMap = {};
+      for (const node of data?.nodes || []) {
+        if (node?.id) availMap[node.id] = !!node.availableForSale;
+      }
+      // 3) staged/local の syncState を更新（在庫無し→error_oos）
+      setStagedItems(prev => {
+        const arr = Array.isArray(prev) ? [...prev] : [];
+        for (let i = 0; i < arr.length; i++) {
+          const it = arr[i];
+          const gid = it?.variantId || gidMap[String(it?.jan)] || "";
+          if (!gid) continue;
+          if (gid in availMap && availMap[gid] === false) {
+            arr[i] = { ...it, syncState: "error_oos" };
+          } else if (gid in availMap) {
+            // 在庫ありなら pending に戻す（手動で残っているケース）
+            if (it.syncState === "error_oos") arr[i] = { ...it, syncState: "pending" };
+          }
+        }
+        return arr;
+      });
+      // online 側は normalize 時に availableForSale を持たせ済み（表示用途）
+      setCart(c => {
+        if (!c?.lines) return c;
+        const lines = c.lines.map(ln => {
+          if (!ln.merchandiseId) return ln;
+          const afs = availMap[ln.merchandiseId];
+          return (typeof afs === "boolean") ? { ...ln, availableForSale: afs } : ln;
+        });
+        return { ...c, lines };
+      });
+    } catch (e) {
+      // 失敗しても致命ではない
+      console.warn("[availability] check failed:", e?.message || e);
+    }
+  }, [SHOP_READY, cart?.lines, setStagedItems]);
+
+  // ---- 統合スナップショット（表示用 + 付加フラグ）----
   const snapshot = useMemo(() => {
     const stagedLines = (Array.isArray(_stagedItems) ? _stagedItems : []).map(x => buildLocalLine(x, "staged", x.syncState ?? "pending"));
     const localLines  = (Array.isArray(_localItems)  ? _localItems  : []).map(x => buildLocalLine(x, "local",  null));
+    const stagedCount = stagedLines.length + localLines.length;
 
     if (SHOP_READY && cart && !cart.isLocal) {
       const online = {
         id: cart.id,
         checkoutUrl: cart.checkoutUrl || "",
-        onlineSubtotal: Number(cart.subtotal || 0),  // 確定小計
+        onlineSubtotal: Number(cart.subtotal || 0),
         currency: cart.currency || "JPY",
         onlineQuantity: Number(cart.totalQuantity || 0),
         lines: (cart.lines || []).map(l => ({ ...l, origin: "online", syncState: null })),
@@ -597,7 +684,6 @@ export function CartProvider({ children }) {
       const stagedQuantity = stagedLines.reduce((s, l) => s + l.quantity, 0)
                            + localLines.reduce((s, l) => s + l.quantity, 0);
 
-      // 表示用の総計（確定 + 推定）
       const subtotal = online.onlineSubtotal + stagedSubtotal;
       const totalQuantity = online.onlineQuantity + stagedQuantity;
 
@@ -605,12 +691,14 @@ export function CartProvider({ children }) {
         id: online.id,
         checkoutUrl: online.checkoutUrl,
         currency: online.currency,
-        lines: mergedLines,             // 並び: online → staged → local
-        subtotal,                       // 表示合計（注意書き推奨）
+        lines: mergedLines,
+        subtotal,
         totalQuantity,
         onlineSubtotal: online.onlineSubtotal,
-        stagedSubtotal,                 // 推定小計（staged+local）
+        stagedSubtotal,
         isLocal: false,
+        hasPending: stagedCount > 0,
+        onlineOnlyCount: online.onlineQuantity,
       };
     }
 
@@ -628,36 +716,60 @@ export function CartProvider({ children }) {
       onlineSubtotal: 0,
       stagedSubtotal,
       isLocal: true,
+      hasPending: mergedLines.length > 0,
+      onlineOnlyCount: 0,
     };
   }, [cart, _localItems, _stagedItems]);
 
-  // ---- チェックアウトURL取得（未同期の同期込み）----
+  // ---- チェックアウトURL（Shopifyの checkoutUrl）----
   const syncAndGetCheckoutUrl = useCallback(async () => {
-    try {
-      await flushStagedToOnline(); // 未同期分をできるだけ反映
-    } catch (e) {
-      console.warn("[CartContext] flushStagedToOnline failed:", e?.message || e);
-    }
+    try { await flushStagedToOnline(); } catch {}
     try {
       let c = await reload();
       if (!c?.checkoutUrl) c = await createCartIfNeeded();
       return c?.checkoutUrl || cart?.checkoutUrl || "";
-    } catch (e) {
-      console.warn("[CartContext] reload for checkoutUrl failed:", e?.message || e);
+    } catch {
       return cart?.checkoutUrl || "";
     }
   }, [flushStagedToOnline, reload, createCartIfNeeded, cart?.checkoutUrl]);
 
-  // ---- デバッグAPI（安全な宣言順で定義してから value へ入れる）----
-  const __debugTest = useCallback(async () => {
-    try {
-      const data = await shopifyFetchGQL("query { shop { name primaryDomain { url } } }");
-      console.log("[Cart][OK] shop =", data?.shop);
-      return data?.shop;
-    } catch (e) {
-      console.error("[Cart][NG] test failed:", e?.message || e);
-      throw e;
+  // ★ 追加：/cart ページのパーマリンクを生成（online + staged/local すべてを反映）
+  const buildCartPageUrl = useCallback(async () => {
+    // できるだけ staged をオンラインに流す
+    try { await flushStagedToOnline(); } catch {}
+    // 最新を取得
+    let c = await reload();
+    // online 行の variant と staged/local の variant を混ぜて permalink を作る
+    const linesForPermalink = [];
+
+    if (c?.lines?.length) {
+      for (const ln of c.lines) {
+        if (ln?.merchandiseId && Number(ln.quantity) > 0) {
+          linesForPermalink.push({ merchandiseId: ln.merchandiseId, quantity: Number(ln.quantity) });
+        }
+      }
     }
+    const staged = readJSON(STAGE_CART_KEY, []);
+    for (const it of staged) {
+      const gid = it?.variantId || (it?.jan ? await getVariantGidByJan(String(it.jan)) : "");
+      if (gid && Number(it?.qty || 0) > 0) {
+        linesForPermalink.push({ merchandiseId: gid, quantity: Number(it.qty) });
+      }
+    }
+    const local = readJSON(LOCAL_CART_KEY, []);
+    for (const it of local) {
+      const gid = it?.variantId || (it?.jan ? await getVariantGidByJan(String(it.jan)) : "");
+      if (gid && Number(it?.qty || 0) > 0) {
+        linesForPermalink.push({ merchandiseId: gid, quantity: Number(it.qty) });
+      }
+    }
+    return buildCartPermalink(SHOP_SUBDOMAIN, linesForPermalink);
+  }, [reload, flushStagedToOnline]);
+
+  // デバッグ
+  const __debugTest = useCallback(async () => {
+    const data = await shopifyFetchGQL("query { shop { name primaryDomain { url } } }");
+    return data?.shop;
   }, []);
 
   const value = useMemo(() => ({
@@ -668,15 +780,17 @@ export function CartProvider({ children }) {
     loading,
     error,
 
-    // 表示集計（snapshot 由来）
-    subtotal: snapshot.subtotal,             // 表示合計（確定 + 推定）
-    onlineSubtotal: snapshot.onlineSubtotal, // 確定小計（Shopify）
-    stagedSubtotal: snapshot.stagedSubtotal, // 推定小計（staged+local）
+    // 表示集計
+    subtotal: snapshot.subtotal,
+    onlineSubtotal: snapshot.onlineSubtotal,
+    stagedSubtotal: snapshot.stagedSubtotal,
     currency: snapshot.currency,
     totalQuantity: snapshot.totalQuantity,
     lines: snapshot.lines,
     checkoutUrl: snapshot.checkoutUrl,
     isLocal: snapshot.isLocal,
+    hasPending: snapshot.hasPending,
+    onlineOnlyCount: snapshot.onlineOnlyCount,
 
     // 操作
     reload,
@@ -687,8 +801,9 @@ export function CartProvider({ children }) {
     removeLine,
     flushStagedToOnline,
 
-    // チェックアウトURL取得
-    syncAndGetCheckoutUrl,
+    // チェックアウト
+    syncAndGetCheckoutUrl,  // 旧：Checkout(=決済)へ直接
+    buildCartPageUrl,       // 新：/cart ページを開く
 
     // ローカル操作
     setLocalItems,
@@ -696,12 +811,15 @@ export function CartProvider({ children }) {
     clearLocal:  () => setLocalItems([]),
     clearStaged: () => setStagedItems([]),
 
+    // 在庫チェック（パネルオープン時に使う）
+    checkAvailability,
+
     // デバッグ
     __debugTest,
   }), [
     cart, cartId, loading, error, snapshot,
     reload, addByJan, addByVariantId, addItem, updateQty, removeLine, flushStagedToOnline,
-    setLocalItems, setStagedItems, syncAndGetCheckoutUrl, __debugTest,
+    setLocalItems, setStagedItems, syncAndGetCheckoutUrl, buildCartPageUrl, checkAvailability, __debugTest,
   ]);
 
   return (
