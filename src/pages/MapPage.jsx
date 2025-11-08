@@ -16,6 +16,7 @@ import FaqPanelContent from "../components/panels/FaqPanelContent";
 import MyPagePanelContent from "../components/panels/MyPagePanelContent";
 import ClusterPalettePanel from "../components/panels/ClusterPalettePanel";
 import CartPanel from "../components/panels/CartPanel";
+import { useCart } from "../components/panels/CartContext";
 import {
   drawerModalProps,
   paperBaseStyle,
@@ -39,6 +40,26 @@ function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
   }
   return (0.5 - fracFromTop) * hPx * worldPerPx;
 }
+
+function CartProbe() {
+  const { shopReady, totalQuantity, onlineSubtotal, stagedSubtotal, lines } = useCart();
+  return (
+    <pre style={{
+      position: "absolute", left: 8, bottom: 8, zIndex: 9999,
+      background: "#000", color: "#0f0", fontSize: 12,
+      padding: 6, borderRadius: 6, opacity: .85
+    }}>
+      {JSON.stringify({
+        shopReady,
+        totalQuantity,
+        onlineSubtotal,
+        stagedSubtotal,
+        linesLen: Array.isArray(lines) ? lines.length : -1
+      }, null, 2)}
+    </pre>
+  );
+}
+
 
 function MapPage() {
   const location = useLocation();
@@ -1321,6 +1342,7 @@ useEffect(() => {
           <FaqPanelContent />
         </div>
       </Drawer>
+      {process.env.NODE_ENV === "development" && <CartProbe />}
     </div>
   );
 }
