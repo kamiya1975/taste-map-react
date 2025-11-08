@@ -10,10 +10,6 @@ import React, {
 } from "react";
 import { getVariantGidByJan } from "../../lib/ecLinks";
 
-// --- DEBUG: いまの設定を覗けるようにする ---
-console.debug("[Cart] SHOP_READY:", SHOP_READY);
-console.debug("[Cart] EP:", EP);
-
 // ---- Keys / Constants ----
 const CART_ID_KEY    = "tm_cart_id";
 const LOCAL_CART_KEY = "tm_cart_local_v1";
@@ -36,6 +32,10 @@ function toShopHost(v) {
 const SHOP_HOST  = toShopHost(RAW_SHOP);
 const SHOP_READY = !!(SHOP_HOST && TOKEN);
 const EP         = SHOP_READY ? `https://${SHOP_HOST}/api/${API_VER}/graphql.json` : "";
+
+// --- DEBUG: いまの設定を覗けるようにする ---
+console.debug("[Cart] SHOP_READY:", SHOP_READY);
+console.debug("[Cart] EP:", EP);
 
 // ---- Utils ----
 const readJSON = (key, def = []) => { try { const v = JSON.parse(localStorage.getItem(key) || "null"); return v ?? def; } catch { return def; } };
