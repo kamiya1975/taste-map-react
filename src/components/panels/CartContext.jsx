@@ -56,6 +56,23 @@ function createPersistSetter(key, setState) {
   };
 }
 
+// --- variant 解決キャッシュ / 併走ガード / スロットリング ---
+const gidCacheRef   = { current: new Map() };   // jan -> gid 文字列 もしくは Promise
+const availBusyRef  = { current: false };
+const lastAvailRef  = { current: 0 };
+
+async function resolveVariantGid(jan) {
+  const j = String(jan || "");
+  if (!j) return "";
+  const cached = gidCacheRef.current.get(j);
+  if (cached) return await cached; // PromiseでもOK
+  const p = (async () => {
+    try { return await getVariantGidByJan(j); } catch { return ""; }
+  })();
+  gidCacheRef.current.set(j, p);
+  return await p;
+}
+
 // ---- Shopify GraphQL ----
 async function shopifyFetchGQL(query, variables = {}) {
   if (!SHOP_READY) {
@@ -452,7 +469,7 @@ export function CartProvider({ children }) {
     // 可能なら即オンライン同期
     if (SHOP_READY) {
       try {
-        const gid = payload?.variantId || (jan ? await getVariantGidByJan(jan) : "");
+        const gid = payload?.variantId || (jan ? await resolveVariantGid(jan) : "");
         if (gid) {
           await addByVariantId(gid, qty);
           setStagedItems(prev => {
@@ -571,7 +588,7 @@ export function CartProvider({ children }) {
     setLoading(true); setError("");
     try {
       for (const item of pending) {
-        const gid = item?.variantId || (item?.jan ? await getVariantGidByJan(String(item.jan)) : "");
+        const gid = item?.variantId || (item?.jan ? await resolveVariantGid(String(item.jan)) : "");
         if (!gid) {
           setStagedItems(prev => {
             const arr = Array.isArray(prev) ? [...prev] : [];
@@ -611,20 +628,30 @@ export function CartProvider({ children }) {
   // ★ 追加：在庫チェック（staged/local + online）→ syncState/availableForSale を付与
   const checkAvailability = useCallback(async () => {
     if (!SHOP_READY) return;
+    // 10秒以内の連続実行はスキップ
+    const now = Date.now();
+    if (now - lastAvailRef.current < 10000) return;
+    if (availBusyRef.current) return;
+    availBusyRef.current = true;
+    lastAvailRef.current = now; 
 
     // 1) staged/local の variant GID を解決
     const staged = readJSON(STAGE_CART_KEY, []);
     const local  = readJSON(LOCAL_CART_KEY, []);
-    const janList = [];
-    staged.forEach(it => it?.jan && janList.push(String(it.jan)));
-    local.forEach(it => it?.jan && janList.push(String(it.jan)));
+    const janList = Array.from(new Set([
+      ...staged.map(it => String(it?.jan || "")).filter(Boolean),
+      ...local .map(it => String(it?.jan || "")).filter(Boolean),
+    ]));
 
     const gidMap = {};
     await Promise.all(janList.map(async (j) => {
-      try {
-        gidMap[j] = await getVariantGidByJan(j);
-      } catch { gidMap[j] = ""; }
-    }));
+      // 手元に variantId があればそれを優先
+      const inStage = staged.find(x => String(x?.jan) === j);
+      const inLocal = local.find(x => String(x?.jan) === j);
+      const preset  = inStage?.variantId || inLocal?.variantId;
+      gidMap[j] = preset || await resolveVariantGid(j) || "";
+  }));
+
     // 2) オンライン行 + 解決済みの GID をまとめて nodes で問い合わせ
     const ids = [];
     if (cart?.lines?.length) {
@@ -642,20 +669,21 @@ export function CartProvider({ children }) {
       }
       // 3) staged/local の syncState を更新（在庫無し→error_oos）
       setStagedItems(prev => {
-        const arr = Array.isArray(prev) ? [...prev] : [];
-        for (let i = 0; i < arr.length; i++) {
-          const it = arr[i];
+        const old = Array.isArray(prev) ? prev : [];
+        let changed = false;
+        const next = old.map(it => {
           const gid = it?.variantId || gidMap[String(it?.jan)] || "";
-          if (!gid) continue;
-          if (gid in availMap && availMap[gid] === false) {
-            arr[i] = { ...it, syncState: "error_oos" };
-          } else if (gid in availMap) {
-            // 在庫ありなら pending に戻す（手動で残っているケース）
-            if (it.syncState === "error_oos") arr[i] = { ...it, syncState: "pending" };
+          if (!gid || !(gid in availMap)) return it;
+          const should = availMap[gid] ? "pending" : "error_oos";
+          if ((it.syncState || "pending") !== should) {
+            changed = true;
+            return { ...it, syncState: should };
           }
-        }
-        return arr;
+          return it;
+        });
+        return changed ? next : old;
       });
+
       // online 側は normalize 時に availableForSale を持たせ済み（表示用途）
       setCart(c => {
         if (!c?.lines) return c;
@@ -667,8 +695,9 @@ export function CartProvider({ children }) {
         return { ...c, lines };
       });
     } catch (e) {
-      // 失敗しても致命ではない
-      console.warn("[availability] check failed:", e?.message || e);
+      // 失敗時は黙って終了（ログ洪水対策）
+    } finally {
+      availBusyRef.current = false;
     }
   }, [cart?.lines, setStagedItems]);
 
