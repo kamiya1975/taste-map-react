@@ -4,9 +4,6 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-
 import "./App.css";
 import { bootstrapIdentity } from "./utils/auth";
 
-// CartContext をインポート
-import { CartProvider } from "./components/panels/CartContext";
-
 // Pages
 import IntroPage from "./pages/IntroPage";
 import MapPage from "./pages/MapPage";
@@ -39,8 +36,6 @@ export default function App() {
   }, [navigate, location.pathname]);
 
   return (
-    // 👇 ここで全体を CartProvider でラップ
-    <CartProvider>
       <Routes>
         <Route path="/" element={<IntroPage />} />
         <Route path="/store" element={<StorePage />} />
@@ -51,7 +46,6 @@ export default function App() {
         <Route path="/scan-flow" element={<ScanAndProductFlow />} />
         <Route path="*" element={<Navigate to="/map" replace />} />
       </Routes>
-    </CartProvider>
   );
 }
 
