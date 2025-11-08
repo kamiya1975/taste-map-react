@@ -745,7 +745,7 @@ export function CartProvider({ children }) {
     }
 
     // 完全ローカル
-    const mergedLines = [...stagedLines, ...localLines];
+    const mergedLines = [...(stagedLines || []), ...(localLines || [])];
     const stagedSubtotal = mergedLines.reduce((s, l) => s + l.lineAmount, 0);
     const totalQuantity  = mergedLines.reduce((s, l) => s + l.quantity, 0);
     return {
@@ -828,11 +828,11 @@ export function CartProvider({ children }) {
     stagedSubtotal: snapshot.stagedSubtotal,
     currency: snapshot.currency,
     totalQuantity: snapshot.totalQuantity,
-    lines: snapshot.lines,
-    checkoutUrl: snapshot.checkoutUrl,
-    isLocal: snapshot.isLocal,
-    hasPending: snapshot.hasPending,
-    onlineOnlyCount: snapshot.onlineOnlyCount,
+    lines: Array.isArray(snapshot?.lines) ? snapshot.lines : [],
+    checkoutUrl: snapshot?.checkoutUrl || "",
+    isLocal: !!snapshot?.isLocal,
+    hasPending: !!snapshot?.hasPending,
+    onlineOnlyCount: Number(snapshot?.onlineOnlyCount || 0),
 
     // 操作
     reload,

@@ -150,6 +150,7 @@ export default function CartPanel({ isOpen, onClose }) {
         )}
       </div>
 
+
       {/* 本体 */}
       <div
         className="drawer-scroll"
@@ -186,6 +187,7 @@ export default function CartPanel({ isOpen, onClose }) {
                   alignItems: "center",
                 }}
               >
+                {/* ←↓↓ この中に “行の中身（タイトル/バッジ/数量ボタン/削除ボタン）” を入れる */}
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>
                     {title}
@@ -194,7 +196,7 @@ export default function CartPanel({ isOpen, onClose }) {
                       <span style={{ marginLeft: 6, fontSize: 10, color: "#a33" }}>
                         {ln.syncState === "error_no_variant" ? "未登録商品（要登録）" :
                          ln.syncState === "error_oos" ? "在庫不足" : ""}
-                     </span>
+                      </span>
                     )}
                     {ln.origin === "online" && typeof ln.availableForSale === "boolean" && (
                       <span style={{ marginLeft: 6, fontSize: 10, color: ln.availableForSale ? "#2a7" : "#a33" }}>
@@ -230,7 +232,7 @@ export default function CartPanel({ isOpen, onClose }) {
                   </button>
                   <button
                     onClick={() => removeLine(ln.id)}
-                   style={{ ...btnMiniStyle, borderColor: "#b66", color: "#b66" }}
+                    style={{ ...btnMiniStyle, borderColor: "#b66", color: "#b66" }}
                     aria-label="削除"
                     title="削除"
                   >
@@ -242,6 +244,7 @@ export default function CartPanel({ isOpen, onClose }) {
           });
         })()}
       </div>
+
 
       {/* フッター */}
       <div style={{
