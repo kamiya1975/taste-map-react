@@ -12,6 +12,7 @@ import SliderPage from "./pages/SliderPage";
 import StorePage from "./pages/StorePage";
 import UserTastePage from "./pages/UserTastePage";
 import ScanAndProductFlow from "./pages/ScanAndProductFlow";
+import CartPage from "./pages/CartPage";
 
 export default function App() {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/taste-log" element={<UserTastePage />} />
         <Route path="/scan-flow" element={<ScanAndProductFlow />} />
         <Route path="*" element={<Navigate to="/map" replace />} />
+        <Route path="/cart" element={<CartPage />} />
       </Routes>
   );
 }

@@ -39,7 +39,7 @@ export default function CartPanel({ isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen) return;
     (async () => {
-      try { await checkAvailability(); } catch {}
+      try { if (typeof checkAvailability === "function") { await checkAvailability(); } } catch {}
       try { await flushStagedToOnline(); } catch {}
       try { await reload(); } catch {}
     })();
@@ -82,6 +82,9 @@ export default function CartPanel({ isOpen, onClose }) {
   const openCartPage = async () => {
     setCheckingOut(true);
     try {
+      if (typeof buildCartPageUrl !== "function") {
+        throw new Error("Cart URL ビルダーが未定義（CartContextを更新してください）");
+      }
       const url = await buildCartPageUrl(); // 例: https://{shop}.myshopify.com/cart/123:2,456:1
       if (!url) throw new Error("Cart URL を生成できませんでした");
       const w = window.open(url, "_blank", "noopener");

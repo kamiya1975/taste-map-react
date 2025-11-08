@@ -806,7 +806,9 @@ export function CartProvider({ children }) {
         linesForPermalink.push({ merchandiseId: gid, quantity: Number(it.qty) });
       }
     }
-    return buildCartPermalink(SHOP_HOST, linesForPermalink);
+    const url = buildCartPermalink(SHOP_HOST, linesForPermalink);
+    try { window.__lastCartPageUrl = url; console.log("[Cart] permalink:", url); } catch {}
+    return url;
   }, [reload, flushStagedToOnline]);
 
   // デバッグ
@@ -864,6 +866,7 @@ export function CartProvider({ children }) {
     reload, addByJan, addByVariantId, addItem, updateQty, removeLine, flushStagedToOnline,
     setLocalItems, setStagedItems, syncAndGetCheckoutUrl, buildCartPageUrl, checkAvailability, __debugTest,
   ]);
+  if (typeof window !== "undefined") { window.__cart = { buildCartPageUrl, syncAndGetCheckoutUrl, reload, flushStagedToOnline }; }
 
   return (
     <CartContext.Provider value={value}>

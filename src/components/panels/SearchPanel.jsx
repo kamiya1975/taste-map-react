@@ -45,10 +45,27 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
     if (it) onPick?.(it);
   };
 
-  const listed = useMemo(
-    () => results.map((x, i) => ({ ...x, addedAt: null, displayIndex: i + 1 })),
-    [results]
-  );
+  // 重複JAN/コードを除外してから表示用配列を作る
+  const listed = useMemo(() => {
+    const rows = results.map((x, i) => ({
+      ...x,
+      addedAt: null,
+      displayIndex: i + 1,
+    }));
+    const seen = new Map(); // key => true
+    const out = [];
+    for (const r of rows) {
+      const k = String(
+        r?.JAN ?? r?.jan_code ?? r?.code ?? r?.id ?? r?.jt_code ?? ""
+      );
+      if (k) {
+        if (seen.has(k)) continue; // 重複はスキップ
+        seen.set(k, true);
+      }
+      out.push(r);
+    }
+    return out;
+  }, [results]);
 
   useEffect(() => {
     if (!open) return;
@@ -154,7 +171,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
           {listed.map((item, idx) => (
             <ListRow
-              key={`${item?.JAN ?? item?.jan_code ?? idx}`}
+              key={`${String(item?.JAN ?? item?.jan_code ?? item?.code ?? item?.id ?? "row")}-${idx}`}
               index={item.displayIndex}
               item={item}
               onPick={() => pick(idx)}

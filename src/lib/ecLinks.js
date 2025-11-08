@@ -59,5 +59,5 @@ export async function getVariantGidByJan(jan) {
   }
 
   console.warn("[ec_links] miss:", jan, "candidates:", candidates);
-  return ""; // ← miss は空文字で返す（呼び出し側がローカルstaged運用に落とせる）
+  return ""; // miss は空文字で返す（呼び出し側でstaged運用に落とす）
 }

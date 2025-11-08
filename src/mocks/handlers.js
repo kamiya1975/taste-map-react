@@ -1,5 +1,5 @@
 import { http, HttpResponse } from "msw";
-import stores from "../../public/stores.mock.json";
+import stores from "./data/stores.mock.json";
 
 export const handlers = [
   http.get("/api/stores", ({ request }) => {
