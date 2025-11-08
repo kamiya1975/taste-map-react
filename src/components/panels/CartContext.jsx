@@ -50,11 +50,19 @@ function createPersistSetter(key, setState) {
   return (nextOrUpdater) => {
     setState(prev => {
       const next = typeof nextOrUpdater === "function" ? nextOrUpdater(prev) : nextOrUpdater;
-      writeJSONAndBroadcast(key, next);
+      try {
+        localStorage.setItem(key, JSON.stringify(next));
+       console.log("[Cart] write", key, next);            // ★ 追加（実際に書けたか）
+      } catch (e) {
+       console.error("[Cart] write failed", key, e);       // ★ 失敗ログ
+      }
+      try { window.postMessage({ type: "CART_UPDATED", key, at: Date.now() }, "*"); } catch {}
+      try { const bc = new BroadcastChannel(CART_CHANNEL); bc.postMessage({ type: "cart_updated", key, at: Date.now() }); bc.close(); } catch {}
       return next;
     });
   };
 }
+
 
 // --- variant 解決キャッシュ / 併走ガード / スロットリング ---
 const gidCacheRef   = { current: new Map() };   // jan -> gid 文字列 もしくは Promise
