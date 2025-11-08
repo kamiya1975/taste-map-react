@@ -52,7 +52,7 @@ useEffect(() => {
     try { await flushStagedToOnline(); } catch {}
     try { await reload(); } catch {}
   })();
-}, [isOpen]);
+}, [isOpen, checkAvailability, flushStagedToOnline, reload]);
 
   const fmt = (v) => {
     const n = Number(v || 0);
