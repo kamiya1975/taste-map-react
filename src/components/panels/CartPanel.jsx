@@ -10,6 +10,7 @@ import Drawer from "@mui/material/Drawer";
 import PanelHeader from "../ui/PanelHeader";
 import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
 import { useCart } from "./CartContext";
+import React, { useEffect, useRef, useState } from "react";
 
 export default function CartPanel({ isOpen, onClose }) {
   const {
@@ -34,15 +35,20 @@ export default function CartPanel({ isOpen, onClose }) {
   } = useCart();
 
   const [checkingOut, setCheckingOut] = useState(false);
+  // ★ 追加：1回だけ実行するためのフラグ
+  const ranRef = useRef(false);
 
   // パネルOPEN時：在庫チェック → staged同期 → reload
   useEffect(() => {
-    if (!isOpen) { ranRef.current = false; return; }
+    if (!isOpen) {
+      ranRef.current = false;
+      return; 
+    }
     if (ranRef.current) return;
     ranRef.current = true;
 
     (async () => {
-      try { if (typeof checkAvailability === "function") { await checkAvailability(); } } catch {}
+      try { await checkAvailability?.(); } catch {}
       try { await flushStagedToOnline(); } catch {}
       try { await reload(); } catch {}
     })();
