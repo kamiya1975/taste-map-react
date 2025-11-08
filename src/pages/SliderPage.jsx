@@ -1,11 +1,11 @@
 // src/pages/SliderPage.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import PanelHeader from "../components/ui/PanelHeader";
 
 /* ============ 小ユーティリティ（既存） ============ */
 const num = (v, def = 0) => { const n = Number(v); return Number.isFinite(n) ? n : def; };
-const median = (arr) => { if (!arr.length) return 0; const a=[...arr].sort((x,y)=>x-y); const m=Math.floor(a.length/2); return a.length%2?a[m]:(a[m-1]+a[m])/2; };
+//const median = (arr) => { if (!arr.length) return 0; const a=[...arr].sort((x,y)=>x-y); const m=Math.floor(a.length/2); return a.length%2?a[m]:(a[m-1]+a[m])/2; };
 const dist2 = (x1,y1,x2,y2)=>{const dx=x1-x2, dy=y1-y2; return dx*dx+dy*dy;};
 const centerGradient = (val) => {
   const base="#e9e9e9", active="#b59678"; // ← 見本の色味
@@ -121,7 +121,7 @@ export default function SliderPage() {
   };
 
   // 「×」でアプリガイドに戻る（マップを動かさず）
-  const handleClose = () => navigate("/map?open=mypage", { replace: true });
+  //const handleClose = () => navigate("/map?open=mypage", { replace: true });
 
   /* ---------- スタイル（簡潔） ---------- */
   const pagePad = "16px";
