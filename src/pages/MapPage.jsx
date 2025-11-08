@@ -122,6 +122,25 @@ function MapPage() {
     centerToUMAP(cx, cy); // 既定で最小ズーム
   }, [data, centerToUMAP]);
 
+  // ====== 商品へフォーカス
+  const focusOnWine = useCallback((item, opts = {}) => {
+    if (!item) return;
+    const tx = Number(item.umap_x);
+    const tyUMAP = Number(item.umap_y);
+    if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
+
+    setViewState((prev) => {
+      const wantZoom = opts.zoom;
+      const zoomTarget = (wantZoom == null)
+        ? prev.zoom
+        : Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, wantZoom));
+      const yOffset = getYOffsetWorld(zoomTarget, CENTER_Y_FRAC);
+      const keepTarget = opts.recenter === false;
+      const nextTarget = keepTarget ? prev.target : [tx, -tyUMAP - yOffset, 0];
+      return { ...prev, target: nextTarget, zoom: zoomTarget };
+    });
+  }, []);
+
   // ユニークな cluster 値 → 初期色を決定
   const clusterList = useMemo(() => {
     const s = new Set();
@@ -501,25 +520,6 @@ useEffect(() => {
      console.error("auto-open-nearest failed:", e);
    }
  }, [location.key, userPin, data, findNearestWineWorld, focusOnWine]);
-
-  // ====== 商品へフォーカス
-  const focusOnWine = useCallback((item, opts = {}) => {
-    if (!item) return;
-    const tx = Number(item.umap_x);
-    const tyUMAP = Number(item.umap_y);
-    if (!Number.isFinite(tx) || !Number.isFinite(tyUMAP)) return;
-
-    setViewState((prev) => {
-      const wantZoom = opts.zoom;
-      const zoomTarget = (wantZoom == null)
-        ? prev.zoom
-        : Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, wantZoom));
-      const yOffset = getYOffsetWorld(zoomTarget, CENTER_Y_FRAC);
-      const keepTarget = opts.recenter === false;
-      const nextTarget = keepTarget ? prev.target : [tx, -tyUMAP - yOffset, 0];
-      return { ...prev, target: nextTarget, zoom: zoomTarget };
-    });
-  }, []);
 
   // ====== 子iframeへ♡状態を送る
   const sendFavoriteToChild = (jan, value) => {
