@@ -1,5 +1,5 @@
 // src/pages/CartPage.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useCart } from "../components/panels/CartContext";
 
 export default function CartPage() {
@@ -9,12 +9,17 @@ export default function CartPage() {
     reload, flushStagedToOnline, buildCartPageUrl, syncAndGetCheckoutUrl
   } = useCart();
 
+  // --- reload を安定参照で保持して「初回だけ」実行する ---
+  const reloadRef = useRef(reload);
+  useEffect(() => { reloadRef.current = reload; }, [reload]);
+  useEffect(() => {
+    // 起動時に1回だけ最新化
+    reloadRef.current?.().catch(() => {});
+  }, []);
+
   const [permalink, setPermalink] = useState("");
 
-  useEffect(() => {
-    // 起動時に1回、最新を取得
-    reload().catch(()=>{});
-  }, [reload]);
+  const safeLines = Array.isArray(lines) ? lines : [];
 
   return (
     <div style={{ padding: 16 }}>
@@ -26,7 +31,7 @@ export default function CartPage() {
       <div style={{
         border: "1px solid #ddd", borderRadius: 8, padding: 12, marginBottom: 16
       }}>
-        <div>点数: {totalQuantity}</div>
+        <div>点数: {totalQuantity || 0}</div>
         <div>小計: {subtotal} {currency}</div>
         {shopReady && (
           <>
@@ -46,6 +51,7 @@ export default function CartPage() {
         <button
           onClick={async () => {
             const url = await buildCartPageUrl();
+            if (!url) return;
             setPermalink(url);
             window.open(url, "_blank", "noopener");
           }}
@@ -65,14 +71,14 @@ export default function CartPage() {
 
       <h3>明細</h3>
       <ul style={{ listStyle: "none", padding: 0 }}>
-        {lines.map((ln) => (
-          <li key={ln.id} style={{ borderBottom: "1px solid #eee", padding: "8px 0" }}>
-            <div><b>{ln.productTitle || ln.title}</b></div>
-            <div>id: {ln.id}</div>
-            <div>variant: {ln.merchandiseId || "(local)"}</div>
-            <div>数量: {ln.quantity}</div>
-            {"lineAmount" in ln && <div>金額: {ln.lineAmount} {ln.currency || currency}</div>}
-            {ln.origin !== "online" && <div style={{ color:"#a66" }}>origin: {ln.origin} / syncState: {ln.syncState || "-"}</div>}
+        {safeLines.map((ln) => (
+          <li key={ln.id || `${ln.origin}:${ln.sku || ln.jan || Math.random()}`} style={{ borderBottom: "1px solid #eee", padding: "8px 0" }}>
+            <div><b>{ln?.productTitle || ln?.title || "(無題)"}</b></div>
+            <div>id: {ln?.id || "-"}</div>
+            <div>variant: {ln?.merchandiseId || "(local)"}</div>
+            <div>数量: {ln?.quantity}</div>
+            {"lineAmount" in (ln || {}) && <div>金額: {ln.lineAmount} {ln.currency || currency}</div>}
+            {ln?.origin !== "online" && <div style={{ color:"#a66" }}>origin: {ln.origin} / syncState: {ln.syncState || "-"}</div>}
           </li>
         ))}
       </ul>

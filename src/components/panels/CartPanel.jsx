@@ -37,13 +37,16 @@ export default function CartPanel({ isOpen, onClose }) {
 
   // パネルOPEN時：在庫チェック → staged同期 → reload
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) { ranRef.current = false; return; }
+    if (ranRef.current) return;
+    ranRef.current = true;
+
     (async () => {
       try { if (typeof checkAvailability === "function") { await checkAvailability(); } } catch {}
       try { await flushStagedToOnline(); } catch {}
       try { await reload(); } catch {}
     })();
-  }, [isOpen, checkAvailability, flushStagedToOnline, reload]);
+  }, [isOpen]);
 
   const fmt = (v) => {
     const n = Number(v || 0);
