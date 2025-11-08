@@ -1,87 +1,107 @@
 // src/pages/CartPage.jsx
-import React, { useEffect, useState } from "react";
+// フル画面カート（安全描画版）
+// - useCart のパスに注意（※下の import をプロジェクト実体に合わせる）
+
+import React, { useMemo } from "react";
+// ★ import パスは実体に合わせて調整（例: "../components/cart/CartContext" 等）
 import { useCart } from "../components/panels/CartContext";
 
 export default function CartPage() {
+  const ctx = (typeof useCart === "function" ? useCart() : {}) || {};
   const {
-    shopReady, lines, totalQuantity, currency,
-    subtotal, onlineSubtotal, stagedSubtotal,
-    reload, flushStagedToOnline, buildCartPageUrl, syncAndGetCheckoutUrl
-  } = useCart();
+    lines = [],
+    currency = "¥",
+    updateQty = () => {},
+    removeLine = () => {},
+    syncAndGetCheckoutUrl = async () => null,
+  } = ctx;
 
-  const [permalink, setPermalink] = useState("");
-
-  useEffect(() => {
-    // 起動時に1回、最新を取得
-    reload().catch(()=>{});
-  }, [reload]);
+  const safeLines = useMemo(() => (Array.isArray(lines) ? lines : []), [lines]);
 
   return (
-    <div style={{ padding: 16 }}>
-      <h2>カート</h2>
-      <div style={{ marginBottom: 12, color: "#555" }}>
-        接続: {shopReady ? "Shopify連携 OK" : "ローカルのみ"}
-      </div>
+    <div style={{ maxWidth: 720, margin: "24px auto", padding: "0 12px" }}>
+      <h1>カート</h1>
 
-      <div style={{
-        border: "1px solid #ddd", borderRadius: 8, padding: 12, marginBottom: 16
-      }}>
-        <div>点数: {totalQuantity}</div>
-        <div>小計: {subtotal} {currency}</div>
-        {shopReady && (
-          <>
-            <div>確定小計(Shopify): {onlineSubtotal} {currency}</div>
-            <div>推定小計(staged+local): {stagedSubtotal} {currency}</div>
-          </>
-        )}
-      </div>
+      {safeLines.length === 0 ? (
+        <div style={{ padding: "24px 0", color: "#666" }}>カートは空です。</div>
+      ) : (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          {safeLines.map((ln, i) => {
+            const key =
+              ln.id || ln.sku || ln.jan || ln.variantId || `line-${i}`;
+            const qty = Number(ln.quantity || 0);
+            const price = Number(ln.price || ln.unitPrice || 0);
+            const vol =
+              ln.volume || ln.capacity || ln.volume_ml
+                ? `${ln.volume || ln.capacity || ln.volume_ml}ml`
+                : "";
+            const name =
+              ln.title || ln.name || ln.productName || ln.jan || "商品";
 
-      <div style={{ marginBottom: 16 }}>
-        <button onClick={() => reload()} style={{ marginRight: 8 }}>
-          再読み込み
-        </button>
-        <button onClick={() => flushStagedToOnline()} style={{ marginRight: 8 }}>
-          staged→Shopifyへ同期
-        </button>
-        <button
-          onClick={async () => {
-            const url = await buildCartPageUrl();
-            setPermalink(url);
-            window.open(url, "_blank", "noopener");
-          }}
-          style={{ marginRight: 8 }}
-        >
-          Shopifyの /cart を開く
-        </button>
-        <button
-          onClick={async () => {
-            const url = await syncAndGetCheckoutUrl();
-            if (url) window.open(url, "_blank", "noopener");
-          }}
-        >
-          チェックアウトへ
-        </button>
-      </div>
+            return (
+              <li
+                key={key}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 0",
+                  borderBottom: "1px solid #eee",
+                  gap: 8,
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {name}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#666" }}>
+                    {vol && <span>{vol} / </span>}
+                    {currency}
+                    {price.toLocaleString()} / 本
+                  </div>
+                </div>
 
-      <h3>明細</h3>
-      <ul style={{ listStyle: "none", padding: 0 }}>
-        {lines.map((ln) => (
-          <li key={ln.id} style={{ borderBottom: "1px solid #eee", padding: "8px 0" }}>
-            <div><b>{ln.productTitle || ln.title}</b></div>
-            <div>id: {ln.id}</div>
-            <div>variant: {ln.merchandiseId || "(local)"}</div>
-            <div>数量: {ln.quantity}</div>
-            {"lineAmount" in ln && <div>金額: {ln.lineAmount} {ln.currency || currency}</div>}
-            {ln.origin !== "online" && <div style={{ color:"#a66" }}>origin: {ln.origin} / syncState: {ln.syncState || "-"}</div>}
-          </li>
-        ))}
-      </ul>
-
-      {permalink && (
-        <div style={{ marginTop: 12, fontSize: 12, color: "#555" }}>
-          Permalink: <a href={permalink} target="_blank" rel="noreferrer">{permalink}</a>
-        </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <button
+                    onClick={() => updateQty(key, Math.max(qty - 1, 0))}
+                    style={{ width: 28, height: 28 }}
+                    aria-label="減らす"
+                  >
+                    −
+                  </button>
+                  <div style={{ width: 24, textAlign: "center" }}>{qty}</div>
+                  <button
+                    onClick={() => updateQty(key, qty + 1)}
+                    style={{ width: 28, height: 28 }}
+                    aria-label="増やす"
+                  >
+                    ＋
+                  </button>
+                  <button onClick={() => removeLine(key)} style={{ marginLeft: 8 }}>
+                    削除
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
+
+      <div style={{ marginTop: 20 }}>
+        <button
+          onClick={async () => {
+            try {
+              const url = await syncAndGetCheckoutUrl();
+              if (url) window.location.href = url;
+            } catch (e) {
+              console.error("checkout error:", e);
+              alert("チェックアウトURLの生成に失敗しました。");
+            }
+          }}
+        >
+          チェックアウトへ進む
+        </button>
+      </div>
     </div>
   );
 }

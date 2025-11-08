@@ -4,8 +4,11 @@ import { createRoot } from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
+
+// CartContext の実パスに合わせて（現状このままでOK）
 import { CartProvider } from "./components/panels/CartContext";
 
+// ----- root 要素の用意（なければ作成） -----
 const container =
   document.getElementById("root") ||
   (() => {
@@ -14,8 +17,10 @@ const container =
     document.body.appendChild(el);
     return el;
   })();
+
 const root = createRoot(container);
 
+// ----- アプリ起動（HashRouter + CartProvider で全体をラップ） -----
 root.render(
   <React.StrictMode>
     <HashRouter>
@@ -26,9 +31,11 @@ root.render(
   </React.StrictMode>
 );
 
-// MSW (開発時のみ)
+// ----- MSW（開発時のみ起動、失敗は握りつぶす） -----
 if (process.env.NODE_ENV === "development") {
   import("./mocks/browser")
     .then(({ worker }) => worker.start({ onUnhandledRequest: "bypass" }))
-    .catch(() => { /* dev用なので失敗は無視 */ });
+    .catch(() => {
+      /* dev 用なので失敗は無視 */
+    });
 }
