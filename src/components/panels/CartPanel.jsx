@@ -56,8 +56,6 @@ export default function CartPanel({ isOpen, onClose }) {
     }
   };
 
-  const isEmpty = useMemo(() => (Array.isArray(lines) ? lines.length === 0 : true), [lines]);
-
   const badge = (ln) => {
     const base = {
       display: "inline-block",
