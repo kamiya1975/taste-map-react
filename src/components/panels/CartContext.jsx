@@ -593,7 +593,7 @@ export function CartProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [SHOP_READY, cart, createCartIfNeeded, setStagedItems, setCartAndId]);
+  }, [cart, createCartIfNeeded, setStagedItems, setCartAndId]);
 
   // ★ 追加：在庫チェック（staged/local + online）→ syncState/availableForSale を付与
   const checkAvailability = useCallback(async () => {
@@ -657,7 +657,7 @@ export function CartProvider({ children }) {
       // 失敗しても致命ではない
       console.warn("[availability] check failed:", e?.message || e);
     }
-  }, [SHOP_READY, cart?.lines, setStagedItems]);
+  }, [cart?.lines, setStagedItems]);
 
   // ---- 統合スナップショット（表示用 + 付加フラグ）----
   const snapshot = useMemo(() => {

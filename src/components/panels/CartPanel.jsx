@@ -20,7 +20,6 @@ export default function CartPanel({ isOpen, onClose }) {
     onlineSubtotal,
     stagedSubtotal,
     totalQuantity,
-    checkoutUrl,
     updateQty,
     removeLine,
     reload,

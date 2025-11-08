@@ -422,7 +422,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         getRadius: 0.03,
         pickable: true,
       }),
-    [data, selectedJAN, favorites, userRatings, clusterColorMode]
+    [data, favorites, userRatings, clusterColorMode]
   );
 
   // --- レイヤ：評価リング ---

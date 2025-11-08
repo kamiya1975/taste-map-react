@@ -10,17 +10,17 @@ import { useCart } from "../components/panels/CartContext";
  * ========================= */
 const useJanParam = () => {
   const { jan: routeJan } = useParams();
-  const location = useLocation();
+  const { search, hash } = useLocation();
   return useMemo(() => {
     if (routeJan) return String(routeJan);
     try {
-      const url = new URL(window.location.href);
-      const byQuery = url.searchParams.get("jan");
+      const params = new URLSearchParams(search);
+      const byQuery = params.get("jan");
       if (byQuery) return String(byQuery);
     } catch {}
-    const m = (window.location.hash || "").match(/#\/products\/([^/?#]+)/);
+    const m = (hash || "").match(/#\/products\/([^/?#]+)/);
     return m ? m[1] : "";
-  }, [routeJan, location]);
+  }, [routeJan, search, hash]);
 };
 
 const postToParent = (payload) => {
@@ -299,7 +299,7 @@ export default function ProductPage() {
   const [adding, setAdding] = useState(false);
 
   // ★ CartContext（ローカル積み → カートで同期）
-  const { addItem, totalQuantity, shopReady, syncAndGetCheckoutUrl, checkoutUrl } = useCart();
+  const { addItem, shopReady, syncAndGetCheckoutUrl, checkoutUrl } = useCart();
 
   // 画面オープン/クローズ通知
   useEffect(() => {

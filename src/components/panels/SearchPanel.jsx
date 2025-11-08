@@ -7,12 +7,10 @@ import PanelHeader from "../ui/PanelHeader";
 
 export default function SearchPanel({ open, onClose, data = [], onPick, onScanClick }) {
   const [q, setQ] = useState("");
-  const [active, setActive] = useState(-1);
 
   useEffect(() => {
     if (!open) {
       setQ("");
-      setActive(-1);
     }
   }, [open]);
 
@@ -28,7 +26,6 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
       const pa = Number.isFinite(a?.["希望小売価格"]) ? a["希望小売価格"] : Infinity;
       const pb = Number.isFinite(b?.["希望小売価格"]) ? b["希望小売価格"] : Infinity;
       if (pa !== pb) return pa - pb;
-      // 同額時の安定ソート用（任意）：商品名 or JAN
       const na = String(a?.["商品名"] ?? a?.JAN ?? "");
       const nb = String(b?.["商品名"] ?? b?.JAN ?? "");
       return na.localeCompare(nb, "ja");
@@ -39,7 +36,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
   // ★ 検索語がある時は従来検索、空の時は「全件・価格昇順」
   const results = useMemo(() => {
     const nq = normalizeJP(q);
-    if (nq) return searchItems(indexed, nq, 200); // 正規化後を使用（任意）
+    if (nq) return searchItems(indexed, nq, 200);
     return initialSorted;
   }, [indexed, q, initialSorted]);
 
@@ -59,9 +56,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
     if (!el) return;
     const y = Number(sessionStorage.getItem(SCROLL_KEY) || 0);
     if (Number.isFinite(y)) {
-      requestAnimationFrame(() => {
-        el.scrollTop = y;
-      });
+      requestAnimationFrame(() => { el.scrollTop = y; });
     }
   }, [open]);
 
@@ -87,14 +82,14 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
       open={open}
       onClose={onClose}
       hideBackdrop
-      sx={{ zIndex: 1450 }} 
+      sx={{ zIndex: 1450 }}
       BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
       ModalProps={{
         ...drawerModalProps,
         keepMounted: true,
-        disableEnforceFocus: true,  // フォーカス囲い込みを解除
-        disableAutoFocus: true,     // 自動フォーカス抑止
-        disableRestoreFocus: true,  // 閉じた後の復元抑止
+        disableEnforceFocus: true,
+        disableAutoFocus: true,
+        disableRestoreFocus: true,
       }}
       PaperProps={{
         style: {
@@ -109,7 +104,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
         title="検索"
         icon="search2.svg"
         iconFallback="search2.svg"
-        onClose={() => { setQ(""); setActive(-1); onClose?.(); }}
+        onClose={() => { setQ(""); onClose?.(); }}
       />
 
       {/* 検索行 */}
@@ -119,7 +114,6 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
-              setActive(-1);
               sessionStorage.setItem(SCROLL_KEY, "0");
             }}
             onKeyDown={(e) => { if (e.key === "Enter") pick(0); }}
@@ -167,7 +161,6 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
               showDate={false}
               accentColor="#6b2e2e"
               hoverHighlight={true}
-              onMouseEnter={() => setActive(idx)}
             />
           ))}
         </ul>

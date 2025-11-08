@@ -45,8 +45,6 @@ function MapPage() {
   const navigate = useNavigate();
 
   const didInitialCenterRef = useRef(false);
-  const [openFromRated, setOpenFromRated] = useState(false);
-  const fromRatedRef = useRef(false);
   const deckRef = useRef(null);
 
   // ドロワー状態
@@ -91,7 +89,6 @@ function MapPage() {
   const [userPin, setUserPin] = useState(null);
   const [highlight2D, setHighlight2D] = useState("");
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
-  const [selectedJAN, setSelectedJAN] = useState(null);
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
   const [iframeNonce, setIframeNonce] = useState(0);
 
@@ -162,6 +159,8 @@ function MapPage() {
     if (isRatedOpen && !preserveRated)        { setIsRatedOpen(false);     willClose = true; }
     if (isAccountOpen)   { setIsAccountOpen(false);   willClose = true; }
     if (isFaqOpen)       { setIsFaqOpen(false);       willClose = true; }
+    if (isClusterOpen)   { setIsClusterOpen(false);   willClose = true; }
+    if (isCartOpen)      { setIsCartOpen(false);      willClose = true; }
 
     // メニューは基本閉じるが、保護オプション時は残す
     if (!preserveMyPage && isMyPageOpen) { setIsMyPageOpen(false); willClose = true; }
@@ -175,6 +174,10 @@ function MapPage() {
     isFavoriteOpen,
     isRatedOpen,
     isMyPageOpen,
+    isAccountOpen,
+    isFaqOpen,
+    isClusterOpen,
+    isCartOpen,
   ]);
 
   /** 通常の相互排他オープン（メニュー含め全部調停して開く） */
@@ -498,7 +501,7 @@ useEffect(() => {
    } catch (e) {
      console.error("auto-open-nearest failed:", e);
    }
- }, [location.key, userPin, data, findNearestWineWorld]);
+ }, [location.key, userPin, data, findNearestWineWorld, focusOnWine]);
 
   // ====== 商品へフォーカス
   const focusOnWine = useCallback((item, opts = {}) => {
@@ -952,9 +955,7 @@ useEffect(() => {
         data={data}
         onPick={(item) => {
           if (!item) return;
-          setOpenFromRated(false);
           setHideHeartForJAN(null);
-          setSelectedJANFromSearch(null);
           setSelectedJAN(item.JAN);
           setIframeNonce(Date.now());
           setProductDrawerOpen(true);
@@ -1038,9 +1039,7 @@ useEffect(() => {
         userRatings={userRatings}
         onSelectJAN={async (jan) => {
           await closeUIsThen({ preserveMyPage: true, preserveFavorite: true }); // ← 一覧を残す
-          setOpenFromRated(false);
           setHideHeartForJAN(null);
-          setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           setIframeNonce(Date.now());
           const item = data.find((d) => String(d.JAN) === String(jan));
@@ -1062,11 +1061,8 @@ useEffect(() => {
         data={data}
         onSelectJAN={(jan) => {
           closeUIsThen({ preserveMyPage: true, preserveRated: true });
-          setOpenFromRated(true);
-          fromRatedRef.current = true;
           try { sessionStorage.setItem("tm_from_rated_jan", String(jan)); } catch {}
           setHideHeartForJAN(String(jan));
-          setSelectedJANFromSearch(null);
           setSelectedJAN(jan);
           setIframeNonce(Date.now());
           const item = data.find((d) => String(d.JAN) === String(jan));
@@ -1126,6 +1122,7 @@ useEffect(() => {
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
           {selectedJAN ? (
             <iframe
+              title={`product-${selectedJAN || "preview"}`}
               ref={iframeRef}
               key={`${selectedJAN}-${iframeNonce}`}
               src={`${process.env.PUBLIC_URL || ""}/#/products/${selectedJAN}?embed=1&_=${iframeNonce}`}
@@ -1147,6 +1144,21 @@ useEffect(() => {
             </div>
          )}
         </div>
+      </Drawer>
+
+      {/* カート */}
+      <Drawer
+        anchor="bottom"
+        open={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        sx={{ zIndex: 1850 }}
+        hideBackdrop
+        BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
+      >
+        <PanelHeader title="カート" icon="cart.svg" onClose={() => setIsCartOpen(false)} />
+        <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       </Drawer>
 
            {/* アプリガイド（メニュー） */}
@@ -1213,10 +1225,6 @@ useEffect(() => {
           },
         }}
       >
-        <CartPanel
-          isOpen={isCartOpen}
-         onClose={() => setIsCartOpen(false)}
-        />
 
         <PanelHeader
           title="マップガイド"
@@ -1277,6 +1285,7 @@ useEffect(() => {
           },
         }}
       >
+
         <PanelHeader
           title="お気に入り店舗登録"
           icon="store.svg"
