@@ -40,6 +40,7 @@ console.debug("[Cart] EP:", EP);
 // ---- Utils ----
 const readJSON = (key, def = []) => { try { const v = JSON.parse(localStorage.getItem(key) || "null"); return v ?? def; } catch { return def; } };
 
+// eslint-disable-next-line no-unused-vars
 function writeJSONAndBroadcast(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
   try { window.postMessage({ type: "CART_UPDATED", key, at: Date.now() }, "*"); } catch {}
@@ -50,19 +51,11 @@ function createPersistSetter(key, setState) {
   return (nextOrUpdater) => {
     setState(prev => {
       const next = typeof nextOrUpdater === "function" ? nextOrUpdater(prev) : nextOrUpdater;
-      try {
-        localStorage.setItem(key, JSON.stringify(next));
-       console.log("[Cart] write", key, next);            // ★ 追加（実際に書けたか）
-      } catch (e) {
-       console.error("[Cart] write failed", key, e);       // ★ 失敗ログ
-      }
-      try { window.postMessage({ type: "CART_UPDATED", key, at: Date.now() }, "*"); } catch {}
-      try { const bc = new BroadcastChannel(CART_CHANNEL); bc.postMessage({ type: "cart_updated", key, at: Date.now() }); bc.close(); } catch {}
+      writeJSONAndBroadcast(key, next);   // ← これで unused 解消
       return next;
     });
   };
 }
-
 
 // --- variant 解決キャッシュ / 併走ガード / スロットリング ---
 const gidCacheRef   = { current: new Map() };   // jan -> gid 文字列 もしくは Promise

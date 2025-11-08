@@ -25,25 +25,6 @@ import {
   DRAWER_HEIGHT,
 } from "../ui/constants";
 
-import { useCart } from "../components/panels/CartContext";
-
-function CartProbe() {
-  const { shopReady, totalQuantity, onlineSubtotal, stagedSubtotal, lines } = useCart();
-  return (
-    <pre style={{position:"absolute", left:8, bottom:8, zIndex:9999, background:"#000", color:"#0f0",
-                 fontSize:12, padding:6, borderRadius:6, opacity:.85}}>
-      {JSON.stringify({
-        shopReady,
-        totalQuantity,
-        onlineSubtotal,
-        stagedSubtotal,
-        linesLen: Array.isArray(lines) ? lines.length : -1
-      }, null, 2)}
-    </pre>
-  );
-}
-
-
 const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
 const ANCHOR_JAN = "4964044046324";
