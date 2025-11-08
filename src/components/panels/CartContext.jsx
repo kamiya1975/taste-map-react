@@ -10,6 +10,10 @@ import React, {
 } from "react";
 import { getVariantGidByJan } from "../../lib/ecLinks";
 
+// --- DEBUG: いまの設定を覗けるようにする ---
+console.debug("[Cart] SHOP_READY:", SHOP_READY);
+console.debug("[Cart] EP:", EP);
+
 // ---- Keys / Constants ----
 const CART_ID_KEY    = "tm_cart_id";
 const LOCAL_CART_KEY = "tm_cart_local_v1";

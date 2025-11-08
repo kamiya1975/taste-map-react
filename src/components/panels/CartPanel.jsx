@@ -154,12 +154,12 @@ export default function CartPanel({ isOpen, onClose }) {
 
       {/* 本体 */}
       <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto", padding: "6px 10px 80px" }}>
-        {isEmpty ? (
+        {(!Array.isArray(lines) || isEmpty) ? (
           <div style={{ padding: 16, color: "#777" }}>
             カートは空です。商品ページの「カートに入れる」から追加してください。
           </div>
         ) : (
-          lines.map((ln) => {
+          (lines || []).map((ln) => {
             const title = ln.productTitle || ln.title || "(無題)";
             return (
               <div
