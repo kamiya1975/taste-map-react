@@ -5,12 +5,11 @@
 // ・lines が未定義/nullでも安全に描画（safeLines）
 // ・行keyは id→origin:sku/jan→fallback の順で安定化
 // ------------------------------------------------------------
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Drawer from "@mui/material/Drawer";
 import PanelHeader from "../ui/PanelHeader";
 import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
 import { useCart } from "./CartContext";
-import React, { useEffect, useRef, useState } from "react";
 
 export default function CartPanel({ isOpen, onClose }) {
   const {
