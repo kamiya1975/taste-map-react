@@ -1,16 +1,59 @@
 // ------------------------------------------------------------
-// CartPanel（完全差し替え版）
-// ・パネルOPEN時：在庫チェック → staged同期 → reload（1回だけ）
-// ・/cart ページボタン追加（チェックアウト直行も併置）
-// ・lines が未定義/nullでも安全に描画（safeLines）
+// CartPanel（完全差し替え版・堅牢化）
+// ・OPEN時：在庫チェック → staged同期 → reload（1回だけ）
+// ・/cart ページボタン（チェックアウト直行も併置）
+// ・lines を安全サニタイズして描画崩れ/例外を防止
 // ・行keyは id→origin:sku/jan→fallback の順で安定化
-// ・A11y：ドロワーOPEN時にフォーカスを移す
+// ・A11y：ドロワーOPEN時にフォーカス移動（aria-hidden警告の低減）
 // ------------------------------------------------------------
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Drawer from "@mui/material/Drawer";
 import PanelHeader from "../ui/PanelHeader";
 import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
 import { useCart } from "./CartContext";
+
+// --- レンダリング安全化：行を正規化して落ちないようにする ---
+function sanitizeLine(raw, idx) {
+  if (!raw || typeof raw !== "object") {
+    return { __bad: true, key: `bad-${idx}`, title: "(不正な行)", qty: 1, lineAmount: 0, origin: "online" };
+  }
+  const origin = raw.origin || "online";
+  const sku = raw.sku || raw.jan || raw.variantId || raw.merchandiseId || raw?.merchandise?.id || "";
+  const title = raw.productTitle || raw.title || "(無題)";
+  const key =
+    raw.id ||
+    (origin && sku ? `${origin}:${sku}` : null) ||
+    `ln-${idx}`;
+
+  const qty = Number.isFinite(raw.quantity) ? raw.quantity : 1;
+  const lineAmount = Number.isFinite(Number(raw.lineAmount)) ? Number(raw.lineAmount) :
+                     Number.isFinite(Number(raw.price))      ? Number(raw.price)      : 0;
+
+  // variant id の取り出しを安全に
+  const merchandiseId = raw.merchandiseId || raw?.merchandise?.id || "";
+  const variantTail = typeof merchandiseId === "string" && merchandiseId.includes("/")
+    ? merchandiseId.split("/").pop()
+    : (raw.variantId || "-");
+
+  // 在庫フラグの互換
+  const availableForSale = (typeof raw.availableForSale === "boolean")
+    ? raw.availableForSale
+    : (typeof raw.available === "boolean" ? raw.available : undefined);
+
+  return {
+    ...raw,
+    __bad: false,
+    origin,
+    sku,
+    title,
+    key,
+    qty,
+    lineAmount,
+    merchandiseId,
+    variantTail,
+    availableForSale,
+  };
+}
 
 export default function CartPanel({ isOpen, onClose }) {
   const {
@@ -37,6 +80,7 @@ export default function CartPanel({ isOpen, onClose }) {
   const rootRef = useRef(null);
   const ranRef = useRef(false);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [renderErr, setRenderErr] = useState(null);
 
   // A11y：ドロワーOPEN時にフォーカスを移す
   useEffect(() => {
@@ -51,15 +95,11 @@ export default function CartPanel({ isOpen, onClose }) {
     return () => clearTimeout(t);
   }, [isOpen]);
 
-  // パネルOPEN時：在庫チェック → staged同期 → reload（1回だけ）
+  // OPEN時：在庫チェック → staged同期 → reload（1回だけ実行）
   useEffect(() => {
-    if (!isOpen) {
-      ranRef.current = false;
-      return;
-    }
+    if (!isOpen) { ranRef.current = false; return; }
     if (ranRef.current) return;
     ranRef.current = true;
-
     (async () => {
       try { await checkAvailability?.(); } catch {}
       try { await flushStagedToOnline?.(); } catch {}
@@ -104,9 +144,7 @@ export default function CartPanel({ isOpen, onClose }) {
   const openCartPage = async () => {
     setCheckingOut(true);
     try {
-      if (typeof buildCartPageUrl !== "function") {
-        throw new Error("Cart URL ビルダーが未定義（CartContextを更新してください）");
-      }
+      if (typeof buildCartPageUrl !== "function") throw new Error("Cart URL ビルダーが未定義（CartContextを更新してください）");
       const url = await buildCartPageUrl();
       if (!url) throw new Error("Cart URL を生成できませんでした");
       const w = window.open(url, "_blank", "noopener");
@@ -144,6 +182,110 @@ export default function CartPanel({ isOpen, onClose }) {
   };
 
   const stagedSum = Number(stagedSubtotal || 0);
+
+  // --- リスト描画（例外を握りつぶさず UI に表示） ---
+  const listContent = useMemo(() => {
+    try {
+      const raw = Array.isArray(lines) ? lines : [];
+      const safe = raw.filter(Boolean).map(sanitizeLine);
+
+      if (safe.length === 0) {
+        return (
+          <div style={{ padding: 16, color: "#333" }}>
+            カートは空です。商品ページの「カートに入れる」から追加してください。
+          </div>
+        );
+      }
+
+      return safe.map((ln, idx) => {
+        if (ln.__bad) {
+          return (
+            <div key={ln.key} style={{ padding: 10, color: "#a33" }}>
+              行データが不正です（idx={idx}）
+            </div>
+          );
+        }
+        const disableQty = ln.origin === "staged" && typeof ln.syncState === "string" && ln.syncState.startsWith("error");
+        const stableId = ln.id || ln.key; // update/remove の対象IDはフォールバックありで
+
+        return (
+          <div
+            key={ln.key}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto",
+              gap: 10,
+              padding: "10px 8px",
+              borderBottom: "1px dashed #ddd",
+              alignItems: "center",
+              background: "#fff",
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>
+                {ln.title}
+                {badge(ln)}
+                {ln.origin === "staged" && ln.syncState && (
+                  <span style={{ marginLeft: 6, fontSize: 10, color: "#a33" }}>
+                    {ln.syncState === "error_no_variant" ? "未登録商品（要登録）" :
+                     ln.syncState === "error_oos"       ? "在庫不足" : ""}
+                  </span>
+                )}
+                {ln.origin === "online" && typeof ln.availableForSale === "boolean" && (
+                  <span style={{ marginLeft: 6, fontSize: 10, color: ln.availableForSale ? "#2a7" : "#a33" }}>
+                    {ln.availableForSale ? "在庫あり" : "在庫なし"}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 12, color: "#666" }}>
+                SKU: {ln.sku || "-"}／Variant: {ln.variantTail || "-"}
+              </div>
+              <div style={{ fontSize: 12, color: "#333", marginTop: 4 }}>
+                小計：{fmt(ln.lineAmount)}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button
+                onClick={() => updateQty(stableId, Math.max(1, (Number(ln.qty) || 1) - 1))}
+                style={btnMiniStyle}
+                aria-label="数量を減らす"
+                disabled={disableQty}
+              >
+                −
+              </button>
+              <span style={{ minWidth: 22, textAlign: "center" }}>{ln.qty}</span>
+              <button
+                onClick={() => updateQty(stableId, (Number(ln.qty) || 0) + 1)}
+                style={btnMiniStyle}
+                aria-label="数量を増やす"
+                disabled={disableQty}
+              >
+                ＋
+              </button>
+              <button
+                onClick={() => removeLine(stableId)}
+                style={{ ...btnMiniStyle, borderColor: "#b66", color: "#b66" }}
+                aria-label="削除"
+                title="削除"
+              >
+                削除
+              </button>
+            </div>
+          </div>
+        );
+      });
+    } catch (e) {
+      setRenderErr(e);
+      // eslint-disable-next-line no-console
+      console.error("[CartPanel] render error:", e);
+      return (
+        <div style={{ padding: 16, color: "#a33", whiteSpace: "pre-wrap" }}>
+          カート表示でエラーが発生しました：{String(e?.message || e)}
+        </div>
+      );
+    }
+  }, [lines, updateQty, removeLine]);
 
   return (
     <Drawer
@@ -195,102 +337,22 @@ export default function CartPanel({ isOpen, onClose }) {
       {/* 本体 */}
       <div
         className="drawer-scroll"
-        style={{ 
-          flex: 1, 
-          minHeight: 160, 
+        style={{
+          flex: 1,
+          minHeight: 0,          // ← これが無いとスクロール不能になりやすい
           height: "auto",
-          overflowY: "auto", 
-          padding: "6px 10px 80px", 
-          background: "#fff" 
+          overflowY: "auto",
+          padding: "6px 10px 80px",
+          background: "#fff",
         }}
       >
-        {(() => {
-          const safeLines = Array.isArray(lines) ? lines.filter(Boolean) : [];
-          const hasItems = safeLines.length > 0;
-
-          if (!hasItems) {
-            return (
-              <div style={{ padding: 16, color: "#333" }}>
-                カートは空です。商品ページの「カートに入れる」から追加してください。
-              </div>
-            );
-          }
-
-          return safeLines.map((ln, idx) => {
-            const title = ln?.productTitle || ln?.title || "(無題)";
-            const key =
-              ln?.id ||
-              (ln?.origin && (ln?.sku || ln?.jan) && `${ln.origin}:${ln.sku || ln.jan}`) ||
-              `ln-${idx}`;
-
-            return (
-              <div
-                key={key}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr auto",
-                  gap: 10,
-                  padding: "10px 8px",
-                  borderBottom: "1px dashed #ddd",
-                  alignItems: "center",
-                  background: "#fff",
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>
-                    {title}
-                    {badge(ln)}
-                    {ln.syncState && ln.origin === "staged" && (
-                      <span style={{ marginLeft: 6, fontSize: 10, color: "#a33" }}>
-                        {ln.syncState === "error_no_variant" ? "未登録商品（要登録）" :
-                         ln.syncState === "error_oos" ? "在庫不足" : ""}
-                      </span>
-                    )}
-                    {ln.origin === "online" && typeof ln.availableForSale === "boolean" && (
-                      <span style={{ marginLeft: 6, fontSize: 10, color: ln.availableForSale ? "#2a7" : "#a33" }}>
-                        {ln.availableForSale ? "在庫あり" : "在庫なし"}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#666" }}>
-                    SKU: {ln.sku || "-"}／Variant: {ln.merchandiseId?.split("/").pop() || "-"}
-                  </div>
-                  <div style={{ fontSize: 12, color: "#333", marginTop: 4 }}>
-                    小計：{fmt(ln.lineAmount)}
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <button
-                    onClick={() => updateQty(ln.id, Math.max(1, (ln.quantity || 1) - 1))}
-                    style={btnMiniStyle}
-                    aria-label="数量を減らす"
-                    disabled={ln.origin === "staged" && ln.syncState?.startsWith("error")}
-                  >
-                    −
-                  </button>
-                  <span style={{ minWidth: 22, textAlign: "center" }}>{ln.quantity}</span>
-                  <button
-                    onClick={() => updateQty(ln.id, (ln.quantity || 0) + 1)}
-                    style={btnMiniStyle}
-                    aria-label="数量を増やす"
-                    disabled={ln.origin === "staged" && ln.syncState?.startsWith("error")}
-                  >
-                    ＋
-                  </button>
-                  <button
-                    onClick={() => removeLine(ln.id)}
-                    style={{ ...btnMiniStyle, borderColor: "#b66", color: "#b66" }}
-                    aria-label="削除"
-                    title="削除"
-                  >
-                    削除
-                  </button>
-                </div>
-              </div>
-            );
-          });
-        })()}
+        {renderErr ? (
+          <div style={{ padding: 16, color: "#a33" }}>
+            エラーが出たため簡易表示にしています。コンソールを確認してください。
+          </div>
+        ) : (
+          listContent
+        )}
       </div>
 
       {/* フッター */}
