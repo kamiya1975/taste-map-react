@@ -285,7 +285,7 @@ export default function CartPanel({ isOpen, onClose }) {
         </div>
       );
     }
-  }, [lines, updateQty, removeLine]);
+  }, [lines, updateQty, removeLine, fmt, btnMiniStyle]);
 
   return (
     <Drawer
