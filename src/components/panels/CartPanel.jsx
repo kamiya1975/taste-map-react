@@ -1,9 +1,10 @@
 // ------------------------------------------------------------
 // CartPanel（完全差し替え版）
-// ・パネルOPEN時：在庫チェック → staged同期 → reload
-// ・/cart ページを開くボタンを追加（チェックアウト直行も併置）
+// ・パネルOPEN時：在庫チェック → staged同期 → reload（1回だけ）
+// ・/cart ページボタン追加（チェックアウト直行も併置）
 // ・lines が未定義/nullでも安全に描画（safeLines）
 // ・行keyは id→origin:sku/jan→fallback の順で安定化
+// ・A11y：ドロワーOPEN時にフォーカスを移す
 // ------------------------------------------------------------
 import React, { useEffect, useRef, useState } from "react";
 import Drawer from "@mui/material/Drawer";
@@ -33,26 +34,38 @@ export default function CartPanel({ isOpen, onClose }) {
     buildCartPageUrl,
   } = useCart();
 
-  const [checkingOut, setCheckingOut] = useState(false);
-  // ★ 追加：1回だけ実行するためのフラグ
+  const rootRef = useRef(null);
   const ranRef = useRef(false);
+  const [checkingOut, setCheckingOut] = useState(false);
 
-// パネルOPEN時：在庫チェック → staged同期 → reload
-// eslint-disable-next-line react-hooks/exhaustive-deps
-useEffect(() => {
-  if (!isOpen) {
-    ranRef.current = false;
-    return;
-  }
-  if (ranRef.current) return;
-  ranRef.current = true;
+  // A11y：ドロワーOPEN時にフォーカスを移す
+  useEffect(() => {
+    if (!isOpen) return;
+    const ae = document.activeElement;
+    if (ae && rootRef.current && !rootRef.current.contains(ae)) {
+      try { ae.blur(); } catch {}
+    }
+    const t = setTimeout(() => {
+      try { rootRef.current?.focus(); } catch {}
+    }, 0);
+    return () => clearTimeout(t);
+  }, [isOpen]);
 
-  (async () => {
-    try { await checkAvailability?.(); } catch {}
-    try { await flushStagedToOnline(); } catch {}
-    try { await reload(); } catch {}
-  })();
-}, [isOpen, checkAvailability, flushStagedToOnline, reload]);
+  // パネルOPEN時：在庫チェック → staged同期 → reload（1回だけ）
+  useEffect(() => {
+    if (!isOpen) {
+      ranRef.current = false;
+      return;
+    }
+    if (ranRef.current) return;
+    ranRef.current = true;
+
+    (async () => {
+      try { await checkAvailability?.(); } catch {}
+      try { await flushStagedToOnline?.(); } catch {}
+      try { await reload?.(); } catch {}
+    })();
+  }, [isOpen, checkAvailability, flushStagedToOnline, reload]);
 
   const fmt = (v) => {
     const n = Number(v || 0);
@@ -94,7 +107,7 @@ useEffect(() => {
       if (typeof buildCartPageUrl !== "function") {
         throw new Error("Cart URL ビルダーが未定義（CartContextを更新してください）");
       }
-      const url = await buildCartPageUrl(); // 例: https://{shop}.myshopify.com/cart/123:2,456:1
+      const url = await buildCartPageUrl();
       if (!url) throw new Error("Cart URL を生成できませんでした");
       const w = window.open(url, "_blank", "noopener");
       if (!w) window.location.href = url;
@@ -108,7 +121,7 @@ useEffect(() => {
   const openCheckoutDirect = async () => {
     setCheckingOut(true);
     try {
-      const url = await syncAndGetCheckoutUrl(); // 既存の checkoutUrl（決済直行）
+      const url = await syncAndGetCheckoutUrl();
       if (!url) throw new Error("チェックアウトURLが取得できませんでした");
       const w = window.open(url, "_blank", "noopener");
       if (!w) window.location.href = url;
@@ -130,6 +143,8 @@ useEffect(() => {
     fontSize: 14,
   };
 
+  const stagedSum = Number(stagedSubtotal || 0);
+
   return (
     <Drawer
       anchor="bottom"
@@ -139,6 +154,8 @@ useEffect(() => {
       BackdropProps={{ style: { background: "transparent" } }}
       ModalProps={{ ...drawerModalProps, keepMounted: true }}
       PaperProps={{
+        ref: rootRef,
+        tabIndex: 0,
         style: {
           ...paperBaseStyle,
           borderTop: "1px solid #c9c9b0",
@@ -167,10 +184,10 @@ useEffect(() => {
       {/* 合計（確定/推定） */}
       <div style={{ padding: "0 14px 6px", fontSize: 13, lineHeight: 1.4, color: "#333" }}>
         <div>確定小計（オンライン）：<b>{fmt(onlineSubtotal || 0)}</b></div>
-        {stagedSubtotal > 0 && (
-          <div style={{ color: "#666" }}>推定小計（在庫確認前）：{fmt(stagedSubtotal)}</div>
+        {stagedSum > 0 && (
+          <div style={{ color: "#666" }}>推定小計（在庫確認前）：{fmt(stagedSum)}</div>
         )}
-        {(stagedSubtotal > 0) && (
+        {stagedSum > 0 && (
           <div style={{ fontSize: 11, color: "#888" }}>※ チェックアウト対象は「確定小計（オンライン）」のみです。</div>
         )}
       </div>
@@ -183,11 +200,6 @@ useEffect(() => {
         {(() => {
           const safeLines = Array.isArray(lines) ? lines.filter(Boolean) : [];
           const hasItems = safeLines.length > 0;
-
-          // 可視デバッグ（必要なら残す/消す）
-          // <div style={{padding:"4px 8px", margin:"0 0 6px", fontSize:12, color:"#333", background:"#f3f3f3", border:"1px solid #ddd", borderRadius:6}}>
-          //   debug: lines.length = <b>{safeLines.length}</b>
-          // </div>;
 
           if (!hasItems) {
             return (
