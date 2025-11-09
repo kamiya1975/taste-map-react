@@ -45,8 +45,8 @@ export default function App() {
         <Route path="/products/:jan" element={<ProductPage />} />
         <Route path="/taste-log" element={<UserTastePage />} />
         <Route path="/scan-flow" element={<ScanAndProductFlow />} />
-        <Route path="*" element={<Navigate to="/map" replace />} />
         <Route path="/cart" element={<CartPage />} />
+        <Route path="*" element={<Navigate to="/map" replace />} />
       </Routes>
   );
 }

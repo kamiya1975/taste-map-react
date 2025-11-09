@@ -195,7 +195,14 @@ export default function CartPanel({ isOpen, onClose }) {
       {/* 本体 */}
       <div
         className="drawer-scroll"
-        style={{ flex: 1, minHeight: 160, overflowY: "auto", padding: "6px 10px 80px", background: "#fff" }}
+        style={{ 
+          flex: 1, 
+          minHeight: 160, 
+          height: "auto",
+          overflowY: "auto", 
+          padding: "6px 10px 80px", 
+          background: "#fff" 
+        }}
       >
         {(() => {
           const safeLines = Array.isArray(lines) ? lines.filter(Boolean) : [];

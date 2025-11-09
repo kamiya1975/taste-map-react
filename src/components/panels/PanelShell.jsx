@@ -80,7 +80,7 @@ export default function PanelShell({
           <div
             className="drawer-scroll"
             style={{
-              height: `calc(${height} - ${PANEL_HEADER_H}px)`,
+              height: `calc(${typeof height === "number" ? `${height}px` : height} - ${PANEL_HEADER_H}px)`,
               overflowY: "auto",
               background: "#fff",
               borderTop: PANEL_HEADER_BORDER,
