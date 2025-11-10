@@ -90,24 +90,6 @@ function MapPage() {
   // ---- SimpleCart（ローカル）----
   const { totalQty, add: addLocal } = useSimpleCart();
 
-  // ---- Drawer 開閉ユーティリティ（統一口）----
-  const setDrawer = useCallback((kind, open) => {
-    switch (kind) {
-      case "mypage":   return setIsMyPageOpen(!!open);
-      case "search":   return setIsSearchOpen(!!open);
-      case "favorite": return setIsFavoriteOpen(!!open);
-      case "rated":    return setIsRatedOpen(!!open);
-      case "mapguide": return setIsMapGuideOpen(!!open);
-      case "store":    return setIsStoreOpen(!!open);
-      case "account":  return setIsAccountOpen(!!open);
-      case "faq":      return setIsFaqOpen(!!open);
-      case "cluster":  return setIsClusterOpen(!!open);
-      case "cart":     return setCartOpen(!!open);
-      case "scanner":  return setIsScannerOpen(!!open);
-      default:         return;
-    }
-  }, []);
-
   // ✅ Shopify チェックアウト復帰時のローカル掃除
   useEffect(() => {
     try {
