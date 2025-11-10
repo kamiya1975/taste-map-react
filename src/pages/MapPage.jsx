@@ -32,6 +32,7 @@ import {
 const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
 const ANCHOR_JAN = "4964044046324";
+const UI_Z_TOP = 2400;
 
 function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
   const worldPerPx = 1 / Math.pow(2, Number(zoom) || 0);
@@ -810,7 +811,7 @@ useEffect(() => {
           position: "absolute",
           top: "10px",
           left: "10px",
-          zIndex: 2200,
+          zIndex: UI_Z_TOP,
           display: "flex",
           alignItems: "center",
           gap: "6px", // セレクタとボタンの間隔
@@ -912,7 +913,7 @@ useEffect(() => {
           position: "absolute",
           top: "10px",
           right: "10px",
-          zIndex: 2200,
+          zIndex: UI_Z_TOP,
           width: "40px",
           height: "40px",
           background: "transparent",
@@ -936,12 +937,12 @@ useEffect(() => {
 
       {/* 右上: 検索 */}
       <button
-        onClick={() => openPanel("search")}
+        onClick={async () => { await openPanel("search"); }}
         style={{
           position: "absolute",
           top: "60px",
           right: "10px",
-          zIndex: 10,
+          zIndex: UI_Z_TOP,
           width: "40px",
           height: "40px",
           background: "transparent",
@@ -965,12 +966,12 @@ useEffect(() => {
 
       {/* 右サイドの丸ボタン群（♡ → ◎） */}
       <button
-        onClick={() => openPanel("favorite")}
+        onClick={async () => { await openPanel("favorite"); }}
         style={{
           position: "absolute",
           top: "110px",
           right: "10px",
-          zIndex: 10,
+          zIndex: UI_Z_TOP,
           width: "40px",
           height: "40px",
           background: "transparent",
@@ -993,12 +994,12 @@ useEffect(() => {
       </button>
 
       <button
-        onClick={() => openPanel("rated")}
+        onClick={async () => { await openPanel("rated"); }}
         style={{
           position: "absolute",
           top: "160px",
           right: "10px",
-          zIndex: 10,
+          zIndex: UI_Z_TOP,
           width: "40px",
           height: "40px",
           background: "transparent",
@@ -1027,7 +1028,7 @@ useEffect(() => {
           position: "absolute",
           top: "210px",        // お気に入り(110)＋評価(160)の下に並ぶように
           right: "10px",
-          zIndex: 10,
+          zIndex: UI_Z_TOP,
           width: "40px",
           height: "40px",
           background: "transparent",
