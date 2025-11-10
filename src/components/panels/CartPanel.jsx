@@ -89,7 +89,7 @@ export default function CartPanel({ isOpen, onClose }) {
   const rootRef = useRef(null);
   const ranRef = useRef(false);
   const [checkingOut, setCheckingOut] = useState(false);
-  const [renderErr, setRenderErr] = useState(null);
+  // renderErrは不要
 
   // A11y：ドロワーOPEN時にフォーカスを移す
   useEffect(() => {
@@ -310,8 +310,6 @@ export default function CartPanel({ isOpen, onClose }) {
         );
       });
     } catch (e) {
-      setRenderErr(e);
-      // eslint-disable-next-line no-console
       console.error("[CartPanel] render error:", e);
       return (
         <div style={{ padding: 16, color: "#a33", whiteSpace: "pre-wrap" }}>
@@ -399,13 +397,7 @@ export default function CartPanel({ isOpen, onClose }) {
           background: "#fff",
         }}
       >
-        {renderErr ? (
-          <div style={{ padding: 16, color: "#a33" }}>
-            エラーが出たため簡易表示にしています。コンソールを確認してください。
-          </div>
-        ) : (
-          listContent
-        )}
+        {listContent}
       </div>
 
       {/* フッター */}

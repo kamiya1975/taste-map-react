@@ -81,14 +81,6 @@ body,
   flex: 0 0 auto;
 }
 
-/* 4) スクロール領域のラッパ（iframeをこの中に入れる） */
-.drawer-scroll {
-  flex: 1 1 auto;
-  min-height: 0;                        /* ← これが無いと子がはみ出してスクロール不能に */
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
 /* 5) iframe 自体は“領域にフィットさせるだけ”。スクロールは中身で起こす */
 .product-iframe {
   flex: 1 1 auto;
@@ -379,13 +371,6 @@ header, .app-header, .MuiAppBar-root, .mui-fixed {
   margin: 0;
 }
 
-.drawer-scroll {
-  height: calc(100svh - 48px); /* ヘッダ48pxぶんを引く */
-  overflow: auto;
-  -webkit-overflow-scrolling: touch; /* iOS慣性 */
-  background: #fff;
-}
-
 .product-iframe {
   display: block;
   width: 100%;
@@ -404,4 +389,21 @@ header, .app-header, .MuiAppBar-root, .mui-fixed {
   min-height: 100dvh;
   min-height: -webkit-fill-available;
   box-sizing: border-box;
+}
+
+.cart-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #fff;
+}
+
+/* 例：商品詳細専用のラッパにだけ適用 */
+.product-drawer .drawer-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #fff;
 }
