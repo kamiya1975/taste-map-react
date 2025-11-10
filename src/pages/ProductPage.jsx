@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { requireRatingOrRedirect } from "../utils/auth";
 import "../index.css";
-import { useCart } from "../components/panels/CartContext";
+import { useSimpleCart } from "../cart/simpleCart";
 
 /** =========================
  *  ユーティリティ
@@ -296,10 +296,10 @@ export default function ProductPage() {
   const jan_code = useJanParam();
   const [product, setProduct] = useState(null);
   const [rating, setRating] = useState(0);
-  const [adding, setAdding] = useState(false);
 
   // ★ CartContext（ローカル積み → カートで同期）
-  const { addItem, shopReady, syncAndGetCheckoutUrl, checkoutUrl } = useCart();
+  const [adding, setAdding] = useState(false);
+  const { add } = useSimpleCart();   // ← SimpleCart のみ使用
 
   // 画面オープン/クローズ通知
   useEffect(() => {
@@ -403,20 +403,20 @@ export default function ProductPage() {
   const typeColors = { Spa: "#6BAED6", White: "#D9D76C", Red: "#8B2E3B", Rose: "#E48E8E", Other: "#CCCCCC" };
   const typeColor = typeColors[product.Type] || typeColors.Other;
 
-  // ★ カート追加（ローカルに積む → カートで同期）
+  // ★ カート追加（ローカルに積む → 決済はカートパネル側）
   const handleAddToCart = async () => {
     try {
       setAdding(true);
-      await addItem({
+      await add({
         jan: jan_code,
         title: product.商品名 || "(無題)",
         price: Number(price) || 0,
         qty: 1,
+        volume_ml: Number(product?.["容量 ml"]) || 750,
         imageUrl: `${process.env.PUBLIC_URL || ""}/images/products/${jan_code}.jpg`,
       });
-      // 親（MapPage）に「カート開いて」の合図（任意）
+      // 親（MapPage）に「カートを開く」合図（任意）
       try { window.parent?.postMessage({ type: "OPEN_CART" }, "*"); } catch {}
-      alert("カートに追加しました。");
     } catch (e) {
       alert(`追加に失敗: ${e?.message || e}`);
     } finally {
@@ -424,24 +424,7 @@ export default function ProductPage() {
     }
   };
 
-  // ★ チェックアウト（iOSポップアップ対策：先に空タブ→URL取得→差し替え）
-  const handleCheckout = async (e) => {
-    e?.preventDefault?.();
-    const tab = window.open("about:blank", "_blank", "noopener");
-    if (tab) {
-      try { tab.document.write("<p style='font:14px sans-serif'>Loading checkout…</p>"); } catch {}
-    }
-    try {
-      // 未同期のstagedを同期したうえで最新のURLを取得
-      const url = await syncAndGetCheckoutUrl();
-      if (!url) throw new Error("チェックアウトURLが取得できませんでした");
-      if (tab) tab.location.href = url;        // 通常は空タブへ遷移
-      else window.location.href = url;         // ブロック時は同タブ遷移
-    } catch (err) {
-      if (tab) { try { tab.close(); } catch {} }
-      alert(err?.message || "決済ページに移動できませんでした。");
-    }
-  };
+  // 決済はカートパネル側で行うため、商品ページでは未実装
 
   return (
     <div
@@ -506,38 +489,7 @@ export default function ProductPage() {
         </button>
       </div>
 
-            {/* ★ レジへ進む（テスト） */}
-      <div style={{ marginTop: 8 }}>
-        <button
-          type="button"
-          onClick={handleCheckout}
-          disabled={!shopReady}  // 環境変数未設定時は無効化
-          style={{
-            display: "inline-block",
-            width: "100%",
-            padding: "12px 16px",
-            borderRadius: 10,
-            border: "1px solid #111",
-            background: "#fff",
-            color: "#111",
-            cursor: !shopReady ? "not-allowed" : "pointer",
-            fontSize: 16,
-            fontWeight: 700,
-            opacity: !shopReady ? 0.5 : 1,
-          }}
-          title={shopReady ? "" : "オンライン連携が未設定です（環境変数を確認）"}
-        >
-          🔗 レジへ進む（テスト）
-        </button>
-        {/* アンカー直リンクのフォールバック（任意） */}
-        {shopReady && checkoutUrl ? (
-          <div style={{ marginTop: 6, textAlign: "center" }}>
-            <a href={checkoutUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12 }}>
-              うまく開かない場合はこちら
-            </a>
-          </div>
-        ) : null}
-      </div>
+      {/* 決済ボタンは削除（決済はカートパネルでまとめて実行） */}
 
       {/* 評価（◎） */}
       <div style={{ marginTop: 24, paddingTop: 8, paddingBottom: 8, borderTop: "1px solid #ccc", borderBottom: "1px solid #ccc" }}>

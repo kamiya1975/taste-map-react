@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 
 import MapGuidePanelContent from "../components/panels/MapGuidePanelContent";
 import SearchPanel from "../components/panels/SearchPanel";
@@ -15,8 +16,11 @@ import StorePanelContent from "../components/panels/StorePanelContent";
 import FaqPanelContent from "../components/panels/FaqPanelContent";
 import MyPagePanelContent from "../components/panels/MyPagePanelContent";
 import ClusterPalettePanel from "../components/panels/ClusterPalettePanel";
-import CartPanel from "../components/panels/CartPanel";
-import { useCart } from "../components/panels/CartContext";
+// 旧CartPanelは使わない
+// import CartPanel from "../components/panels/CartPanel";
+// import { useCart } from "../components/panels/CartContext";
+import SimpleCartPanel from "../components/panels/SimpleCartPanel";
+import { useSimpleCart } from "../cart/simpleCart";
 import {
   drawerModalProps,
   paperBaseStyle,
@@ -75,7 +79,9 @@ function MapPage() {
   const [isAccountOpen, setIsAccountOpen] = useState(false);    // マイアカウント（メニュー）
   const [isFaqOpen, setIsFaqOpen] = useState(false);            // よくある質問（メニュー）
   const [isClusterOpen, setIsClusterOpen] = useState(false); // ← 追加：配色パネルの開閉
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  // 旧CartPanelは廃止。SimpleCartPanel用のフラグだけ残す
+  const [cartOpen, setCartOpen] = useState(false);
+  const { totalQty } = useSimpleCart();
 
   // ✅ Shopify チェックアウトから戻った直後の後処理（ローカル側のカート情報を掃除）
   useEffect(() => {
@@ -180,7 +186,6 @@ function MapPage() {
     if (isAccountOpen)   { setIsAccountOpen(false);   willClose = true; }
     if (isFaqOpen)       { setIsFaqOpen(false);       willClose = true; }
     if (isClusterOpen)   { setIsClusterOpen(false);   willClose = true; }
-    if (isCartOpen)      { setIsCartOpen(false);      willClose = true; }
 
     // メニューは基本閉じるが、保護オプション時は残す
     if (!preserveMyPage && isMyPageOpen) { setIsMyPageOpen(false); willClose = true; }
@@ -211,7 +216,6 @@ function MapPage() {
     else if (kind === "favorite") setIsFavoriteOpen(true);
     else if (kind === "rated")   setIsRatedOpen(true);
     else if (kind === "cluster")  setIsClusterOpen(true);
-    else if (kind === "cart") setIsCartOpen(true);
   }, [closeUIsThen]);
 
   // === Cart表示中は背面Mapを操作不能にする（フォーカスも遮断） ===
@@ -881,27 +885,7 @@ useEffect(() => {
           />
         </button>
       </div>
-
-      {/* 左下：カートFAB */}
-      <div className="fab-bottom-left">
-        <button
-          className="fab-btn"
-          aria-label="カートを開く"
-          title="カートを開く"
-          onClick={async () => {
-            // ほかのドロワーは全部閉じてから開く（重ねない）
-            await closeUIsThen();
-            setIsCartOpen(true);
-          }}
-        >
-          <img
-            src={`${process.env.PUBLIC_URL || ""}/img/cart.svg`}
-            alt=""
-            style={{ width: 22, height: 22, pointerEvents: "none" }}
-            draggable={false}
-          />
-        </button>
-      </div>
+      {/* 左下の旧カートFABは削除 */}
 
       {/* 右上: アプリガイド（メニュー）ボタン */}
       <button
@@ -1023,6 +1007,35 @@ useEffect(() => {
           draggable={false}
         />
       </button>
+
+      {/* 右上・ボタンスタック末尾にカート（SimpleCartPanel用） */}
+      <div className="fab-top-right" style={{ position: "absolute", right: 10, top: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* 既存のボタンたち ... */}
+
+        <button
+          onClick={() => setCartOpen(true)}
+          title="カートを開く"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "8px 10px", borderRadius: 10, border: "1px solid #ccc",
+            background: "#fff", cursor: "pointer",
+          }}
+        >
+          <ShoppingCartIcon style={{ fontSize: 18 }} />
+          <span>カート</span>
+          <span style={{
+            marginLeft: 6, fontSize: 12, padding: "1px 6px", borderRadius: 999,
+            background: "#111", color: "#fff"
+          }}>{totalQty}</span>
+        </button>
+      </div>
+
+      {/* ← SimpleCartPanel は map-root の内側末尾に置く */}
+      <SimpleCartPanel
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        shopDomain={process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN || "tastemap"}
+      />
 
       {/* ====== 検索パネル ====== */}
       <SearchPanel
@@ -1222,20 +1235,7 @@ useEffect(() => {
         </div>
       </Drawer>
 
-      {/* カート */}
-      <Drawer
-        anchor="bottom"
-        open={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        sx={{ zIndex: 1850 }}
-        hideBackdrop
-        BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
-        ModalProps={{ ...drawerModalProps, keepMounted: true }}
-        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
-      >
-        <PanelHeader title="カート" icon="cart.svg" onClose={() => setIsCartOpen(false)} />
-        <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-      </Drawer>
+      {/* 旧CartPanel Drawerは削除 */}
 
            {/* アプリガイド（メニュー） */}
       <Drawer
