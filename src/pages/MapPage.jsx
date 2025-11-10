@@ -108,9 +108,6 @@ function MapPage() {
     }
   }, []);
 
-  const openPanel  = useCallback((kind) => setDrawer(kind, true),  [setDrawer]);
-  const closePanel = useCallback((kind) => setDrawer(kind, false), [setDrawer]);
-
   // ✅ Shopify チェックアウト復帰時のローカル掃除
   useEffect(() => {
     try {
