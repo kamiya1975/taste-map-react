@@ -299,6 +299,7 @@ export default function ProductPage() {
 
   // ★ CartContext（ローカル積み → カートで同期）
   const [adding, setAdding] = useState(false);
+  const [toast, setToast] = useState(false); 
   const { add } = useSimpleCart();   // ← SimpleCart のみ使用
 
   // 画面オープン/クローズ通知
@@ -412,24 +413,19 @@ export default function ProductPage() {
         price: Number(price) || 0,
         qty: 1,
         volume_ml: Number(product?.["容量 ml"]) || 750,
-       // 画像パスは MapPage / SimpleCartPanel の想定に合わせておく
-       imageUrl: `${process.env.PUBLIC_URL || ""}/img/${jan_code}.png`,
+        imageUrl: `${process.env.PUBLIC_URL || ""}/img/${jan_code}.png`,
       });
-     // 親（MapPage）へ“追加されたアイテム”と“カートを開く”合図を送る
-     try {
-       window.parent?.postMessage({
-         type: "SIMPLE_CART_ADD",
-         item: {
-           jan: jan_code,
-           title: product.商品名 || "(無題)",
-           price: Number(price) || 0,
-           qty: 1,
-           volume_ml: Number(product?.["容量 ml"]) || 750,
-           imageUrl: `${process.env.PUBLIC_URL || ""}/img/${jan_code}.png`,
-         }
-       }, "*");
-       window.parent?.postMessage({ type: "OPEN_CART" }, "*");
-     } catch {}
+      // 親へ「カートが変わった」ことを即時通知（両経路で冗長化）
+      try { window.parent?.postMessage({ type: "CART_CHANGED" }, "*"); } catch {}
+      try {
+        const bc = new BroadcastChannel("cart_bus");
+        bc.postMessage({ type: "CART_CHANGED", at: Date.now() });
+        bc.close();
+      } catch {}
+
+      // 軽いトースト表示（1.2秒）
+      setToast(true);
+      setTimeout(() => setToast(false), 1200);
     } catch (e) {
       alert(`追加に失敗: ${e?.message || e}`);
     } finally {
@@ -498,6 +494,22 @@ export default function ProductPage() {
         >
           🛒 カートに入れる
         </button>
+        {toast && (
+          <div
+            role="status"
+            style={{
+              marginTop: 8,
+              fontSize: 13,
+              background: "#111",
+              color: "#fff",
+              display: "inline-block",
+              padding: "6px 10px",
+              borderRadius: 8,
+            }}
+          >
+            カートに入れました
+          </div>
+        )}
       </div>
 
       {/* 評価（◎） */}

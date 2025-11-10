@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getVariantGidByJan } from "../lib/ecLinks";
 
 const LS_KEY = "tm_simple_cart_v1";
+const CART_CHANNEL = "cart_bus"; // 同一オリジン内の全ドキュメントで使う通知チャネル名
 
 function readJSON(key, defVal) {
   try {
@@ -22,7 +23,8 @@ function writeJSON(key, val) {
 
 // gid://shopify/ProductVariant/1234567890 → "1234567890"
 function extractNumericIdFromGid(gid = "") {
-  const m = String(gid).match(/\/(\d+)$/);
+  const m = String(gid).match(/\/(\d+)$/
+  );
   return m ? m[1] : "";
 }
 
@@ -40,7 +42,19 @@ function buildCartPermalink(shopHost, pairs /* [{variantId,numQty}] */) {
 
 export function useSimpleCart() {
   const [items, setItems] = useState(() => readJSON(LS_KEY, [])); // [{jan, title?, price?, imageUrl?, qty}]
-  useEffect(() => writeJSON(LS_KEY, Array.isArray(items) ? items : []), [items]);
+
+  // --- ① localStorageへ常に同期保存 ---
+  useEffect(() => {
+    writeJSON(LS_KEY, Array.isArray(items) ? items : []);
+  }, [items]);
+
+  // --- ② rehydrate: localStorage→state を即時反映 ---
+  const hydrateFromStorage = useCallback(() => {
+    const next = readJSON(LS_KEY, []);
+    // 深い比較は軽量でOK（サイズが小さい前提）
+    const same = JSON.stringify(next) === JSON.stringify(items);
+    if (!same) setItems(next);
+  }, [items]);
 
   const totalQty = useMemo(
     () => (Array.isArray(items) ? items.reduce((s, it) => s + Number(it.qty || 0), 0) : 0),
@@ -118,6 +132,58 @@ export function useSimpleCart() {
     if (!w) window.location.href = url;
   }, [items]);
 
+  // --- ③ items 変更時に全経路へ「変わったよ」を通知（他ビューを即リフレッシュさせる）---
+  useEffect(() => {
+    // postMessage
+    try { window.postMessage({ type: "CART_CHANGED", at: Date.now() }, "*"); } catch {}
+    // BroadcastChannel
+    try {
+      const bc = new BroadcastChannel(CART_CHANNEL);
+      bc.postMessage({ type: "CART_CHANGED", at: Date.now() });
+      bc.close();
+    } catch {}
+    // storage は writeJSON で既に setItem されているのでOK
+  }, [items]);
+
+  // --- ④ 他フレーム/別タブ/子iframe → 自分を最新化（★このブロックを「return の直前」に置くイメージ）---
+  useEffect(() => {
+    const rehydrate = () => {
+      try { hydrateFromStorage(); } catch {}
+    };
+
+    // 1) storage（別ドキュメントの setItem で発火）
+    const onStorage = (e) => {
+      try {
+        if (!e) return;
+        // key 未指定（Safari 等）でも念のためリロード
+        if (!e.key || e.key === LS_KEY) rehydrate();
+      } catch {}
+    };
+
+    // 2) window.postMessage（商品ページ → 親 など）
+    const onMessage = (e) => {
+      if (e?.data?.type === "CART_CHANGED") rehydrate();
+    };
+
+    // 3) BroadcastChannel（同一オリジン全体）
+    let bc = null;
+    try {
+      bc = new BroadcastChannel(CART_CHANNEL);
+      bc.onmessage = (ev) => {
+        if (ev?.data?.type === "CART_CHANGED") rehydrate();
+      };
+    } catch {}
+
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("message", onMessage);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("message", onMessage);
+      try { bc && bc.close(); } catch {}
+    };
+  }, [hydrateFromStorage]);
+
   return {
     items,
     totalQty,
@@ -126,5 +192,6 @@ export function useSimpleCart() {
     remove,
     clear,
     proceedCheckout,
+    hydrateFromStorage, // 必要なら外からも呼べるように露出
   };
 }
