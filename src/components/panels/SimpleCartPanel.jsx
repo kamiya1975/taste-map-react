@@ -11,7 +11,6 @@ export default function SimpleCartPanel({ onClose }) {
   const {
     items = [],
     subtotal = 0,
-    currency = "JPY",
     updateQty,      // (jan, nextQty)
     remove,         // (jan)
     clear,          // () => void
