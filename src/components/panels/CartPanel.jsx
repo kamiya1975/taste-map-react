@@ -389,7 +389,7 @@ export default function CartPanel({ isOpen, onClose }) {
 
       {/* 本体 */}
       <div
-        className="drawer-scroll"
+        className="cart-scroll"
         style={{
           flex: 1,
           minHeight: 0, // ← これが無いとスクロール不能になりやすい
