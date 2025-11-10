@@ -198,7 +198,6 @@ function MapPage() {
     isAccountOpen,
     isFaqOpen,
     isClusterOpen,
-    cartOpen,
   ]);
 
   /** 通常の相互排他オープン（メニュー含め全部調停して開く） */
