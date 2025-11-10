@@ -1222,45 +1222,20 @@ useEffect(() => {
         </div>
       </Drawer>
 
+      {/* カート */}
       <Drawer
-  anchor="bottom"
-  open={isCartOpen}
-  onClose={() => setIsCartOpen(false)}
-  sx={{ zIndex: 1850 }}
-  hideBackdrop
-  BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
-  ModalProps={{
-    ...drawerModalProps,
-    keepMounted: true,
-    // ★ MUI のフォーカス強制を切る（自前で制御するため）
-    disableEnforceFocus: true,
-    disableAutoFocus: true,
-    disableRestoreFocus: true,
-  }}
-  PaperProps={{
-    id: "cart-drawer",
-    // ★ 受け皿（tabIndex=-1）を付けてフォーカスできるように
-    tabIndex: -1,
-    style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" },
-  }}
->
-  <PanelHeader
-    title="カート"
-    icon="cart.svg"
-    onClose={() => setIsCartOpen(false)}
-    // ★ 最初にフォーカスしたい要素にマークを付ける
-    rightExtra={(
-      <button
-        data-autofocus="cart"
-        onClick={() => setIsCartOpen(false)}
-        style={{ opacity: 0, width: 0, height: 0, pointerEvents: "none" }}
-        aria-hidden="true"
-        tabIndex={-1}
-      />
-    )}
-  />
-  <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-</Drawer>
+        anchor="bottom"
+        open={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        sx={{ zIndex: 1850 }}
+        hideBackdrop
+        BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
+      >
+        <PanelHeader title="カート" icon="cart.svg" onClose={() => setIsCartOpen(false)} />
+        <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      </Drawer>
 
            {/* アプリガイド（メニュー） */}
       <Drawer

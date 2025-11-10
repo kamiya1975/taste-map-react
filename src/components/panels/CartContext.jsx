@@ -237,11 +237,10 @@ function buildLocalLine(item, origin = "local", syncState = "pending") {
   };
 }
 
-// ★ 追加：GID から数値IDを抜き出す（/cart permalink 用）
 function extractNumericIdFromGid(gid = "") {
-  // gid://shopify/ProductVariant/1234567890
-  const m = String(gid).match(/\/(\d+)$|\D(\d+)$/);
-  return m ? (m[1] || m[2]) : "";
+  // 例: gid://shopify/ProductVariant/1234567890 → "1234567890"
+  const m = String(gid).match(/\/(\d+)$/);
+  return m ? m[1] : "";
 }
 
 // ★ 追加：/cart パーマリンクを生成（既存の online 行 + staged/local をすべて反映）
@@ -700,7 +699,7 @@ export function CartProvider({ children }) {
     } finally {
       availBusyRef.current = false;
     }
-  }, [cart?.lines, setStagedItems]);
+  }, [cart, setStagedItems]);
 
   // ---- 統合スナップショット（表示用 + 付加フラグ）----
   const snapshot = useMemo(() => {
