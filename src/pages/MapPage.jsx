@@ -175,11 +175,7 @@ function MapPage() {
     return Array.from(s).sort((a,b)=>a-b);
   }, [data]);
 
-  // 検索・一覧
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isFavoriteOpen, setIsFavoriteOpen] = useState(false);
-  const [isRatedOpen, setIsRatedOpen] = useState(false);
-
+ // ===== パネル開閉ユーティリティー
   const PANEL_ANIM_MS = 260;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
