@@ -325,11 +325,18 @@ export default function CartPanel({ isOpen, onClose }) {
       open={!!isOpen}
       onClose={onClose}
       sx={{ zIndex: 1600 }}
-      BackdropProps={{ style: { background: "transparent" } }}
-      ModalProps={{ ...drawerModalProps, keepMounted: true }}
+      BackdropProps={{ style: { background: "transparent" } }} // ← 透過したい場合だけ
+      ModalProps={{
+        ...drawerModalProps,
+        onRendered: () => { try { rootRef.current?.focus(); } catch {} }, // ★描画直後にフォーカス
+        // disableAutoFocus: true,  // 自前管理に寄せたい場合は有効化
+      }}
       PaperProps={{
         ref: rootRef,
         tabIndex: 0,
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "カート",
         style: {
           ...paperBaseStyle,
           borderTop: "1px solid #c9c9b0",
@@ -339,6 +346,7 @@ export default function CartPanel({ isOpen, onClose }) {
         },
       }}
     >
+
       <PanelHeader title="カート" icon="cart.svg" onClose={onClose} />
 
       {/* 状態行 */}

@@ -8,10 +8,9 @@ export const CLUSTER_DRAWER_HEIGHT = "calc(56svh - env(safe-area-inset-bottom))"
 
 export const drawerModalProps = {
   keepMounted: true,
-  hideBackdrop: true,
-  slotProps: {
-    root: { style: { pointerEvents: "none" } }, // 透明領域はイベント透過
-  },
+  disablePortal: false,                                        // ★必ずポータル使用
+  container: typeof window !== "undefined" ? document.body : undefined, // ★#rootは使わない
+  // disableScrollLock: true, // （必要なら）スクロールロックを無効化
 };
 
 export const paperBaseStyle = {
