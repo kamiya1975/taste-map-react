@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 
 import MapGuidePanelContent from "../components/panels/MapGuidePanelContent";
 import SearchPanel from "../components/panels/SearchPanel";
@@ -1021,8 +1020,13 @@ useEffect(() => {
             background: "#fff", cursor: "pointer",
           }}
         >
-          <ShoppingCartIcon style={{ fontSize: 18 }} />
-          <span>カート</span>
+          <img
+            src={`${process.env.PUBLIC_URL || ""}/img/cart.svg`}
+            alt=""
+            style={{ width: 18, height: 18, display: "block", pointerEvents: "none" }}
+            draggable={false}
+          />
+          <span style={{ lineHeight: 1 }}>カート</span>
           <span style={{
             marginLeft: 6, fontSize: 12, padding: "1px 6px", borderRadius: 999,
             background: "#111", color: "#fff"
