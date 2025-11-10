@@ -407,3 +407,27 @@ header, .app-header, .MuiAppBar-root, .mui-fixed {
   -webkit-overflow-scrolling: touch;
   background: #fff;
 }
+
+/* 左下固定カートボタン */
+.fab-bottom-left {
+  position: absolute;
+  left: 10px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 2200;           /* Map操作より前面 */
+  pointer-events: auto;    /* クリック可能に */
+}
+
+.fab-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,.3);
+  background: #111;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  cursor: pointer;
+}
+.fab-btn:active { transform: translateY(1px); }

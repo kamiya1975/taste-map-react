@@ -214,6 +214,39 @@ function MapPage() {
     else if (kind === "cart") setIsCartOpen(true);
   }, [closeUIsThen]);
 
+  // === Cart表示中は背面Mapを操作不能にする（フォーカスも遮断） ===
+  const mapRootRef = useRef(null);
+
+  // 初期化：#map-root を捕まえる
+  useEffect(() => {
+    mapRootRef.current = document.getElementById("map-root");
+  }, []);
+
+  // isCartOpen を監視して属性を付け外し
+  useEffect(() => {
+    const el = mapRootRef.current;
+    if (!el) return;
+
+    if (isCartOpen) {
+      // 1) inert（対応ブラウザで背面完全無効）
+      try { el.setAttribute("inert", ""); } catch {}
+
+      // 2) アクセシビリティのフォールバック
+      el.setAttribute("aria-hidden", "true");
+
+      // 3) クリック抑止（Drawerはbody直下ポータルなので影響なし）
+      el.style.pointerEvents = "none";
+
+      // 4) タブ移動を遮断（念のため）
+      el.setAttribute("tabIndex", "-1");
+    } else {
+      try { el.removeAttribute("inert"); } catch {}
+      el.removeAttribute("aria-hidden");
+      el.style.pointerEvents = "auto";
+      el.removeAttribute("tabIndex"); // 既に JSX 側で tabIndex={-1} を付けているなら省略可
+    }
+  }, [isCartOpen]);
+
   /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
   const openOverlayAboveMenu = useCallback(async (kind) => {
     await closeUIsThen({ preserveMyPage: true });
@@ -720,7 +753,7 @@ useEffect(() => {
 
   // ====== レンダリング
   return (
-    <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}>
+    <div id="map-root" className="map-root" tabIndex={-1}>
       <MapCanvas
         ref={deckRef}
         data={data}
@@ -841,6 +874,27 @@ useEffect(() => {
               opacity: clusterColorMode ? 1.0 : 0.5,
               transition: "opacity 0.2s",
             }}
+            draggable={false}
+          />
+        </button>
+      </div>
+
+      {/* 左下：カートFAB */}
+      <div className="fab-bottom-left">
+        <button
+          className="fab-btn"
+          aria-label="カートを開く"
+          title="カートを開く"
+          onClick={async () => {
+            // ほかのドロワーは全部閉じてから開く（重ねない）
+            await closeUIsThen();
+            setIsCartOpen(true);
+          }}
+        >
+          <img
+            src={`${process.env.PUBLIC_URL || ""}/img/cart.svg`}
+            alt=""
+            style={{ width: 22, height: 22, pointerEvents: "none" }}
             draggable={false}
           />
         </button>
