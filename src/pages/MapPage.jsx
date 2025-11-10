@@ -45,7 +45,7 @@ function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
 }
 
 function CartProbe() {
-  const { shopReady, totalQuantity, onlineSubtotal, stagedSubtotal, lines } = useCart();
+  const { totalQty, subtotal, items } = useSimpleCart();
   return (
     <pre style={{
       position: "absolute", left: 8, bottom: 8, zIndex: 9999,
@@ -53,16 +53,13 @@ function CartProbe() {
       padding: 6, borderRadius: 6, opacity: .85
     }}>
       {JSON.stringify({
-        shopReady,
-        totalQuantity,
-        onlineSubtotal,
-        stagedSubtotal,
-        linesLen: Array.isArray(lines) ? lines.length : -1
+        totalQty,
+        subtotal,
+        linesLen: Array.isArray(items) ? items.length : -1
       }, null, 2)}
     </pre>
   );
 }
-
 
 function MapPage() {
   const location = useLocation();
@@ -201,7 +198,7 @@ function MapPage() {
     isAccountOpen,
     isFaqOpen,
     isClusterOpen,
-    isCartOpen,
+    cartOpen,
   ]);
 
   /** 通常の相互排他オープン（メニュー含め全部調停して開く） */
@@ -229,7 +226,7 @@ useEffect(() => {
   const el = mapRootRef.current;
   if (!el) return;
 
-  if (isCartOpen) {
+  if (cartOpen) {
     // いまのフォーカスを覚えておく
     prevFocusedRef.current = document.activeElement;
 
@@ -250,7 +247,7 @@ useEffect(() => {
     // もとのフォーカスへ軽く戻す（無ければ何もしない）
     setTimeout(() => { prevFocusedRef.current?.focus?.(); }, 0);
   }
-}, [isCartOpen]);
+}, [cartOpen]);
 
 
   /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
@@ -1007,39 +1004,64 @@ useEffect(() => {
         />
       </button>
 
-      {/* 右上・ボタンスタック末尾にカート（SimpleCartPanel用） */}
-      <div className="fab-top-right" style={{ position: "absolute", right: 10, top: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-        {/* 既存のボタンたち ... */}
-
-        <button
-          onClick={() => setCartOpen(true)}
-          title="カートを開く"
+      {/* カートボタン（右サイド丸ボタン群の末尾） */}
+      <button
+        onClick={() => setCartOpen(true)}
+        style={{
+          position: "absolute",
+          top: "210px",        // お気に入り(110)＋評価(160)の下に並ぶように
+          right: "10px",
+          zIndex: 10,
+          width: "40px",
+          height: "40px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+        }}
+       aria-label="カートを開く"
+        title="カートを開く"
+      >
+        <img
+          src={`${process.env.PUBLIC_URL || ""}/img/cart.svg`}
+          alt=""
           style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "8px 10px", borderRadius: 10, border: "1px solid #ccc",
-            background: "#fff", cursor: "pointer",
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            display: "block",
+            pointerEvents: "none",
           }}
-        >
-          <img
-            src={`${process.env.PUBLIC_URL || ""}/img/cart.svg`}
-            alt=""
-            style={{ width: 18, height: 18, display: "block", pointerEvents: "none" }}
-            draggable={false}
-          />
-          <span style={{ lineHeight: 1 }}>カート</span>
-          <span style={{
-            marginLeft: 6, fontSize: 12, padding: "1px 6px", borderRadius: 999,
-            background: "#111", color: "#fff"
-          }}>{totalQty}</span>
-        </button>
-      </div>
+          draggable={false}
+        />
 
-      {/* ← SimpleCartPanel は map-root の内側末尾に置く */}
-      <SimpleCartPanel
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        shopDomain={process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN || "tastemap"}
-      />
+        {/* 数量バッジ（右上に重ねる） */}
+        {totalQty > 0 && (
+          <span
+            style={{
+             position: "absolute",
+              top: "-4px",
+              right: "-4px",
+              backgroundColor: "#111",
+              color: "#fff",
+              borderRadius: "50%",
+              fontSize: "10px",
+              lineHeight: "1",
+              width: "18px",
+              height: "18px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "1px solid #fff",
+            }}
+          >
+            {totalQty}
+          </span>
+       )}
+      </button>
 
       {/* ====== 検索パネル ====== */}
       <SearchPanel
@@ -1239,9 +1261,42 @@ useEffect(() => {
         </div>
       </Drawer>
 
-      {/* 旧CartPanel Drawerは削除 */}
+      {/* カート（SimpleCartPanel） */}
+      <Drawer
+        id="cart-drawer"
+        anchor="bottom"
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        sx={{ zIndex: 1850 }}                // MapGuideより手前/後ろはお好みで
+        BackdropProps={{ style: { background: "transparent" } }}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            height: DRAWER_HEIGHT,
+            display: "flex",
+            flexDirection: "column",
+            outline: "none",
+          },
+        }}
+      >
+        <PanelHeader
+          title="カート"
+          icon="cart.svg"
+          onClose={() => setCartOpen(false)}
+        />
+        <div
+          className="drawer-scroll"
+          style={{ flex: 1, overflowY: "auto" }}
+          tabIndex={-1}
+          data-autofocus="cart"
+        >
+          <SimpleCartPanel onClose={() => setCartOpen(false)} />
+        </div>
+      </Drawer>
 
-           {/* アプリガイド（メニュー） */}
+      {/* アプリガイド（メニュー） */}
       <Drawer
         anchor="bottom"
         open={isMyPageOpen}
