@@ -66,44 +66,66 @@ function MapPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // ---- Refs ----
   const didInitialCenterRef = useRef(false);
   const deckRef = useRef(null);
+  const iframeRef = useRef(null);
+  const autoOpenOnceRef = useRef(false);
+  const lastCommittedRef = useRef({ code: "", at: 0 });
+  const unknownWarnedRef = useRef(new Map());
 
-  // ドロワー状態
-  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false);  // 「マップガイド」(オーバーレイ)
-  const [isStoreOpen, setIsStoreOpen] = useState(false);        // 店舗登録 (オーバーレイ)
-  const [isMyPageOpen, setIsMyPageOpen] = useState(false);      // アプリガイド（メニュー）
-  const [isAccountOpen, setIsAccountOpen] = useState(false);    // マイアカウント（メニュー）
-  const [isFaqOpen, setIsFaqOpen] = useState(false);            // よくある質問（メニュー）
-  const [isClusterOpen, setIsClusterOpen] = useState(false); // ← 追加：配色パネルの開閉
-  // 旧CartPanelは廃止。SimpleCartPanel用のフラグだけ残す
-  const [cartOpen, setCartOpen] = useState(false);
+  // ---- Drawer 状態（すべて明示）----
+  const [isMyPageOpen,   setIsMyPageOpen]   = useState(false); // アプリガイド（メニュー）
+  const [isSearchOpen,   setIsSearchOpen]   = useState(false); // 検索
+  const [isFavoriteOpen, setIsFavoriteOpen] = useState(false); // お気に入り
+  const [isRatedOpen,    setIsRatedOpen]    = useState(false); // 評価（◎）
+  const [isMapGuideOpen, setIsMapGuideOpen] = useState(false); // マップガイド（オーバーレイ）
+  const [isStoreOpen,    setIsStoreOpen]    = useState(false); // お気に入り店舗登録（オーバーレイ）
+  const [isAccountOpen,  setIsAccountOpen]  = useState(false); // マイアカウント（メニュー）
+  const [isFaqOpen,      setIsFaqOpen]      = useState(false); // よくある質問（メニュー）
+  const [isClusterOpen,  setIsClusterOpen]  = useState(false); // クラスタ配色パネル
+  const [cartOpen,       setCartOpen]       = useState(false); // カート
+  const [isScannerOpen,  setIsScannerOpen]  = useState(false); // バーコードスキャナ
+
+  // ---- SimpleCart（ローカル）----
   const { totalQty, add: addLocal } = useSimpleCart();
 
-  // ✅ Shopify チェックアウトから戻った直後の後処理（ローカル側のカート情報を掃除）
+  // ---- Drawer 開閉ユーティリティ（統一口）----
+  const setDrawer = useCallback((kind, open) => {
+    switch (kind) {
+      case "mypage":   return setIsMyPageOpen(!!open);
+      case "search":   return setIsSearchOpen(!!open);
+      case "favorite": return setIsFavoriteOpen(!!open);
+      case "rated":    return setIsRatedOpen(!!open);
+      case "mapguide": return setIsMapGuideOpen(!!open);
+      case "store":    return setIsStoreOpen(!!open);
+      case "account":  return setIsAccountOpen(!!open);
+      case "faq":      return setIsFaqOpen(!!open);
+      case "cluster":  return setIsClusterOpen(!!open);
+      case "cart":     return setCartOpen(!!open);
+      case "scanner":  return setIsScannerOpen(!!open);
+      default:         return;
+    }
+  }, []);
+
+  const openPanel  = useCallback((kind) => setDrawer(kind, true),  [setDrawer]);
+  const closePanel = useCallback((kind) => setDrawer(kind, false), [setDrawer]);
+
+  // ✅ Shopify チェックアウト復帰時のローカル掃除
   useEffect(() => {
     try {
       const url = new URL(window.location.href);
       if (url.searchParams.get("from") === "checkout") {
-        // ローカル側（即時格納ぶん）をクリア
         localStorage.removeItem("tm_cart_stage_v1");
         localStorage.removeItem("tm_cart_local_v1");
-        // 軽いトースト
         alert("ご注文ありがとうございました。続けてお買い物いただけます。");
-        // クエリを消して履歴を書き換え（戻るで何度も発火しないように）
         url.searchParams.delete("from");
         window.history.replaceState({}, "", url.toString());
       }
     } catch {}
   }, []);
 
-  const iframeRef = useRef(null);
-  const autoOpenOnceRef = useRef(false);
-
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const lastCommittedRef = useRef({ code: "", at: 0 });
-  const unknownWarnedRef = useRef(new Map());
-
+  // ---- Map / DeckGL の初期 viewState ----
   const [viewState, setViewState] = useState({ target: [0, 0, 0], zoom: INITIAL_ZOOM });
 
   // データ & 状態
@@ -900,15 +922,9 @@ useEffect(() => {
       </div>
       {/* 左下の旧カートFABは削除 */}
 
-      {/* 右上: アプリガイド（メニュー）ボタン */}
+      // 右上: アプリガイド
       <button
-        onClick={async () => {
-          if (isMyPageOpen) {
-            await closeUIsThen();
-            return;
-          }
-          await openPanel("mypage");
-        }}
+        onClick={() => openPanel("mypage")}
         style={{
           position: "absolute",
           top: "10px",
@@ -923,139 +939,52 @@ useEffect(() => {
           alignItems: "center",
           justifyContent: "center",
           padding: 0,
+          pointerEvents: "auto",          // ★ 追加
         }}
         aria-label="アプリガイド"
         title="アプリガイド"
       >
-        <img
-          src={`${process.env.PUBLIC_URL || ""}/img/app-guide.svg`}
-          alt=""
-          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
-          draggable={false}
-        />
+        <img src={`${process.env.PUBLIC_URL || ""}/img/app-guide.svg`} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }} draggable={false}/>
       </button>
 
-      {/* 右上: 検索 */}
+      // 右上: 検索
       <button
-        onClick={async () => { await openPanel("search"); }}
-        style={{
-          position: "absolute",
-          top: "60px",
-          right: "10px",
-          zIndex: UI_Z_TOP,
-          width: "40px",
-          height: "40px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
-        }}
+        onClick={() => openPanel("search")}
+        style={{ /* 上と同様。topだけ60pxに */ pointerEvents: "auto", position:"absolute", top:"60px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
         aria-label="検索"
         title="検索"
       >
-        <img
-          src={`${process.env.PUBLIC_URL || ""}/img/search.svg`}
-          alt=""
-          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
-          draggable={false}
-        />
+        <img src={`${process.env.PUBLIC_URL || ""}/img/search.svg`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
       </button>
 
-      {/* 右サイドの丸ボタン群（♡ → ◎） */}
+      // 右サイド: お気に入り
       <button
-        onClick={async () => { await openPanel("favorite"); }}
-        style={{
-          position: "absolute",
-          top: "110px",
-          right: "10px",
-          zIndex: UI_Z_TOP,
-          width: "40px",
-          height: "40px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
-        }}
+        onClick={() => openPanel("favorite")}
+        style={{ /* 110px */ pointerEvents: "auto", position:"absolute", top:"110px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
         aria-label="お気に入り一覧"
         title="お気に入り一覧"
       >
-        <img
-          src={`${process.env.PUBLIC_URL || ""}/img/star.svg`}
-          alt=""
-          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
-          draggable={false}
-        />
+        <img src={`${process.env.PUBLIC_URL || ""}/img/star.svg`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
       </button>
 
+      // 右サイド: 評価
       <button
-        onClick={async () => { await openPanel("rated"); }}
-        style={{
-          position: "absolute",
-          top: "160px",
-          right: "10px",
-          zIndex: UI_Z_TOP,
-          width: "40px",
-          height: "40px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
-        }}
+        onClick={() => openPanel("rated")}
+        style={{ /* 160px */ pointerEvents: "auto", position:"absolute", top:"160px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
         aria-label="評価一覧"
         title="評価（◎）一覧"
       >
-        <img
-          src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
-          alt=""
-          style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", pointerEvents: "none" }}
-          draggable={false}
-        />
+        <img src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
       </button>
 
-      {/* カートボタン（右サイド丸ボタン群の末尾） */}
+      // 右サイド: カート
       <button
-        onClick={() => setCartOpen(true)}
-        style={{
-          position: "absolute",
-          top: "210px",        // お気に入り(110)＋評価(160)の下に並ぶように
-          right: "10px",
-          zIndex: UI_Z_TOP,
-          width: "40px",
-          height: "40px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
-        }}
-       aria-label="カートを開く"
+        onClick={() => openPanel("cart")}
+        style={{ /* 210px */ pointerEvents: "auto", position:"absolute", top:"210px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
+        aria-label="カートを開く"
         title="カートを開く"
       >
-        <img
-          src={`${process.env.PUBLIC_URL || ""}/img/cart.svg`}
-          alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            display: "block",
-            pointerEvents: "none",
-          }}
-          draggable={false}
-        />
-
-        {/* 数量バッジ（右上に重ねる） */}
+        <img src={`${process.env.PUBLIC_URL || ""}/img/cart.svg`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
         {totalQty > 0 && (
           <span
             style={{
