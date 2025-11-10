@@ -1,6 +1,6 @@
 // src/pages/CartPage.jsx
 import React, { useEffect, useRef, useState } from "react";
-import { useCart } from "../components/panels/CartContext";
+import { useCart } from "../components/panels/CartContextShim";
 
 export default function CartPage() {
   const {

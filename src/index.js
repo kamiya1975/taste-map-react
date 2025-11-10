@@ -5,8 +5,8 @@ import { HashRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-// CartContext の実パスに合わせて（現状このままでOK）
-import { CartProvider } from "./components/panels/CartContext";
+// 互換シム（SimpleCartベース）
+import { CartProvider } from "./components/panels/CartContextShim";
 
 // ----- root 要素の用意（なければ作成） -----
 const container =
