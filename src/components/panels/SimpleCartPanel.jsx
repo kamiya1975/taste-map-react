@@ -1,83 +1,261 @@
 // src/components/panels/SimpleCartPanel.jsx
-import React, { useMemo } from "react";
-import Drawer from "@mui/material/Drawer";
-import PanelHeader from "../ui/PanelHeader";
+import React from "react";
 import { useSimpleCart } from "../../cart/simpleCart";
-import { DRAWER_HEIGHT, paperBaseStyle, drawerModalProps } from "../../ui/constants";
 
-export default function SimpleCartPanel({ open, onClose, shopDomain = "tastemap" }) {
-  const { items, totalQty, updateQty, remove, clear, proceedCheckout } = useSimpleCart();
+/**
+ * シンプルカートパネル（ローカル積み）
+ * - 何も入っていない時は「カートの中身は空です」を表示
+ * - 入っている時は：商品名 / 価格 / 容量 / 数量(±) / 削除 を表示
+ */
+export default function SimpleCartPanel({ onClose }) {
+  const {
+    items = [],
+    subtotal = 0,
+    currency = "JPY",
+    updateQty,      // (jan, nextQty)
+    remove,         // (jan)
+    clear,          // () => void
+  } = useSimpleCart() || {};
 
-  const rows = useMemo(() => (Array.isArray(items) ? items : []), [items]);
-  const subtotal = useMemo(() => rows.reduce((s, r) => s + Number(r.price || 0) * Number(r.qty || 0), 0), [rows]);
+  const isEmpty = !Array.isArray(items) || items.length === 0;
 
-  const JPY = (v) => {
-    const n = Number(v || 0);
-    try { return new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 }).format(n); }
-    catch { return `¥${Math.round(n).toLocaleString()}`; }
-  };
+  if (isEmpty) {
+    return (
+      <div style={{ padding: 16 }}>
+        <div
+          style={{
+            padding: "24px 16px",
+            textAlign: "center",
+            color: "#666",
+            border: "1px dashed #ccc",
+            borderRadius: 10,
+            background: "#fafafa",
+          }}
+        >
+          カートの中身は空です
+        </div>
+      </div>
+    );
+  }
+
+  const fmt = (n) =>
+    typeof n === "number" && isFinite(n)
+      ? n.toLocaleString("ja-JP")
+      : String(n ?? "");
 
   return (
-    <Drawer
-      anchor="bottom"
-      open={!!open}
-      onClose={onClose}
-      sx={{ zIndex: 1600 }}
-      ModalProps={{ ...drawerModalProps }}
-      PaperProps={{
-        style: { ...paperBaseStyle, height: DRAWER_HEIGHT, display: "flex", flexDirection: "column" },
-      }}
-    >
-      <PanelHeader title={`カート（${totalQty}）`} icon="cart.svg" onClose={onClose} />
+    <div style={{ padding: 12 }}>
+      {/* 行一覧 */}
+      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        {items.map((it) => {
+          const {
+            jan,
+            title,
+            price = 0,
+            qty = 1,
+            volume_ml,
+            imageUrl,
+          } = it || {};
+          const canDec = qty > 1;
 
-      <div style={{ padding: "6px 10px", overflowY: "auto", flex: 1, minHeight: 0, background: "#fff" }}>
-        {rows.length === 0 ? (
-          <div style={{ padding: 12 }}>カートは空です。</div>
-        ) : (
-          rows.map((r) => (
-            <div key={r.jan} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, padding: "8px 4px", borderBottom: "1px dashed #ddd" }}>
+          const handleDec = () => {
+            if (!updateQty) return;
+            updateQty(jan, Math.max(1, (qty || 1) - 1));
+          };
+          const handleInc = () => {
+            if (!updateQty) return;
+            updateQty(jan, (qty || 1) + 1);
+          };
+          const handleRemove = () => {
+            if (!remove) return;
+            remove(jan);
+          };
+
+          return (
+            <li
+              key={jan || title || Math.random()}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "56px 1fr auto",
+                gap: 10,
+                padding: "10px 6px",
+                borderBottom: "1px solid #eee",
+                alignItems: "center",
+              }}
+            >
+              {/* サムネ */}
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  background: "#fff",
+                  border: "1px solid #eee",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    draggable={false}
+                  />
+                ) : (
+                  <div style={{ color: "#aaa", fontSize: 11 }}>No Image</div>
+                )}
+              </div>
+
+              {/* 本文 */}
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                  title={title || ""}
+                >
+                  {title || "(無題)"}
+                </div>
+                <div style={{ marginTop: 4, fontSize: 12, color: "#555" }}>
+                  ¥{fmt(price)} / {volume_ml ? `${fmt(volume_ml)}ml` : "容量不明"}
+                </div>
+
+                {/* 数量コントロール */}
+                <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    onClick={handleDec}
+                    disabled={!updateQty || !canDec}
+                    style={btnStyle(!updateQty || !canDec)}
+                    aria-label="数量を減らす"
+                    title="数量を減らす"
+                  >
+                    －
+                  </button>
+                  <span style={{ minWidth: 24, textAlign: "center" }}>{qty}</span>
+                  <button
+                    onClick={handleInc}
+                    disabled={!updateQty}
+                    style={btnStyle(!updateQty)}
+                    aria-label="数量を増やす"
+                    title="数量を増やす"
+                  >
+                    ＋
+                  </button>
+                </div>
+              </div>
+
+              {/* 削除 */}
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{r.title || r.jan}</div>
-                <div style={{ fontSize: 12, color: "#666" }}>JAN: {r.jan}</div>
-                {Number.isFinite(Number(r.price)) && <div style={{ fontSize: 12, color: "#333", marginTop: 4 }}>単価：{JPY(r.price)}</div>}
+                <button
+                  onClick={handleRemove}
+                  disabled={!remove}
+                  style={dangerBtnStyle(!remove)}
+                  aria-label="この商品を削除"
+                  title="この商品を削除"
+                >
+                  削除
+                </button>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <button onClick={() => updateQty(r.jan, Math.max(1, Number(r.qty || 1) - 1))} style={miniBtn}>−</button>
-                <span style={{ minWidth: 22, textAlign: "center" }}>{r.qty}</span>
-                <button onClick={() => updateQty(r.jan, Number(r.qty || 0) + 1)} style={miniBtn}>＋</button>
-                <button onClick={() => remove(r.jan)} style={{ ...miniBtn, borderColor: "#b66", color: "#b66" }}>削除</button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+            </li>
+          );
+        })}
+      </ul>
 
-      {/* フッター */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderTop: "1px solid #ddd", background: "#faf9f5" }}>
-        <div>小計：<b>{JPY(subtotal)}</b></div>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-          <button onClick={clear} style={ghost}>カートを空にする</button>
+      {/* フッター（小計・クリア・閉じる） */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          justifyContent: "space-between",
+          padding: "10px 6px 2px",
+        }}
+      >
+        <div style={{ fontWeight: 700, fontSize: 14 }}>
+          小計：<span style={{ fontFeatureSettings: '"tnum"' }}>¥{fmt(subtotal)}</span>
+        </div>
+
+        <div style={{ display: "flex", gap: 8 }}>
           <button
-            onClick={() => proceedCheckout({ shopDomain })}
-            style={primary}
-            title="ShopifyのカートにJAN/数量を反映して遷移します"
-            disabled={rows.length === 0}
+            onClick={() => clear && clear()}
+            disabled={!clear}
+            style={ghostBtnStyle(!clear)}
+            aria-label="カートを空にする"
+            title="カートを空にする"
           >
-            決済に進む
+            クリア
+          </button>
+          <button
+            onClick={() => onClose?.()}
+            style={primaryBtnStyle(false)}
+            aria-label="閉じる"
+            title="閉じる"
+          >
+            閉じる
           </button>
         </div>
       </div>
-    </Drawer>
+    </div>
   );
 }
 
-const miniBtn = {
-  minWidth: 28, height: 28, padding: "0 8px",
-  border: "1px solid #888", borderRadius: 6, background: "#fff", cursor: "pointer", fontSize: 14,
-};
-const ghost = {
-  background: "#fff", color: "#111", padding: "10px 14px", borderRadius: 8, fontSize: 14, border: "1px solid #111", cursor: "pointer",
-};
-const primary = {
-  background: "#111", color: "#fff", padding: "10px 14px", borderRadius: 8, fontSize: 14, border: "1px solid #111", cursor: "pointer",
-};
+function btnStyle(disabled) {
+  return {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    border: "1px solid #111",
+    background: disabled ? "#f2f2f2" : "#fff",
+    color: disabled ? "#aaa" : "#111",
+    cursor: disabled ? "default" : "pointer",
+    fontSize: 16,
+    fontWeight: 700,
+    lineHeight: 1,
+  };
+}
+
+function dangerBtnStyle(disabled) {
+  return {
+    padding: "6px 10px",
+    borderRadius: 8,
+    border: "1px solid #c33",
+    background: disabled ? "#f9eaea" : "#fff",
+    color: disabled ? "#c99" : "#c33",
+    cursor: disabled ? "default" : "pointer",
+    fontSize: 12,
+    fontWeight: 700,
+  };
+}
+
+function ghostBtnStyle(disabled) {
+  return {
+    padding: "8px 12px",
+    borderRadius: 10,
+    border: "1px solid #bbb",
+    background: disabled ? "#f7f7f7" : "#fff",
+    color: disabled ? "#aaa" : "#333",
+    cursor: disabled ? "default" : "pointer",
+    fontSize: 13,
+    fontWeight: 600,
+  };
+}
+
+function primaryBtnStyle(disabled) {
+  return {
+    padding: "8px 12px",
+    borderRadius: 10,
+    border: "1px solid #111",
+    background: disabled ? "#eee" : "#111",
+    color: disabled ? "#999" : "#fff",
+    cursor: disabled ? "default" : "pointer",
+    fontSize: 13,
+    fontWeight: 700,
+  };
+}
