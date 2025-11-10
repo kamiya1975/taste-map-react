@@ -209,6 +209,7 @@ function MapPage() {
     else if (kind === "favorite") setIsFavoriteOpen(true);
     else if (kind === "rated")   setIsRatedOpen(true);
     else if (kind === "cluster")  setIsClusterOpen(true);
+    else if (kind === "cart") setCartOpen(true);
   }, [closeUIsThen]);
 
   // === Cart表示中は背面Mapを操作不能にする（フォーカスも遮断） ===
@@ -954,7 +955,7 @@ useEffect(() => {
 
       {/* 右サイド: カート */}
       <button
-        onClick={() => setCartOpen(true)}
+        onClick={() => openPanel("cart")}
         style={{ /* 210px */ pointerEvents: "auto", position:"absolute", top:"210px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
         aria-label="カートを開く"
         title="カートを開く"
