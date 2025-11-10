@@ -1262,22 +1262,6 @@ useEffect(() => {
   <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
 </Drawer>
 
-
-      {/* カート */}
-      <Drawer
-        anchor="bottom"
-        open={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        sx={{ zIndex: 1850 }}
-        hideBackdrop
-        BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
-        ModalProps={{ ...drawerModalProps, keepMounted: true }}
-        PaperProps={{ style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" } }}
-      >
-        <PanelHeader title="カート" icon="cart.svg" onClose={() => setIsCartOpen(false)} />
-        <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-      </Drawer>
-
            {/* アプリガイド（メニュー） */}
       <Drawer
         anchor="bottom"
