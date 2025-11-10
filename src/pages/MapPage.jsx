@@ -954,7 +954,7 @@ useEffect(() => {
 
       {/* 右サイド: カート */}
       <button
-        onClick={() => openPanel("cart")}
+        onClick={() => setCartOpen(true)}
         style={{ /* 210px */ pointerEvents: "auto", position:"absolute", top:"210px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
         aria-label="カートを開く"
         title="カートを開く"
