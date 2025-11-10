@@ -1225,7 +1225,7 @@ useEffect(() => {
           setSelectedJAN(null);
           setHideHeartForJAN(null);
         }}
-        sx={{ zIndex: 1700 }}
+        sx={{ zIndex: 1700, pointerEvents: "none" }} 
         hideBackdrop
         BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
         ModalProps={{
@@ -1240,6 +1240,7 @@ useEffect(() => {
             ...paperBaseStyle,
             borderTop: "1px solid #c9c9b0",
           },
+          sx: { pointerEvents: "auto" },
         }}
       >
         <PanelHeader
