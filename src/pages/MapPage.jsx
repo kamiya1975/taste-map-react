@@ -258,7 +258,7 @@ useEffect(() => {
     else if (kind === "guide") setIsMapGuideOpen(true);
     else if (kind === "account") setIsAccountOpen(true);
     else if (kind === "faq") setIsFaqOpen(true);
-    else if (kind === "cart") setIsCartOpen(true);
+    else if (kind === "cart") setCartOpen(true);
   }, [closeUIsThen]);
 
   // ★ クエリで各パネルを開く（/ ?open=mypage|search|favorite|rated|mapguide|guide|store）
