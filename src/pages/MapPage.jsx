@@ -720,7 +720,7 @@ useEffect(() => {
 
   // ====== レンダリング
   return (
-    <div id="map-root" className="map-root" tabIndex={-1}>
+    <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden" }}>
       <MapCanvas
         ref={deckRef}
         data={data}
