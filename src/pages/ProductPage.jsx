@@ -403,7 +403,6 @@ export default function ProductPage() {
   const typeColors = { Spa: "#6BAED6", White: "#D9D76C", Red: "#8B2E3B", Rose: "#E48E8E", Other: "#CCCCCC" };
   const typeColor = typeColors[product.Type] || typeColors.Other;
 
-  // ★ カート追加（ローカルに積む → 決済はカートパネル側）
   const handleAddToCart = async () => {
     try {
       setAdding(true);
@@ -413,18 +412,30 @@ export default function ProductPage() {
         price: Number(price) || 0,
         qty: 1,
         volume_ml: Number(product?.["容量 ml"]) || 750,
-        imageUrl: `${process.env.PUBLIC_URL || ""}/images/products/${jan_code}.jpg`,
+       // 画像パスは MapPage / SimpleCartPanel の想定に合わせておく
+       imageUrl: `${process.env.PUBLIC_URL || ""}/img/${jan_code}.png`,
       });
-      // 親（MapPage）に「カートを開く」合図（任意）
-      try { window.parent?.postMessage({ type: "OPEN_CART" }, "*"); } catch {}
+     // 親（MapPage）へ“追加されたアイテム”と“カートを開く”合図を送る
+     try {
+       window.parent?.postMessage({
+         type: "SIMPLE_CART_ADD",
+         item: {
+           jan: jan_code,
+           title: product.商品名 || "(無題)",
+           price: Number(price) || 0,
+           qty: 1,
+           volume_ml: Number(product?.["容量 ml"]) || 750,
+           imageUrl: `${process.env.PUBLIC_URL || ""}/img/${jan_code}.png`,
+         }
+       }, "*");
+       window.parent?.postMessage({ type: "OPEN_CART" }, "*");
+     } catch {}
     } catch (e) {
       alert(`追加に失敗: ${e?.message || e}`);
     } finally {
       setAdding(false);
     }
   };
-
-  // 決済はカートパネル側で行うため、商品ページでは未実装
 
   return (
     <div
@@ -488,8 +499,6 @@ export default function ProductPage() {
           🛒 カートに入れる
         </button>
       </div>
-
-      {/* 決済ボタンは削除（決済はカートパネルでまとめて実行） */}
 
       {/* 評価（◎） */}
       <div style={{ marginTop: 24, paddingTop: 8, paddingBottom: 8, borderTop: "1px solid #ccc", borderBottom: "1px solid #ccc" }}>

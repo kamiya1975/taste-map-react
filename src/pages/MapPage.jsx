@@ -77,7 +77,7 @@ function MapPage() {
   const [isClusterOpen, setIsClusterOpen] = useState(false); // ← 追加：配色パネルの開閉
   // 旧CartPanelは廃止。SimpleCartPanel用のフラグだけ残す
   const [cartOpen, setCartOpen] = useState(false);
-  const { totalQty } = useSimpleCart();
+  const { totalQty, add: addLocal } = useSimpleCart();
 
   // ✅ Shopify チェックアウトから戻った直後の後処理（ローカル側のカート情報を掃除）
   useEffect(() => {
@@ -450,7 +450,7 @@ useEffect(() => {
   }, [data, centerToUMAP, umapCentroid]);
 
   // ★ SliderPageから戻った直後にユーザーピンへセンタリング
-useEffect(() => {
+  useEffect(() => {
   // state か sessionStorage の合図を読む
   const byState = location.state?.centerOnUserPin === true;
   let byFlag = false;
@@ -607,6 +607,22 @@ useEffect(() => {
       const { type } = msg || {};
       if (!type) return;
 
+      // === ProductPage からのカート関連メッセージ ===
+      if (type === "OPEN_CART") {
+        setCartOpen(true);
+        return;
+      }
+
+      if (type === "SIMPLE_CART_ADD" && msg.item) {
+        try {
+          await addLocal(msg.item); // ローカルカートに積む
+          setCartOpen(true);        // ついでに開く
+        } catch (e) {
+          console.error("SIMPLE_CART_ADD failed:", e);
+        }
+        return;
+      }
+
       const sendSnapshotToChild = (janStr, nextRatingObj) => {
         try {
           const isFav = !!favorites[janStr];
@@ -751,6 +767,7 @@ useEffect(() => {
     hideHeartForJAN,
     closeUIsThen,
     navigate,
+    addLocal,
   ]);
 
   // ====== レンダリング
