@@ -2,6 +2,7 @@
 // ローカルだけで完結する簡易カート（JAN/qty中心）
 // - localStorage: tm_simple_cart_v1
 // - API不要、決済時にだけ JAN→Variant を解決して /cart パーマリンクを作る
+// - 変更通知は postMessage / BroadcastChannel / storage の三経路で即時同期
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getVariantGidByJan } from "../lib/ecLinks";
@@ -23,13 +24,12 @@ function writeJSON(key, val) {
 
 // gid://shopify/ProductVariant/1234567890 → "1234567890"
 function extractNumericIdFromGid(gid = "") {
-  const m = String(gid).match(/\/(\d+)$/
-  );
+  const m = String(gid).match(/\/(\d+)$/);
   return m ? m[1] : "";
 }
 
 // /cart permalink を生成
-function buildCartPermalink(shopHost, pairs /* [{variantId,numQty}] */) {
+function buildCartPermalink(shopHost, pairs /* [{variantId, qty}] */) {
   const list = [];
   for (const p of pairs) {
     const tail = extractNumericIdFromGid(p.variantId);
@@ -41,7 +41,8 @@ function buildCartPermalink(shopHost, pairs /* [{variantId,numQty}] */) {
 }
 
 export function useSimpleCart() {
-  const [items, setItems] = useState(() => readJSON(LS_KEY, [])); // [{jan, title?, price?, imageUrl?, qty}]
+  // [{jan, title?, price?, imageUrl?, qty}]
+  const [items, setItems] = useState(() => readJSON(LS_KEY, []));
 
   // --- ① localStorageへ常に同期保存 ---
   useEffect(() => {
@@ -51,7 +52,6 @@ export function useSimpleCart() {
   // --- ② rehydrate: localStorage→state を即時反映 ---
   const hydrateFromStorage = useCallback(() => {
     const next = readJSON(LS_KEY, []);
-    // 深い比較は軽量でOK（サイズが小さい前提）
     const same = JSON.stringify(next) === JSON.stringify(items);
     if (!same) setItems(next);
   }, [items]);
@@ -123,7 +123,7 @@ export function useSimpleCart() {
     const pairs = [];
     for (const it of Array.isArray(items) ? items : []) {
       const gid = await getVariantGidByJan(String(it.jan)).catch(() => "");
-      if (!gid) continue; // 見つからないものはスキップ（将来は警告表示も可）
+      if (!gid) continue; // 見つからないものはスキップ
       const qty = Math.max(0, Number(it.qty || 0));
       if (qty > 0) pairs.push({ variantId: gid, qty });
     }
@@ -142,10 +142,10 @@ export function useSimpleCart() {
       bc.postMessage({ type: "CART_CHANGED", at: Date.now() });
       bc.close();
     } catch {}
-    // storage は writeJSON で既に setItem されているのでOK
+    // storage は writeJSON で既に setItem 済み
   }, [items]);
 
-  // --- ④ 他フレーム/別タブ/子iframe → 自分を最新化（★このブロックを「return の直前」に置くイメージ）---
+  // --- ④ 他フレーム/別タブ/子iframe → 自分を最新化 ---
   useEffect(() => {
     const rehydrate = () => {
       try { hydrateFromStorage(); } catch {}
@@ -155,7 +155,6 @@ export function useSimpleCart() {
     const onStorage = (e) => {
       try {
         if (!e) return;
-        // key 未指定（Safari 等）でも念のためリロード
         if (!e.key || e.key === LS_KEY) rehydrate();
       } catch {}
     };
