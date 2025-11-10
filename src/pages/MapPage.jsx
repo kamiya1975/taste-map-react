@@ -215,37 +215,40 @@ function MapPage() {
   }, [closeUIsThen]);
 
   // === Cart表示中は背面Mapを操作不能にする（フォーカスも遮断） ===
-  const mapRootRef = useRef(null);
+const mapRootRef = useRef(null);
+const prevFocusedRef = useRef(null);
 
-  // 初期化：#map-root を捕まえる
-  useEffect(() => {
-    mapRootRef.current = document.getElementById("map-root");
-  }, []);
+useEffect(() => {
+  mapRootRef.current = document.getElementById("map-root");
+}, []);
 
-  // isCartOpen を監視して属性を付け外し
-  useEffect(() => {
-    const el = mapRootRef.current;
-    if (!el) return;
+useEffect(() => {
+  const el = mapRootRef.current;
+  if (!el) return;
 
-    if (isCartOpen) {
-      // 1) inert（対応ブラウザで背面完全無効）
-      try { el.setAttribute("inert", ""); } catch {}
+  if (isCartOpen) {
+    // いまのフォーカスを覚えておく
+    prevFocusedRef.current = document.activeElement;
 
-      // 2) アクセシビリティのフォールバック
-      el.setAttribute("aria-hidden", "true");
+    // 背面を無効化
+    try { el.setAttribute("inert", ""); } catch {}
+    el.style.pointerEvents = "none";
 
-      // 3) クリック抑止（Drawerはbody直下ポータルなので影響なし）
-      el.style.pointerEvents = "none";
+    // フォーカスをカートドロワーへ移動
+    setTimeout(() => {
+      const t = document.querySelector('#cart-drawer [data-autofocus="cart"]')
+              || document.querySelector('#cart-drawer');
+      t?.focus?.();
+    }, 0);
+  } else {
+    try { el.removeAttribute("inert"); } catch {}
+    el.style.pointerEvents = "auto";
 
-      // 4) タブ移動を遮断（念のため）
-      el.setAttribute("tabIndex", "-1");
-    } else {
-      try { el.removeAttribute("inert"); } catch {}
-      el.removeAttribute("aria-hidden");
-      el.style.pointerEvents = "auto";
-      el.removeAttribute("tabIndex"); // 既に JSX 側で tabIndex={-1} を付けているなら省略可
-    }
-  }, [isCartOpen]);
+    // もとのフォーカスへ軽く戻す（無ければ何もしない）
+    setTimeout(() => { prevFocusedRef.current?.focus?.(); }, 0);
+  }
+}, [isCartOpen]);
+
 
   /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
   const openOverlayAboveMenu = useCallback(async (kind) => {
@@ -1218,6 +1221,47 @@ useEffect(() => {
          )}
         </div>
       </Drawer>
+
+      <Drawer
+  anchor="bottom"
+  open={isCartOpen}
+  onClose={() => setIsCartOpen(false)}
+  sx={{ zIndex: 1850 }}
+  hideBackdrop
+  BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
+  ModalProps={{
+    ...drawerModalProps,
+    keepMounted: true,
+    // ★ MUI のフォーカス強制を切る（自前で制御するため）
+    disableEnforceFocus: true,
+    disableAutoFocus: true,
+    disableRestoreFocus: true,
+  }}
+  PaperProps={{
+    id: "cart-drawer",
+    // ★ 受け皿（tabIndex=-1）を付けてフォーカスできるように
+    tabIndex: -1,
+    style: { ...paperBaseStyle, borderTop: "1px solid #c9c9b0" },
+  }}
+>
+  <PanelHeader
+    title="カート"
+    icon="cart.svg"
+    onClose={() => setIsCartOpen(false)}
+    // ★ 最初にフォーカスしたい要素にマークを付ける
+    rightExtra={(
+      <button
+        data-autofocus="cart"
+        onClick={() => setIsCartOpen(false)}
+        style={{ opacity: 0, width: 0, height: 0, pointerEvents: "none" }}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+    )}
+  />
+  <CartPanel isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+</Drawer>
+
 
       {/* カート */}
       <Drawer
