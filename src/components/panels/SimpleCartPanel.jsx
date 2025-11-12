@@ -56,23 +56,37 @@ export default function SimpleCartPanel({ onClose }) {
   // 「決済に進む」：Storefront API → フォールバックの順
   async function handleProceed() {
     try {
-      if (uiItems.length === 0) return;
-
-      if (SHOP_READY) {
-        // ✅ 推奨：properties / attributes / note を付けたままカート生成
-        const { checkoutUrl } = await createCartWithMeta(uiItems, buildMeta());
+      if (!uiItems.length) return;
+      const meta = buildMeta();
+      try {
+        const { checkoutUrl, unresolved } = await createCartWithMeta(uiItems, meta);
+        if (unresolved?.length) {
+          console.warn("[TasteMap] 未解決JAN:", unresolved);
+        }
         window.open(checkoutUrl, "_blank", "noopener");
-      } else {
-        // フォールバック：/cart/{id:qty,...}（メタは乗らない）
-        const url = await buildCartUrl(uiItems, {
-          shopDomain: SHOP_DOMAIN,
-          returnTo: `${window.location.origin}${process.env.PUBLIC_URL || ""}/?from=checkout`,
-        });
-        window.open(url, "_blank", "noopener");
+        return;
+      } catch (e) {
+        // ここで理由をユーザー向けに分岐
+        const msg = String(e?.message || e);
+        if (msg.includes("ENV: SHOP DOMAIN") || msg.includes("ENV: STOREFRONT TOKEN")) {
+          alert("Shopify接続設定が未設定です（ドメイン/トークン）。Vercelの環境変数を確認してください。");
+        } else if (msg.startsWith("JAN→Variant 未解決")) {
+          alert("一部JANがShopifyのVariantに紐づいていません。\n" + msg.replace("JAN→Variant 未解決: ", "未解決JAN: "));
+        } else if (msg.startsWith("Storefront")) {
+          alert("Shopify Storefront APIでエラーが発生しました。\n" + msg);
+        } else {
+          // 最後の手段: メタ無しパーマリンクでフォールバック
+          console.warn("createCartWithMeta failed, fallback to /cart: ", msg);
+          const url = await buildCartUrl(uiItems, {
+            shopDomain: SHOP_DOMAIN,
+            returnTo: `${window.location.origin}${process.env.PUBLIC_URL || ""}/?from=checkout`,
+          });
+          window.open(url, "_blank", "noopener");
+        }
       }
     } catch (e) {
       console.error(e);
-      alert("カート作成に失敗しました。JAN→Variant の対応やトークン設定を確認してください。");
+      alert("カート作成に失敗しました。JAN→Variantの対応やトークン設定を確認してください。");
     }
   }
  

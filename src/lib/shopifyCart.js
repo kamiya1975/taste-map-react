@@ -1,82 +1,58 @@
-// Storefront API でカートを生成し、メタ情報を付与して checkoutUrl を返す
 import { getVariantGidByJan } from "./ecLinks";
 
-const SF_ENDPOINT = `https://${process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN}/api/2025-01/graphql.json`;
+const SHOP_DOMAIN = process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN;
 const SF_TOKEN    = process.env.REACT_APP_SHOPIFY_STOREFRONT_TOKEN;
-
-// GID から数値ID抽出（必要なら）
-export function extractNumericIdFromGid(gid) {
-  if (!gid) return null;
-  const m = String(gid).match(/ProductVariant\/(\d+)/);
-  return m ? m[1] : null;
-}
+const SF_ENDPOINT = SHOP_DOMAIN ? `https://${SHOP_DOMAIN}/api/2025-01/graphql.json` : "";
 
 const CART_CREATE = `
 mutation CartCreate($input: CartInput!) {
   cartCreate(input: $input) {
-    cart {
-      id
-      checkoutUrl
-    }
+    cart { id checkoutUrl }
     userErrors { field message }
   }
 }
 `;
 
-/**
- * items: [{ jan/jan_code/JAN, qty, properties?: {k:v}, noteLine?: string }]
- * meta:  { cartAttributes?: {k:v}, note?: string, discountCodes?: string[] }
- */
 export async function createCartWithMeta(items = [], meta = {}) {
-  if (!SF_TOKEN || !process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN) {
-    throw new Error("Storefront API 環境変数が未設定です。");
-  }
+  // --- 明確な原因表示 ---
+  if (!SHOP_DOMAIN) throw new Error("ENV: SHOP DOMAIN missing (REACT_APP_SHOPIFY_SHOP_DOMAIN)");
+  if (!SF_TOKEN)    throw new Error("ENV: STOREFRONT TOKEN missing (REACT_APP_SHOPIFY_STOREFRONT_TOKEN)");
 
-  // 1) JAN → Variant GID 解決
   const lines = [];
-  for (const raw of items) {
+  const unresolved = [];
+
+  for (const raw of (Array.isArray(items) ? items : [])) {
     const jan = String(raw?.jan ?? raw?.jan_code ?? raw?.JAN ?? "").trim();
     const quantity = Math.max(1, Number(raw?.qty || raw?.quantity || 0));
     if (!jan || !quantity) continue;
 
-    const gid = await getVariantGidByJan(jan); // 例: gid://shopify/ProductVariant/xxx
-    if (!gid) continue;
+    const gid = await getVariantGidByJan(jan);      // ← ここが null のことが多い
+    if (!gid) { unresolved.push(jan); continue; }
 
-    // line item properties（オーダーに残る）
-    const attrs = [];
-    const props = raw?.properties || {};
-    // 必須で残したい標準セット
-    if (jan) attrs.push({ key: "JAN", value: jan });
-    for (const [k, v] of Object.entries(props)) {
+    const attrs = [{ key: "JAN", value: jan }];
+    for (const [k, v] of Object.entries(raw?.properties || {})) {
       if (v != null) attrs.push({ key: String(k), value: String(v) });
     }
 
-    lines.push({
-      quantity,
-      merchandiseId: gid,
-      attributes: attrs, // ← ここが line item properties
-    });
+    lines.push({ quantity, merchandiseId: gid, attributes: attrs });
   }
 
-  if (!lines.length) throw new Error("明細が解決できません（JAN→Variant対応を確認してください）。");
+  if (!lines.length) {
+    const msg = unresolved.length
+      ? `JAN→Variant 未解決: ${unresolved.join(", ")}`
+      : "明細が空です";
+    throw new Error(msg);
+  }
 
-  // 2) cart attributes / note
   const cartAttributes = [];
   for (const [k, v] of Object.entries(meta?.cartAttributes || {})) {
     if (v != null) cartAttributes.push({ key: String(k), value: String(v) });
   }
-  // デフォルトで最低限の識別
   cartAttributes.push({ key: "channel", value: "TasteMap" });
-  cartAttributes.push({ key: "tm_version", value: (process.env.REACT_APP_TM_VERSION || "unknown") });
+  cartAttributes.push({ key: "tm_version", value: process.env.REACT_APP_TM_VERSION || "unknown" });
 
-  const input = {
-    lines,
-    attributes: cartAttributes,          // ← カート全体の attributes
-    note: meta?.note || "",              // ← 注文メモ
-    // buyerIdentity, deliveryAddress なども必要に応じて
-  };
+  const input = { lines, attributes: cartAttributes, note: meta?.note || "" };
 
-  // 3) cartCreate
   const res = await fetch(SF_ENDPOINT, {
     method: "POST",
     headers: {
@@ -86,21 +62,27 @@ export async function createCartWithMeta(items = [], meta = {}) {
     body: JSON.stringify({ query: CART_CREATE, variables: { input } }),
   });
 
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`Storefront HTTP ${res.status} ${res.statusText} ${txt?.slice(0,200)}`);
+  }
+
   const json = await res.json();
-  const err = json?.errors?.[0]?.message;
-  const uerr = json?.data?.cartCreate?.userErrors?.[0]?.message;
-  if (err || uerr) throw new Error(err || uerr);
+  const apiErr = json?.errors?.[0]?.message;
+  const userErr = json?.data?.cartCreate?.userErrors?.[0]?.message;
+  if (apiErr || userErr) {
+    throw new Error(`Storefront error: ${apiErr || userErr}`);
+  }
 
-  let checkoutUrl = json?.data?.cartCreate?.cart?.checkoutUrl;
+  let checkoutUrl = json?.data?.cartCreate?.cart?.checkoutUrl || "";
 
-  // 4) ディスカウントコード（任意）：checkoutUrl へ追加
+  // 任意: ディスカウント簡易付与
   const codes = meta?.discountCodes || [];
   if (checkoutUrl && codes.length) {
     const u = new URL(checkoutUrl);
-    // 複数コード対応（最新APIでは cartDiscountCodesUpdate 推奨。簡易はクエリ付与）
     u.searchParams.set("discount", codes.join(","));
     checkoutUrl = u.toString();
   }
 
-  return { checkoutUrl };
+  return { checkoutUrl, unresolved };
 }
