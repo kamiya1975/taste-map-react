@@ -8,8 +8,9 @@ import {
 } from "../../ui/constants";
 import PanelHeader from "../ui/PanelHeader";
 import CircleRatingDisplay from "../../components/CircleRatingDisplay";
+import ListRow from "../ui/ListRow"; // ← 共通コンポーネントを使用
 
-// 画像版 StarBadge（public/img/star.png を使用）
+// ★星バッジだけ残す
 const StarBadge = ({ size = 22 }) => (
   <img
     src={`${process.env.PUBLIC_URL || ""}/img/star.png`}
@@ -20,141 +21,6 @@ const StarBadge = ({ size = 22 }) => (
     draggable={false}
   />
 );
-
-/* =========================
-   共通行 ListRow（内蔵）
-   ========================= */
-
-const toCssColor = (c, fallback) => {
-  if (!c) return fallback;
-  if (Array.isArray(c)) return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
-  return String(c);
-};
-
-function ListRow({
-  index,
-  item,
-  onPick,
-  showDate = false,
-  dateValue = null,
-  accentColor = "#b4b4b4",
-  extraRight = null,
-  hoverHighlight = true,
-}) {
-  const price = Number.isFinite(item?.希望小売価格)
-    ? `¥${Number(item.希望小売価格).toLocaleString()}`
-    : "—";
-
-  const bodyVal =
-    Number.isFinite(item?.PC1) ? item.PC1 :
-    Number.isFinite(item?.BodyAxis) ? item.BodyAxis : null;
-
-  const sweetVal =
-    Number.isFinite(item?.PC2) ? item.PC2 :
-    Number.isFinite(item?.SweetAxis) ? item.SweetAxis : null;
-
-  const fmtDateTime = (v) => {
-    if (!v) return "（日時不明）";
-    try {
-      const d = new Date(v);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      const hh = String(d.getHours()).padStart(2, "0");
-      const mm = String(d.getMinutes()).padStart(2, "0");
-      return `${y}/${m}/${day} ,${hh}:${mm}`;
-    } catch { return "（日時不明）"; }
-  };
-
-  const TypeBadge = ({ type }) => {
-    const colorCSS = toCssColor(TYPE_COLOR_MAP?.[type], accentColor);
-    return (
-      <span
-        title={type || "Type不明"}
-        aria-label={type || "Unknown"}
-        style={{
-          display: "inline-block",
-          width: 14,
-          height: 14,
-          borderRadius: 4,
-          background: colorCSS,
-        }}
-      />
-    );
-  };
-
-  return (
-    <li
-      onClick={() => onPick?.(item)}
-      style={{
-        padding: "12px 8px 14px 8px",
-        borderBottom: "1px solid #eee",
-        cursor: "pointer",
-        borderRadius: 6,
-        background: "transparent",
-        position: "relative",
-        paddingRight: 76,
-      }}
-      onMouseEnter={(e) => { if (hoverHighlight) e.currentTarget.style.background = "#f6f9ff"; }}
-      onMouseLeave={(e) => { if (hoverHighlight) e.currentTarget.style.background = "transparent"; }}
-    >
-      {/* 上段：番号 + 日時 */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          gap: 8,
-          marginBottom: 2,
-        }}
-      >
-        <strong style={{ color: "rgb(50,50,50)", fontSize: 16, fontWeight: 700 }}>
-          {index}.
-        </strong>
-        {showDate && (
-          <span style={{ fontSize: 13, color: "#555" }}>
-            {fmtDateTime(dateValue || item?.ratedAt)}
-          </span>
-        )}
-      </div>
-
-      {/* 商品名 */}
-      <div style={{ fontSize: 15, color: "#333", lineHeight: 1.35 }}>
-        {item?.商品名 || "（名称不明）"}
-      </div>
-
-      {/* 下段：タイプ色 / 価格 / Sweet / Body */}
-      <div style={{ 
-             marginTop: 6, 
-             display: "flex", 
-             alignItems: "center", 
-             gap: 10, 
-             flexWrap: "wrap" 
-          }}
-      >
-        <TypeBadge type={item?.Type} />
-        <small style={{ color: "#444" }}>{price}</small>
-      </div>
-
-      {/* 右下のバッジ（★ or ◎） */}
-      {extraRight && (
-        <div
-          style={{
-            position: "absolute",
-            right: 12,
-            bottom: 18,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            pointerEvents: "none",
-            gap: 6,
-          }}
-        >
-          {extraRight}
-        </div>
-      )}
-    </li>
-  );
-}
 
 /* =========================
    評価一覧パネル本体
@@ -181,7 +47,8 @@ export default function RatedPanel({
       }
       if (changed) localStorage.setItem("userRatings", JSON.stringify(ratings));
     } catch {}
-  }, [isOpen]);  
+  }, [isOpen]);
+
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
@@ -356,7 +223,6 @@ export default function RatedPanel({
             }}
           >
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {/* 行の右端：評価ありなら◎、未評価なら★ */}
               {list.map((item, idx) => {
                 const typeColor = TYPE_COLOR_MAP?.[item?.Type] ?? "rgb(180,180,180)";
                 const right = item.rating > 0
