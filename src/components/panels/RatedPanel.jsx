@@ -84,7 +84,7 @@ function ListRow({
         borderRadius: 6,
         background: "transparent",
         position: "relative",
-        paddingRight: 76, // ◎の分の右余白
+        paddingRight: 76, // 右下のバッジ分の余白
       }}
       onMouseEnter={(e) => { if (hoverHighlight) e.currentTarget.style.background = "#f6f9ff"; }}
       onMouseLeave={(e) => { if (hoverHighlight) e.currentTarget.style.background = "transparent"; }}
@@ -103,7 +103,6 @@ function ListRow({
             color: "rgb(50,50,50)",
             fontSize: 16,
             fontWeight: 700,
-            // 左寄せ（minWidth/textAlignは使わない）
           }}
         >
           {index}.
@@ -130,7 +129,7 @@ function ListRow({
         </small>
       </div>
 
-      {/* 右下に◎を固定（お気に入りと同仕様） */}
+      {/* 右下にバッジ（お気に入り◎ + 評価丸） */}
       {extraRight && (
         <div
           style={{
@@ -141,6 +140,7 @@ function ListRow({
             alignItems: "center",
             justifyContent: "center",
             pointerEvents: "none",
+            gap: 6,
           }}
         >
           {extraRight}
@@ -158,6 +158,7 @@ export default function RatedPanel({
   onClose,
   userRatings,
   data,
+  favorites = {},           // ★ 追加：飲みたいフラグ（JAN→meta）
   onSelectJAN,
 }) {
   const [sortMode, setSortMode] = React.useState("date");
@@ -184,7 +185,15 @@ export default function RatedPanel({
     return m;
   }, [userRatings]);
 
-  // 表示リスト
+  const wishSet = React.useMemo(() => {
+    try {
+      return new Set(Object.keys(favorites || {}).map(String));
+    } catch {
+      return new Set();
+    }
+  }, [favorites]);
+
+  // 表示リスト（お気に入り優先 → 指定の並び順）
   const list = React.useMemo(() => {
     const arr = Object.entries(userRatings || {})
       .map(([jan, meta]) => {
@@ -192,26 +201,38 @@ export default function RatedPanel({
         if (rating <= 0) return null;
         const it = (data || []).find((d) => String(d.JAN) === String(jan));
         if (!it) return null;
+        const isWish = wishSet.has(String(jan)); // ★ 飲みたいフラグ
         return {
           ...it,
           ratedAt: meta?.date ?? null,
           rating,
+          isWish,
           displayIndex: rankMap.get(String(jan)) ?? null,
         };
       })
       .filter(Boolean);
 
+    // 第1キー：isWish(desc) —「飲みたい」付きが常に最上位
+    const byWish = (a, b) => (b.isWish === a.isWish) ? 0 : (b.isWish ? 1 : -1);
+
     if (sortMode === "rating") {
-      arr.sort((a, b) =>
-        (b.rating !== a.rating)
-          ? b.rating - a.rating
-          : (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0))
-      );
+      arr.sort((a, b) => {
+        const w = byWish(a, b);
+        if (w !== 0) return w;
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        // 評価同点なら新しい日付優先
+        return (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
+      });
     } else {
-      arr.sort((a, b) => new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
+      // 日付順（新しい→古い）
+      arr.sort((a, b) => {
+        const w = byWish(a, b);
+        if (w !== 0) return w;
+        return (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
+      });
     }
     return arr;
-  }, [data, userRatings, sortMode, rankMap]);
+  }, [data, userRatings, sortMode, rankMap, wishSet]);
 
   // 右上：並び替えカプセル
   const SortCapsule = (
@@ -260,6 +281,17 @@ export default function RatedPanel({
     </div>
   );
 
+  // お気に入り◎マーク
+  const WishMark = () => (
+    <span
+      aria-label="飲みたい"
+      title="飲みたい"
+      style={{ fontSize: 16, lineHeight: 1, color: "#7a2e39", fontWeight: 700 }}
+    >
+      ◎
+    </span>
+  );
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -302,6 +334,12 @@ export default function RatedPanel({
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {list.map((item, idx) => {
                 const typeColor = TYPE_COLOR_MAP?.[item?.Type] ?? "rgb(180,180,180)";
+                const right = (
+                  <>
+                    {item.isWish && <WishMark />}
+                    <CircleRatingDisplay rating={item.rating} size={35} />
+                  </>
+                );
                 return (
                   <ListRow
                     key={`${item.JAN}-${idx}`}
@@ -311,7 +349,7 @@ export default function RatedPanel({
                     showDate
                     dateValue={item.ratedAt}
                     accentColor={typeColor}
-                    extraRight={<CircleRatingDisplay rating={item.rating} size={35} />}
+                    extraRight={right}
                   />
                 );
               })}
