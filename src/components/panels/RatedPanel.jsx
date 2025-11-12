@@ -9,15 +9,16 @@ import {
 import PanelHeader from "../ui/PanelHeader";
 import CircleRatingDisplay from "../../components/CircleRatingDisplay";
 
-// ★ 星バッジ（スクショの色味に近い簡易SVG）
-const StarBadge = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" aria-label="飲みたい" title="飲みたい">
-    <circle cx="12" cy="12" r="11" fill="none" stroke="rgba(0,0,0,.25)" strokeWidth="1"/>
-    <path
-      d="M12 4.8l2.02 4.1 4.53.66-3.28 3.2.77 4.5L12 15.9 7.96 17.3l.77-4.5-3.28-3.2 4.53-.66L12 4.8z"
-      fill="#9e2e56"
-    />
-  </svg>
+// 画像版 StarBadge（public/img/star.png を使用）
+const StarBadge = ({ size = 22 }) => (
+  <img
+    src={`${process.env.PUBLIC_URL || ""}/img/star.png`}
+    alt="飲みたい"
+    width={size}
+    height={size}
+    style={{ display: "block" }}
+    draggable={false}
+  />
 );
 
 /* =========================
