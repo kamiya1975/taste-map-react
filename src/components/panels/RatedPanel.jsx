@@ -162,6 +162,21 @@ export default function RatedPanel({
   favorites = {},   // JAN → { addedAt }
   onSelectJAN,
 }) {
+  // ★の副作用で入ってしまった「source==='wish' && rating===1」を除去
+  React.useEffect(() => {
+    if (!isOpen) return;
+    try {
+      const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
+      let changed = false;
+      for (const [jan, meta] of Object.entries(ratings)) {
+        if (meta && meta.source === "wish" && Number(meta.rating) === 1) {
+          delete ratings[jan];
+          changed = true;
+        }
+      }
+      if (changed) localStorage.setItem("userRatings", JSON.stringify(ratings));
+    } catch {}
+  }, [isOpen]);  
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
@@ -356,7 +371,7 @@ export default function RatedPanel({
                 );
               })}
               {list.length === 0 && (
-                <li style={{ color: "#666" }}>まだ「飲んだワイン」がありません。</li>
+                <li style={{ color: "#666" }}>まだ「お気に入り」や「評価済み」の商品がありません。</li>
               )}
             </ul>
           </div>

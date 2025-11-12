@@ -90,38 +90,14 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
     localStorage.setItem("favorites", JSON.stringify(favs));
     setFav(!!favs[jan_code]);
 
-    // 2) ★ON のときは userRatings に最低評価(=1)を登録 → 評価パネルに出す
-    //    ★OFF のときは「wish起源かつ rating===1」なら userRatings から取り消し
-    try {
-      const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
-      const cur = ratings[jan_code];
-
-      if (willAdd) {
-        const nextRating = Math.max(Number(cur?.rating || 0), 1);
-        ratings[jan_code] = {
-          rating: nextRating,
-          date: cur?.date || new Date().toISOString(),
-          source: cur?.source || "wish", // ← ハート由来の印
-        };
-      } else {
-        // 明示採点（Circle）で上書き済みなら残す。wish由来の最低評価だけは消す。
-        if (cur && cur.source === "wish" && Number(cur.rating) === 1) {
-          delete ratings[jan_code];
-        }
-      }
-      localStorage.setItem("userRatings", JSON.stringify(ratings));
-
-      // 3) 親/他フレームへ通知（パネル再描画用）
-      try { window.parent?.postMessage({ type: "RATING_UPDATED", jan: jan_code, payload: ratings[jan_code] || null }, "*"); } catch {}
-      try {
-        const bc = new BroadcastChannel("product_bridge");
-        bc.postMessage({ type: "RATING_UPDATED", jan: jan_code, payload: ratings[jan_code] || null, at: Date.now() });
-        bc.close();
-      } catch {}
-    } catch {}
-
     // 従来の「お気に入りトグル」通知も維持（既存配線との互換）
     try { window.parent?.postMessage({ type: "TOGGLE_FAVORITE", jan_code }, "*"); } catch {}
+    // 追加：BroadcastChannel で即時通知（同一オリジン内）
+    try {
+      const bc = new BroadcastChannel("product_bridge");
+      bc.postMessage({ type: "SET_FAVORITE", jan: jan_code, value: willAdd, at: Date.now() });
+      bc.close();
+    } catch {}
   };
 
   return (
@@ -138,7 +114,7 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
         cursor: hidden ? "default" : "pointer",
         visibility: hidden ? "hidden" : "visible",
       }}
-      title={fav ? "お気に入りに登録済み（評価にも反映）" : "お気に入りに追加（評価にも反映）"}
+      title={fav ? "お気に入りに登録済み" : "お気に入りに追加"}
     >
       <img
         src={`${process.env.PUBLIC_URL || ""}${fav ? "/img/store.svg" : "/img/store2.svg"}`}
@@ -363,7 +339,11 @@ export default function ProductPage() {
       setProduct(found || null);
       try {
         const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
-        if (ratings[jan_code]) setRating(ratings[jan_code].rating ?? 0);
+        if (ratings[jan_code]) {
+          const meta = ratings[jan_code];
+          const val = (meta?.source === "wish" && Number(meta?.rating) === 1) ? 0 : (meta?.rating ?? 0);
+          setRating(val);
+        }
       } catch {}
     };
     load();
@@ -403,6 +383,7 @@ export default function ProductPage() {
     if (!requireRatingOrRedirect(navigate, "/my-account")) return;
     const newRating = value === rating ? 0 : value;
     setRating(newRating);
+
     const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
     let payload = null;
     if (newRating === 0) {
@@ -410,6 +391,16 @@ export default function ProductPage() {
     } else {
       payload = { rating: newRating, date: new Date().toISOString() };
       ratings[jan_code] = payload;
+      // ★が付いていたら外す（排他）
+      try {
+        const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
+        if (favs[jan_code]) {
+          delete favs[jan_code];
+          localStorage.setItem("favorites", JSON.stringify(favs));
+          // 画面側にも反映してほしい場合の通知
+          try { window.parent?.postMessage({ type: "SET_FAVORITE", jan: jan_code, value: false }, "*"); } catch {}
+       }
+      } catch {}      
     }
     localStorage.setItem("userRatings", JSON.stringify(ratings));
     postToParent({ type: "RATING_UPDATED", jan: jan_code, payload });
