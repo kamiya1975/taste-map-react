@@ -6,7 +6,6 @@ import Drawer from "@mui/material/Drawer";
 import MapGuidePanelContent from "../components/panels/MapGuidePanelContent";
 import SearchPanel from "../components/panels/SearchPanel";
 import BarcodeScanner from "../components/BarcodeScanner";
-import FavoritePanel from "../components/panels/FavoritePanel";
 import RatedPanel from "../components/panels/RatedPanel";
 import MyAccountPanelContent from "../components/panels/MyAccountPanelContent";
 import MapCanvas from "../components/map/MapCanvas";
@@ -77,7 +76,6 @@ function MapPage() {
   // ---- Drawer 状態（すべて明示）----
   const [isMyPageOpen,   setIsMyPageOpen]   = useState(false); // アプリガイド（メニュー）
   const [isSearchOpen,   setIsSearchOpen]   = useState(false); // 検索
-  const [isFavoriteOpen, setIsFavoriteOpen] = useState(false); // お気に入り
   const [isRatedOpen,    setIsRatedOpen]    = useState(false); // 評価（◎）
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false); // マップガイド（オーバーレイ）
   const [isStoreOpen,    setIsStoreOpen]    = useState(false); // お気に入り店舗登録（オーバーレイ）
@@ -162,7 +160,6 @@ function MapPage() {
   const closeUIsThen = useCallback(async (opts = {}) => {
     const {
       preserveMyPage = false,
-      preserveFavorite = false,
       preserveRated = false,
       preserveSearch   = false,
     } = opts;
@@ -176,7 +173,6 @@ function MapPage() {
     if (isMapGuideOpen)  { setIsMapGuideOpen(false);  willClose = true; }
     if (isStoreOpen)     { setIsStoreOpen(false);     willClose = true; }
     if (isSearchOpen && !preserveSearch) { setIsSearchOpen(false); willClose = true; }
-    if (isFavoriteOpen && !preserveFavorite)  { setIsFavoriteOpen(false);  willClose = true; }
     if (isRatedOpen && !preserveRated)        { setIsRatedOpen(false);     willClose = true; }
     if (isAccountOpen)   { setIsAccountOpen(false);   willClose = true; }
     if (isFaqOpen)       { setIsFaqOpen(false);       willClose = true; }
@@ -191,7 +187,6 @@ function MapPage() {
     isMapGuideOpen,
     isStoreOpen,
     isSearchOpen,
-    isFavoriteOpen,
     isRatedOpen,
     isMyPageOpen,
     isAccountOpen,
@@ -207,7 +202,6 @@ function MapPage() {
     else if (kind === "guide")    setIsMapGuideOpen(true);
     else if (kind === "store")    setIsStoreOpen(true);
     else if (kind === "search")  setIsSearchOpen(true);
-    else if (kind === "favorite") setIsFavoriteOpen(true);
     else if (kind === "rated")   setIsRatedOpen(true);
     else if (kind === "cluster")  setIsClusterOpen(true);
     else if (kind === "cart") setCartOpen(true);
@@ -260,7 +254,7 @@ useEffect(() => {
     else if (kind === "cart") setCartOpen(true);
   }, [closeUIsThen]);
 
-  // ★ クエリで各パネルを開く（/ ?open=mypage|search|favorite|rated|mapguide|guide|store）
+  // ★ クエリで各パネルを開く（/ ?open=mypage|search|rated|mapguide|guide|store）
   useEffect(() => {
     try {
       const p = new URLSearchParams(location.search);
@@ -556,7 +550,6 @@ useEffect(() => {
     sessionStorage.removeItem("tm_autopen_nearest");
 
     setIsSearchOpen(false);
-    setIsFavoriteOpen(false);
     setIsRatedOpen(false);
 
    try {
@@ -1025,29 +1018,6 @@ useEffect(() => {
             unknownWarnedRef.current.set(jan, now);
           }
           return false;
-        }}
-      />
-
-      {/* お気に入り */}
-      <FavoritePanel
-        isOpen={isFavoriteOpen}
-        onClose={async () => { await closeUIsThen(); }}
-        favorites={favorites}
-        data={data}
-        userRatings={userRatings}
-        onSelectJAN={async (jan) => {
-          await closeUIsThen({ preserveMyPage: true, preserveFavorite: true }); // ← 一覧を残す
-          setHideHeartForJAN(null);
-          setSelectedJAN(jan);
-          setIframeNonce(Date.now());
-          const item = data.find((d) => String(d.JAN) === String(jan));
-          if (item) {
-            const tx = Number(item.umap_x), ty = Number(item.umap_y);
-            if (Number.isFinite(tx) && Number.isFinite(ty)) {
-              centerToUMAP(tx, ty, { zoom: INITIAL_ZOOM });
-            }
-          }
-          setProductDrawerOpen(true);
         }}
       />
 
