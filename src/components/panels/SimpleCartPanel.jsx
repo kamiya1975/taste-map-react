@@ -28,25 +28,23 @@ export default function SimpleCartPanel({ onClose }) {
 
   // UI 都合の整形（空や0個は除外）
   const uiItems = useMemo(() => {
-    return (Array.isArray(items) ? items : [])
-      .map((it) => ({
-        jan: String(it?.jan || it?.jan_code || it?.JAN || ""),
-        qty: Math.max(1, Number(it?.qty || it?.quantity || 0)),
-        // line item properties（注文アイテムに残る）
-        properties: {
-          name: it?.title || it?.name || it?.商品名 || "",
-          volume_ml:
-            it?.volume_ml != null
-              ? String(it.volume_ml)
-              : it?.["容量 ml"] != null
-              ? String(it["容量 ml"])
-              : "",
-          price: it?.price != null ? String(it.price) : "",
-          source: "TasteMap",
-        },
-      }))
-      .filter((x) => x.jan && x.qty > 0);
-  }, [items]);
+  return (Array.isArray(items) ? items : []).map((it) => ({
+    jan: String(it?.jan || it?.jan_code || it?.JAN || ""),
+    qty: Math.max(1, Number(it?.qty || it?.quantity || 0)),
+
+    // line item properties（Shopify注文アイテムに残るメタ情報）
+    properties: {
+      volume_ml: it?.volume_ml != null ? String(it.volume_ml) : (
+        it?.["容量 ml"] != null ? String(it["容量 ml"]) : ""
+      ),
+      source: "TasteMap",
+      // 任意：打点や評価なども付与可能
+      sweet:  it?.sweet  != null ? String(it.sweet)  : undefined,
+      body:   it?.body   != null ? String(it.body)   : undefined,
+      rating: it?.rating != null ? String(it.rating) : undefined,
+    },
+  })).filter(x => x.jan && x.qty > 0);
+}, [items]);
 
   const subtotal = useMemo(() => {
     let s = 0;
