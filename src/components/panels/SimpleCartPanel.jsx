@@ -1,6 +1,9 @@
 // src/components/panels/SimpleCartPanel.jsx
 import React, { useMemo } from "react";
 import { useSimpleCart } from "../../cart/simpleCart";
+import { buildCartUrl } from "../../cart/buildCartUrl";
+import { createCartWithMeta } from "../../lib/shopifyCart";
+const SHOP_READY = !!(process.env.REACT_APP_SHOPIFY_STOREFRONT_TOKEN && process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN);
 
 // 環境変数からドメインを取得（CRA/Vite の両対応＋最後にハードコードfallback）
 const SHOP_DOMAIN =
@@ -10,8 +13,69 @@ const SHOP_DOMAIN =
   "tastemap.myshopify.com";
 
 export default function SimpleCartPanel({ onClose }) {
-  const { items, totalQty, updateQty, remove, clear, proceedCheckout } = useSimpleCart();
+  const { items, totalQty, updateQty, remove, clear } = useSimpleCart();
 
+  // TasteMap から渡すメタ情報の組み立て（例）
+  function buildMeta() {
+    const userId   = localStorage.getItem("tm_user_id") || "";
+    const mainStoreId = localStorage.getItem("tm_main_store_id") || "";
+    const appVer   = process.env.REACT_APP_TM_VERSION || "";
+
+    return {
+      cartAttributes: {
+        user_id: userId,
+        main_store_id: mainStoreId,
+        app_ver: appVer,
+      },
+      note: `TasteMap order\nuser=${userId}\nstore=${mainStoreId}\nclient=${navigator.userAgent}`,
+      discountCodes: [], // 任意
+    };
+  }
+
+  // Shopify に渡すための行データ（JAN/qty と properties）を整形
+  const uiItems = useMemo(() => {
+    return (Array.isArray(items) ? items : []).map((it) => ({
+      jan: String(it?.jan || it?.jan_code || it?.JAN || ""),
+      qty: Math.max(1, Number(it?.qty || it?.quantity || 0)),
+      // line item properties（注文アイテムに残る）
+      properties: {
+        name: it?.title || it?.name || it?.商品名 || "",
+        volume_ml: it?.volume_ml != null ? String(it.volume_ml) : (
+          it?.["容量 ml"] != null ? String(it["容量 ml"]) : ""
+        ),
+        price: it?.price != null ? String(it.price) : "",
+        source: "TasteMap",
+        // 任意：打点や評価なども付与可能
+        sweet: it?.sweet != null ? String(it.sweet) : undefined,
+        body:  it?.body  != null ? String(it.body)  : undefined,
+        rating: it?.rating != null ? String(it.rating) : undefined,
+      },
+    })).filter(x => x.jan && x.qty > 0);
+  }, [items]);
+
+  // 「決済に進む」：Storefront API → フォールバックの順
+  async function handleProceed() {
+    try {
+      if (uiItems.length === 0) return;
+
+      if (SHOP_READY) {
+        // ✅ 推奨：properties / attributes / note を付けたままカート生成
+        const { checkoutUrl } = await createCartWithMeta(uiItems, buildMeta());
+        window.open(checkoutUrl, "_blank", "noopener");
+      } else {
+        // フォールバック：/cart/{id:qty,...}（メタは乗らない）
+        const url = await buildCartUrl(uiItems, {
+          shopDomain: SHOP_DOMAIN,
+          returnTo: `${window.location.origin}${process.env.PUBLIC_URL || ""}/?from=checkout`,
+        });
+        window.open(url, "_blank", "noopener");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("カート作成に失敗しました。JAN→Variant の対応やトークン設定を確認してください。");
+    }
+  }
+ 
   const subtotal = useMemo(() => {
     let s = 0;
     for (const it of Array.isArray(items) ? items : []) {
@@ -124,7 +188,7 @@ export default function SimpleCartPanel({ onClose }) {
             </button>
 
             <button
-              onClick={() => proceedCheckout({ shopDomain: SHOP_DOMAIN })}
+              onClick={handleProceed}
               disabled={totalQty <= 0}
               style={{
                 flex: 2,
