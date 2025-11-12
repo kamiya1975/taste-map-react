@@ -50,23 +50,6 @@ const notifyParentClosed = (jan_code) => {
   } catch {}
 };
 
-// ★ 「飲みたい（favorites）」を即時OFFにするユーティリティ
-const forceFavoriteOff = (jan_code) => {
-  try {
-    const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
-    if (favs && favs[jan_code]) {
-      delete favs[jan_code];
-      localStorage.setItem("favorites", JSON.stringify(favs));
-    }
-  } catch {}
-  try {
-    window.postMessage({ type: "SET_FAVORITE", jan: jan_code, value: false }, "*");
-  } catch {}
-  try {
-    postToParent({ type: "SET_FAVORITE", jan: jan_code, value: false });
-  } catch {}
-};
-
 /** =========================
  *  お気に入りスター（☆/★ 画像版）
  * ========================= */
