@@ -4,6 +4,23 @@ import { useSimpleCart } from "../../cart/simpleCart";
 import { createCartWithMeta } from "../../lib/shopifyCart";
 import { checkAvailabilityByJan } from "../../lib/shopifyInventory";
 
+// 決済後の遅延クリア用キー
+const LS_CLEAR_KEY = "tm_cart_clear_at";   // 例: 1700000000000 (ms)
+function scheduleCartClear(msFromNow = 5000) {
+  try { localStorage.setItem(LS_CLEAR_KEY, String(Date.now() + msFromNow)); } catch {}
+}
+function consumeIfDueClear(cb) {
+  try {
+    const v = Number(localStorage.getItem(LS_CLEAR_KEY) || 0);
+    if (v && Date.now() >= v) {
+      localStorage.removeItem(LS_CLEAR_KEY);
+      cb?.();
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
 const SHOP_DOMAIN =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_SHOPIFY_SHOP_DOMAIN) ||
   process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN ||
@@ -19,6 +36,21 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
   const [stockMap, setStockMap] = useState({});
   const [stockMsg, setStockMsg] = useState("");
   const [unresolved, setUnresolved] = useState([]);
+
+  // --- 遅延クリアの実行（ページ再訪/復帰時でも動く） ---
+  useEffect(() => {
+    // 1) 今すでに期限が過ぎていたら即クリア
+    consumeIfDueClear(() => clear());
+
+    // 2) タブが戻ってきた時に再チェック
+    const onVis = () => consumeIfDueClear(() => clear());
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", onVis);
+    };
+  }, [clear]);
 
   // items の変更を安定キーに変換
   const itemsKey = useMemo(
@@ -107,8 +139,11 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
         alert("一部JANが未解決です: " + u.join(", "));
       }
       if (checkoutUrl) {
-        // 必要ならここで TasteMap 側のカートを空にする
-        // clear(); // ← 有効化したい場合はコメント解除
+        // ▼5秒後に空にする（遷移しても確実に実行されるよう localStorage 経由）
+        scheduleCartClear(5000);
+        // 同一タブ遷移まで“5秒タイマー”が生きている場合に備え、保険でローカルでも実行
+        try { setTimeout(() => consumeIfDueClear(() => clear()), 5100); } catch {}
+        
         window.location.href = checkoutUrl;
         return;
       }
