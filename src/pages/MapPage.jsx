@@ -1225,7 +1225,7 @@ useEffect(() => {
         anchor="bottom"
         open={isMyPageOpen}
         onClose={() => setIsMyPageOpen(false)}
-        sx={{ zIndex: 1400 }}
+        sx={{ zIndex: 1400, pointerEvents: "none" }}
         hideBackdrop
         BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
         ModalProps={{
@@ -1234,6 +1234,7 @@ useEffect(() => {
           disableEnforceFocus: true,  // ★ フォーカスロック解除
           disableAutoFocus: true,     // ★ 自動フォーカスを抑止
           disableRestoreFocus: true,  // ★ 閉じた後のフォーカス復元も抑止
+          disableScrollLock: true,
         }}
         PaperProps={{
           style: {
@@ -1243,6 +1244,7 @@ useEffect(() => {
             display: "flex",
             flexDirection: "column",
           },
+          sx: { pointerEvents: "auto" },
         }}
       >
         <PanelHeader
