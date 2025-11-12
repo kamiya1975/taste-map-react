@@ -56,19 +56,44 @@ export default function SimpleCartPanel({ onClose }) {
 
   const empty = !Array.isArray(items) || items.length === 0;
 
-  // 決済開始
+  // 30分バックアップ用キー
+  const BACKUP_KEY = "tm_cart_backup_v1";
+  const BACKUP_EXPIRES_KEY = "tm_cart_backup_until";
+
   async function handleCheckout() {
     if (busy) return;
     setBusy(true);
     try {
-      const meta = buildMeta();
-      console.log("[checkout] items:", uiItems, "meta:", meta);
+      const meta = buildMeta?.() || {};
 
+      // 1) 事前バックアップ
+      const now = Date.now();
+      sessionStorage.setItem(BACKUP_KEY, JSON.stringify(items || []));
+      sessionStorage.setItem(BACKUP_EXPIRES_KEY, String(now + 30 * 60 * 1000));
+
+      // 2) カート生成
       const { checkoutUrl, unresolved } = await createCartWithMeta(uiItems, meta);
 
+      // 3) 未解決JANはそのまま残す（成功行だけ消すためにフィルタ）
       if (Array.isArray(unresolved) && unresolved.length) {
-        alert("一部JANが未解決です: " + unresolved.join(", "));
+        alert("一部JANが未解決でした: " + unresolved.join(", "));
       }
+
+      // 4) 成功した行（= 解決できたJAN）を除去 → ローカルカートをクリア
+      //    もし「全部消したい」ならこの if を丸ごと clear() に置き換え
+      const unresolvedSet = new Set(unresolved || []);
+      const remaining = (items || []).filter(it => unresolvedSet.has(String(it.jan)));
+      if (remaining.length === 0) {
+        clear();                // 全消し
+      } else {
+        // 一部だけ残す
+        remaining.forEach(it => updateQty(it.jan, it.qty));
+        (items || [])
+          .filter(it => !unresolvedSet.has(String(it.jan)))
+          .forEach(it => updateQty(it.jan, 0));
+      }
+
+      // 5) 遷移
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
         return;
@@ -76,6 +101,16 @@ export default function SimpleCartPanel({ onClose }) {
       alert("カートURLが返ってきませんでした。");
     } catch (e) {
       console.error("[checkout] error:", e);
+      // 6) 失敗時は復元（期限内のみ）
+      try {
+        const until = Number(sessionStorage.getItem(BACKUP_EXPIRES_KEY) || 0);
+        const raw = sessionStorage.getItem(BACKUP_KEY);
+       if (Date.now() < until && raw) {
+          const backup = JSON.parse(raw);
+          clear();
+          (backup || []).forEach(it => updateQty(it.jan, it.qty));
+        }
+      } catch {}
       alert("決済開始に失敗しました: " + (e?.message || e));
     } finally {
       setBusy(false);
