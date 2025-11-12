@@ -371,7 +371,7 @@ export default function RatedPanel({
                 );
               })}
               {list.length === 0 && (
-                <li style={{ color: "#666" }}>まだ「お気に入り」や「評価済み」の商品がありません。</li>
+                <li style={{ color: "#666" }}>まだ「お気に入り」の商品がありません。</li>
               )}
             </ul>
           </div>

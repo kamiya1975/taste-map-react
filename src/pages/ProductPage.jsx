@@ -51,7 +51,7 @@ const notifyParentClosed = (jan_code) => {
 };
 
 /** =========================
- *  お気に入りスター（☆/★ 画像版）→ 評価パネルに格納する版
+ *  お気に入りスター（☆/★ 画像版）→ 評価と排他
  * ========================= */
 function HeartButton({ jan_code, size = 28, hidden = false }) {
   const [fav, setFav] = React.useState(false);
@@ -79,7 +79,7 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
   }, [jan_code]);
 
   const toggle = () => {
-    // 1) favorites を従来通りトグル（RatedPanelでバッジ表示用）
+    // 1) favorites をトグル
     const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
     const willAdd = !favs[jan_code];
     if (willAdd) {
@@ -90,9 +90,26 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
     localStorage.setItem("favorites", JSON.stringify(favs));
     setFav(!!favs[jan_code]);
 
-    // 従来の「お気に入りトグル」通知も維持（既存配線との互換）
+    // 2) ★ON のときは「評価(◎)を即座に消す」→ 排他を保証
+    if (willAdd) {
+      try {
+        const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
+        if (ratings[jan_code]) {
+          delete ratings[jan_code];
+          localStorage.setItem("userRatings", JSON.stringify(ratings));
+        }
+      } catch {}
+      // ProductPage 自身の表示を即更新（◎を0に）
+      try { window.parent?.postMessage({ type: "SET_RATING", jan: jan_code, rating: { rating: 0, date: new Date().toISOString() } }, "*"); } catch {}
+      try {
+        const bc = new BroadcastChannel("product_bridge");
+        bc.postMessage({ type: "SET_RATING", jan: jan_code, rating: { rating: 0, date: new Date().toISOString() }, at: Date.now() });
+        bc.close();
+      } catch {}
+    }
+
+    // 3) 既存互換の通知（★トグル）
     try { window.parent?.postMessage({ type: "TOGGLE_FAVORITE", jan_code }, "*"); } catch {}
-    // 追加：BroadcastChannel で即時通知（同一オリジン内）
     try {
       const bc = new BroadcastChannel("product_bridge");
       bc.postMessage({ type: "SET_FAVORITE", jan: jan_code, value: willAdd, at: Date.now() });
@@ -125,6 +142,7 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
     </button>
   );
 }
+
 
 /** =========================
  *  評価（◎）
