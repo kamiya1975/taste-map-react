@@ -3,7 +3,7 @@ let _cache = null;
 
 // 手元で一時的に上書きしたい GID（任意：開発時の緊急パッチ用）
 const LOCAL_MAP = {
-  "4964044046324": "gid://shopify/ProductVariant/＜42216946794558＞",
+  "4964044046324": "gid://shopify/ProductVariant/42216946794558",
 };
 
 // CRA/Vite 両対応のパブリックパス
