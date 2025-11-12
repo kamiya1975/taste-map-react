@@ -9,11 +9,21 @@ import {
 import PanelHeader from "../ui/PanelHeader";
 import CircleRatingDisplay from "../../components/CircleRatingDisplay";
 
+// ★ 星バッジ（スクショの色味に近い簡易SVG）
+const StarBadge = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" aria-label="飲みたい" title="飲みたい">
+    <circle cx="12" cy="12" r="11" fill="none" stroke="rgba(0,0,0,.25)" strokeWidth="1"/>
+    <path
+      d="M12 4.8l2.02 4.1 4.53.66-3.28 3.2.77 4.5L12 15.9 7.96 17.3l.77-4.5-3.28-3.2 4.53-.66L12 4.8z"
+      fill="#9e2e56"
+    />
+  </svg>
+);
+
 /* =========================
    共通行 ListRow（内蔵）
    ========================= */
 
-// 配列RGB or 文字列を CSS color に正規化
 const toCssColor = (c, fallback) => {
   if (!c) return fallback;
   if (Array.isArray(c)) return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
@@ -42,7 +52,6 @@ function ListRow({
     Number.isFinite(item?.PC2) ? item.PC2 :
     Number.isFinite(item?.SweetAxis) ? item.SweetAxis : null;
 
-  // 表記を YYYY/MM/DD ,HH:MM に統一
   const fmtDateTime = (v) => {
     if (!v) return "（日時不明）";
     try {
@@ -56,7 +65,6 @@ function ListRow({
     } catch { return "（日時不明）"; }
   };
 
-  // タイプは色ブロックのみ
   const TypeBadge = ({ type }) => {
     const colorCSS = toCssColor(TYPE_COLOR_MAP?.[type], accentColor);
     return (
@@ -84,12 +92,12 @@ function ListRow({
         borderRadius: 6,
         background: "transparent",
         position: "relative",
-        paddingRight: 76, // 右下のバッジ分の余白
+        paddingRight: 76,
       }}
       onMouseEnter={(e) => { if (hoverHighlight) e.currentTarget.style.background = "#f6f9ff"; }}
       onMouseLeave={(e) => { if (hoverHighlight) e.currentTarget.style.background = "transparent"; }}
     >
-      {/* 上段：番号 + 日時（番号のすぐ右） */}
+      {/* 上段：番号 + 日時 */}
       <div
         style={{
           display: "flex",
@@ -98,17 +106,9 @@ function ListRow({
           marginBottom: 2,
         }}
       >
-        <strong
-          style={{
-            color: "rgb(50,50,50)",
-            fontSize: 16,
-            fontWeight: 700,
-          }}
-        >
+        <strong style={{ color: "rgb(50,50,50)", fontSize: 16, fontWeight: 700 }}>
           {index}.
         </strong>
-
-        {/* showDate=false の場合は描画しない */}
         {showDate && (
           <span style={{ fontSize: 13, color: "#555" }}>
             {fmtDateTime(dateValue || item?.ratedAt)}
@@ -116,12 +116,12 @@ function ListRow({
         )}
       </div>
 
-      {/* 商品名（番号・日時の下に） */}
+      {/* 商品名 */}
       <div style={{ fontSize: 15, color: "#333", lineHeight: 1.35 }}>
         {item?.商品名 || "（名称不明）"}
       </div>
 
-      {/* 下段：色ブロック / 価格 / Sweet / Body */}
+      {/* 下段：タイプ色 / 価格 / Sweet / Body */}
       <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <TypeBadge type={item?.Type} />
         <small style={{ color: "#444" }}>
@@ -129,7 +129,7 @@ function ListRow({
         </small>
       </div>
 
-      {/* 右下にバッジ（お気に入り◎ + 評価丸） */}
+      {/* 右下のバッジ（★ or ◎） */}
       {extraRight && (
         <div
           style={{
@@ -158,16 +158,14 @@ export default function RatedPanel({
   onClose,
   userRatings,
   data,
-  favorites = {},           // ★ 追加：飲みたいフラグ（JAN→meta）
+  favorites = {},   // JAN → { addedAt }
   onSelectJAN,
 }) {
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
 
   const scrollRef = React.useRef(null);
-  React.useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [sortMode]);
+  React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [sortMode]);
 
   // 採点した順の通し番号（1始まり）
   const rankMap = React.useMemo(() => {
@@ -179,60 +177,76 @@ export default function RatedPanel({
       }))
       .filter((x) => x.rating > 0)
       .sort((a, b) => (a.t - b.t) || a.jan.localeCompare(b.jan));
-
     const m = new Map();
     items.forEach((x, idx) => m.set(x.jan, idx + 1));
     return m;
   }, [userRatings]);
 
-  const wishSet = React.useMemo(() => {
-    try {
-      return new Set(Object.keys(favorites || {}).map(String));
-    } catch {
-      return new Set();
-    }
-  }, [favorites]);
-
-  // 表示リスト（お気に入り優先 → 指定の並び順）
+  // 表示リスト（評価あり + 飲みたいのみ を統合）
   const list = React.useMemo(() => {
-    const arr = Object.entries(userRatings || {})
-      .map(([jan, meta]) => {
-        const rating = Number(meta?.rating) || 0;
-        if (rating <= 0) return null;
-        const it = (data || []).find((d) => String(d.JAN) === String(jan));
+    const wishMap = favorites || {};
+    const wishSet = new Set(Object.keys(wishMap).map(String));
+
+    // 1) 評価あり（rating>0）
+    const bucket = new Map();
+    Object.entries(userRatings || {}).forEach(([jan, meta]) => {
+      const rating = Number(meta?.rating) || 0;
+      if (rating <= 0) return;
+      bucket.set(String(jan), {
+        jan: String(jan),
+        rating,
+        ratedAt: meta?.date ?? null,
+        isWish: wishSet.has(String(jan)),
+      });
+    });
+
+    // 2) 未評価の「飲みたい」
+    wishSet.forEach((jan) => {
+      if (!bucket.has(jan)) {
+        bucket.set(jan, {
+          jan,
+          rating: 0,
+          ratedAt: wishMap[jan]?.addedAt ?? null,
+          isWish: true,
+        });
+      }
+    });
+
+    // 3) data 突合
+    const arr = Array.from(bucket.values())
+      .map((entry) => {
+        const it = (data || []).find((d) => String(d.JAN) === entry.jan);
         if (!it) return null;
-        const isWish = wishSet.has(String(jan)); // ★ 飲みたいフラグ
+        const rankedIndex = rankMap.get(entry.jan) ?? null;
         return {
           ...it,
-          ratedAt: meta?.date ?? null,
-          rating,
-          isWish,
-          displayIndex: rankMap.get(String(jan)) ?? null,
+          ratedAt: entry.ratedAt,
+          rating: entry.rating,
+          isWish: entry.isWish,
+          displayIndex: rankedIndex,
         };
       })
       .filter(Boolean);
 
-    // 第1キー：isWish(desc) —「飲みたい」付きが常に最上位
-    const byWish = (a, b) => (b.isWish === a.isWish) ? 0 : (b.isWish ? 1 : -1);
-
+    // 並び順：タブで切替（常に「飲みたい優先」は維持）
+    const byWish = (a, b) => (b.isWish === a.isWish ? 0 : (b.isWish ? 1 : -1));
     if (sortMode === "rating") {
       arr.sort((a, b) => {
-        const w = byWish(a, b);
-        if (w !== 0) return w;
-        if (b.rating !== a.rating) return b.rating - a.rating;
-        // 評価同点なら新しい日付優先
-        return (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
+        const w = byWish(a, b); if (w !== 0) return w;
+        if (b.rating !== a.rating) return b.rating - a.rating;       // 評価高い順
+        return (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0)); // 同点は新しい順
       });
     } else {
-      // 日付順（新しい→古い）
       arr.sort((a, b) => {
-        const w = byWish(a, b);
-        if (w !== 0) return w;
-        return (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0));
+        const w = byWish(a, b); if (w !== 0) return w;
+        return (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0)); // 新しい順
       });
     }
-    return arr;
-  }, [data, userRatings, sortMode, rankMap, wishSet]);
+
+    // 表示番号：rankMap優先、無ければ上から N, N-1, ...
+    const N = arr.length;
+    return arr.map((x, i) => ({ ...x, displayIndex: x.displayIndex ?? (N - i) }));
+  }, [data, userRatings, favorites, rankMap, sortMode]);
 
   // 右上：並び替えカプセル
   const SortCapsule = (
@@ -281,17 +295,6 @@ export default function RatedPanel({
     </div>
   );
 
-  // お気に入り◎マーク
-  const WishMark = () => (
-    <span
-      aria-label="飲みたい"
-      title="飲みたい"
-      style={{ fontSize: 16, lineHeight: 1, color: "#7a2e39", fontWeight: 700 }}
-    >
-      ◎
-    </span>
-  );
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -332,14 +335,12 @@ export default function RatedPanel({
             }}
           >
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {/* 行の右端：評価ありなら◎、未評価なら★ */}
               {list.map((item, idx) => {
                 const typeColor = TYPE_COLOR_MAP?.[item?.Type] ?? "rgb(180,180,180)";
-                const right = (
-                  <>
-                    {item.isWish && <WishMark />}
-                    <CircleRatingDisplay rating={item.rating} size={35} />
-                  </>
-                );
+                const right = item.rating > 0
+                  ? <CircleRatingDisplay rating={item.rating} size={35} />
+                  : <StarBadge />;
                 return (
                   <ListRow
                     key={`${item.JAN}-${idx}`}
