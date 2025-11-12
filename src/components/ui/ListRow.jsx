@@ -22,14 +22,6 @@ export default function ListRow({
     ? `¥${Number(item.希望小売価格).toLocaleString()}`
     : "—";
 
-  const bodyVal =
-    Number.isFinite(item?.PC1) ? item.PC1 :
-    Number.isFinite(item?.BodyAxis) ? item.BodyAxis : null;
-
-  const sweetVal =
-    Number.isFinite(item?.PC2) ? item.PC2 :
-    Number.isFinite(item?.SweetAxis) ? item.SweetAxis : null;
-
   const fmtDateTime = (v) => {
     if (!v) return "（日時不明）";
     try {
