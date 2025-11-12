@@ -99,7 +99,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
       open={open}
       onClose={onClose}
       hideBackdrop
-      sx={{ zIndex: 1450 }}
+      sx={{ zIndex: 1450, pointerEvents: "none" }}
       BackdropProps={{ style: { background: "transparent", pointerEvents: "none" } }}
       ModalProps={{
         ...drawerModalProps,
@@ -107,6 +107,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
         disableEnforceFocus: true,
         disableAutoFocus: true,
         disableRestoreFocus: true,
+        disableScrollLock: true,
       }}
       PaperProps={{
         style: {
@@ -115,6 +116,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
           display: "flex",
           flexDirection: "column",
         },
+        sx: { pointerEvents: "auto" },
       }}
     >
       <PanelHeader

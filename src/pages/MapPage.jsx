@@ -174,7 +174,7 @@ function MapPage() {
     }
     if (isMapGuideOpen)  { setIsMapGuideOpen(false);  willClose = true; }
     if (isStoreOpen)     { setIsStoreOpen(false);     willClose = true; }
-    if (isSearchOpen)    { setIsSearchOpen(false);    willClose = true; }
+    if (isSearchOpen && !preserveSearch) { setIsSearchOpen(false); willClose = true; }
     if (isFavoriteOpen && !preserveFavorite)  { setIsFavoriteOpen(false);  willClose = true; }
     if (isRatedOpen && !preserveRated)        { setIsRatedOpen(false);     willClose = true; }
     if (isAccountOpen)   { setIsAccountOpen(false);   willClose = true; }
@@ -792,7 +792,7 @@ useEffect(() => {
             navigate("/slider", { state: { from: "anchor" } });
             return;
           }
-          await closeUIsThen({ preserveMyPage: true }); // ★メニューだけ残して前面化
+          await closeUIsThen({ preserveMyPage: true, preserveSearch: true });
           setSelectedJAN(item.JAN);
           setIframeNonce(Date.now());
           setProductDrawerOpen(true);
