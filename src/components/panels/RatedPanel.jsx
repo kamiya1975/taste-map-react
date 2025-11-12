@@ -320,7 +320,7 @@ export default function RatedPanel({
         >
           <PanelHeader
             icon="rate.svg"
-            title="飲んだワイン"
+            title="お気に入り"
             onClose={onClose}
             rightExtra={SortCapsule}
           />
