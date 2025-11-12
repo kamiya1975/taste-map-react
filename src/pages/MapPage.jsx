@@ -904,20 +904,10 @@ useEffect(() => {
         <img src={`${process.env.PUBLIC_URL || ""}/img/search.svg`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
       </button>
 
-      {/* 右サイド: お気に入り */}
-      <button
-        onClick={() => openPanel("favorite")}
-        style={{ /* 110px */ pointerEvents: "auto", position:"absolute", top:"110px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
-        aria-label="お気に入り一覧"
-        title="お気に入り一覧"
-      >
-        <img src={`${process.env.PUBLIC_URL || ""}/img/star.svg`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
-      </button>
-
       {/* 右サイド: 評価 */}
       <button
         onClick={() => openPanel("rated")}
-        style={{ /* 160px */ pointerEvents: "auto", position:"absolute", top:"160px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
+        style={{ /* 110px */ pointerEvents: "auto", position:"absolute", top:"110px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
         aria-label="評価一覧"
         title="評価（◎）一覧"
       >
@@ -927,7 +917,7 @@ useEffect(() => {
       {/* 右サイド: カート */}
       <button
         onClick={() => openPanel("cart")}
-        style={{ /* 210px */ pointerEvents: "auto", position:"absolute", top:"210px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
+        style={{ /* 160px */ pointerEvents: "auto", position:"absolute", top:"160px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
         aria-label="カートを開く"
         title="カートを開く"
       >
