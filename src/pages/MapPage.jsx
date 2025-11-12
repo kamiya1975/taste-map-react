@@ -1116,41 +1116,6 @@ useEffect(() => {
         </div>
       </Drawer>
 
-      {/* カート（SimpleCartPanel） */}
-      <Drawer
-        id="cart-drawer"
-        anchor="bottom"
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        sx={{ zIndex: 1850 }}                // MapGuideより手前/後ろはお好みで
-        BackdropProps={{ style: { background: "transparent" } }}
-        ModalProps={{ ...drawerModalProps, keepMounted: true }}
-        PaperProps={{
-          style: {
-            ...paperBaseStyle,
-            borderTop: "1px solid #c9c9b0",
-            height: DRAWER_HEIGHT,
-            display: "flex",
-            flexDirection: "column",
-            outline: "none",
-          },
-        }}
-      >
-        <PanelHeader
-          title="カート"
-          icon="cart.svg"
-          onClose={() => setCartOpen(false)}
-        />
-        <div
-          className="drawer-scroll"
-          style={{ flex: 1, overflowY: "auto" }}
-          tabIndex={-1}
-          data-autofocus="cart"
-        >
-          <SimpleCartPanel onClose={() => setCartOpen(false)} />
-        </div>
-      </Drawer>
-
       {/* アプリガイド（メニュー） */}
       <Drawer
         anchor="bottom"

@@ -46,12 +46,6 @@ export default function MyPagePanelContent({
 }) {
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
-      {/* 🛒 カート */}
-      <Row
-        icon={ICONS.cart}
-        label="カート"
-        onClick={() => onOpenCart?.()}
-      />
       <Row
         icon={ICONS.mapGuide}
         label="マップガイド"
