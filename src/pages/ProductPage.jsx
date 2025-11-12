@@ -390,7 +390,6 @@ export default function ProductPage() {
     } else {
       payload = { rating: newRating, date: new Date().toISOString() };
       ratings[jan_code] = payload;
-      forceFavoriteOff(jan_code);
     }
     localStorage.setItem("userRatings", JSON.stringify(ratings));
     postToParent({ type: "RATING_UPDATED", jan: jan_code, payload });
@@ -520,7 +519,7 @@ export default function ProductPage() {
             <div style={{ fontSize: 12, color: "#666", alignSelf: "flex-start", lineHeight: 1, position: "relative", top: "-11px", marginLeft: "10px" }}>
               {"飲みたい"}
             </div>
-            <HeartButton jan_code={jan_code} size={28} hidden={rating > 0} />
+            <HeartButton jan_code={jan_code} size={28} />
           </div>
           <div style={{ width: 1, background: "#d9d9d9", marginLeft: "4px", marginRight: "12px", alignSelf: "stretch" }} />
           {/* 右：◎ */}

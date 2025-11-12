@@ -673,6 +673,7 @@ useEffect(() => {
 
       if (type === "RATING_UPDATED") {
         const payload = msg.payload || null;
+
         setUserRatings((prev) => {
           const next = { ...prev };
           if (!payload || !payload.rating) delete next[janStr];
@@ -681,21 +682,6 @@ useEffect(() => {
           return next;
         });
 
-        if (payload && Number(payload.rating) > 0) {
-          setFavorites((prev) => {
-            if (!prev[janStr]) return prev;
-            const next = { ...prev };
-            delete next[janStr];
-            try { localStorage.setItem("favorites", JSON.stringify(next)); } catch {}
-            return next;
-          });
-          try {
-            iframeRef.current?.contentWindow?.postMessage(
-              { type: "SET_FAVORITE", jan: janStr, value: false },
-              "*"
-            );
-          } catch {}
-        }
         // ★ まずスナップショットを送る
         sendSnapshotToChild(janStr, msg.payload || null);
         // ★ さらに評価を明示適用（特に「評価クリア(null)」時のUI遅延対策）
@@ -727,22 +713,6 @@ useEffect(() => {
           try { localStorage.setItem("userRatings", JSON.stringify(next)); } catch {}
           return next;
         });
-
-        if (rating > 0) {
-          setFavorites((prev) => {
-            if (!prev[janStr]) return prev;
-            const next = { ...prev };
-            delete next[janStr];
-            try { localStorage.setItem("favorites", JSON.stringify(next)); } catch {}
-            return next;
-          });
-          try {
-            iframeRef.current?.contentWindow?.postMessage(
-              { type: "SET_FAVORITE", jan: janStr, value: false },
-              "*"
-            );
-          } catch {}
-        }
 
         // ★ スナップショット
         const nextRating = rating > 0 ? { rating, date } : null;
@@ -1097,6 +1067,7 @@ useEffect(() => {
         onClose={async () => { await closeUIsThen(); }}
         userRatings={userRatings}
         data={data}
+        favorites={favorites}
         onSelectJAN={(jan) => {
           closeUIsThen({ preserveMyPage: true, preserveRated: true });
           try { sessionStorage.setItem("tm_from_rated_jan", String(jan)); } catch {}
