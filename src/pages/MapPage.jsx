@@ -164,6 +164,7 @@ function MapPage() {
       preserveMyPage = false,
       preserveFavorite = false,
       preserveRated = false,
+      preserveSearch   = false,
     } = opts;
     let willClose = false;
 
