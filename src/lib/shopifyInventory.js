@@ -63,8 +63,9 @@ export async function checkAvailabilityByJan(items = []) {
   // 2) GID で nodes() 一括取得（分割して叩く）
   for (let i = 0; i < gids.length; i += BATCH) {
     const slice = gids.slice(i, i + BATCH);
-    const res = await fetch(SF_ENDPOINT, {
+    const res = await fetch(`${SF_ENDPOINT}?_=${Date.now()}`, {
       method: "POST",
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         "X-Shopify-Storefront-Access-Token": SF_TOKEN,
