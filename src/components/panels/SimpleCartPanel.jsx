@@ -54,7 +54,7 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
       }
     })();
     return () => { alive = false; };
-  }, [isOpen, itemsKey]); // ← ここがポイント
+  }, [isOpen, itemsKey, items]);
 
   // TasteMap → Shopify へ付与するメタ
   function buildMeta() {
