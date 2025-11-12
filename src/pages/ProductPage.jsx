@@ -51,12 +51,12 @@ const notifyParentClosed = (jan_code) => {
 };
 
 /** =========================
- *  お気に入りスター（☆/★ 画像版）
+ *  お気に入りスター（☆/★ 画像版）→ 評価パネルに格納する版
  * ========================= */
 function HeartButton({ jan_code, size = 28, hidden = false }) {
-  const [fav, setFav] = useState(false);
+  const [fav, setFav] = React.useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const readFav = () => {
       try {
         const obj = JSON.parse(localStorage.getItem("favorites") || "{}");
@@ -79,12 +79,49 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
   }, [jan_code]);
 
   const toggle = () => {
+    // 1) favorites を従来通りトグル（RatedPanelでバッジ表示用）
     const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
-    if (favs[jan_code]) delete favs[jan_code];
-    else favs[jan_code] = { addedAt: new Date().toISOString() };
+    const willAdd = !favs[jan_code];
+    if (willAdd) {
+      favs[jan_code] = { addedAt: new Date().toISOString() };
+    } else {
+      delete favs[jan_code];
+    }
     localStorage.setItem("favorites", JSON.stringify(favs));
     setFav(!!favs[jan_code]);
-    postToParent({ type: "TOGGLE_FAVORITE", jan_code });
+
+    // 2) ★ON のときは userRatings に最低評価(=1)を登録 → 評価パネルに出す
+    //    ★OFF のときは「wish起源かつ rating===1」なら userRatings から取り消し
+    try {
+      const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
+      const cur = ratings[jan_code];
+
+      if (willAdd) {
+        const nextRating = Math.max(Number(cur?.rating || 0), 1);
+        ratings[jan_code] = {
+          rating: nextRating,
+          date: cur?.date || new Date().toISOString(),
+          source: cur?.source || "wish", // ← ハート由来の印
+        };
+      } else {
+        // 明示採点（Circle）で上書き済みなら残す。wish由来の最低評価だけは消す。
+        if (cur && cur.source === "wish" && Number(cur.rating) === 1) {
+          delete ratings[jan_code];
+        }
+      }
+      localStorage.setItem("userRatings", JSON.stringify(ratings));
+
+      // 3) 親/他フレームへ通知（パネル再描画用）
+      try { window.parent?.postMessage({ type: "RATING_UPDATED", jan: jan_code, payload: ratings[jan_code] || null }, "*"); } catch {}
+      try {
+        const bc = new BroadcastChannel("product_bridge");
+        bc.postMessage({ type: "RATING_UPDATED", jan: jan_code, payload: ratings[jan_code] || null, at: Date.now() });
+        bc.close();
+      } catch {}
+    } catch {}
+
+    // 従来の「お気に入りトグル」通知も維持（既存配線との互換）
+    try { window.parent?.postMessage({ type: "TOGGLE_FAVORITE", jan_code }, "*"); } catch {}
   };
 
   return (
@@ -101,7 +138,7 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
         cursor: hidden ? "default" : "pointer",
         visibility: hidden ? "hidden" : "visible",
       }}
-      title={fav ? "お気に入りに登録済み" : "お気に入りに追加"}
+      title={fav ? "お気に入りに登録済み（評価にも反映）" : "お気に入りに追加（評価にも反映）"}
     >
       <img
         src={`${process.env.PUBLIC_URL || ""}${fav ? "/img/store.svg" : "/img/store2.svg"}`}
