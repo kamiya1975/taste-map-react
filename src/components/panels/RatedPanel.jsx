@@ -123,11 +123,16 @@ function ListRow({
       </div>
 
       {/* 下段：タイプ色 / 価格 / Sweet / Body */}
-      <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div style={{ 
+             marginTop: 6, 
+             display: "flex", 
+             alignItems: "center", 
+             gap: 10, 
+             flexWrap: "wrap" 
+          }}
+      >
         <TypeBadge type={item?.Type} />
-        <small style={{ color: "#444" }}>
-          {price}　 Sweet: {sweetVal != null ? sweetVal.toFixed(2) : "—"} / Body: {bodyVal != null ? bodyVal.toFixed(2) : "—"}
-        </small>
+        <small style={{ color: "#444" }}>{price}</small>
       </div>
 
       {/* 右下のバッジ（★ or ◎） */}

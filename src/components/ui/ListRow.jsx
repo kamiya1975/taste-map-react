@@ -123,9 +123,7 @@ export default function ListRow({
         }}
       >
         <TypeBadge type={item?.Type} />
-        <small style={{ color: "#444" }}>
-          {price}　 Sweet: {sweetVal != null ? sweetVal.toFixed(2) : "—"} / Body: {bodyVal != null ? bodyVal.toFixed(2) : "—"}
-        </small>
+        <small style={{ color: "#444" }}>{price}</small>
       </div>
 
       {/* 右下に◎を固定 */}
