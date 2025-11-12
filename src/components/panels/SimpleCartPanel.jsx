@@ -3,7 +3,6 @@ import React, { useMemo } from "react";
 import { useSimpleCart } from "../../cart/simpleCart";
 import { buildCartUrl } from "../../cart/buildCartUrl";
 import { createCartWithMeta } from "../../lib/shopifyCart";
-const SHOP_READY = !!(process.env.REACT_APP_SHOPIFY_STOREFRONT_TOKEN && process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN);
 
 // 環境変数からドメインを取得（CRA/Vite の両対応＋最後にハードコードfallback）
 const SHOP_DOMAIN =
