@@ -287,8 +287,11 @@ function ProductInfoSection() {
         <div style={{ fontSize: 14, lineHeight: 1.9 }}>
           {[
             ["タイプ", "赤ワイン"],
-            ["生産者名", "（サンプル）"],
+            ["生産者名", "シャトームートン・ロートシルト"],
             ["容量", "750ml"],
+            ["国", "フランス"],
+            ["産地", "ボルドー"],
+            ["成分検査年", "2024年：酒類総合情報センター調べ"],
           ].map(([label, value]) => (
             <div key={label} style={{ display: "flex", marginTop: 2 }}>
               <div style={{ width: 96, flexShrink: 0 }}>{label}</div>
