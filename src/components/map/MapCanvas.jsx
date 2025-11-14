@@ -533,7 +533,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       getIcon: () => "centroid",
 
       sizeUnits: "meters",
-      getSize: 1.2,          // ★ アイコンの大きさ（必要なら調整）
+      getSize: 0.8,          // ★ アイコンの大きさ（必要なら調整）
       billboard: true,
       pickable: false,
       parameters: { depthTest: false },
