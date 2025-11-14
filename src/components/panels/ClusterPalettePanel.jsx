@@ -99,7 +99,7 @@ export default function ClusterPalettePanel({
                     width: 12,
                     height: 12,
                     borderRadius: "50%",
-                    border: "1px solid #c9c9b0",
+                    filter: "drop-shadow(0 0 0.5px rgba(0,0,0,0.10))",
                     background: rgbaToCss(color),
                   }}
                 />
