@@ -28,7 +28,6 @@ const xOf   = (d) => Number.isFinite(d?.umap_x) ? d.umap_x : d?.UMAP1;
 const yOf   = (d) => Number.isFinite(d?.umap_y) ? d.umap_y : d?.UMAP2;
 
 const ANCHOR_JAN = "4964044046324";
-const UMAP_CENTROID_TEST = [2.4342, 7.0638]; // 固定重心マーク位置
 
 // （嗜好重心ピン）
 const makePinSVG = ({
@@ -503,43 +502,6 @@ const MapCanvas = forwardRef(function MapCanvas(
     });
   }, [userPin]);
 
-  // --- レイヤ：UMAP 全体重心マーク（固定座標） ---
-  const centroidTestLayer = useMemo(() => {
-    const [cx, cy] = UMAP_CENTROID_TEST;
-    if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
-
-    return new IconLayer({
-      id: "umap-centroid-test",
-      data: [
-        {
-          position: [cx, -cy, 0],   // DeckGL座標は y 反転
-          name: "centroid",
-        },
-      ],
-
-      iconAtlas: (process.env.PUBLIC_URL || "") + "/img/compass512.png",
-      // アイコンは1つだけなので mapping は固定値でOK
-      iconMapping: {
-        centroid: {
-          x: 0,
-          y: 0,
-          width: 512,
-          height: 512,
-          anchorX: 256,  // 中心揃え
-          anchorY: 256,
-        },
-      },
-
-      getIcon: () => "centroid",
-
-      sizeUnits: "meters",
-      getSize: 0.6,          // ★ アイコンの大きさ（必要なら調整）
-      billboard: true,
-      pickable: false,
-      parameters: { depthTest: false },
-    });
-  }, []);
-
   // --- レイヤ：基準のワイン（常時表示のコンパス） ---
   const anchorCompassLayer = useMemo(() => {
     const item = data.find(d => String(d.JAN) === ANCHOR_JAN);
@@ -780,7 +742,6 @@ const MapCanvas = forwardRef(function MapCanvas(
 
         // ピン/コンパス
         userPinCompassLayer,
-        centroidTestLayer,   // UMAP重心マーク
         compassLayer,
         anchorCompassLayer,
 
