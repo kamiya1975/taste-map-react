@@ -132,7 +132,7 @@ export default function ClusterPalettePanel({
           </div>
 
           <p style={{ marginTop: 12, color: "#666", fontSize: 12 }}>
-            ※ 色分けと名称は、ワインの風味データをもとに科学的に分類したものです。
+            ※ 色分けと名称は、科学的な風味データをもとに分類したものです。
           </p>
         </div>
       ) : (
