@@ -28,7 +28,7 @@ const xOf   = (d) => Number.isFinite(d?.umap_x) ? d.umap_x : d?.UMAP1;
 const yOf   = (d) => Number.isFinite(d?.umap_y) ? d.umap_y : d?.UMAP2;
 
 const ANCHOR_JAN = "4964044046324";
-const UMAP_CENTROID_TEST = [2.4342, 7.0638]; // ★ テスト用の固定重心
+const UMAP_CENTROID_TEST = [2.4342, 7.0638]; // 固定重心マーク位置
 
 // （嗜好重心ピン）
 const makePinSVG = ({
@@ -503,22 +503,38 @@ const MapCanvas = forwardRef(function MapCanvas(
     });
   }, [userPin]);
 
-  // --- レイヤ：テスト用 UMAP 全体重心マーク（固定座標） ---
+  // --- レイヤ：UMAP 全体重心マーク（固定座標） ---
   const centroidTestLayer = useMemo(() => {
     const [cx, cy] = UMAP_CENTROID_TEST;
     if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
 
-    return new ScatterplotLayer({
+    return new IconLayer({
       id: "umap-centroid-test",
-      data: [{ position: [cx, -cy, 0] }], // ★ DeckGLでは y を反転
-      getPosition: d => d.position,
-      getFillColor: [0, 0, 0, 220],       // 濃いめの黒
-      radiusUnits: "meters",
-      getRadius: 0.22,                    // 大きさはお好みで調整
-      stroked: true,
-      getLineColor: [255, 255, 255, 230], // 白縁
-      getLineWidth: 1.5,
-      lineWidthUnits: "pixels",
+      data: [
+        {
+          position: [cx, -cy, 0],   // DeckGL座標は y 反転
+          name: "centroid",
+        },
+      ],
+
+      iconAtlas: (process.env.PUBLIC_URL || "") + "/img/compass512.png",
+      // アイコンは1つだけなので mapping は固定値でOK
+      iconMapping: {
+        centroid: {
+          x: 0,
+          y: 0,
+          width: 512,
+          height: 512,
+          anchorX: 256,  // 中心揃え
+          anchorY: 256,
+        },
+      },
+
+      getIcon: () => "centroid",
+
+      sizeUnits: "meters",
+      getSize: 1.2,          // ★ アイコンの大きさ（必要なら調整）
+      billboard: true,
       pickable: false,
       parameters: { depthTest: false },
     });
@@ -764,7 +780,7 @@ const MapCanvas = forwardRef(function MapCanvas(
 
         // ピン/コンパス
         userPinCompassLayer,
-        centroidTestLayer,   // ★ テスト用 UMAP重心マーク
+        centroidTestLayer,   // UMAP重心マーク
         compassLayer,
         anchorCompassLayer,
 
