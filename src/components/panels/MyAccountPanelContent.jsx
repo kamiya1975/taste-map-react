@@ -1,4 +1,4 @@
-// src/components/panels/MyMyAccountPanelContent.jsx
+// src/components/panels/MyAccountPanelContent.jsx
 import React, { useEffect, useState } from "react";
 import { setUserId } from "../../utils/auth";
 
