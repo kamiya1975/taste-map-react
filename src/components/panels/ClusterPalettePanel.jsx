@@ -101,7 +101,6 @@ export default function ClusterPalettePanel({
                     borderRadius: "50%",
                     border: "1px solid #c9c9b0",
                     background: rgbaToCss(color),
-                    flex: "0 0 28px",
                   }}
                 />
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
