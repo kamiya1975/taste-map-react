@@ -1045,7 +1045,7 @@ useEffect(() => {
       <ClusterPalettePanel
         isOpen={isClusterOpen}
         onClose={() => setIsClusterOpen(false)}
-        height="calc(50svh - env(safe-area-inset-bottom))" //ドロワー高さ調整
+        height={DRAWER_HEIGHT}
         onPickCluster={centerToCluster}
         availableIds={clusterList} // 追加：存在クラスターのみ出す場合
       />
