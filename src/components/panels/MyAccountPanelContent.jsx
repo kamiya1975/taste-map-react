@@ -69,24 +69,15 @@ export default function MyMyAccountPanelContent() {
   const [birthMonth, setBirthMonth] = useState("");
   const [gender, setGender] = useState("");
   const [agreed, setAgreed] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // ★ ログイン状態
 
   useEffect(() => {
     try {
-      const storedNickname = localStorage.getItem("user.nickname") || "";
-      const storedId = localStorage.getItem("user.id") || "";
-      const storedBirthYear = localStorage.getItem("user.birthYear") || "";
-      const storedBirthMonth = localStorage.getItem("user.birthMonth") || "";
-      const storedGender = localStorage.getItem("user.gender") || "";
-      const storedAgreed = (localStorage.getItem("user.agreed") || "") === "1";
-
-      setNickname(storedNickname);
-      setEmail(storedId);
-      setBirthYear(storedBirthYear);
-      setBirthMonth(storedBirthMonth);
-      setGender(storedGender);
-      setAgreed(storedAgreed);
-      setIsLoggedIn(!!storedId); // ★ ID があればログイン中扱い
+      setNickname(localStorage.getItem("user.nickname") || "");
+      setEmail(localStorage.getItem("user.id") || "");
+      setBirthYear(localStorage.getItem("user.birthYear") || "");
+      setBirthMonth(localStorage.getItem("user.birthMonth") || "");
+      setGender(localStorage.getItem("user.gender") || "");
+      setAgreed((localStorage.getItem("user.agreed") || "") === "1");
     } catch {}
   }, []);
 
@@ -115,68 +106,18 @@ export default function MyMyAccountPanelContent() {
       if (password) localStorage.setItem("user.pass", password);
       setUserId(email.trim());
       setPassword("");
-      setIsLoggedIn(true); // ★ 保存＝ログイン状態に
       alert("保存しました。");
     } catch {
       alert("保存に失敗しました。");
     }
   };
 
-  const handleLogout = () => {
-    if (!isLoggedIn) return;
-    if (!window.confirm("ログアウトしますか？\n端末に保存されたプロフィール情報も削除されます。")) {
-      return;
-    }
-
-    try {
-      // user.* を削除
-      localStorage.removeItem("user.nickname");
-      localStorage.removeItem("user.id");
-      localStorage.removeItem("user.birthYear");
-      localStorage.removeItem("user.birthMonth");
-      localStorage.removeItem("user.gender");
-      localStorage.removeItem("user.agreed");
-      localStorage.removeItem("user.pass");
-
-      // 画面上の状態もリセット
-      setNickname("");
-      setEmail("");
-      setBirthYear("");
-      setBirthMonth("");
-      setGender("");
-      setAgreed(false);
-      setPassword("");
-      setUserId(""); // ★ アプリ側にも「ログアウト」を通知
-      setIsLoggedIn(false);
-
-      alert("ログアウトしました。");
-    } catch {
-      alert("ログアウトに失敗しました。");
-    }
-  };
-
-  const row = {
-    display: "grid",
-    gridTemplateColumns: "110px 1fr",
-    gap: 12,
-    alignItems: "center",
-    padding: "16px",
-    borderBottom: "1px solid #eee",
-  };
+  const row = { display: "grid", gridTemplateColumns: "110px 1fr", gap: 12, alignItems: "center", padding: "16px", borderBottom: "1px solid #eee" };
   const label = { fontSize: 13, color: "#666" };
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: 16, background: "#fff" }}>
-      <div
-        style={{
-          background: "#fff",
-          border: "1px solid #e7e7e7",
-          borderRadius: 12,
-          overflow: "hidden",
-          maxWidth: 560,
-          margin: "0 auto",
-        }}
-      >
+      <div style={{ background: "#fff", border: "1px solid #e7e7e7", borderRadius: 12, overflow: "hidden", maxWidth: 560, margin: "0 auto" }}>
         {/* ニックネーム */}
         <div style={row}>
           <div style={label}>ニックネーム</div>
@@ -200,15 +141,7 @@ export default function MyMyAccountPanelContent() {
             />
             <button
               onClick={() => setShowPassword((v) => !v)}
-              style={{
-                position: "absolute",
-                right: 0,
-                top: "50%",
-                transform: "translateY(-50%)",
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-              }}
+              style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", border: "none", background: "transparent" }}
             >
               {showPassword ? "●" : "◯"}
             </button>
@@ -250,73 +183,14 @@ export default function MyMyAccountPanelContent() {
       <div style={{ maxWidth: 560, margin: "14px auto 0", textAlign: "center" }}>
         <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
           <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-          <span>
-            <a href="/terms" target="_blank" rel="noreferrer">
-              利用規約
-            </a>
-            に同意します
-          </span>
+          <span><a href="/terms" target="_blank">利用規約</a>に同意します</span>
         </label>
       </div>
 
       {/* 保存ボタン */}
       <div style={{ maxWidth: 560, margin: "12px auto 0" }}>
-        <button
-          onClick={handleSave}
-          disabled={!agreed}
-          style={{
-            width: "100%",
-            padding: 14,
-            borderRadius: 12,
-            border: "none",
-            backgroundColor: agreed ? "#111" : "#ccc",
-            color: "#fff",
-            fontSize: 15,
-            cursor: agreed ? "pointer" : "default",
-          }}
-        >
+        <button onClick={handleSave} disabled={!agreed} style={{ width: "100%", padding: 14, borderRadius: 12 }}>
           保存
-        </button>
-      </div>
-
-      {/* ログイン状態 & ログアウトボタン */}
-      <div
-        style={{
-          maxWidth: 560,
-          margin: "16px auto 0",
-          padding: "10px 4px 0",
-          fontSize: 13,
-          color: "#666",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-        }}
-      >
-        <div>
-          <span style={{ fontWeight: 600 }}>ログイン状態：</span>
-          {isLoggedIn ? (
-            <span>
-              ログイン中
-              {email ? `（${email}）` : ""}
-            </span>
-          ) : (
-            <span>ログアウト中</span>
-          )}
-        </div>
-        <button
-          onClick={handleLogout}
-          disabled={!isLoggedIn}
-          style={{
-            padding: "8px 14px",
-            borderRadius: 999,
-            border: "1px solid #ddd",
-            backgroundColor: isLoggedIn ? "#f5f5f5" : "#fafafa",
-            cursor: isLoggedIn ? "pointer" : "default",
-            fontSize: 13,
-          }}
-        >
-          ログアウト
         </button>
       </div>
     </div>
