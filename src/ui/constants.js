@@ -25,7 +25,7 @@ export const paperBaseStyle = {
 // ===== Map共通 =====
 export const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 export const CENTER_Y_OFFSET = -3.5;
-export const ZOOM_LIMITS = { min: 5.5, max: 7.25 };
+export const ZOOM_LIMITS = { min: 4.5, max: 8.00 };
 export const INITIAL_ZOOM = 5.5;
 
 // 打点カラー
