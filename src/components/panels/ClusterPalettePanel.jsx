@@ -92,8 +92,8 @@ export default function ClusterPalettePanel({
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPickCluster?.(id); }}
               >
                 <div
-                  title={`Cluster ${id}`}
-                  aria-label={`Cluster ${id}`}
+                  title={name || "クラスタ"}
+                  aria-label={name || "クラスタ"}
                   style={{
                     width: 28,
                     height: 28,
@@ -105,7 +105,7 @@ export default function ClusterPalettePanel({
                 />
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   <div style={{ fontSize: 13, color: "#222", fontWeight: 600, lineHeight: 1.2 }}>
-                    {id}. {name || `Cluster_${id}`}
+                    {name || "クラスタ"}
                   </div>
                   {hint ? (
                     <div
