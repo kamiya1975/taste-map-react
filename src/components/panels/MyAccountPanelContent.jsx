@@ -187,13 +187,17 @@ export default function MyMyAccountPanelContent() {
     try {
       const token = localStorage.getItem("app.access_token") || "";
 
-      const res = await fetch(`${API_BASE}/api/app/users/save`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        `${API_BASE}/api/app/users/save?v=20251115`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const data = await res.json().catch(() => ({}));
 
