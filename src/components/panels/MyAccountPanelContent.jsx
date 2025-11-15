@@ -188,7 +188,7 @@ export default function MyMyAccountPanelContent() {
       const token = localStorage.getItem("app.access_token") || "";
 
       const res = await fetch(
-        `${API_BASE}/api/app/users/save?v=20251115`,
+        `${API_BASE}/api/app/users/save`,
         {
           method: "POST",
           headers: {
