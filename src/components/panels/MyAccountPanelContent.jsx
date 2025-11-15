@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { setUserId } from "../../utils/auth";
 
 // APIベースURL（.env の REACT_APP_API_BASE_URL があればそれを使う）
-const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
+const API_BASE = process.env.REACT_APP_API_BASE_URL;
 
 // メール形式チェック
 const isEmail = (s) => /^\S+@\S+\.\S+$/.test(String(s || "").trim());
@@ -189,7 +189,6 @@ export default function MyMyAccountPanelContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(payload),
       });
