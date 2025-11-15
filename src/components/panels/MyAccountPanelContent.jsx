@@ -3,7 +3,9 @@ import React, { useEffect, useState } from "react";
 import { setUserId } from "../../utils/auth";
 
 // APIベースURL（.env の REACT_APP_API_BASE_URL があればそれを使う）
-const API_BASE = process.env.REACT_APP_API_BASE_URL;
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
+
+console.log("[MyAccount] API_BASE =", API_BASE, "origin =", window.location.origin);
 
 // メール形式チェック
 const isEmail = (s) => /^\S+@\S+\.\S+$/.test(String(s || "").trim());
