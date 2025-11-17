@@ -82,79 +82,73 @@ export default function ClusterPalettePanel({
               rowGap: 12,
             }}
           >
-            {entries.map(({ id, color, name, hint }) => (
+          {entries.map(({ id, color, name, hint }) => (
+            <div
+              key={id}
+              style={{
+                position: "relative",
+                padding: "12px 12px 10px 40px",   // 左を大きめにあける
+                borderRadius: 18,
+                background: "#fff",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+               cursor: onPickCluster ? "pointer" : "default",
+              }}
+              role="button"
+              tabIndex={0}
+              onClick={() => onPickCluster?.(id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") onPickCluster?.(id);
+              }}
+            >
+              {/* 丸い色チップ（テキストの下に少し潜らせる） */}
               <div
-                key={id}
+                title={name || "クラスタ"}
+                aria-label={name || "クラスタ"}
                 style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "10px 10px",
-                  borderRadius: 18,
-                  background: "#fff",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
-                  cursor: onPickCluster ? "pointer" : "default",
+                  position: "absolute",
+                  left: 12,
+                  top: 12,
+                  width: 26,
+                  height: 26,
+                  borderRadius: "50%",
+                  background: rgbaToCss(color),
+                  boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
+                  zIndex: 0,           // 下のレイヤー
                 }}
-                role="button"
-                tabIndex={0}
-                onClick={() => onPickCluster?.(id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") onPickCluster?.(id);
-                }}
-              >
-                {/* 丸い色チップ（大きめ） */}
-                <div
-                  title={name || "クラスタ"}
-                  aria-label={name || "クラスタ"}
-                  style={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: "50%",
-                    background: rgbaToCss(color),
-                    boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
-                    flexShrink: 0,
-                  }}
-                />
+              />
 
-                {/* テキスト部分 */}
+              {/* テキスト（丸の上に乗せる） */}
+              <div style={{ position: "relative", zIndex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    minWidth: 0,
+                    fontSize: 14,
+                    color: "#222",
+                    fontWeight: 700,
+                    lineHeight: 1.3,
                   }}
                 >
+                  {name || "クラスタ"}
+                </div>
+                {hint && (
                   <div
                     style={{
-                      fontSize: 13,
-                      color: "#222",
-                      fontWeight: 700,
-                      lineHeight: 1.3,
-                    }}
+                      fontSize: 12,
+                      color: "#555",
+                      lineHeight: 1.4,
+                      marginTop: 4,
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                   }}
+                    title={hint}
                   >
-                    {name || "クラスタ"}
+                    {hint}
                   </div>
-                  {hint ? (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "#555",
-                        lineHeight: 1.4,
-                        marginTop: 4,
-                        overflow: "hidden",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,        // 説明文を最大2行まで
-                        WebkitBoxOrient: "vertical",
-                      }}
-                      title={hint}
-                    >
-                      {hint}
-                    </div>
-                  ) : null}
-                </div>
+                )}
               </div>
-            ))}
+            </div>
+          ))}
           </div>
 
           <p style={{ marginTop: 12, color: "#666", fontSize: 12 }}>
