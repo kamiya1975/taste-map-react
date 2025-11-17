@@ -845,8 +845,8 @@ useEffect(() => {
             src={`${process.env.PUBLIC_URL || ""}/img/icon colour.png`}
             alt=""
             style={{
-              width: "70%",
-              height: "70%",
+              width: "90%",
+              height: "90%",
               objectFit: "contain",
               display: "block",
               pointerEvents: "none",

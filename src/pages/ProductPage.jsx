@@ -534,8 +534,8 @@ export default function ProductPage() {
             src={`${process.env.PUBLIC_URL || ""}/img/icon cart2.png`}
             alt="cart"
             style={{
-              width: 18,
-              height: 18,
+              width: 24,
+              height: 24,
               objectFit: "contain",
               display: "block",
             }}
