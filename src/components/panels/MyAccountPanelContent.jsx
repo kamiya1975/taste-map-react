@@ -760,7 +760,7 @@ export default function MyAccountPanelContent() {
               disabled={!agreed || saving}
               style={{ width: "100%", padding: 14, borderRadius: 12 }}
             >
-              {saving ? "保存中..." : "保存"}
+              {saving ? "新規登録中..." : "新規登録"}
             </button>
           </div>
         </>
