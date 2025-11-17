@@ -109,13 +109,13 @@ export default function ClusterPalettePanel({
                   position: "absolute",
                   left: 8,
                   top: 8,
-                  width: 24,
-                  height: 24,
+                  width: 28,
+                  height: 28,
                   borderRadius: "50%",
                   background: rgbaToCss(color),
                   boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
                   zIndex: 0,           // 下のレイヤー
-                  opacity: 0.6,   //半透明化
+                  opacity: 0.8,   //半透明化
                 }}
               />
 
