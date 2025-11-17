@@ -512,7 +512,7 @@ export default function ProductPage() {
           style={{
             marginTop: 16,
             width: "100%",
-            padding: "18px 20px",
+            padding: "8px 20px",
             lineHeight: 1.2,
             background: "rgb(230,227,219)",   // 生成ボタンと同じ
             color: "#000",
