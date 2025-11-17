@@ -796,20 +796,6 @@ useEffect(() => {
             <option value="PC2">甘味</option>
             <option value="PC1">ボディ</option>
           </select>
-          <span
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              right: 8,
-              top: "50%",
-              transform: "translateY(-50%)",
-              pointerEvents: "none",
-              fontSize: 12,
-              color: "#666",
-            }}
-          >
-            ▼
-          </span>
         </div>
 
         {/* クラスタ配色ボタン（右横配置） */}
@@ -842,8 +828,8 @@ useEffect(() => {
             src={`${process.env.PUBLIC_URL || ""}/img/icon colour.png`}
             alt=""
             style={{
-              width: "120%",
-              height: "120%",
+              width: "100%",
+              height: "100%",
               objectFit: "contain",
               display: "block",
               pointerEvents: "none",
@@ -854,7 +840,6 @@ useEffect(() => {
           />
         </button>
       </div>
-      {/* 左下の旧カートFABは削除 */}
 
       {/* 右上: アプリガイド */}
       <button
