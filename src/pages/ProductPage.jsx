@@ -512,30 +512,30 @@ export default function ProductPage() {
           style={{
             marginTop: 16,
             width: "100%",
-           padding: "14px 16px",
+            padding: "14px 16px",
             lineHeight: 1.2,
             background: "rgb(230,227,219)",   // 生成ボタンと同じ
             color: "#000",
             border: "none",
             borderRadius: 10,
-            fontSize: 15,
+            fontSize: 17,
             fontWeight: 700,
             cursor: "pointer",
-            boxShadow: "0 4px 10px rgba(0,0,0,0.18)",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
             WebkitBackdropFilter: "blur(2px)",
             backdropFilter: "blur(2px)",
             display: "flex",              // ← 追加
             alignItems: "center",         // ← 追加
             justifyContent: "center",     // ← 追加
-            gap: 8,                       // ← 追加（アイコンとの余白）
+            gap: 10,                       // ← 追加（アイコンとの余白）
           }}
         >
           <img
             src={`${process.env.PUBLIC_URL || ""}/img/icon cart2.png`}
             alt="cart"
             style={{
-              width: 40,
-              height: 40,
+              width: 20,
+              height: 20,
               objectFit: "contain",
               display: "block",
             }}
