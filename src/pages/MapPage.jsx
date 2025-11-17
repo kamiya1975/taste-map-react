@@ -1084,7 +1084,11 @@ function MapPage() {
         open={cartOpen}
         onClose={() => setCartOpen(false)}
         sx={{ zIndex: 1850 }}                // MapGuideより手前/後ろはお好みで
-        BackdropProps={{ style: { background: "transparent" } }}
+        BackdropProps={{ 
+          style: { 
+            background: "transparent",
+            pointerEvents: "none",
+          } }}
         ModalProps={{ ...drawerModalProps, keepMounted: true }}
         PaperProps={{
           style: {
