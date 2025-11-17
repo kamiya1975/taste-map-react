@@ -790,9 +790,6 @@ useEffect(() => {
               border: "0.5px solid #000",
               borderRadius: "6px",
               outline: "none",
-              appearance: "none",
-              WebkitAppearance: "none",
-              MozAppearance: "none",
             }}
           >
             <option value="">基本マップ</option>
@@ -845,8 +842,8 @@ useEffect(() => {
             src={`${process.env.PUBLIC_URL || ""}/img/icon colour.png`}
             alt=""
             style={{
-              width: "100%",
-              height: "100%",
+              width: "120%",
+              height: "120%",
               objectFit: "contain",
               display: "block",
               pointerEvents: "none",
