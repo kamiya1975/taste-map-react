@@ -1083,13 +1083,20 @@ function MapPage() {
         anchor="bottom"
         open={cartOpen}
         onClose={() => setCartOpen(false)}
-        sx={{ zIndex: 1850 }}                // MapGuideより手前/後ろはお好みで
+        sx={{ zIndex: 1850, pointerEvents: "none" }}                // MapGuideより手前/後ろはお好みで
         BackdropProps={{ 
           style: { 
             background: "transparent",
             pointerEvents: "none",
           } }}
-        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        ModalProps={{ 
+          ...drawerModalProps, 
+          keepMounted: true,
+          disableEnforceFocus: true,   // ★ フォーカスロック解除
+          disableAutoFocus: true,      // ★ 自動フォーカス抑止
+          disableRestoreFocus: true,   // ★ フォーカス復元抑止
+          disableScrollLock: true,
+        }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
@@ -1099,6 +1106,7 @@ function MapPage() {
             flexDirection: "column",
             outline: "none",
           },
+          sx: { pointerEvents: "auto" },
         }}
       >
         <PanelHeader
@@ -1112,7 +1120,10 @@ function MapPage() {
           tabIndex={-1}
           data-autofocus="cart"
         >
-          <SimpleCartPanel onClose={() => setCartOpen(false)} />
+          {/* ★ isOpen を渡しておくと在庫チェックの依存が素直になる */}
+          <SimpleCartPanel
+            isOpen={cartOpen}
+            onClose={() => setCartOpen(false)} />
         </div>
       </Drawer>
 
