@@ -531,7 +531,7 @@ export default function ProductPage() {
           }}
         >
           <img
-            src={`${process.env.PUBLIC_URL || ""}/img/cart2.png`}
+            src={`${process.env.PUBLIC_URL || ""}/img/icon cart2.png`}
             alt="cart"
             style={{
               width: 18,

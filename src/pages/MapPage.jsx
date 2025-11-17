@@ -829,7 +829,7 @@ useEffect(() => {
           style={{
             width: "30px",
             height: "30px",
-            background: "transparent",
+            background: "#fff",
             border: "0.5px solid #000",
             borderRadius: "6px",
             cursor: "pointer",
