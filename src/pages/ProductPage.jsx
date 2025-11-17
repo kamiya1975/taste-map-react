@@ -528,7 +528,7 @@ export default function ProductPage() {
             display: "flex",              // ← 追加
             alignItems: "center",         // ← 追加
             justifyContent: "center",     // ← 追加
-            gap: 10,                       // ← 追加（アイコンとの余白）
+            gap: 6,                       // ← 追加（アイコンとの余白）
           }}
         >
           <img
