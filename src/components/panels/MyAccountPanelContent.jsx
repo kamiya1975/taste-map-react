@@ -512,6 +512,7 @@ export default function MyAccountPanelContent() {
           maxWidth: 560,
           margin: "0 auto 24px",
           fontSize: 13,
+          textAlign: "center",
         }}
       >
         {/* パスワードを忘れた方（見出しだけ → 押すと入力が出る） */}
@@ -520,6 +521,7 @@ export default function MyAccountPanelContent() {
             padding: "12px 0 0",
             borderTop: "1px dashed #ddd",
             marginTop: 12,
+            textAlign: "center",
           }}
         >
           <button
@@ -579,6 +581,7 @@ export default function MyAccountPanelContent() {
             padding: "12px 0 0",
             borderTop: "1px dashed #ddd",
             marginTop: 12,
+            textAlign: "center",
           }}
         >
           <button
