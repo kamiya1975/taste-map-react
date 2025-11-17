@@ -178,7 +178,8 @@ function MapPage() {
 
     // ★ クラスタパネルは preserveCluster=true のときは閉じない
     if (isClusterOpen && !preserveCluster) { 
-      setIsClusterOpen(false);   
+      setIsClusterOpen(false);
+      setClusterCollapseKey(null);
       willClose = true; 
     }
 
@@ -801,6 +802,7 @@ function MapPage() {
               setIsClusterOpen(true);
             } else {
              setIsClusterOpen(false);
+             setClusterCollapseKey(null);
             }
             setClusterColorMode(next);
           }}
@@ -1022,7 +1024,10 @@ function MapPage() {
 
       <ClusterPalettePanel
         isOpen={isClusterOpen}
-        onClose={() => setIsClusterOpen(false)}
+         onClose={() => {
+          setIsClusterOpen(false);
+          setClusterCollapseKey(null);
+         }}
         height={DRAWER_HEIGHT}
         onPickCluster={centerToCluster}
         availableIds={clusterList} // 追加：存在クラスターのみ出す場合
