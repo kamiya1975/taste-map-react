@@ -87,7 +87,7 @@ export default function ClusterPalettePanel({
               key={id}
               style={{
                 position: "relative",
-                padding: "12px 12px 10px 40px",   // 左を大きめにあける
+                padding: "12px 12px 10px 34px",   // 左を大きめにあける
                 borderRadius: 18,
                 background: "#fff",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
@@ -107,9 +107,9 @@ export default function ClusterPalettePanel({
                 style={{
                   position: "absolute",
                   left: 12,
-                  top: 12,
-                  width: 26,
-                  height: 26,
+                  top: 8,
+                  width: 20,
+                  height: 20,
                   borderRadius: "50%",
                   background: rgbaToCss(color),
                   boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
