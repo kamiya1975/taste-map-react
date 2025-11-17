@@ -400,18 +400,23 @@ export default function MyAccountPanelContent() {
   const label = { fontSize: 13, color: "#666" };
 
   const openRegister = () => {
-    if (!showRegister) {
-      setShowRegister(true);
-      // 展開後に少しスクロール
-      setTimeout(() => {
-        if (registerRef.current) {
-          registerRef.current.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
-        }
-      }, 50);
-    }
+    setShowRegister((prev) => {
+      const next = !prev;
+
+      // 「閉じている → 開く」に変わるときだけスクロール
+      if (!prev && next) {
+        setTimeout(() => {
+          if (registerRef.current) {
+            registerRef.current.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }
+        }, 50);
+      }
+
+      return next;
+    });
   };
 
   return (
