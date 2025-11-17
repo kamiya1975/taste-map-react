@@ -126,8 +126,7 @@ export default function ClusterPalettePanel({
                     color: "#222",
                     fontWeight: 700,
                     lineHeight: 1.3,
-                    WebkitTextStroke: "0.3px white",   // ★ 白い外線（縁取り）
-                    textStroke: "0.3px white",          // ★ 一部ブラウザ用
+                    textShadow: "0 0 3px white, 0 0 2px white",
                   }}
                 >
                   {name || "クラスタ"}
