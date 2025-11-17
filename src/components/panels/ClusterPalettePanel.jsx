@@ -115,7 +115,7 @@ export default function ClusterPalettePanel({
                   background: rgbaToCss(color),
                   boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
                   zIndex: 0,           // 下のレイヤー
-                  opacity: 0.6,   //半透明化
+                  opacity: 0.75,   //半透明化
                 }}
               />
 
