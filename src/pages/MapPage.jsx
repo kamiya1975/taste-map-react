@@ -726,20 +726,27 @@ function MapPage() {
         onOpenSlider={() => navigate("/slider")}
         onPickWine={async (item) => {
           if (!item) return;
+
           // ★ 基準のワインだけ SliderPage へ
           const jan = String(item.JAN ?? item.jan_code ?? "");
           if (jan === ANCHOR_JAN) {
             navigate("/slider", { state: { from: "anchor" } });
             return;
           }
+
           await closeUIsThen({ 
             preserveMyPage: true, 
             preserveSearch: true,
             preserveCluster: true,
           });
+
+          // ★★★ クラスターパネルを畳む（ここ！！）
+          setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
+
           setSelectedJAN(item.JAN);
           setIframeNonce(Date.now());
           setProductDrawerOpen(true);
+          
           focusOnWine(item, { recenter: false });
         }}
         clusterColorMode={clusterColorMode}
@@ -934,6 +941,9 @@ function MapPage() {
             preserveCluster: true,
           });
 
+          // ★ クラスターパネルを畳む
+          setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
+
           setHideHeartForJAN(null);
           setSelectedJAN(item.JAN);
           setIframeNonce(Date.now());
@@ -1028,6 +1038,9 @@ function MapPage() {
             preserveRated: true,
             preserveCluster: true,
           });
+
+           // ★ クラスターパネルを畳む
+           setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
 
           try { sessionStorage.setItem("tm_from_rated_jan", String(jan)); } catch {}
           setHideHeartForJAN(String(jan));
