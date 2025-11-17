@@ -76,17 +76,17 @@ export default function ClusterPalettePanel({
           {/* ★ カードを2カラムで並べるエリア */}
           <div
             style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 12,
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              columnGap: 12,
+              rowGap: 12,
             }}
           >
             {entries.map(({ id, color, name, hint }) => (
               <div
                 key={id}
                 style={{
-                  flex: "1 1 calc(50% - 12px)",     // 2カラム
-                  maxWidth: "calc(50% - 12px)",
+                  width: "100%",
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
@@ -108,8 +108,8 @@ export default function ClusterPalettePanel({
                   title={name || "クラスタ"}
                   aria-label={name || "クラスタ"}
                   style={{
-                    width: 28,
-                    height: 28,
+                    width: 24,
+                    height: 24,
                     borderRadius: "50%",
                     background: rgbaToCss(color),
                     boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
@@ -127,7 +127,7 @@ export default function ClusterPalettePanel({
                 >
                   <div
                     style={{
-                      fontSize: 14,
+                      fontSize: 13,
                       color: "#222",
                       fontWeight: 700,
                       lineHeight: 1.3,
@@ -138,7 +138,7 @@ export default function ClusterPalettePanel({
                   {hint ? (
                     <div
                       style={{
-                        fontSize: 12,
+                        fontSize: 11,
                         color: "#555",
                         lineHeight: 1.4,
                         marginTop: 4,
