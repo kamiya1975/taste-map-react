@@ -567,7 +567,7 @@ export default function MyAccountPanelContent() {
                   whiteSpace: "nowrap",
                 }}
               >
-                {resetLoading ? "送信中..." : "仮パスワード送信"}
+                {resetLoading ? "送信中..." : "送信"}
               </button>
             </div>
           )}
