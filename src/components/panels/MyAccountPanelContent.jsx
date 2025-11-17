@@ -587,7 +587,7 @@ export default function MyAccountPanelContent() {
                   color: "#000",
                   border: "none",
                   borderRadius: 10,
-                  fontSize: 18,
+                  fontSize: 8,
                   ontWeight: 700,
                   cursor: resetLoading ? "default" : "pointer",
                  boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
@@ -602,6 +602,7 @@ export default function MyAccountPanelContent() {
               >
                 {resetLoading ? "送信中..." : "仮パスワード送信"}
               </button>
+
             </div>
           )}
         </div>
