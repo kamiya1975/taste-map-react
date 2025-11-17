@@ -115,6 +115,7 @@ export default function MyAccountPanelContent() {
   // ▼ パスワードリセット用
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
 
   // ▼ 新規登録（＝現状コードの内容）
   const [nickname, setNickname] = useState("");
@@ -262,7 +263,7 @@ export default function MyAccountPanelContent() {
     }
   };
 
-  // ▼ パスワードを忘れた方
+  // ▼ パスワードを忘れた方（仮パス発行）
   const handleRequestReset = async () => {
     const id = resetEmail.trim();
     if (!id) {
@@ -508,45 +509,63 @@ export default function MyAccountPanelContent() {
           fontSize: 13,
         }}
       >
-        {/* パスワードを忘れた方 */}
+        {/* パスワードを忘れた方（見出しだけ → 押すと入力が出る） */}
         <div
           style={{
-            padding: "12px 0 4px",
+            padding: "12px 0 0",
             borderTop: "1px dashed #ddd",
             marginTop: 12,
           }}
         >
-          <div style={{ marginBottom: 4 }}>パスワードを忘れた方</div>
-          <div
+          <button
+            type="button"
+            onClick={() => setShowReset((v) => !v)}
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              gap: 8,
-              alignItems: "center",
+              padding: 0,
+              border: "none",
+              background: "none",
+              color: "#0066cc",
+              textDecoration: "underline",
+              fontSize: 13,
+              cursor: "pointer",
             }}
           >
-            <BorderlessInput
-              value={resetEmail}
-              onChange={(e) => setResetEmail(e.target.value)}
-              placeholder="登録済みのメールアドレス"
+            パスワードを忘れた方
+          </button>
+
+          {showReset && (
+            <div
               style={{
-                borderBottom: "1px solid #eee",
-                paddingBottom: 2,
-              }}
-            />
-            <button
-              onClick={handleRequestReset}
-              disabled={resetLoading}
-              style={{
-                padding: "8px 12px",
-                borderRadius: 999,
-                fontSize: 12,
-                whiteSpace: "nowrap",
+                marginTop: 8,
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                gap: 8,
+                alignItems: "center",
               }}
             >
-              {resetLoading ? "送信中..." : "仮パスワード送信"}
-            </button>
-          </div>
+              <BorderlessInput
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                placeholder="登録済みのメールアドレス"
+                style={{
+                  borderBottom: "1px solid #eee",
+                  paddingBottom: 2,
+                }}
+              />
+              <button
+                onClick={handleRequestReset}
+                disabled={resetLoading}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {resetLoading ? "送信中..." : "仮パスワード送信"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 新規の方 */}
