@@ -107,8 +107,8 @@ export default function ClusterPalettePanel({
                 aria-label={name || "クラスタ"}
                 style={{
                   position: "absolute",
-                  left: 12,
-                  top: 10,
+                  left: 4,
+                  top: 8,
                   width: 24,
                   height: 24,
                   borderRadius: "50%",
