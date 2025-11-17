@@ -108,7 +108,7 @@ export default function ClusterPalettePanel({
                 style={{
                   position: "absolute",
                   left: 12,
-                  top: 8,
+                  top: 10,
                   width: 24,
                   height: 24,
                   borderRadius: "50%",
