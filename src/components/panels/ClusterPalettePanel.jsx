@@ -122,11 +122,11 @@ export default function ClusterPalettePanel({
               <div style={{ position: "relative", zIndex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    fontSize: 15,
+                    fontSize: 14,
                     color: "#222",
                     fontWeight: 700,
                     lineHeight: 1.3,
-                    textShadow: "0 0 3px white, 0 0 2px white",
+                    textShadow: "0 0 3px rgba(255,255,255,0.8)",
                   }}
                 >
                   {name || "クラスタ"}
