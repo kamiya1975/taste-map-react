@@ -492,14 +492,30 @@ export default function MyAccountPanelContent() {
       </div>
 
       {/* ログインボタン */}
-      <div style={{ maxWidth: 560, margin: "0 auto 8px" }}>
+      <div style={{ maxWidth: 560, margin: "8px auto 16px" }}>
         <button
           onClick={handleLogin}
           disabled={loginLoading}
           style={{
-            width: "100%",
-            padding: 14,
-            borderRadius: 12,
+            marginTop: 16,
+           width: "100%",
+            padding: "8px 20px",
+            lineHeight: 1.2,
+            background: "rgb(230,227,219)",     // ◆ 同じ色
+            color: "#000",
+            border: "none",
+            borderRadius: 10,
+            fontSize: 18,
+            fontWeight: 700,
+            cursor: loginLoading ? "default" : "pointer",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
+            WebkitBackdropFilter: "blur(2px)",
+            backdropFilter: "blur(2px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            opacity: loginLoading ? 0.6 : 1,
           }}
         >
           {loginLoading ? "ログイン中..." : "ログイン"}
@@ -563,13 +579,28 @@ export default function MyAccountPanelContent() {
                 onClick={handleRequestReset}
                 disabled={resetLoading}
                 style={{
-                  padding: "8px 12px",
-                  borderRadius: 999,
-                  fontSize: 12,
-                  whiteSpace: "nowrap",
+                  marginTop: 16,
+                  width: "100%",
+                  padding: "8px 20px",
+                  lineHeight: 1.2,
+                  background: "rgb(230,227,219)",
+                  color: "#000",
+                  border: "none",
+                  borderRadius: 10,
+                  fontSize: 18,
+                  ontWeight: 700,
+                  cursor: resetLoading ? "default" : "pointer",
+                 boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
+                  WebkitBackdropFilter: "blur(2px)",
+                  backdropFilter: "blur(2px)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  opacity: resetLoading ? 0.6 : 1,
                 }}
               >
-                {resetLoading ? "送信中..." : "送信"}
+                {resetLoading ? "送信中..." : "仮パスワード送信"}
               </button>
             </div>
           )}
@@ -761,7 +792,27 @@ export default function MyAccountPanelContent() {
             <button
               onClick={handleRegister}
               disabled={!agreed || saving}
-              style={{ width: "100%", padding: 14, borderRadius: 12 }}
+              style={{
+                marginTop: 16,
+                width: "100%",
+                padding: "8px 20px",
+                lineHeight: 1.2,
+                background: "rgb(230,227,219)",
+                color: "#000",
+                border: "none",
+                borderRadius: 10,
+                fontSize: 18,
+                fontWeight: 700,
+                cursor: !agreed || saving ? "default" : "pointer",
+                boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
+                WebkitBackdropFilter: "blur(2px)",
+                backdropFilter: "blur(2px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                opacity: !agreed || saving ? 0.6 : 1,
+              }}
             >
               {saving ? "新規登録中..." : "新規登録"}
             </button>
