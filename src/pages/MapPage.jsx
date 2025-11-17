@@ -115,6 +115,7 @@ function MapPage() {
 
   // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
+  const [clusterCollapseKey, setClusterCollapseKey] = useState(0);
 
   /** ===== UMAP座標へセンタリング ===== */
   const centerToUMAP = useCallback((xUMAP, yUMAP, opts = {}) => {
@@ -159,6 +160,7 @@ function MapPage() {
       preserveMyPage = false,
       preserveRated = false,
       preserveSearch   = false,
+      preserveCluster = false,
     } = opts;
     let willClose = false;
 
@@ -173,7 +175,13 @@ function MapPage() {
     if (isRatedOpen && !preserveRated)        { setIsRatedOpen(false);     willClose = true; }
     if (isAccountOpen)   { setIsAccountOpen(false);   willClose = true; }
     if (isFaqOpen)       { setIsFaqOpen(false);       willClose = true; }
-    if (isClusterOpen)   { setIsClusterOpen(false);   willClose = true; }
+
+    // ★ クラスタパネルは preserveCluster=true のときは閉じない
+    if (isClusterOpen && !preserveCluster) { 
+      setIsClusterOpen(false);   
+      willClose = true; 
+    }
+
     if (!preserveMyPage && isMyPageOpen) { setIsMyPageOpen(false); willClose = true; }
     if (cartOpen) { setCartOpen(false); willClose = true;}
 
@@ -193,16 +201,22 @@ function MapPage() {
 
   /** 通常の相互排他オープン（メニュー含め全部調停して開く） */
   const openPanel = useCallback(async (kind) => {
-    await closeUIsThen(); // すべて閉じる
+    // ★ cluster 以外を開くとき、クラスターパネルが開いていれば「畳む」合図を送る
+    if (kind !== "cluster" && isClusterOpen) {
+      setClusterCollapseKey((k) => k + 1);
+    }
+
+    // ★ クラスタパネルは閉じずに残す
+    await closeUIsThen({ preserveCluster: true });
+
     if (kind === "mypage")       setIsMyPageOpen(true);
-    else if (kind === "mapguide") setIsMapGuideOpen(true);
-    else if (kind === "guide")    setIsMapGuideOpen(true);
+    else if (kind === "mapguide" || kind === "guide") setIsMapGuideOpen(true);
     else if (kind === "store")    setIsStoreOpen(true);
     else if (kind === "search")  setIsSearchOpen(true);
     else if (kind === "rated")   setIsRatedOpen(true);
     else if (kind === "cluster")  setIsClusterOpen(true);
     else if (kind === "cart") setCartOpen(true);
-  }, [closeUIsThen]);
+  }, [closeUIsThen, isClusterOpen]);
 
   /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
   const openOverlayAboveMenu = useCallback(async (kind) => {
@@ -850,14 +864,7 @@ function MapPage() {
 
       {/* 右上: 検索 */}
       <button
-        onClick={() => {
-          // ★ ここでクラスターパネルを沈める
-          setClusterColorMode(false);
-          setIsClusterOpen(false);  // 表示自体も閉じる（＝完全に沈む）
-
-          // その上で、いつもの処理
-          openPanel("search");
-        }}
+        onClick={() => openPanel("search")}
         style={{ /* 上と同様。topだけ60pxに */ pointerEvents: "auto", position:"absolute", top:"60px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
         aria-label="検索"
         title="検索"
@@ -1019,6 +1026,7 @@ function MapPage() {
         height={DRAWER_HEIGHT}
         onPickCluster={centerToCluster}
         availableIds={clusterList} // 追加：存在クラスターのみ出す場合
+        collapseKey={clusterCollapseKey}   // ★追加
       />
 
       {/* 商品ページドロワー */}

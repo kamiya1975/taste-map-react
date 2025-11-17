@@ -26,12 +26,20 @@ export default function ClusterPalettePanel({
   availableIds = null,    // 追加：表示対象を制限する（順序は維持）
   maxNameLen = 10,
   maxHintLen = 30,
+  collapseKey,          // ★追加：外から「畳め」の合図
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
   React.useEffect(() => {
     if (!isOpen) setCollapsed(false);
   }, [isOpen]);
+
+  // ★ collapseKey が変わったら「帯だけ」の状態にする
+  React.useEffect(() => {
+    if (!isOpen) return;
+    if (collapseKey == null) return;
+    setCollapsed(false);
+   }, [collapseKey, isOpen]);
 
   // ★ 並び順は「source（= CLUSTER_META等）の定義順」をそのまま使う
   const entries = useMemo(() => {
