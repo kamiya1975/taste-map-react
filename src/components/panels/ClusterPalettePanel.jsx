@@ -38,7 +38,7 @@ export default function ClusterPalettePanel({
   React.useEffect(() => {
     if (!isOpen) return;
     if (collapseKey == null) return;
-    setCollapsed(false);
+    setCollapsed(true); 
    }, [collapseKey, isOpen]);
 
   // ★ 並び順は「source（= CLUSTER_META等）の定義順」をそのまま使う
