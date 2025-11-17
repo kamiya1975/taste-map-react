@@ -174,9 +174,8 @@ function MapPage() {
     if (isAccountOpen)   { setIsAccountOpen(false);   willClose = true; }
     if (isFaqOpen)       { setIsFaqOpen(false);       willClose = true; }
     if (isClusterOpen)   { setIsClusterOpen(false);   willClose = true; }
-
-    // メニューは基本閉じるが、保護オプション時は残す
     if (!preserveMyPage && isMyPageOpen) { setIsMyPageOpen(false); willClose = true; }
+    if (cartOpen) { setCartOpen(false); willClose = true;}
 
     if (willClose) await wait(PANEL_ANIM_MS);
   }, [
@@ -189,6 +188,7 @@ function MapPage() {
     isAccountOpen,
     isFaqOpen,
     isClusterOpen,
+    cartOpen,
   ]);
 
   /** 通常の相互排他オープン（メニュー含め全部調停して開く） */
