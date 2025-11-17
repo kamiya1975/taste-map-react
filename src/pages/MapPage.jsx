@@ -790,12 +790,29 @@ useEffect(() => {
               border: "0.5px solid #000",
               borderRadius: "6px",
               outline: "none",
+              appearance: "none",
+              WebkitAppearance: "none",
+              MozAppearance: "none",
             }}
           >
             <option value="">基本マップ</option>
             <option value="PC2">甘味</option>
             <option value="PC1">ボディ</option>
           </select>
+          <span
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              right: 8,
+              top: "50%",
+              transform: "translateY(-50%)",
+              pointerEvents: "none",
+              fontSize: 12,
+              color: "#666",
+            }}
+          >
+            ▼
+          </span>
         </div>
 
         {/* クラスタ配色ボタン（右横配置） */}
@@ -828,8 +845,8 @@ useEffect(() => {
             src={`${process.env.PUBLIC_URL || ""}/img/icon colour.png`}
             alt=""
             style={{
-              width: "100%",
-              height: "100%",
+              width: "120%",
+              height: "120%",
               objectFit: "contain",
               display: "block",
               pointerEvents: "none",
@@ -840,6 +857,7 @@ useEffect(() => {
           />
         </button>
       </div>
+      {/* 左下の旧カートFABは削除 */}
 
       {/* 右上: アプリガイド */}
       <button
