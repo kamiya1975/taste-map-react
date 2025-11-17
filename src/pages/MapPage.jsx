@@ -115,7 +115,7 @@ function MapPage() {
 
   // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
-  const [clusterCollapseKey, setClusterCollapseKey] = useState(0);
+  const [clusterCollapseKey, setClusterCollapseKey] = useState(null);
 
   /** ===== UMAP座標へセンタリング ===== */
   const centerToUMAP = useCallback((xUMAP, yUMAP, opts = {}) => {
@@ -203,7 +203,7 @@ function MapPage() {
   const openPanel = useCallback(async (kind) => {
     // ★ cluster 以外を開くとき、クラスターパネルが開いていれば「畳む」合図を送る
     if (kind !== "cluster" && isClusterOpen) {
-      setClusterCollapseKey((k) => k + 1);
+      setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
     }
 
     // ★ クラスタパネルは閉じずに残す
