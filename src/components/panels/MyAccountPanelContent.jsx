@@ -1,5 +1,5 @@
 // src/components/panels/MyAccountPanelContent.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { setUserId } from "../../utils/auth";
 
 // APIベースURL（.env の REACT_APP_API_BASE_URL があればそれを使う）
@@ -105,7 +105,18 @@ const BorderlessSelect = ({ rightIcon = true, ...props }) => (
   </div>
 );
 
-export default function MyMyAccountPanelContent() {
+export default function MyAccountPanelContent() {
+  // ▼ ログイン用
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginShowPassword, setLoginShowPassword] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // ▼ パスワードリセット用
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+
+  // ▼ 新規登録（＝現状コードの内容）
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -114,12 +125,56 @@ export default function MyMyAccountPanelContent() {
   const [birthMonth, setBirthMonth] = useState("");
   const [gender, setGender] = useState("");
   const [agreed, setAgreed] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // 初期表示：ローカルキャッシュから復元
+  const registerRef = useRef(null);
+
+  // 共通：サーバから返ってきたトークンとユーザー情報を保存
+  const applyAuthResponse = (data, loginIdForStorage) => {
+    const { access_token, refresh_token, user } = data || {};
+    if (!access_token || !refresh_token || !user) {
+      alert("サーバからの応答が不正です。");
+      return false;
+    }
+
+    try {
+      // 新形式
+      localStorage.setItem("app.access_token", access_token);
+      localStorage.setItem("app.refresh_token", refresh_token);
+      localStorage.setItem("app.user", JSON.stringify(user));
+      if (loginIdForStorage) {
+        localStorage.setItem("app.user_login_id", loginIdForStorage);
+      }
+      if (user.main_store_id) {
+        localStorage.setItem("app.main_store_id", String(user.main_store_id));
+      }
+
+      // 旧キーも更新（既存コードとの互換のため）
+      const loginId = loginIdForStorage || user.user_login_id || "";
+      localStorage.setItem("user.nickname", user.display_name || "");
+      localStorage.setItem("user.id", loginId);
+      if (user.birth_year) {
+        localStorage.setItem("user.birthYear", String(user.birth_year));
+      }
+      if (user.birth_month) {
+        localStorage.setItem(
+          "user.birthMonth",
+          String(user.birth_month).padStart(2, "0")
+        );
+      }
+      localStorage.setItem("user.gender", fromApiGender(user.gender));
+      // 利用規約同意は登録時のみセット
+    } catch {
+      // localStorage失敗は致命的ではないので無視
+    }
+
+    setUserId(loginIdForStorage || user.user_login_id || "");
+    return true;
+  };
+
+  // 初期表示：ローカルキャッシュから復元（新規登録フォーム側）
   useEffect(() => {
     try {
-      // 新形式（app.user / app.user_login_id）があればそちら優先
       const appUserStr = localStorage.getItem("app.user");
       if (appUserStr) {
         const u = JSON.parse(appUserStr);
@@ -132,7 +187,6 @@ export default function MyMyAccountPanelContent() {
           setGender(u.gender ? fromApiGender(u.gender) : "");
         }
       } else {
-        // 旧形式
         setNickname(localStorage.getItem("user.nickname") || "");
         setBirthYear(localStorage.getItem("user.birthYear") || "");
         setBirthMonth(localStorage.getItem("user.birthMonth") || "");
@@ -144,14 +198,115 @@ export default function MyMyAccountPanelContent() {
         localStorage.getItem("user.id") ||
         "";
       setEmail(storedLoginId);
+      setLoginEmail(storedLoginId); // ログイン側にも入れておく
 
       setAgreed((localStorage.getItem("user.agreed") || "") === "1");
     } catch {
-      // 何もしない（初期値のまま）
+      // 何もしない
     }
   }, []);
 
-  const handleSave = async () => {
+  // ▼ ログインボタン
+  const handleLogin = async () => {
+    const id = loginEmail.trim();
+    const pass = loginPassword;
+
+    if (!id || !pass) {
+      alert("ID（メールアドレス）とパスワードを入力してください。");
+      return;
+    }
+    if (!isEmail(id)) {
+      alert("メールアドレスの形式が正しくありません。");
+      return;
+    }
+
+    setLoginLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/app/auth/login?v=20251117`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_login_id: id,
+          password: pass,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          alert("ID またはパスワードが正しくありません。");
+        } else if (res.status === 422) {
+          alert("入力内容に誤りがあります。");
+        } else {
+          const detail =
+            (data && (data.detail || data.message)) ||
+            "ログインに失敗しました。";
+          alert(detail);
+        }
+        return;
+      }
+
+      const ok = applyAuthResponse(data, id);
+      if (ok) {
+        setLoginPassword("");
+        alert("ログインしました。");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("通信に失敗しました。電波状況をご確認の上、再度お試しください。");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  // ▼ パスワードを忘れた方
+  const handleRequestReset = async () => {
+    const id = resetEmail.trim();
+    if (!id) {
+      alert("メールアドレスを入力してください。");
+      return;
+    }
+    if (!isEmail(id)) {
+      alert("メールアドレスの形式が正しくありません。");
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      // ※ エンドポイント名は仮です。バックエンドに合わせて変更してください。
+      const res = await fetch(
+        `${API_BASE}/api/app/auth/forgot-password?v=20251117`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_login_id: id }),
+        }
+      );
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const detail =
+          (data && (data.detail || data.message)) ||
+          "パスワード再発行に失敗しました。";
+        alert(detail);
+        return;
+      }
+
+      alert(
+        "仮パスワードをメール送信しました。メールをご確認のうえ、ログイン後にパスワードを変更してください。"
+      );
+    } catch (e) {
+      console.error(e);
+      alert("通信に失敗しました。電波状況をご確認の上、再度お試しください。");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  // ▼ 新規登録（現状 handleSave 相当）
+  const handleRegister = async () => {
     if (!agreed) return;
 
     if (!nickname || !email || !birthYear || !birthMonth || !gender) {
@@ -178,26 +333,23 @@ export default function MyMyAccountPanelContent() {
       user_login_id: email.trim(),
       password: password || "", // 空ならサーバ側で「変更なし」
       birth_year: Number(birthYear),
-      birth_month: Number(birthMonth), // "01" → 1
+      birth_month: Number(birthMonth),
       gender: toApiGender(gender),
       main_store_id: mainStoreId,
     };
 
-    setLoading(true);
+    setSaving(true);
     try {
       const token = localStorage.getItem("app.access_token") || "";
 
-      const res = await fetch(
-        `${API_BASE}/api/app/users/save?v=20251115b`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const res = await fetch(`${API_BASE}/api/app/users/save?v=20251117`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
 
       const data = await res.json().catch(() => ({}));
 
@@ -216,56 +368,21 @@ export default function MyMyAccountPanelContent() {
         return;
       }
 
-      // data: AppAuthTokenOut
-      const { access_token, refresh_token, user } = data || {};
+      const ok = applyAuthResponse(data, email.trim());
+      if (!ok) return;
 
-      if (!access_token || !refresh_token || !user) {
-        alert("サーバからの応答が不正です。");
-        return;
-      }
-
-      // トークンとユーザー情報を保存
       try {
-        localStorage.setItem("app.access_token", access_token);
-        localStorage.setItem("app.refresh_token", refresh_token);
-        localStorage.setItem("app.user", JSON.stringify(user));
-        localStorage.setItem("app.user_login_id", email.trim());
-        if (user.main_store_id) {
-          localStorage.setItem(
-            "app.main_store_id",
-            String(user.main_store_id)
-          );
-        }
-
-        // 旧キーも更新しておく（既存コードとの互換目的）
-        localStorage.setItem("user.nickname", user.display_name || nickname.trim());
-        localStorage.setItem("user.id", email.trim());
-        localStorage.setItem(
-          "user.birthYear",
-          user.birth_year ? String(user.birth_year) : birthYear
-        );
-        localStorage.setItem(
-          "user.birthMonth",
-          user.birth_month
-            ? String(user.birth_month).padStart(2, "0")
-            : birthMonth
-        );
-        localStorage.setItem("user.gender", fromApiGender(user.gender));
         localStorage.setItem("user.agreed", agreed ? "1" : "0");
         if (password) localStorage.setItem("user.pass", password);
-      } catch {
-        // localStorage失敗は致命的ではないので無視
-      }
+      } catch {}
 
-      // 他の処理で使っているユーザー識別子を更新
-      setUserId(email.trim());
       setPassword("");
       alert("保存しました。");
     } catch (e) {
       console.error(e);
       alert("通信に失敗しました。電波状況をご確認の上、再度お試しください。");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -279,6 +396,12 @@ export default function MyMyAccountPanelContent() {
   };
   const label = { fontSize: 13, color: "#666" };
 
+  const scrollToRegister = () => {
+    if (registerRef.current) {
+      registerRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
     <div
       style={{
@@ -288,7 +411,164 @@ export default function MyMyAccountPanelContent() {
         background: "#fff",
       }}
     >
+      {/* ======================= */}
+      {/*  ログインブロック       */}
+      {/* ======================= */}
       <div
+        style={{
+          background: "#fff",
+          border: "1px solid #e7e7e7",
+          borderRadius: 12,
+          overflow: "hidden",
+          maxWidth: 560,
+          margin: "0 auto 20px",
+        }}
+      >
+        <div
+          style={{
+            padding: "12px 16px",
+            borderBottom: "1px solid #eee",
+            fontSize: 15,
+            fontWeight: 600,
+          }}
+        >
+          ログイン
+        </div>
+
+        {/* ID（メールアドレス） */}
+        <div style={row}>
+          <div style={label}>ID（メール）</div>
+          <BorderlessInput
+            value={loginEmail}
+            onChange={(e) => setLoginEmail(e.target.value)}
+            placeholder="example@mail.com"
+          />
+        </div>
+
+        {/* パスワード */}
+        <div style={{ ...row, borderBottom: "none" }}>
+          <div style={label}>パスワード</div>
+          <div style={{ position: "relative" }}>
+            <BorderlessInput
+              type={loginShowPassword ? "text" : "password"}
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              placeholder="パスワード"
+              style={{ paddingRight: 28 }}
+            />
+            <button
+              onClick={() => setLoginShowPassword((v) => !v)}
+              style={{
+                position: "absolute",
+                right: 0,
+                top: "50%",
+                transform: "translateY(-50%)",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              {loginShowPassword ? "●" : "◯"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ログインボタン */}
+      <div style={{ maxWidth: 560, margin: "0 auto 8px" }}>
+        <button
+          onClick={handleLogin}
+          disabled={loginLoading}
+          style={{
+            width: "100%",
+            padding: 14,
+            borderRadius: 12,
+          }}
+        >
+          {loginLoading ? "ログイン中..." : "ログイン"}
+        </button>
+      </div>
+
+      {/* パスワード忘れ／新規の方 */}
+      <div
+        style={{
+          maxWidth: 560,
+          margin: "0 auto 24px",
+          fontSize: 13,
+        }}
+      >
+        {/* パスワードを忘れた方 */}
+        <div
+          style={{
+            padding: "12px 0 4px",
+            borderTop: "1px dashed #ddd",
+            marginTop: 12,
+          }}
+        >
+          <div style={{ marginBottom: 4 }}>パスワードを忘れた方</div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto",
+              gap: 8,
+              alignItems: "center",
+            }}
+          >
+            <BorderlessInput
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              placeholder="登録済みのメールアドレス"
+              style={{
+                borderBottom: "1px solid #eee",
+                paddingBottom: 2,
+              }}
+            />
+            <button
+              onClick={handleRequestReset}
+              disabled={resetLoading}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 999,
+                fontSize: 12,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {resetLoading ? "送信中..." : "仮パスワード送信"}
+            </button>
+          </div>
+        </div>
+
+        {/* 新規の方 */}
+        <div
+          style={{
+            padding: "12px 0 0",
+            borderTop: "1px dashed #ddd",
+            marginTop: 12,
+          }}
+        >
+          <button
+            type="button"
+            onClick={scrollToRegister}
+            style={{
+              padding: 0,
+              border: "none",
+              background: "none",
+              color: "#0066cc",
+              textDecoration: "underline",
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            新規の方はこちら（会員登録）
+          </button>
+        </div>
+      </div>
+
+      {/* ======================= */}
+      {/*  新規登録ブロック        */}
+      {/* ======================= */}
+      <div
+        ref={registerRef}
         style={{
           background: "#fff",
           border: "1px solid #e7e7e7",
@@ -298,6 +578,17 @@ export default function MyMyAccountPanelContent() {
           margin: "0 auto",
         }}
       >
+        <div
+          style={{
+            padding: "12px 16px",
+            borderBottom: "1px solid #eee",
+            fontSize: 15,
+            fontWeight: 600,
+          }}
+        >
+          新規登録
+        </div>
+
         {/* ニックネーム */}
         <div style={row}>
           <div style={label}>ニックネーム</div>
@@ -306,14 +597,17 @@ export default function MyMyAccountPanelContent() {
             onChange={(e) => setNickname(e.target.value)}
           />
         </div>
-        {/* ID */}
+
+        {/* ID（メール） */}
         <div style={row}>
           <div style={label}>ID（メール）</div>
           <BorderlessInput
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="example@mail.com"
           />
         </div>
+
         {/* パスワード */}
         <div style={row}>
           <div style={label}>パスワード</div>
@@ -334,12 +628,14 @@ export default function MyMyAccountPanelContent() {
                 transform: "translateY(-50%)",
                 border: "none",
                 background: "transparent",
+                cursor: "pointer",
               }}
             >
               {showPassword ? "●" : "◯"}
             </button>
           </div>
         </div>
+
         {/* 生まれ年 */}
         <div style={row}>
           <div style={label}>生まれ年</div>
@@ -358,6 +654,7 @@ export default function MyMyAccountPanelContent() {
               ))}
           </BorderlessSelect>
         </div>
+
         {/* 生まれ月 */}
         <div style={row}>
           <div style={label}>生まれ月</div>
@@ -373,6 +670,7 @@ export default function MyMyAccountPanelContent() {
             ))}
           </BorderlessSelect>
         </div>
+
         {/* 性別 */}
         <div style={{ ...row, borderBottom: "none" }}>
           <div style={label}>性別</div>
@@ -388,7 +686,7 @@ export default function MyMyAccountPanelContent() {
         </div>
       </div>
 
-      {/* 利用規約 */}
+      {/* 利用規約（新規登録用） */}
       <div
         style={{
           maxWidth: 560,
@@ -418,17 +716,16 @@ export default function MyMyAccountPanelContent() {
         </label>
       </div>
 
-      {/* 保存ボタン */}
-      <div style={{ maxWidth: 560, margin: "12px auto 0" }}>
+      {/* 新規登録 保存ボタン */}
+      <div style={{ maxWidth: 560, margin: "12px auto 0  auto" }}>
         <button
-          onClick={handleSave}
-          disabled={!agreed || loading}
+          onClick={handleRegister}
+          disabled={!agreed || saving}
           style={{ width: "100%", padding: 14, borderRadius: 12 }}
         >
-          {loading ? "保存中..." : "保存"}
+          {saving ? "保存中..." : "保存"}
         </button>
       </div>
     </div>
   );
 }
-
