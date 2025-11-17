@@ -87,7 +87,7 @@ export default function ClusterPalettePanel({
               key={id}
               style={{
                 position: "relative",
-                padding: "12px 12px 10px 34px",   // 左を大きめにあける
+                padding: "12px 12px 10px 20px",   // 左を大きめにあける
                 borderRadius: 18,
                 background: "#fff",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
@@ -121,7 +121,7 @@ export default function ClusterPalettePanel({
               <div style={{ position: "relative", zIndex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    fontSize: 14,
+                    fontSize: 12,
                     color: "#222",
                     fontWeight: 700,
                     lineHeight: 1.3,
@@ -132,7 +132,7 @@ export default function ClusterPalettePanel({
                 {hint && (
                   <div
                     style={{
-                      fontSize: 12,
+                      fontSize: 10,
                       color: "#555",
                       lineHeight: 1.4,
                       marginTop: 4,
