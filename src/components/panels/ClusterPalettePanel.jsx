@@ -58,7 +58,7 @@ export default function ClusterPalettePanel({
       isOpen={isOpen}
       onClose={onClose}
       title="味わいグループ"
-      icon="palette.svg"
+      icon="icon colour.png"
       height={collapsed ? COLLAPSED_HEIGHT : height}
       onHeaderClick={() => setCollapsed((v) => !v)}
       motionPreset="mui"
@@ -73,38 +73,66 @@ export default function ClusterPalettePanel({
             グループ名をタッチすると、その味わいが集まる場所にマップが移動します。
           </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {/* ★ カードを2カラムで並べるエリア */}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 12,
+            }}
+          >
             {entries.map(({ id, color, name, hint }) => (
               <div
                 key={id}
                 style={{
+                  flex: "1 1 calc(50% - 12px)",     // 2カラム
+                  maxWidth: "calc(50% - 12px)",
                   display: "flex",
                   alignItems: "center",
-                  gap: 12,
-                  border: "1px solid #e5e5d6",
-                  borderRadius: 10,
+                  gap: 10,
+                  padding: "10px 10px",
+                  borderRadius: 18,
                   background: "#fff",
-                  width: "100%",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
                   cursor: onPickCluster ? "pointer" : "default",
                 }}
                 role="button"
                 tabIndex={0}
                 onClick={() => onPickCluster?.(id)}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPickCluster?.(id); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") onPickCluster?.(id);
+                }}
               >
+                {/* 丸い色チップ（大きめ） */}
                 <div
                   title={name || "クラスタ"}
                   aria-label={name || "クラスタ"}
                   style={{
-                    width: 12,
-                    height: 12,
+                    width: 28,
+                    height: 28,
                     borderRadius: "50%",
-                    filter: "drop-shadow(0 0 0.5px rgba(0,0,0,0.10))",
                     background: rgbaToCss(color),
+                    boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
+                    flexShrink: 0,
                   }}
                 />
-                <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "#222", fontWeight: 600, lineHeight: 1.2 }}>
+
+                {/* テキスト部分 */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    minWidth: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 14,
+                      color: "#222",
+                      fontWeight: 700,
+                      lineHeight: 1.3,
+                    }}
+                  >
                     {name || "クラスタ"}
                   </div>
                   {hint ? (
@@ -112,13 +140,12 @@ export default function ClusterPalettePanel({
                       style={{
                         fontSize: 12,
                         color: "#555",
-                        lineHeight: 1.3,
-                        marginTop: 2,
-                        wordBreak: "keep-all",
+                        lineHeight: 1.4,
+                        marginTop: 4,
                         overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        maxWidth: "100%",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,        // 説明文を最大2行まで
+                        WebkitBoxOrient: "vertical",
                       }}
                       title={hint}
                     >
@@ -135,7 +162,9 @@ export default function ClusterPalettePanel({
           </p>
         </div>
       ) : (
-        <div style={{ padding: 12, color: "#666", fontSize: 12 }}>タップで展開します</div>
+        <div style={{ padding: 12, color: "#666", fontSize: 12 }}>
+          タップで展開します
+        </div>
       )}
     </PanelShell>
   );
