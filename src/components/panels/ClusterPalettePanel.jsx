@@ -68,11 +68,6 @@ export default function ClusterPalettePanel({
     >
       {!collapsed ? (
         <div style={{ padding: 12 }}>
-          <p style={{ margin: "4px 0 12px", color: "#444", fontSize: 13 }}>
-            色はワインの味わいタイプを表しています。
-            グループ名をタッチすると、その味わいが集まる場所にマップが移動します。
-          </p>
-
           {/* ★ カードを2カラムで並べるエリア */}
           <div
             style={{
@@ -112,7 +107,7 @@ export default function ClusterPalettePanel({
                 aria-label={name || "クラスタ"}
                 style={{
                   position: "absolute",
-                  left: 12,
+                  left: 10,
                   top: 8,
                   width: 20,
                   height: 20,
