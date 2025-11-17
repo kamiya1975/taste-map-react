@@ -548,7 +548,7 @@ export default function ProductPage() {
             role="status"
             style={{
               marginTop: 8,
-              fontSize: 13,
+              fontSize: 20,
               background: "#111",
               color: "#fff",
               display: "inline-block",
