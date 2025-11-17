@@ -512,7 +512,7 @@ export default function ProductPage() {
           style={{
             marginTop: 16,
             width: "100%",
-            padding: "10px 20px",
+            padding: "18px 20px",
             lineHeight: 1.2,
             background: "rgb(230,227,219)",   // 生成ボタンと同じ
             color: "#000",
@@ -535,8 +535,8 @@ export default function ProductPage() {
             src={`${process.env.PUBLIC_URL || ""}/img/icon cart2.png`}
             alt="cart"
             style={{
-              width: 60,
-              height: 60,
+              width: 40,
+              height: 40,
               objectFit: "contain",
               display: "block",
             }}
