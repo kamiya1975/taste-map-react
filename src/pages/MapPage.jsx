@@ -842,7 +842,7 @@ useEffect(() => {
           title="クラスタ配色"
         >
           <img
-            src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`}
+            src={`${process.env.PUBLIC_URL || ""}/img/icon colour.png`}
             alt=""
             style={{
               width: "70%",
@@ -911,7 +911,7 @@ useEffect(() => {
         aria-label="カートを開く"
         title="カートを開く"
       >
-        <img src={`${process.env.PUBLIC_URL || ""}/img/cart.svg`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
+        <img src={`${process.env.PUBLIC_URL || ""}/img/icon cart1.png`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
         {totalQty > 0 && (
           <span
             style={{

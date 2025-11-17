@@ -509,22 +509,40 @@ export default function ProductPage() {
       <div style={{ margin: "8px 0 16px" }}>
         <button
           onClick={handleAddToCart}
-          disabled={adding}
           style={{
-            display: "inline-block",
+            marginTop: 16,
             width: "100%",
-            padding: "12px 16px",
+           padding: "14px 16px",
+            lineHeight: 1.2,
+            background: "rgb(230,227,219)",   // 生成ボタンと同じ
+            color: "#000",
+            border: "none",
             borderRadius: 10,
-            border: "1px solid #111",
-            background: adding ? "#eee" : "#111",
-            color: adding ? "#999" : "#fff",
-            cursor: adding ? "default" : "pointer",
-            fontSize: 16,
+            fontSize: 15,
             fontWeight: 700,
+            cursor: "pointer",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.18)",
+            WebkitBackdropFilter: "blur(2px)",
+            backdropFilter: "blur(2px)",
+            display: "flex",              // ← 追加
+            alignItems: "center",         // ← 追加
+            justifyContent: "center",     // ← 追加
+            gap: 8,                       // ← 追加（アイコンとの余白）
           }}
         >
-          🛒 カートに入れる
+          <img
+            src={`${process.env.PUBLIC_URL || ""}/img/cart2.png`}
+            alt="cart"
+            style={{
+              width: 18,
+              height: 18,
+              objectFit: "contain",
+              display: "block",
+            }}
+          />
+          カートに入れる
         </button>
+
         {toast && (
           <div
             role="status"
