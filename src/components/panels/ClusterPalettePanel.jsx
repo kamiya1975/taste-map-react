@@ -72,12 +72,12 @@ export default function ClusterPalettePanel({
       motionPreset="mui"
       animateHeight={true}
       heightDurationMs={225}
-      zIndex={3000}
+      zIndex={4000}
     >
       {!collapsed ? (
         <div style={{ padding: 12 }}>
           <p style={{ margin: "4px 0 12px", color: "#444", fontSize: 13 }}>
-            グループ名をタッチすると、その味わいが集まる場所にマップが移動します。
+            グループ名をタッチすると、その味わいの場所にマップが移動します。
             </p>
         
           {/* ★ カードを2カラムで並べるエリア */}

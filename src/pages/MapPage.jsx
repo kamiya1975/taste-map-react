@@ -221,7 +221,7 @@ function MapPage() {
 
   /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
   const openOverlayAboveMenu = useCallback(async (kind) => {
-    await closeUIsThen({ preserveMyPage: true });
+     await closeUIsThen({ preserveMyPage: true, preserveCluster: true });
     if (kind === "mapguide") setIsMapGuideOpen(true);
     else if (kind === "store") setIsStoreOpen(true);
     else if (kind === "guide") setIsMapGuideOpen(true);
@@ -1001,7 +1001,9 @@ function MapPage() {
       {/* 評価（◎） */}
       <RatedPanel
         isOpen={isRatedOpen}
-        onClose={async () => { await closeUIsThen(); }}
+        onClose={async () => { 
+          await closeUIsThen({ preserveCluster: true }); 
+        }}
         userRatings={userRatings}
         data={data}
         favorites={favorites}
