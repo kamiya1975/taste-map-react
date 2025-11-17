@@ -8,7 +8,7 @@ export const CLUSTER_DRAWER_HEIGHT = "calc(56svh - env(safe-area-inset-bottom))"
 
 export const drawerModalProps = {
   keepMounted: true,
-  disablePortal: false,                                        // ★必ずポータル使用
+  disablePortal: true,                                        // ★必ずポータル使用
   container: typeof window !== "undefined" ? document.body : undefined, // ★#rootは使わない
   // disableScrollLock: true, // （必要なら）スクロールロックを無効化
 };
