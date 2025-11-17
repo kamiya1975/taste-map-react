@@ -732,7 +732,11 @@ function MapPage() {
             navigate("/slider", { state: { from: "anchor" } });
             return;
           }
-          await closeUIsThen({ preserveMyPage: true, preserveSearch: true });
+          await closeUIsThen({ 
+            preserveMyPage: true, 
+            preserveSearch: true,
+            preserveCluster: true,
+          });
           setSelectedJAN(item.JAN);
           setIframeNonce(Date.now());
           setProductDrawerOpen(true);
@@ -921,19 +925,27 @@ function MapPage() {
         open={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         data={data}
-        onPick={(item) => {
+        onPick={async (item) => {
           if (!item) return;
+
+          await closeUIsThen({
+            preserveMyPage: true,
+            preserveSearch: true,
+            preserveCluster: true,
+          });
+
           setHideHeartForJAN(null);
           setSelectedJAN(item.JAN);
           setIframeNonce(Date.now());
           setProductDrawerOpen(true);
+
           const tx = Number(item.umap_x), ty = Number(item.umap_y);
           if (Number.isFinite(tx) && Number.isFinite(ty)) {
             centerToUMAP(tx, ty, { zoom: viewState.zoom });
           }
         }}
         onScanClick={async () => {
-          await closeUIsThen();
+          await closeUIsThen({ preserveCluster: true });
           setIsScannerOpen(true);
         }}
       />
@@ -976,7 +988,10 @@ function MapPage() {
 
           const hit = data.find((d) => String(d.JAN) === jan);
           if (hit) {
-            await closeUIsThen({ preserveMyPage: true });
+            await closeUIsThen({
+              preserveMyPage: true,
+              preserveCluster: true
+            });
             setHideHeartForJAN(null);
             setSelectedJAN(hit.JAN);
             setIframeNonce(Date.now());
@@ -1007,8 +1022,13 @@ function MapPage() {
         userRatings={userRatings}
         data={data}
         favorites={favorites}
-        onSelectJAN={(jan) => {
-          closeUIsThen({ preserveMyPage: true, preserveRated: true });
+        onSelectJAN={async (jan) => {
+          await closeUIsThen({
+            preserveMyPage: true,
+            preserveRated: true,
+            preserveCluster: true,
+          });
+
           try { sessionStorage.setItem("tm_from_rated_jan", String(jan)); } catch {}
           setHideHeartForJAN(String(jan));
           setSelectedJAN(jan);
