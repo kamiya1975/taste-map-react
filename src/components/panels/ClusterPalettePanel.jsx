@@ -90,13 +90,14 @@ export default function ClusterPalettePanel({
                 padding: "12px 12px 10px 20px",   // 左を大きめにあける
                 borderRadius: 18,
                 background: "#fff",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
-                cursor: onPickCluster ? "pointer" : "default",
 
-                // ★ 追加：ボタン枠を消す
+                //ボタン枠・軽い影
+                boxShadow: "none",
                 border: "none",
                 outline: "none",
                 WebkitTapHighlightColor: "transparent",
+
+                cursor: onPickCluster ? "pointer" : "default",
               }}
               role="button"
               tabIndex={0}
