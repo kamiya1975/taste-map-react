@@ -204,42 +204,6 @@ function MapPage() {
     else if (kind === "cart") setCartOpen(true);
   }, [closeUIsThen]);
 
-  // === Cart表示中は背面Mapを操作不能にする（フォーカスも遮断） ===
-const mapRootRef = useRef(null);
-const prevFocusedRef = useRef(null);
-
-useEffect(() => {
-  mapRootRef.current = document.getElementById("map-root");
-}, []);
-
-useEffect(() => {
-  const el = mapRootRef.current;
-  if (!el) return;
-
-  if (cartOpen) {
-    // いまのフォーカスを覚えておく
-    prevFocusedRef.current = document.activeElement;
-
-    // 背面を無効化
-    try { el.setAttribute("inert", ""); } catch {}
-    el.style.pointerEvents = "none";
-
-    // フォーカスをカートドロワーへ移動
-    setTimeout(() => {
-      const t = document.querySelector('#cart-drawer [data-autofocus="cart"]')
-              || document.querySelector('#cart-drawer');
-      t?.focus?.();
-    }, 0);
-  } else {
-    try { el.removeAttribute("inert"); } catch {}
-    el.style.pointerEvents = "auto";
-
-    // もとのフォーカスへ軽く戻す（無ければ何もしない）
-    setTimeout(() => { prevFocusedRef.current?.focus?.(); }, 0);
-  }
-}, [cartOpen]);
-
-
   /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
   const openOverlayAboveMenu = useCallback(async (kind) => {
     await closeUIsThen({ preserveMyPage: true });
