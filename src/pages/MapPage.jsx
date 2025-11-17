@@ -829,8 +829,8 @@ useEffect(() => {
           style={{
             width: "30px",
             height: "30px",
-            background: "#fff",
-            border: "0.5px solid #000",
+            background: "transparent",
+            border: "none",
             borderRadius: "6px",
             cursor: "pointer",
             display: "flex",
@@ -845,8 +845,8 @@ useEffect(() => {
             src={`${process.env.PUBLIC_URL || ""}/img/icon colour.png`}
             alt=""
             style={{
-              width: "90%",
-              height: "90%",
+              width: "100%",
+              height: "100%",
               objectFit: "contain",
               display: "block",
               pointerEvents: "none",
