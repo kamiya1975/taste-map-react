@@ -793,8 +793,8 @@ function MapPage() {
           style={{
             width: "30px",
             height: "30px",
-            background: "transparent",
-            border: "none",
+            background: "#fff",
+            border: "0.5px solid #000",
             borderRadius: "6px",
             cursor: "pointer",
             display: "flex",
@@ -809,8 +809,8 @@ function MapPage() {
             src={`${process.env.PUBLIC_URL || ""}/img/icon colour.png`}
             alt=""
             style={{
-              width: "100%",
-              height: "100%",
+              width: "95%",
+              height: "95%",
               objectFit: "contain",
               display: "block",
               pointerEvents: "none",

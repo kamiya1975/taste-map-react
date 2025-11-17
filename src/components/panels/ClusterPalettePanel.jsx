@@ -68,6 +68,10 @@ export default function ClusterPalettePanel({
     >
       {!collapsed ? (
         <div style={{ padding: 12 }}>
+          <p style={{ margin: "4px 0 12px", color: "#444", fontSize: 13 }}>
+            グループ名をタッチすると、その味わいが集まる場所にマップが移動します。
+            </p>
+        
           {/* ★ カードを2カラムで並べるエリア */}
           <div
             style={{
