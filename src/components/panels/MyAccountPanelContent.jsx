@@ -127,6 +127,8 @@ export default function MyAccountPanelContent() {
   const [agreed, setAgreed] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // ▼ 新規登録フォームの開閉
+  const [showRegister, setShowRegister] = useState(false);
   const registerRef = useRef(null);
 
   // 共通：サーバから返ってきたトークンとユーザー情報を保存
@@ -396,9 +398,18 @@ export default function MyAccountPanelContent() {
   };
   const label = { fontSize: 13, color: "#666" };
 
-  const scrollToRegister = () => {
-    if (registerRef.current) {
-      registerRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  const openRegister = () => {
+    if (!showRegister) {
+      setShowRegister(true);
+      // 展開後に少しスクロール
+      setTimeout(() => {
+        if (registerRef.current) {
+          registerRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        }
+      }, 50);
     }
   };
 
@@ -548,7 +559,7 @@ export default function MyAccountPanelContent() {
         >
           <button
             type="button"
-            onClick={scrollToRegister}
+            onClick={openRegister}
             style={{
               padding: 0,
               border: "none",
@@ -565,167 +576,171 @@ export default function MyAccountPanelContent() {
       </div>
 
       {/* ======================= */}
-      {/*  新規登録ブロック        */}
+      {/*  新規登録ブロック（畳み込み） */}
       {/* ======================= */}
-      <div
-        ref={registerRef}
-        style={{
-          background: "#fff",
-          border: "1px solid #e7e7e7",
-          borderRadius: 12,
-          overflow: "hidden",
-          maxWidth: 560,
-          margin: "0 auto",
-        }}
-      >
-        <div
-          style={{
-            padding: "12px 16px",
-            borderBottom: "1px solid #eee",
-            fontSize: 15,
-            fontWeight: 600,
-          }}
-        >
-          新規登録
-        </div>
-
-        {/* ニックネーム */}
-        <div style={row}>
-          <div style={label}>ニックネーム</div>
-          <BorderlessInput
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-          />
-        </div>
-
-        {/* ID（メール） */}
-        <div style={row}>
-          <div style={label}>ID（メール）</div>
-          <BorderlessInput
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="example@mail.com"
-          />
-        </div>
-
-        {/* パスワード */}
-        <div style={row}>
-          <div style={label}>パスワード</div>
-          <div style={{ position: "relative" }}>
-            <BorderlessInput
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="4〜20文字"
-              style={{ paddingRight: 28 }}
-            />
-            <button
-              onClick={() => setShowPassword((v) => !v)}
+      {showRegister && (
+        <>
+          <div
+            ref={registerRef}
+            style={{
+              background: "#fff",
+              border: "1px solid #e7e7e7",
+              borderRadius: 12,
+              overflow: "hidden",
+              maxWidth: 560,
+              margin: "0 auto",
+            }}
+          >
+            <div
               style={{
-                position: "absolute",
-                right: 0,
-                top: "50%",
-                transform: "translateY(-50%)",
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
+                padding: "12px 16px",
+                borderBottom: "1px solid #eee",
+                fontSize: 15,
+                fontWeight: 600,
               }}
             >
-              {showPassword ? "●" : "◯"}
+              新規登録
+            </div>
+
+            {/* ニックネーム */}
+            <div style={row}>
+              <div style={label}>ニックネーム</div>
+              <BorderlessInput
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+              />
+            </div>
+
+            {/* ID（メール） */}
+            <div style={row}>
+              <div style={label}>ID（メール）</div>
+              <BorderlessInput
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@mail.com"
+              />
+            </div>
+
+            {/* パスワード */}
+            <div style={row}>
+              <div style={label}>パスワード</div>
+              <div style={{ position: "relative" }}>
+                <BorderlessInput
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="4〜20文字"
+                  style={{ paddingRight: 28 }}
+                />
+                <button
+                  onClick={() => setShowPassword((v) => !v)}
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  {showPassword ? "●" : "◯"}
+                </button>
+              </div>
+            </div>
+
+            {/* 生まれ年 */}
+            <div style={row}>
+              <div style={label}>生まれ年</div>
+              <BorderlessSelect
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+              >
+                <option value="">−</option>
+                {Array.from(
+                  { length: 80 },
+                  (_, i) => new Date().getFullYear() - 20 - i
+                )
+                  .map((y) => y.toString())
+                  .map((y) => (
+                    <option key={y}>{y}</option>
+                  ))}
+              </BorderlessSelect>
+            </div>
+
+            {/* 生まれ月 */}
+            <div style={row}>
+              <div style={label}>生まれ月</div>
+              <BorderlessSelect
+                value={birthMonth}
+                onChange={(e) => setBirthMonth(e.target.value)}
+              >
+                <option value="">−</option>
+                {Array.from({ length: 12 }, (_, i) =>
+                  String(i + 1).padStart(2, "0")
+                ).map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </BorderlessSelect>
+            </div>
+
+            {/* 性別 */}
+            <div style={{ ...row, borderBottom: "none" }}>
+              <div style={label}>性別</div>
+              <BorderlessSelect
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+              >
+                <option value="">−</option>
+                <option>男性</option>
+                <option>女性</option>
+                <option>その他</option>
+              </BorderlessSelect>
+            </div>
+          </div>
+
+          {/* 利用規約（新規登録用） */}
+          <div
+            style={{
+              maxWidth: 560,
+              margin: "14px auto 0",
+              textAlign: "center",
+            }}
+          >
+            <label
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 13,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+              />
+              <span>
+                <a href="/terms" target="_blank" rel="noreferrer">
+                  利用規約
+                </a>
+                に同意します
+              </span>
+            </label>
+          </div>
+
+          {/* 新規登録 保存ボタン */}
+          <div style={{ maxWidth: 560, margin: "12px auto 0  auto" }}>
+            <button
+              onClick={handleRegister}
+              disabled={!agreed || saving}
+              style={{ width: "100%", padding: 14, borderRadius: 12 }}
+            >
+              {saving ? "保存中..." : "保存"}
             </button>
           </div>
-        </div>
-
-        {/* 生まれ年 */}
-        <div style={row}>
-          <div style={label}>生まれ年</div>
-          <BorderlessSelect
-            value={birthYear}
-            onChange={(e) => setBirthYear(e.target.value)}
-          >
-            <option value="">−</option>
-            {Array.from(
-              { length: 80 },
-              (_, i) => new Date().getFullYear() - 20 - i
-            )
-              .map((y) => y.toString())
-              .map((y) => (
-                <option key={y}>{y}</option>
-              ))}
-          </BorderlessSelect>
-        </div>
-
-        {/* 生まれ月 */}
-        <div style={row}>
-          <div style={label}>生まれ月</div>
-          <BorderlessSelect
-            value={birthMonth}
-            onChange={(e) => setBirthMonth(e.target.value)}
-          >
-            <option value="">−</option>
-            {Array.from({ length: 12 }, (_, i) =>
-              String(i + 1).padStart(2, "0")
-            ).map((m) => (
-              <option key={m}>{m}</option>
-            ))}
-          </BorderlessSelect>
-        </div>
-
-        {/* 性別 */}
-        <div style={{ ...row, borderBottom: "none" }}>
-          <div style={label}>性別</div>
-          <BorderlessSelect
-            value={gender}
-            onChange={(e) => setGender(e.target.value)}
-          >
-            <option value="">−</option>
-            <option>男性</option>
-            <option>女性</option>
-            <option>その他</option>
-          </BorderlessSelect>
-        </div>
-      </div>
-
-      {/* 利用規約（新規登録用） */}
-      <div
-        style={{
-          maxWidth: 560,
-          margin: "14px auto 0",
-          textAlign: "center",
-        }}
-      >
-        <label
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 13,
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-          />
-          <span>
-            <a href="/terms" target="_blank" rel="noreferrer">
-              利用規約
-            </a>
-            に同意します
-          </span>
-        </label>
-      </div>
-
-      {/* 新規登録 保存ボタン */}
-      <div style={{ maxWidth: 560, margin: "12px auto 0  auto" }}>
-        <button
-          onClick={handleRegister}
-          disabled={!agreed || saving}
-          style={{ width: "100%", padding: 14, borderRadius: 12 }}
-        >
-          {saving ? "保存中..." : "保存"}
-        </button>
-      </div>
+        </>
+      )}
     </div>
   );
 }
