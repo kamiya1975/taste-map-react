@@ -518,7 +518,7 @@ export default function ProductPage() {
             color: "#000",
             border: "none",
             borderRadius: 10,
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: 700,
             lineHeight: 1,            // ← 中央揃えのため重要
             cursor: "pointer",
