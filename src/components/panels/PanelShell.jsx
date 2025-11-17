@@ -73,7 +73,7 @@ export default function PanelShell({
             <PanelHeader
               title={title}
               icon={icon}
-              onClose={handleClose}
+              onClose={hideClose ? undefined : handleClose}
               rightExtra={rightExtra}
             />
           </div>
