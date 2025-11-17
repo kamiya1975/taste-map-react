@@ -91,7 +91,12 @@ export default function ClusterPalettePanel({
                 borderRadius: 18,
                 background: "#fff",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
-               cursor: onPickCluster ? "pointer" : "default",
+                cursor: onPickCluster ? "pointer" : "default",
+
+                // ★ 追加：ボタン枠を消す
+                border: "none",
+                outline: "none",
+                WebkitTapHighlightColor: "transparent",
               }}
               role="button"
               tabIndex={0}
