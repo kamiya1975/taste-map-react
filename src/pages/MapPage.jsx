@@ -809,8 +809,8 @@ function MapPage() {
             src={`${process.env.PUBLIC_URL || ""}/img/icon colour.png`}
             alt=""
             style={{
-              width: "120%",
-              height: "120%",
+              width: "100%",
+              height: "100%",
               objectFit: "contain",
               display: "block",
               pointerEvents: "none",
