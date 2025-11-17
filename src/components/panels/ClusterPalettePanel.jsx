@@ -64,7 +64,7 @@ export default function ClusterPalettePanel({
       motionPreset="mui"
       animateHeight={true}
       heightDurationMs={225}
-      zIndex={2000}
+      zIndex={3000}
     >
       {!collapsed ? (
         <div style={{ padding: 12 }}>

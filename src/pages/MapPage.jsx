@@ -850,7 +850,14 @@ function MapPage() {
 
       {/* 右上: 検索 */}
       <button
-        onClick={() => openPanel("search")}
+        onClick={() => {
+          // ★ ここでクラスターパネルを沈める
+          setClusterColorMode(false);
+          setIsClusterOpen(false);  // 表示自体も閉じる（＝完全に沈む）
+
+          // その上で、いつもの処理
+          openPanel("search");
+        }}
         style={{ /* 上と同様。topだけ60pxに */ pointerEvents: "auto", position:"absolute", top:"60px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
         aria-label="検索"
         title="検索"
