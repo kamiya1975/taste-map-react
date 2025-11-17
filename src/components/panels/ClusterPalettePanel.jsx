@@ -73,6 +73,7 @@ export default function ClusterPalettePanel({
       animateHeight={true}
       heightDurationMs={225}
       zIndex={4000}
+      hideClose={true}
     >
       {!collapsed ? (
         <div style={{ padding: 12 }}>

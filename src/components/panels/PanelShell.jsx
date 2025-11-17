@@ -21,6 +21,7 @@ export default function PanelShell({
   animateHeight = false,
   heightDurationMs = 225,
   zIndex = 1500,
+  hideClose = false,
 }) {
   const handleClose = (e) => {
     e?.stopPropagation?.();
