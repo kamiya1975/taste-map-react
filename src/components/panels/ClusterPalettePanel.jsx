@@ -126,7 +126,7 @@ export default function ClusterPalettePanel({
                     color: "#222",
                     fontWeight: 700,
                     lineHeight: 1.3,
-                    textShadow: "0 0 3px rgba(255,255,255,0.8)",
+                    textShadow: "0 0 3px white, 0 0 2px white",
                   }}
                 >
                   {name || "クラスタ"}
