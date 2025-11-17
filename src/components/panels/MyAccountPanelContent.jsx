@@ -581,7 +581,7 @@ export default function MyAccountPanelContent() {
                 style={{
                   marginTop: 16,
                   width: "100%",
-                  padding: "8px 20px",
+                  padding: "4px 10px",
                   lineHeight: 1.2,
                   background: "rgb(230,227,219)",
                   color: "#000",
