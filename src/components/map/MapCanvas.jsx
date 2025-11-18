@@ -536,10 +536,13 @@ const MapCanvas = forwardRef(function MapCanvas(
       sizeUnits: "meters",
       getSize: 0.5,
       billboard: true,
-      pickable: false,
+      pickable: true,               // ★ クリック可能にする
+      onClick: () => {              // ★ コンパスをタップしたら SliderPage を開く
+        onOpenSlider?.();
+      },
       parameters: { depthTest: false },
     });
-  }, [data, basePoint]);
+  }, [data, basePoint, onOpenSlider]);  // ★ 依存に onOpenSlider を追加
 
   // --- 近傍探索（クリック時） ---
   const findNearestWine = useCallback(
@@ -629,11 +632,8 @@ const MapCanvas = forwardRef(function MapCanvas(
         // まずは通常のGPUピッキング（点を直タップ）
         const picked = info?.object;
         if (picked && janOf(picked)) {
-          if (janOf(picked) === ANCHOR_JAN) {
-            onOpenSlider?.();
-          } else {
-            onPickWine?.(picked);
-          }
+          // ★ もう基準ワインも含めて、単純に商品選択だけ行う
+          onPickWine?.(picked);
           return;
         }
 

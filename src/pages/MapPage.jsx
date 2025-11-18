@@ -763,15 +763,9 @@ function MapPage() {
         onPickWine={async (item) => {
           if (!item) return;
 
-          // ★ 基準のワインだけ SliderPage へ
-          const jan = String(item.JAN ?? item.jan_code ?? "");
-          if (jan === ANCHOR_JAN) {
-            navigate("/slider", { state: { from: "anchor" } });
-            return;
-          }
-
-          await closeUIsThen({ 
-            preserveMyPage: true, 
+          // ★ もう基準ワインも特別扱いせず、通常どおり商品ページを開く
+          await closeUIsThen({
+            preserveMyPage: true,
             preserveSearch: true,
             preserveCluster: true,
           });
