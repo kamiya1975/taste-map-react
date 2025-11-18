@@ -44,7 +44,9 @@ const getCurrentMainStoreId = () => {
 
     const fromLegacy = Number(localStorage.getItem("store.mainStoreId") || "0");
     if (fromLegacy > 0) return fromLegacy;
-  } catch {}
+  } catch {
+    // 何もしない
+  }
   // 最低限、ECショップID=1をデフォルトにしておく（必要なら後で修正）
   return 1;
 };
@@ -113,11 +115,12 @@ export default function MyAccountPanelContent() {
   const [loginLoading, setLoginLoading] = useState(false);
 
   // ▼ パスワードリセット用
+  const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
-  const [showReset, setShowReset] = useState(false);
+  const [resetStatus, setResetStatus] = useState(null);
 
-  // ▼ 新規登録（＝現状コードの内容）
+  // ▼ 新規登録
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -175,7 +178,7 @@ export default function MyAccountPanelContent() {
     return true;
   };
 
-  // 初期表示：ローカルキャッシュから復元（新規登録フォーム側）
+  // 初期表示：ローカルキャッシュから復元
   useEffect(() => {
     try {
       const appUserStr = localStorage.getItem("app.user");
@@ -263,46 +266,63 @@ export default function MyAccountPanelContent() {
     }
   };
 
-  // ▼ パスワードを忘れた方（リセットURLメール送信）
- const handleRequestReset = async () => {
-   const id = resetEmail.trim();
-   if (!id) {
-     alert("メールアドレスを入力してください。");
-     return;
-   }
-   if (!isEmail(id)) {
-     alert("メールアドレスの形式が正しくありません。");
-     return;
-   }
+  // ★ パスワードリセットメール送信
+  const handleSendResetMail = async () => {
+    const email = (resetEmail || "").trim();
 
-   setResetLoading(true);
+    if (!email) {
+      setResetStatus({
+        type: "error",
+        message: "メールアドレスを入力してください。",
+      });
+      return;
+    }
+    if (!isEmail(email)) {
+      setResetStatus({
+        type: "error",
+        message: "メールアドレスの形式が正しくありません。",
+      });
+      return;
+    }
+
     try {
-      // ※ バックエンド側は「リセット用URLを送る」実装にする
+      setResetLoading(true);
+      setResetStatus({ type: "info", message: "送信中です…" });
+
       const res = await fetch(
-        `${API_BASE}/api/app/auth/forgot-password?v=20251118`,
+        `${API_BASE}/api/app/password-reset/request?v=20251118`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_login_id: id }),
+          body: JSON.stringify({ user_login_id: email }),
         }
       );
 
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-       const detail =
-          (data && (data.detail || data.message)) ||
-          "パスワード再設定メールの送信に失敗しました。";
-        alert(detail);
-        return;
+      if (res.ok) {
+        setResetStatus({
+          type: "ok",
+          message:
+            "パスワード再設定用のメールを送信しました。メールの案内にしたがって操作してください。",
+        });
+      } else if (res.status === 404) {
+        setResetStatus({
+          type: "error",
+          message: "このメールアドレスは登録されていません。",
+        });
+      } else {
+        setResetStatus({
+          type: "error",
+          message:
+            "送信に失敗しました。時間をおいて再度お試しください。",
+        });
       }
-
-      alert(
-        "パスワード再設定用のメールを送信しました。メール記載のリンクから新しいパスワードを設定してください。"
-      );
     } catch (e) {
       console.error(e);
-      alert("通信に失敗しました。電波状況をご確認の上、再度お試しください。");
+      setResetStatus({
+        type: "error",
+        message:
+          "通信に失敗しました。電波状況をご確認の上、再度お試しください。",
+      });
     } finally {
       setResetLoading(false);
     }
@@ -377,7 +397,9 @@ export default function MyAccountPanelContent() {
       try {
         localStorage.setItem("user.agreed", agreed ? "1" : "0");
         if (password) localStorage.setItem("user.pass", password);
-      } catch {}
+      } catch {
+        // 無視
+      }
 
       setPassword("");
       alert("保存しました。");
@@ -498,10 +520,10 @@ export default function MyAccountPanelContent() {
           disabled={loginLoading}
           style={{
             marginTop: 16,
-           width: "100%",
+            width: "100%",
             padding: "8px 20px",
             lineHeight: 1.2,
-            background: "rgb(230,227,219)",     // ◆ 同じ色
+            background: "rgb(230,227,219)", // カートと同じデザイン
             color: "#000",
             border: "none",
             borderRadius: 10,
@@ -531,7 +553,7 @@ export default function MyAccountPanelContent() {
           textAlign: "center",
         }}
       >
-        {/* パスワードを忘れた方（見出しだけ → 押すと入力が出る） */}
+        {/* パスワードを忘れた方 */}
         <div
           style={{
             padding: "12px 0 0",
@@ -576,11 +598,9 @@ export default function MyAccountPanelContent() {
                 }}
               />
               <button
-               onClick={handleRequestReset}
+                onClick={handleSendResetMail}
                 disabled={resetLoading}
                 style={{
-                  marginTop: 16,
-                  width: "100%",
                   padding: "4px 10px",
                   lineHeight: 1.2,
                   background: "rgb(230,227,219)",
@@ -588,20 +608,38 @@ export default function MyAccountPanelContent() {
                   border: "none",
                   borderRadius: 10,
                   fontSize: 12,
-                  fontWeight: 700,                    // ← ontWeight → fontWeight に修正
+                  fontWeight: 700,
                   cursor: resetLoading ? "default" : "pointer",
                   boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
                   WebkitBackdropFilter: "blur(2px)",
                   backdropFilter: "blur(2px)",
                   display: "flex",
-                 alignItems: "center",
+                  alignItems: "center",
                   justifyContent: "center",
                   gap: 6,
                   opacity: resetLoading ? 0.6 : 1,
                 }}
               >
                 {resetLoading ? "送信中..." : "再設定メール送信"}
-             </button>
+              </button>
+
+              {resetStatus && (
+                <p
+                  style={{
+                    gridColumn: "1 / -1",
+                    marginTop: 6,
+                    fontSize: 12,
+                    color:
+                      resetStatus.type === "error"
+                        ? "#c00"
+                        : resetStatus.type === "ok"
+                        ? "#006400"
+                        : "#333",
+                  }}
+                >
+                  {resetStatus.message}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -788,7 +826,7 @@ export default function MyAccountPanelContent() {
           </div>
 
           {/* 新規登録 保存ボタン */}
-          <div style={{ maxWidth: 560, margin: "12px auto 0  auto" }}>
+          <div style={{ maxWidth: 560, margin: "12px auto 0 auto" }}>
             <button
               onClick={handleRegister}
               disabled={!agreed || saving}
