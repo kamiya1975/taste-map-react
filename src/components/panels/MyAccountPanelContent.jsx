@@ -228,7 +228,7 @@ export default function MyAccountPanelContent() {
 
     setLoginLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/app/auth/login?v=20251117`, {
+      const res = await fetch(`${API_BASE}/api/auth/login?v=20251117`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -238,7 +238,6 @@ export default function MyAccountPanelContent() {
       });
 
       const data = await res.json().catch(() => ({}));
-
       if (!res.ok) {
         if (res.status === 401) {
           alert("ID またはパスワードが正しくありません。");
