@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import PanelHeader from "../components/ui/PanelHeader";
 import { getReferenceLotById } from "../ui/constants";
+import { getLotId } from "../utils/lot";
 
 /* ============ 小ユーティリティ（既存） ============ */
 const num = (v, def = 0) => {
@@ -132,31 +133,6 @@ function fitLocalAffineAndPredict(px, py, neigh) {
   return [a1[0] * px + a1[1] * py + a1[2], a2[0] * px + a2[1] * py + a2[2]];
 }
 
-// ロットID解決（state → localStorage → URLクエリ → デフォルト）
-const resolveReferenceLotId = (location) => {
-  // 1) Map からの遷移時に state で渡された lotId
-  const stateLot = location?.state?.referenceLotId;
-  if (stateLot) return stateLot;
-
-  // 2) 過去に保存した lotId
-  try {
-    const saved = localStorage.getItem("referenceLotId");
-    if (saved) return saved;
-  } catch {
-    // ignore
-  }
-
-  // 3) URL クエリ ?lot=rw1_2026_08 など
-  if (location?.search) {
-    const params = new URLSearchParams(location.search);
-    const qLot = params.get("lot");
-    if (qLot) return qLot;
-  }
-
-  // 4) デフォルト（初回ロット）
-  return "rw1_2025_11";
-};
-
 export default function SliderPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -197,15 +173,21 @@ export default function SliderPage() {
 
   // 基準ワインロットの決定
   useEffect(() => {
-    const lotId = resolveReferenceLotId(location);
+    const lotId = getLotId();                 // MapPage と同じロジックを使う
     const lot = getReferenceLotById(lotId);
-    setReferenceLot(lot);
-    try {
-      localStorage.setItem("referenceLotId", lot.lotId);
-    } catch {
-      // ignore
+
+    if (lot) {
+      setReferenceLot(lot);
+      try {
+        localStorage.setItem("referenceLotId", lot.lotId);
+      } catch {
+        // ignore
+      }
+    } else {
+      // 不正な lotId のときも落ちないように
+      setReferenceLot(null);
     }
-  }, [location]);
+  }, []);
 
   // UMAP座標＆PC1/PC2 全体分布の読み込み
   useEffect(() => {

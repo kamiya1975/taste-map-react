@@ -426,16 +426,34 @@ function MapPage() {
     if (didInitialCenterRef.current) return;
     if (!Array.isArray(data) || data.length === 0) return;
 
-    const b = data.find((d) => String(d.jan_code) === ANCHOR_JAN || String(d.JAN) === ANCHOR_JAN);
-    if (b && Number.isFinite(b.umap_x) && Number.isFinite(b.umap_y)) {
-      centerToUMAP(b.umap_x, b.umap_y, { zoom: INITIAL_ZOOM });
-      didInitialCenterRef.current = true;
-      return;
+    let targetX = null;
+    let targetY = null;
+
+    // ① ロット別の基準ポイントを最優先
+    if (basePoint && Number.isFinite(basePoint.x) && Number.isFinite(basePoint.y)) {
+      targetX = Number(basePoint.x);
+      targetY = Number(basePoint.y);
+    } else {
+      // ② なければ従来どおり ANCHOR_JAN
+     const b = data.find(
+        (d) =>
+          String(d.jan_code) === ANCHOR_JAN ||
+          String(d.JAN) === ANCHOR_JAN
+      );
+      if (b && Number.isFinite(b.umap_x) && Number.isFinite(b.umap_y)) {
+        targetX = b.umap_x;
+        targetY = b.umap_y;
+      } else {
+        // ③ それも無ければ全体重心
+        const [cx, cy] = umapCentroid;
+        targetX = cx;
+        targetY = cy;
+      }
     }
-    const [cx, cy] = umapCentroid;
-    centerToUMAP(cx, cy, { zoom: INITIAL_ZOOM });
+
+    centerToUMAP(targetX, targetY, { zoom: INITIAL_ZOOM });
     didInitialCenterRef.current = true;
-  }, [data, centerToUMAP, umapCentroid]);
+  }, [data, centerToUMAP, umapCentroid, basePoint]);
 
   // ★ SliderPageから戻った直後にユーザーピンへセンタリング
   useEffect(() => {
