@@ -8,7 +8,7 @@ export const CLUSTER_DRAWER_HEIGHT = "calc(56svh - env(safe-area-inset-bottom))"
 
 export const drawerModalProps = {
   keepMounted: true,
-  disablePortal: true,                                        // ★必ずポータル使用
+  disablePortal: false, 
   container: typeof window !== "undefined" ? document.body : undefined, // ★#rootは使わない
   // disableScrollLock: true, // （必要なら）スクロールロックを無効化
 };
@@ -103,3 +103,32 @@ export const CLUSTER_META = [
 // 取得ヘルパ
 export const getClusterMeta = (id) =>
   CLUSTER_META.find((m) => m.id === Number(id)) || { id, name: `Cluster_${id}`, hint: "" };
+
+
+// ==============================
+// 基準ワイン（Reference Wine）ロット情報
+// ==============================
+
+export const REFERENCE_LOTS = {
+  rw1_2025_11: {
+    lotId: "rw1_2025_11",
+    label: "初回ロット（2025-11）",
+    umap_x: 4.744835,
+    umap_y: 7.667319,
+    pc1: 1.4545,
+    pc2: 3.4578,
+  },
+  rw1_2026_08: {
+    lotId: "rw1_2026_08",
+    label: "2ロット目（2026-08）",
+    umap_x: 5.444825,
+    umap_y: 6.457314,
+    pc1: 1.5571,
+    pc2: 3.2194,
+  },
+};
+
+// LOT_ID（例：rw1_2026_08）からロット情報を返す。
+// 該当がなければデフォルト（初回ロット）を返す。
+export const getReferenceLotById = (lotId) =>
+  REFERENCE_LOTS[lotId] || REFERENCE_LOTS["rw1_2025_11"];

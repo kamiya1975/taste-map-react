@@ -170,6 +170,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     edgeMarginXPx = 8,
     edgeMarginYPx = 20,
     clusterColorMode = false,
+    basePoint,
   },
   deckRef   // ★ ref を受け取る
 ) {
@@ -502,28 +503,43 @@ const MapCanvas = forwardRef(function MapCanvas(
     });
   }, [userPin]);
 
-  // --- レイヤ：基準のワイン（常時表示のコンパス） ---
+  // --- レイヤ：基準のワイン（常時表示コンパス） ---
   const anchorCompassLayer = useMemo(() => {
-    const item = data.find(d => String(d.JAN) === ANCHOR_JAN);
-    if (!item || !Number.isFinite(xOf(item)) || !Number.isFinite(yOf(item))) return null;
+    let x = null;
+    let yUMAP = null;
+
+    // ① MapPage から渡されたロット別の基準点を優先
+    if (basePoint && Number.isFinite(basePoint.x) && Number.isFinite(basePoint.y)) {
+      x = Number(basePoint.x);
+      yUMAP = Number(basePoint.y);
+    } else {
+      // ② なければ従来通り ANCHOR_JAN の座標にフォールバック
+      const item = data.find(d => String(d.JAN) === ANCHOR_JAN);
+      if (!item || !Number.isFinite(xOf(item)) || !Number.isFinite(yOf(item))) {
+        return null;
+      }
+      x = xOf(item);
+      yUMAP = yOf(item);
+    }
+
     return new IconLayer({
       id: "anchor-compass",
-      data: [{ position: [xOf(item), -yOf(item), 0] }],
+      data: [{ position: [x, -yUMAP, 0] }],  // y は DeckGL 用に反転
       getPosition: d => d.position,
       getIcon: () => ({
-        url: `${process.env.PUBLIC_URL || ""}/img/compass.png`, // ← ここを差し替え
+        url: `${process.env.PUBLIC_URL || ""}/img/compass.png`,
         width: 310,
         height: 310,
-        anchorX: 155, // 画像中央基準
+        anchorX: 155,
         anchorY: 155,
       }),
       sizeUnits: "meters",
-      getSize: 0.5,            // 見た目の大きさ。必要に応じて微調整
+      getSize: 0.5,
       billboard: true,
       pickable: false,
       parameters: { depthTest: false },
     });
-  }, [data]);
+  }, [data, basePoint]);
 
   // --- 近傍探索（クリック時） ---
   const findNearestWine = useCallback(

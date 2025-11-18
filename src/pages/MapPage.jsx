@@ -16,14 +16,16 @@ import MyPagePanelContent from "../components/panels/MyPagePanelContent";
 import ClusterPalettePanel from "../components/panels/ClusterPalettePanel";
 import SimpleCartPanel from "../components/panels/SimpleCartPanel";
 import { useSimpleCart } from "../cart/simpleCart";
-import {
-  drawerModalProps,
-  paperBaseStyle,
-  ZOOM_LIMITS,
-  INITIAL_ZOOM,
-  CENTER_Y_OFFSET,
+import { 
+  drawerModalProps, 
+  paperBaseStyle, 
+  ZOOM_LIMITS, 
+  INITIAL_ZOOM, 
+  CENTER_Y_OFFSET, 
   DRAWER_HEIGHT,
 } from "../ui/constants";
+import { getReferenceLotById } from "../ui/constants";
+import { getLotId } from "../utils/lot";
 
 const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
@@ -61,6 +63,22 @@ function CartProbe() {
 function MapPage() {
   const location = useLocation();
   const navigate = useNavigate();
+
+  // ★ ロット → 基準ワイン座標
+  const lotId = getLotId();
+  const reference = useMemo(() => getReferenceLotById(lotId), [lotId]);
+
+  const basePoint = useMemo(
+    () =>
+      reference
+        ? {
+            x: reference.umap_x,
+            y: reference.umap_y,
+            lotId: reference.lotId,
+          }
+        : null,
+    [reference]
+  );
 
   // ---- Refs ----
   const didInitialCenterRef = useRef(false);
@@ -451,7 +469,7 @@ function MapPage() {
     return;
   }, [userPin, location.state, centerToUMAP]);
 
-  // SliderPage閉じる→ blendFへ戻る
+  // SliderPage閉じる → 基準ワイン（参照座標）へ戻る
   useEffect(() => {
     const fromState = !!location.state?.centerOnBlendF;
     const raw = sessionStorage.getItem("tm_center_umap");
@@ -752,6 +770,7 @@ function MapPage() {
         clusterColorMode={clusterColorMode}
         edgeMarginXPx={50}
         edgeMarginYPx={400}
+        basePoint={basePoint}
       />
 
       {/* 左上: 指標セレクタ + クラスタ配色ボタン */}

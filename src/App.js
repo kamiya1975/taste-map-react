@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-
 import "./App.css";
 import { bootstrapIdentity } from "./utils/auth";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import { initLotIdFromUrl } from "./utils/lot";
 
 // Pages
 import IntroPage from "./pages/IntroPage";
@@ -21,6 +22,7 @@ export default function App() {
 
   useEffect(() => {
     bootstrapIdentity();
+    initLotIdFromUrl(); 
 
     const isStandalone =
       window.matchMedia?.("(display-mode: standalone)")?.matches ||
