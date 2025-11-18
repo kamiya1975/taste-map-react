@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import "./App.css";
 import { bootstrapIdentity } from "./utils/auth";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 // Pages
 import IntroPage from "./pages/IntroPage";
@@ -30,6 +31,8 @@ export default function App() {
       !sessionStorage.getItem("tm_started_once") &&
       (navType === "navigate" || navType === "reload" || !navType);
 
+    // ※ PWA起動時だけ /map へ寄せる。reset-password は例外扱いでも良いが、
+    //   基本はブラウザから開く想定なのでこのままでも大きな問題はない。
     if (isStandalone && isColdStart && location.pathname !== "/map") {
       navigate("/map", { replace: true });
     }
@@ -37,17 +40,21 @@ export default function App() {
   }, [navigate, location.pathname]);
 
   return (
-      <Routes>
-        <Route path="/" element={<IntroPage />} />
-        <Route path="/store" element={<StorePage />} />
-        <Route path="/slider" element={<SliderPage />} />
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/products/:jan" element={<ProductPage />} />
-        <Route path="/taste-log" element={<UserTastePage />} />
-        <Route path="/scan-flow" element={<ScanAndProductFlow />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="*" element={<Navigate to="/map" replace />} />
-      </Routes>
+    <Routes>
+      <Route path="/" element={<IntroPage />} />
+      <Route path="/store" element={<StorePage />} />
+      <Route path="/slider" element={<SliderPage />} />
+      <Route path="/map" element={<MapPage />} />
+      <Route path="/products/:jan" element={<ProductPage />} />
+      <Route path="/taste-log" element={<UserTastePage />} />
+      <Route path="/scan-flow" element={<ScanAndProductFlow />} />
+      <Route path="/cart" element={<CartPage />} />
+
+      {/* ★ 404より前に置く */}
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+      {/* それ以外は /map に飛ばす */}
+      <Route path="*" element={<Navigate to="/map" replace />} />
+    </Routes>
   );
 }
-

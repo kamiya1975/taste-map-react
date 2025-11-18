@@ -263,23 +263,23 @@ export default function MyAccountPanelContent() {
     }
   };
 
-  // ▼ パスワードを忘れた方（仮パス発行）
-  const handleRequestReset = async () => {
-    const id = resetEmail.trim();
-    if (!id) {
-      alert("メールアドレスを入力してください。");
-      return;
-    }
-    if (!isEmail(id)) {
-      alert("メールアドレスの形式が正しくありません。");
-      return;
-    }
+  // ▼ パスワードを忘れた方（リセットURLメール送信）
+ const handleRequestReset = async () => {
+   const id = resetEmail.trim();
+   if (!id) {
+     alert("メールアドレスを入力してください。");
+     return;
+   }
+   if (!isEmail(id)) {
+     alert("メールアドレスの形式が正しくありません。");
+     return;
+   }
 
-    setResetLoading(true);
+   setResetLoading(true);
     try {
-      // ※ エンドポイント名は仮です。バックエンドに合わせて変更してください。
+      // ※ バックエンド側は「リセット用URLを送る」実装にする
       const res = await fetch(
-        `${API_BASE}/api/app/auth/forgot-password?v=20251117`,
+        `${API_BASE}/api/app/auth/forgot-password?v=20251118`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -290,15 +290,15 @@ export default function MyAccountPanelContent() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const detail =
+       const detail =
           (data && (data.detail || data.message)) ||
-          "パスワード再発行に失敗しました。";
+          "パスワード再設定メールの送信に失敗しました。";
         alert(detail);
         return;
       }
 
       alert(
-        "仮パスワードをメール送信しました。メールをご確認のうえ、ログイン後にパスワードを変更してください。"
+        "パスワード再設定用のメールを送信しました。メール記載のリンクから新しいパスワードを設定してください。"
       );
     } catch (e) {
       console.error(e);
@@ -576,7 +576,7 @@ export default function MyAccountPanelContent() {
                 }}
               />
               <button
-                onClick={handleRequestReset}
+               onClick={handleRequestReset}
                 disabled={resetLoading}
                 style={{
                   marginTop: 16,
@@ -587,22 +587,21 @@ export default function MyAccountPanelContent() {
                   color: "#000",
                   border: "none",
                   borderRadius: 10,
-                  fontSize: 8,
-                  ontWeight: 700,
+                  fontSize: 12,
+                  fontWeight: 700,                    // ← ontWeight → fontWeight に修正
                   cursor: resetLoading ? "default" : "pointer",
-                 boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
                   WebkitBackdropFilter: "blur(2px)",
                   backdropFilter: "blur(2px)",
                   display: "flex",
-                  alignItems: "center",
+                 alignItems: "center",
                   justifyContent: "center",
                   gap: 6,
                   opacity: resetLoading ? 0.6 : 1,
                 }}
               >
-                {resetLoading ? "送信中..." : "仮パスワード送信"}
-              </button>
-
+                {resetLoading ? "送信中..." : "再設定メール送信"}
+             </button>
             </div>
           )}
         </div>
