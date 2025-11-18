@@ -245,25 +245,43 @@ export default function SliderPage() {
   };
 
   const handleGenerate = () => {
-    if (!referenceLot || !pcMinMax || !rows.length) return;
-    const { minPC1, maxPC1, minPC2, maxPC2 } = pcMinMax;
+    if (!referenceLot) return;
 
-    // ロットごとの基準点（PC空間）
-    const basePC1 = referenceLot.pc1;
-    const basePC2 = referenceLot.pc2;
+    let umapX, umapY;
 
-    // 0-100(中央50) → PC空間へ線形補間
-    const pc1Value =
-      body <= 50
-        ? basePC1 - ((50 - body) / 50) * (basePC1 - minPC1)
-        : basePC1 + ((body - 50) / 50) * (maxPC1 - basePC1);
+    // ★スライダーを全くいじっていない（50, 50）のときは、
+    //   ロット定義の UMAP 座標をそのまま使う
+    if (
+      sweetness === 50 &&
+      body === 50 &&
+      typeof referenceLot.umap_x === "number" &&
+      typeof referenceLot.umap_y === "number"
+    ) {
+      umapX = referenceLot.umap_x;
+      umapY = referenceLot.umap_y;
+    } else {
+      // ★それ以外のときは、今まで通り PC → UMAP 写像を使う
+      if (!pcMinMax || !rows.length) return;
 
-    const pc2Value =
-      sweetness <= 50
-        ? basePC2 - ((50 - sweetness) / 50) * (basePC2 - minPC2)
-        : basePC2 + ((sweetness - 50) / 50) * (maxPC2 - basePC2);
+      const { minPC1, maxPC1, minPC2, maxPC2 } = pcMinMax;
 
-    const [umapX, umapY] = pca2umap(pc1Value, pc2Value);
+      // ロットごとの基準点（PC空間）
+      const basePC1 = referenceLot.pc1;
+      const basePC2 = referenceLot.pc2;
+
+     // 0-100(中央50) → PC空間へ線形補間
+      const pc1Value =
+        body <= 50
+          ? basePC1 - ((50 - body) / 50) * (basePC1 - minPC1)
+          : basePC1 + ((body - 50) / 50) * (maxPC1 - basePC1);
+
+      const pc2Value =
+        sweetness <= 50
+          ? basePC2 - ((50 - sweetness) / 50) * (basePC2 - minPC2)
+          : basePC2 + ((sweetness - 50) / 50) * (maxPC2 - basePC2);
+
+      [umapX, umapY] = pca2umap(pc1Value, pc2Value);
+    }
 
     // ユーザー嗜好ピンを保存（どのロットを基準にしたかも一緒に）
     localStorage.setItem(
