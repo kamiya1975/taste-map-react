@@ -178,6 +178,29 @@ export default function MyAccountPanelContent() {
     return true;
   };
 
+  // ▼ ログアウト用
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // ① 画面を開いた時にログイン状態をチェック
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem("app.access_token");
+      if (token) setIsLoggedIn(true);
+    } catch {}
+  }, []);
+
+  // ② API 保存時に使う token（消さない）
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("app.access_token") || "";
+
+      // ここで token を使って API に送る
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // 初期表示：ローカルキャッシュから復元
   useEffect(() => {
     try {
@@ -254,6 +277,7 @@ export default function MyAccountPanelContent() {
 
       const ok = applyAuthResponse(data, id);
       if (ok) {
+        setIsLoggedIn(true);
         setLoginPassword("");
         alert("ログインしました。");
       }
@@ -512,35 +536,66 @@ export default function MyAccountPanelContent() {
         </div>
       </div>
 
-      {/* ログインボタン */}
+      {/* ログイン or ログアウト ボタン */}
       <div style={{ maxWidth: 560, margin: "8px auto 16px" }}>
-        <button
-          onClick={handleLogin}
-          disabled={loginLoading}
-          style={{
-            marginTop: 16,
-            width: "100%",
-            padding: "8px 20px",
-            lineHeight: 1.2,
-            background: "rgb(230,227,219)", // カートと同じデザイン
-            color: "#000",
-            border: "none",
-            borderRadius: 10,
-            fontSize: 18,
-            fontWeight: 700,
-            cursor: loginLoading ? "default" : "pointer",
-            boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
-            WebkitBackdropFilter: "blur(2px)",
-            backdropFilter: "blur(2px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            opacity: loginLoading ? 0.6 : 1,
-          }}
-        >
-          {loginLoading ? "ログイン中..." : "ログイン"}
-        </button>
+        {!isLoggedIn ? (
+          <button
+            onClick={handleLogin}
+            disabled={loginLoading}
+            style={{
+              marginTop: 16,
+              width: "100%",
+              padding: "8px 20px",
+              lineHeight: 1.2,
+              background: "rgb(230,227,219)",
+              color: "#000",
+              border: "none",
+              borderRadius: 10,
+              fontSize: 18,
+              fontWeight: 700,
+              cursor: loginLoading ? "default" : "pointer",
+              boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
+              WebkitBackdropFilter: "blur(2px)",
+              backdropFilter: "blur(2px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              opacity: loginLoading ? 0.6 : 1,
+            }}
+          >
+            {loginLoading ? "ログイン中..." : "ログイン"}
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              localStorage.removeItem("app.access_token");
+              localStorage.removeItem("app.refresh_token");
+              localStorage.removeItem("app.user");
+              localStorage.removeItem("app.user_login_id");
+              setIsLoggedIn(false);
+              alert("ログアウトしました。");
+            }}
+            style={{
+              marginTop: 16,
+              width: "100%",
+              padding: "8px 20px",
+              lineHeight: 1.2,
+              background: "rgb(230,227,219)",
+              color: "#000",
+              border: "none",
+              borderRadius: 10,
+              fontSize: 18,
+              fontWeight: 700,
+             cursor: "pointer",
+              boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
+              WebkitBackdropFilter: "blur(2px)",
+              backdropFilter: "blur(2px)",
+            }}
+          >
+           ログアウト
+          </button>
+        )}
       </div>
 
       {/* パスワード忘れ／新規の方 */}
