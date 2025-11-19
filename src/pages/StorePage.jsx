@@ -66,7 +66,8 @@ export default function StorePage() {
           params.set("user_lon", String(loc.lon));
         }
 
-        const url = `${API_BASE}/app/stores?${params.toString()}`;
+        // ★ ここを /api/app/stores に修正
+        const url = `${API_BASE}/api/app/stores?${params.toString()}`;
         console.log("[StorePage] fetch:", url);
 
         const res = await fetch(url, {
@@ -78,7 +79,7 @@ export default function StorePage() {
         });
 
         if (!res.ok) {
-          console.error("[StorePage] /app/stores error", res.status);
+          console.error("[StorePage] /api/app/stores error", res.status);
           throw new Error("FETCH_FAILED");
         }
 
@@ -101,7 +102,7 @@ export default function StorePage() {
             is_main: !!s.is_main,
             updated_at: s.updated_at,
 
-            // 旧 /stores.mock.json 互換のダミー項目（他のコードと合わせる用）
+            // /stores.mock.json 互換のダミー項目（他のコードと合わせる用）
             branch: "",
             address: "",
             genre: "",
