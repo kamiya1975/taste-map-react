@@ -1,20 +1,11 @@
 // src/pages/StorePage.jsx
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
-//import PanelHeader from "../components/ui/PanelHeader";
 
-/* ========= ユーティリティ ========= */
-function haversineKm(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const toRad = (deg) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
+// バックエンドのベースURL（例: https://tdb-backend-xxxx.onrender.com）
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
+/* ========= 位置情報取得ユーティリティ ========= */
 async function resolveLocation() {
   const geo = await new Promise((resolve) => {
     if (!("geolocation" in navigator)) return resolve(null);
@@ -25,7 +16,8 @@ async function resolveLocation() {
     );
   });
   if (geo) return geo;
-  return { lat: 35.681236, lon: 139.767125 }; // 東京駅
+  // 取得できなかった場合は東京駅
+  return { lat: 35.681236, lon: 139.767125 };
 }
 
 /* ========= 本体 ========= */
@@ -54,14 +46,6 @@ export default function StorePage() {
   }, []);
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { console.log("位置情報取得成功:", pos.coords); },
-      (err) => { console.warn("位置情報取得失敗:", err); },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-    );
-  }, []);
-
-  useEffect(() => {
     const run = async () => {
       if (askedRef.current) return;
       askedRef.current = true;
@@ -70,36 +54,76 @@ export default function StorePage() {
       setErr("");
 
       try {
+        const token = localStorage.getItem("app.access_token");
+        if (!token) {
+          throw new Error("NO_APP_TOKEN");
+        }
+
         const loc = await resolveLocation();
+        const params = new URLSearchParams();
+        if (Number.isFinite(loc.lat) && Number.isFinite(loc.lon)) {
+          params.set("user_lat", String(loc.lat));
+          params.set("user_lon", String(loc.lon));
+        }
 
-        const res = await fetch("/stores.mock.json", { cache: "no-store" });
-        if (!res.ok) throw new Error("stores.mock.json が見つかりません");
+        const url = `${API_BASE}/app/stores?${params.toString()}`;
+        console.log("[StorePage] fetch:", url);
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+
+        if (!res.ok) {
+          console.error("[StorePage] /app/stores error", res.status);
+          throw new Error("FETCH_FAILED");
+        }
+
         const raw = await res.json();
+        const list = Array.isArray(raw) ? raw : [];
 
-        const enriched = (Array.isArray(raw) ? raw : []).map((s, i) => {
-          const lat = Number.isFinite(s.lat) ? s.lat : s.latitude;
-          const lng =
-            Number.isFinite(s.lng) ? s.lng :
-            (Number.isFinite(s.lon) ? s.lon : s.longitude);
-          const distance =
-            Number.isFinite(lat) && Number.isFinite(lng)
-              ? haversineKm(loc.lat, loc.lon, lat, lng)
+        // バックエンドの AppStoreOut をフロント用に整形
+        const enriched = list.map((s, i) => {
+          const d =
+            typeof s.distance_km === "number" && isFinite(s.distance_km)
+              ? s.distance_km
               : Infinity;
+
           return {
-            ...s,
-            lat,
-            lng,
-            distance,
-            _key: `${s.name || ""}@@${s.branch || ""}@@${i}`,
+            // バックエンド由来
+            id: s.store_id,
+            name: s.store_name,
+            distance: d, // 旧コード互換（formatKm が使う）
+            distance_km: s.distance_km,
+            is_main: !!s.is_main,
+            updated_at: s.updated_at,
+
+            // 旧 /stores.mock.json 互換のダミー項目（他のコードと合わせる用）
+            branch: "",
+            address: "",
+            genre: "",
+
+            _key: `${s.store_id}@@${i}`,
           };
         });
 
+        // 距離昇順（バックエンドもソートしているが念のため）
         enriched.sort((a, b) => a.distance - b.distance);
+
         setStores(enriched);
-        try { localStorage.setItem("allStores", JSON.stringify(enriched)); } catch {}
+        try {
+          localStorage.setItem("allStores", JSON.stringify(enriched));
+        } catch {}
       } catch (e) {
         console.error(e);
-        setErr("店舗データの読み込みに失敗しました。/stores.mock.json を確認してください。");
+        if (e.message === "NO_APP_TOKEN") {
+          setErr("ログイン情報が見つかりません。マイページからログインしてからお試しください。");
+        } else {
+          setErr("店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。");
+        }
       } finally {
         setLoading(false);
       }
@@ -108,6 +132,7 @@ export default function StorePage() {
     const onVisible = () => {
       if (document.visibilityState === "visible") run();
     };
+
     if (document.visibilityState === "visible") {
       run();
     } else {
@@ -117,14 +142,14 @@ export default function StorePage() {
   }, []);
 
   const formatKm = (d) =>
-    (Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—");
+    Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—";
 
   const handleStoreSelect = (store) => {
     try {
       // 通常の選択記録
       localStorage.setItem("selectedStore", JSON.stringify(store));
 
-      // ✅ 固定店舗（基準ワイン購入店舗）を常に 1 件に保つ（上書き保存）
+      // 固定店舗（基準ワイン購入店舗）を常に 1 件に保つ（上書き保存）
       localStorage.setItem("main_store", JSON.stringify(store));
 
       // ついでに allStores にも取り込み（重複回避）
@@ -174,31 +199,34 @@ export default function StorePage() {
         {loading && <div style={{ padding: 16 }}>読み込み中…</div>}
         {err && <div style={{ padding: 16, color: "crimson" }}>{err}</div>}
 
-        {!loading && !err && stores.map((store) => (
-          <div
-            key={store._key}
-            onClick={() => handleStoreSelect(store)}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "12px 16px",
-              borderBottom: "1px solid #eee",
-              cursor: "pointer",
-              alignItems: "flex-start",
-              background: "#fff",
-            }}
-          >
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <div className="store-link">
-                {store.name} {store.branch || ""}
+        {!loading &&
+          !err &&
+          stores.map((store) => (
+            <div
+              key={store._key}
+              onClick={() => handleStoreSelect(store)}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                padding: "12px 16px",
+                borderBottom: "1px solid #eee",
+                cursor: "pointer",
+                alignItems: "flex-start",
+                background: "#fff",
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <div className="store-link">
+                  {store.name} {store.branch || ""}
+                </div>
+                {/* address / genre は今は空だが、将来拡張用に残しておく */}
+                <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
+                  {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
-                {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
-              </div>
+              <div style={{ marginLeft: 12 }}>{formatKm(store.distance)}</div>
             </div>
-            <div style={{ marginLeft: 12 }}>{formatKm(store.distance)}</div>
-          </div>
-        ))}
+          ))}
       </div>
     </div>
   );
