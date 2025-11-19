@@ -175,7 +175,7 @@ function MapPage() {
     return () => {
       cancelled = true;
     };
-  }, [isRatedOpen, setUserRatings]);
+  }, [isRatedOpen, fetchLatestRatings]);
 
   // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
