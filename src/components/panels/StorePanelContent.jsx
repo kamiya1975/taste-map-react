@@ -62,8 +62,10 @@ export default function StorePanelContent() {
   const [err, setErr] = useState("");
   const [savingId, setSavingId] = useState(null);
 
-  const formatKm = (d) =>
-    Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—";
+  const formatKm = (d, id) =>
+    Number.isFinite(d) && d !== Infinity && id !== 1
+       ? `${d.toFixed(1)}km`
+       : "—";
 
   useEffect(() => {
     let alive = true;
@@ -229,7 +231,7 @@ export default function StorePanelContent() {
                   {mainStore.name}
                 </div>
                 <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
-                  {formatKm(mainStore.distance)}
+                  {formatKm(mainStore.distance, mainStore.id)}
                 </div>
               </div>
               <div
@@ -276,7 +278,7 @@ export default function StorePanelContent() {
                       {store.name}
                     </div>
                     <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
-                      {formatKm(store.distance)}
+                      {formatKm(store.distance, store.id)}
                     </div>
                   </div>
                 </div>

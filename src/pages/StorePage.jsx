@@ -139,8 +139,10 @@ export default function StorePage() {
     }
   }, []);
 
-  const formatKm = (d) =>
-    Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—";
+  const formatKm = (d, id) =>
+    Number.isFinite(d) && d !== Infinity && id !== 1
+      ? `${d.toFixed(1)}km`
+      : "—";
 
   const handleStoreSelect = (store) => {
     try {
@@ -217,7 +219,9 @@ export default function StorePage() {
                   {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
                 </div>
               </div>
-              <div style={{ marginLeft: 12 }}>{formatKm(store.distance)}</div>
+              <div style={{ marginLeft: 12 }}>
+                {formatKm(store.distance, store.id)}
+              </div>
             </div>
           ))}
       </div>
