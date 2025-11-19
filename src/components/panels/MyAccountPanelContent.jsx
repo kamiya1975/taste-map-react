@@ -315,13 +315,14 @@ export default function MyAccountPanelContent() {
 
       // ★ バックエンドと一致するルートを使用
       const res = await fetch(`${API_BASE}/auth/forgot-password`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        }
-      );
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
+      // ★ 必ず最初に1回だけ読む
       const data = await res.json().catch(() => ({}));
+      const detail = data?.detail;
 
       if (res.ok) {
         setResetStatus({
@@ -330,27 +331,25 @@ export default function MyAccountPanelContent() {
             "パスワード再設定用のメールを送信しました。メールの案内にしたがって操作してください。",
         });
       } else if (res.status === 404) {
-        // detail の中身を見て分岐
         if (detail === "user_not_found" || detail === "app_user_not_found") {
           setResetStatus({
             type: "error",
             message: "このメールアドレスは登録されていません。",
           });
         } else {
-          // ルート自体が無い（detail: "Not Found" 等）の場合はこちら
           setResetStatus({
             type: "error",
             message:
               "パスワード再設定機能がまだ有効になっていません。（システム管理者に確認してください）",
+          });
+        }
+      } else {
+        setResetStatus({
+          type: "error",
+          message: "送信に失敗しました。時間をおいて再度お試しください。",
         });
       }
-    } else {
-      setResetStatus({
-        type: "error",
-        message:
-          "送信に失敗しました。時間をおいて再度お試しください。",
-        });
-      }
+
     } catch (e) {
       console.error(e);
       setResetStatus({
