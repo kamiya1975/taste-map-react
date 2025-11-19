@@ -320,6 +320,44 @@ export default function ProductPage() {
   const [toast, setToast] = useState(false); 
   const { add } = useSimpleCart();   // ← SimpleCart のみ使用
 
+  // 評価ページ表示時に一度だけ現在位置を取得して tm_last_location に保存
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      return;
+    }
+
+    let cancelled = false;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        const { latitude, longitude } = pos.coords || {};
+        const located_at = new Date().toISOString();
+
+        try {
+          localStorage.setItem(
+            "tm_last_location",
+            JSON.stringify({ latitude, longitude, located_at })
+          );
+        } catch (e) {
+          console.warn("tm_last_location の保存に失敗:", e);
+        }
+      },
+      (err) => {
+        console.warn("geolocation 取得失敗:", err);
+      },
+      {
+        enableHighAccuracy: false,
+        maximumAge: 5 * 60 * 1000, // 5分以内のキャッシュを許可
+        timeout: 10000,
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [jan_code]);
+
   // 画面オープン/クローズ通知
   useEffect(() => {
     postToParent({ type: "PRODUCT_OPENED", jan: jan_code });
