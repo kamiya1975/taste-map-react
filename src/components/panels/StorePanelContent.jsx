@@ -63,7 +63,9 @@ export default function StorePanelContent() {
   const [savingId, setSavingId] = useState(null);
 
   const formatKm = (d) =>
-    Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—";
+    Number.isFinite(store.distance) && store.id !== 1
+      ? `${store.distance.toFixed(1)}km`
+      : "—";
 
   useEffect(() => {
     let alive = true;
