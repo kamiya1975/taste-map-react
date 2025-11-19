@@ -28,7 +28,7 @@ function getLatLonFromStorage() {
 }
 
 // -----------------------------
-// POST /app/ratings
+// POST /api/app/ratings   ← ここだけ /api/app に
 // -----------------------------
 export async function postRating({ jan_code, rating }) {
   const token = getAppToken();
@@ -38,7 +38,7 @@ export async function postRating({ jan_code, rating }) {
 
   const { latitude, longitude, located_at } = getLatLonFromStorage();
 
-  const res = await fetch(`${API_BASE}/app/ratings`, {
+  const res = await fetch(`${API_BASE}/api/app/ratings`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -64,7 +64,7 @@ export async function postRating({ jan_code, rating }) {
 }
 
 // -----------------------------
-// GET /app/ratings?sort=...
+// GET /api/app/ratings?sort=...
 // -----------------------------
 export async function fetchLatestRatings(sort = "date") {
   const token = getAppToken();
@@ -72,7 +72,7 @@ export async function fetchLatestRatings(sort = "date") {
     throw new Error("アプリ用トークンがありません（未ログイン）");
   }
 
-  const res = await fetch(`${API_BASE}/app/ratings?sort=${sort}`, {
+  const res = await fetch(`${API_BASE}/api/app/ratings?sort=${sort}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -87,3 +87,4 @@ export async function fetchLatestRatings(sort = "date") {
 
   return await res.json(); // RatingListOut { items: [...] }
 }
+
