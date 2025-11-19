@@ -62,10 +62,13 @@ export default function StorePanelContent() {
   const [err, setErr] = useState("");
   const [savingId, setSavingId] = useState(null);
 
-  const formatKm = (d, id) =>
-    Number.isFinite(d) && d !== Infinity && id !== 1
-       ? `${d.toFixed(1)}km`
-       : "—";
+  const formatKm = (d, id) => {
+    if (id === 1) return "";   // ★ EC のとき完全に非表示
+    if (Number.isFinite(d) && d !== Infinity) {
+      return `${d.toFixed(1)}km`;
+    }
+    return "";
+  };
 
   useEffect(() => {
     let alive = true;
