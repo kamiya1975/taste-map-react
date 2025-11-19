@@ -1,7 +1,6 @@
 // src/ProductPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { requireRatingOrRedirect } from "../utils/auth";
 import "../index.css";
 import { useSimpleCart } from "../cart/simpleCart";
 import { postRating } from "../lib/appRatings";
@@ -26,6 +25,15 @@ const useJanParam = () => {
 
 const postToParent = (payload) => {
   try { window.parent?.postMessage(payload, "*"); } catch {}
+};
+
+// アプリ側ログイン確認（access token 有無）
+const isAppLoggedIn = () => {
+  try {
+    return !!localStorage.getItem("app.access_token");
+  } catch {
+    return false;
+  }
 };
 
 const clearScanHints = (jan_code) => {
@@ -440,8 +448,14 @@ export default function ProductPage() {
   }, [jan_code]);
 
   const handleCircleClick = async (value) => {
-    // 1) 未ログインならマイアカウントへ誘導（既存）
-    if (!requireRatingOrRedirect(navigate, "/my-account")) return;
+    // 1) 未ログインなら評価NG → アラート → マイアカウントパネルを開く
+    if (!isAppLoggedIn()) {
+      alert("評価機能はログインしてからご利用いただけます。");
+      try {
+        window.parent?.postMessage({ type: "OPEN_MYACCOUNT" }, "*");
+      } catch {}
+      return;
+    }
 
     const newRating = value === rating ? 0 : value;
 
