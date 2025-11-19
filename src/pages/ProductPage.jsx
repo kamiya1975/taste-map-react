@@ -4,6 +4,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { requireRatingOrRedirect } from "../utils/auth";
 import "../index.css";
 import { useSimpleCart } from "../cart/simpleCart";
+import { postRating } from "../lib/appRatings";
 
 /** =========================
  *  ユーティリティ
@@ -401,8 +402,12 @@ export default function ProductPage() {
   }, [jan_code]);
 
   const handleCircleClick = async (value) => {
+    // 1) 未ログインならマイアカウントへ誘導（既存）
     if (!requireRatingOrRedirect(navigate, "/my-account")) return;
+
     const newRating = value === rating ? 0 : value;
+
+    // 2) まずは UI と localStorage を即時更新（今のロジックをそのまま）
     setRating(newRating);
 
     const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
@@ -412,19 +417,33 @@ export default function ProductPage() {
     } else {
       payload = { rating: newRating, date: new Date().toISOString() };
       ratings[jan_code] = payload;
+
       // ★が付いていたら外す（排他）
       try {
         const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
         if (favs[jan_code]) {
           delete favs[jan_code];
           localStorage.setItem("favorites", JSON.stringify(favs));
-          // 画面側にも反映してほしい場合の通知
-          try { window.parent?.postMessage({ type: "SET_FAVORITE", jan: jan_code, value: false }, "*"); } catch {}
-       }
-      } catch {}      
+          try {
+            window.parent?.postMessage(
+              { type: "SET_FAVORITE", jan: jan_code, value: false },
+              "*"
+            );
+          } catch {}
+        }
+      } catch {}
     }
     localStorage.setItem("userRatings", JSON.stringify(ratings));
     postToParent({ type: "RATING_UPDATED", jan: jan_code, payload });
+
+    // 3) バックエンドへも送信（失敗してもUIはそのままにしておく）
+    try {
+      await postRating({ jan_code, rating: newRating });
+    } catch (e) {
+      console.error(e);
+      // 必要なら軽い警告表示だけ
+      // alert("サーバーへの評価登録に失敗しました。通信状況をご確認ください。");
+    }
   };
 
   if (!product) return <div style={{ padding: 16 }}>商品が見つかりませんでした。</div>;

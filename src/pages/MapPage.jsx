@@ -26,6 +26,7 @@ import {
 } from "../ui/constants";
 import { getReferenceLotById } from "../ui/constants";
 import { getLotId } from "../utils/lot";
+import { fetchLatestRatings } from "../lib/appRatings";
 
 const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
@@ -130,6 +131,51 @@ function MapPage() {
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
   const [iframeNonce, setIframeNonce] = useState(0);
+
+  // ★ 評価パネルを開いたタイミングでサーバーと評価一覧を同期
+  useEffect(() => {
+    if (!isRatedOpen) return;          // パネルが開いていないときは何もしない
+
+    const token = (() => {
+      try {
+        return localStorage.getItem("app.access_token") || "";
+      } catch {
+        return "";
+      }
+    })();
+    if (!token) return;               // 未ログインなら同期しない
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetchLatestRatings("date");   // { items: [...] }
+        const nextMap = {};
+
+        for (const item of res.items || []) {
+          if (item.rating > 0) {
+            nextMap[item.jan_code] = {
+              rating: item.rating,
+              date: item.created_at,
+            };
+          }
+        }
+
+        if (!cancelled) {
+          setUserRatings(nextMap);
+          try {
+            localStorage.setItem("userRatings", JSON.stringify(nextMap));
+          } catch {}
+        }
+      } catch (e) {
+        console.error("評価一覧の同期に失敗しました", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isRatedOpen, setUserRatings]);
 
   // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
