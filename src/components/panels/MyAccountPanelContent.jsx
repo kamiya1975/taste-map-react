@@ -315,7 +315,7 @@ export default function MyAccountPanelContent() {
       setResetStatus({ type: "info", message: "送信中です…" });
 
       // ★ バックエンドと一致するルートを使用
-      const res = await fetch(`${API_BASE}/api/app/auth/forgot-password`, {
+      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
