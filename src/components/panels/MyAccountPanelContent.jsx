@@ -267,10 +267,11 @@ export default function MyAccountPanelContent() {
         } else if (res.status === 422) {
           alert("入力内容に誤りがあります。");
         } else {
-          const detail =
+          const data = await res.json().catch(() => ({}));
+          const message =
            (data && (data.detail || data.message)) ||
             "ログインに失敗しました。";
-          alert(detail);
+          alert(message);
         }
         return;
      }
@@ -418,9 +419,10 @@ export default function MyAccountPanelContent() {
         } else if (res.status === 422) {
           alert("入力内容に誤りがあります。確認してください。");
         } else {
-          const detail =
-            (data && (data.detail || data.message)) || "保存に失敗しました。";
-          alert(detail);
+          const message =
+            (data && (data.detail || data.message)) ||
+            "保存に失敗しました。";
+          alert(message);
         }
         return;
       }
