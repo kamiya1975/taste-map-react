@@ -1,6 +1,6 @@
 // public/service-worker.js
 
-const CACHE_NAME = "tm-static-v1";
+const CACHE_NAME = "tm-static-v2";
 const API_CACHE = "tm-api-cache-v1";
 
 const STATIC_ASSETS = ["/", "/index.html", "/manifest.json"];
