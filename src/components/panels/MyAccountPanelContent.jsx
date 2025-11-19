@@ -245,13 +245,13 @@ export default function MyAccountPanelContent() {
       return;
     }
     if (!isEmail(id)) {
-      alert("メールアドレスの形式が正しくありません。");
+     alert("メールアドレスの形式が正しくありません。");
       return;
     }
 
     setLoginLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/app/users/login?v=20251117`, { // ★ ここだけ変更
+      const res = await fetch(`${API_BASE}/api/app/users/login?v=20251117`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -260,21 +260,22 @@ export default function MyAccountPanelContent() {
         }),
       });
 
+      // ★ 最初に一度だけ読む
       const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
         if (res.status === 401) {
-         alert("ID またはパスワードが正しくありません。");
+          alert("ID またはパスワードが正しくありません。");
         } else if (res.status === 422) {
           alert("入力内容に誤りがあります。");
         } else {
-          const data = await res.json().catch(() => ({}));
           const message =
-           (data && (data.detail || data.message)) ||
+            (data && (data.detail || data.message)) ||
             "ログインに失敗しました。";
           alert(message);
         }
         return;
-     }
+      }
 
       const ok = applyAuthResponse(data, id);
       if (ok) {
