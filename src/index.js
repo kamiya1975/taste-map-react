@@ -39,3 +39,14 @@ if (process.env.NODE_ENV === "development") {
       /* dev 用なので失敗は無視 */
     });
 }
+
+// =========================
+// ★ PWA Service Worker 登録
+// =========================
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/service-worker.js")
+      .catch((err) => console.log("SW registration failed:", err));
+  });
+}

@@ -1,13 +1,20 @@
 {
-  "name": "Taste Map",
   "short_name": "TasteMap",
-  "start_url": "/map",
+  "name": "TasteMap - あなたの味覚地図でワインを選ぶアプリ",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/?source=pwa",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#ffffff",
-  "icons": [
-    { "src": "compass192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "compass512.png", "sizes": "512x512", "type": "image/png" }
-  ],
-  "app_version": "2025-10-02" 
+  "theme_color": "#ffffff"
 }
