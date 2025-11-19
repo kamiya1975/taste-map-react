@@ -1,11 +1,23 @@
 // src/components/panels/StorePanelContent.jsx
 import React, { useEffect, useState } from "react";
-import {
-  loadAndSortStoresByDistance,
-  getFavorites,
-  setFavorites,
-  isSameStore,
-} from "../../utils/storeShared";
+
+// バックエンドのベースURL
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
+
+/* ============ 位置情報ユーティリティ ============ */
+async function resolveLocation() {
+  const geo = await new Promise((resolve) => {
+    if (!("geolocation" in navigator)) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => resolve({ lat: coords.latitude, lon: coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+    );
+  });
+  if (geo) return geo;
+  // 取得できなかった場合は東京駅
+  return { lat: 35.681236, lon: 139.767125 };
+}
 
 /* ============ 小物：★ボタン ============ */
 function StarButton({ active, onClick, disabled = false, size = 20, title }) {
@@ -32,7 +44,6 @@ function StarButton({ active, onClick, disabled = false, size = 20, title }) {
       }}
       title={title}
     >
-      {/* 星アイコン（SVG / currentColor 非依存） */}
       <svg width={size} height={size} viewBox="0 0 24 24">
         <path
           d="M12 2.6l2.93 5.93 6.55.95-4.74 4.62 1.12 6.52L12 17.9 6.14 20.62 7.26 14.1 2.52 9.48l6.55-.95L12 2.6z"
@@ -48,71 +59,152 @@ function StarButton({ active, onClick, disabled = false, size = 20, title }) {
 
 /* ============ 本体（ドロワー内で使用） ============ */
 export default function StorePanelContent() {
-  const [stores, setStores] = useState([]);
-  const [favorites, setFav] = useState(getFavorites());
+  const [stores, setStores] = useState([]); // {id, name, distance, is_main, is_sub, ...}
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [savingId, setSavingId] = useState(null);
 
-  // 固定（基準ワイン購入）店舗は常に 1 件
-  const mainStore = (() => {
-    try {
-      const raw = localStorage.getItem("main_store");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  })();
+  const formatKm = (d) =>
+    Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—";
 
-  // 起動時：favorites から固定店舗を除外（重複抑止）
-  useEffect(() => {
-    if (!mainStore || !Array.isArray(favorites)) return;
-    const cleaned = favorites.filter((s) => !isSameStore(s, mainStore));
-    if (cleaned.length !== favorites.length) {
-      setFav(cleaned);
-      setFavorites(cleaned);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // 起動時：/api/app/sub-stores/selector から一覧取得
   useEffect(() => {
     let alive = true;
+
     (async () => {
+      setLoading(true);
+      setErr("");
+
       try {
-        setLoading(true);
-        const list = await loadAndSortStoresByDistance();
-        if (!alive) return;
-        setStores(list);
-        setErr("");
+        const token = localStorage.getItem("app.access_token");
+        if (!token) {
+          throw new Error("NO_APP_TOKEN");
+        }
+
+        const loc = await resolveLocation();
+        const params = new URLSearchParams();
+        if (Number.isFinite(loc.lat) && Number.isFinite(loc.lon)) {
+          params.set("user_lat", String(loc.lat));
+          params.set("user_lon", String(loc.lon));
+        }
+
+        const url = `${API_BASE}/api/app/sub-stores/selector?${params.toString()}`;
+        console.log("[StorePanel] fetch:", url);
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+
+        if (!res.ok) {
+          console.error("[StorePanel] selector error", res.status);
+          throw new Error("FETCH_FAILED");
+        }
+
+        const raw = await res.json();
+        const list = Array.isArray(raw) ? raw : [];
+
+        const mapped = list.map((s, idx) => {
+          const d =
+            typeof s.distance_km === "number" && isFinite(s.distance_km)
+              ? s.distance_km
+              : Infinity;
+
+          return {
+            id: s.store_id,
+            name: s.store_name,
+            distance: d,
+            distance_km: s.distance_km,
+            is_main: !!s.is_main,
+            is_sub: !!s.is_sub,
+            updated_at: s.updated_at,
+            _key: `${s.store_id}@@${idx}`,
+          };
+        });
+
+        // サーバー側でもソート済みだが、念のため距離昇順
+        mapped.sort((a, b) => a.distance - b.distance);
+
+        if (alive) {
+          setStores(mapped);
+        }
       } catch (e) {
         console.error(e);
         if (!alive) return;
-        setErr("店舗データの読み込みに失敗しました。/stores.mock.json を確認してください。");
+        if (e.message === "NO_APP_TOKEN") {
+          setErr("ログイン情報が見つかりません。マイページからログインしてからお試しください。");
+        } else {
+          setErr("店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。");
+        }
       } finally {
         if (alive) setLoading(false);
       }
     })();
+
     return () => {
       alive = false;
     };
   }, []);
 
-  const toggleFavorite = (store) => {
-    // 固定店舗はトグル対象外
-    if (mainStore && isSameStore(store, mainStore)) return;
+  // メイン店舗（DB側の main_store_id ベース）
+  const mainStore = stores.find((s) => s.is_main) || null;
+  const otherStores = stores.filter((s) => !s.is_main);
 
-    const exists = favorites.some((s) => isSameStore(s, store));
-    const next = exists
-      ? favorites.filter((s) => !isSameStore(s, store))
-      : [store, ...favorites];
-    setFav(next);
-    setFavorites(next);
+  const favoritesCount = stores.filter((s) => s.is_sub).length;
+
+  // サブ店舗トグル（/api/app/sub-stores でUPSERT）
+  const toggleFavorite = async (store) => {
+    if (store.is_main) return; // メイン店舗はトグル不可
+    if (savingId !== null) return; // 連打防止
+
+    try {
+      const token = localStorage.getItem("app.access_token");
+      if (!token) {
+        throw new Error("NO_APP_TOKEN");
+      }
+
+      const nextActive = !store.is_sub;
+
+      setSavingId(store.id);
+
+      const res = await fetch(`${API_BASE}/api/app/sub-stores`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          store_id: store.id,
+          is_active: nextActive,
+        }),
+      });
+
+      if (!res.ok) {
+        console.error("[StorePanel] upsert error", res.status);
+        throw new Error("UPSERT_FAILED");
+      }
+
+      // 成功したらローカル状態更新
+      setStores((prev) =>
+        prev.map((s) =>
+          s.id === store.id ? { ...s, is_sub: nextActive } : s
+        )
+      );
+    } catch (e) {
+      console.error(e);
+      if (e.message === "NO_APP_TOKEN") {
+        alert("ログイン情報が見つかりません。マイページからログインしてからお試しください。");
+      } else {
+        alert("店舗の登録更新に失敗しました。通信状況をご確認のうえ、再度お試しください。");
+      }
+    } finally {
+      setSavingId(null);
+    }
   };
-
-  const isFav = (store) => favorites.some((s) => isSameStore(s, store));
-  const formatKm = (d) => (Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—");
-
-  // 固定を重複表示しない
-  const otherStores = stores.filter((s) => !mainStore || !isSameStore(s, mainStore));
 
   return (
     <div style={{ padding: 16 }}>
@@ -144,7 +236,7 @@ export default function StorePanelContent() {
               <StarButton active disabled title="固定店舗" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, lineHeight: 1.2 }}>
-                  {mainStore.name} {mainStore.branch || ""}
+                  {mainStore.name}
                 </div>
                 <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
                   {formatKm(mainStore.distance)}
@@ -168,11 +260,12 @@ export default function StorePanelContent() {
           </>
         )}
 
-        {/* 他店舗（★でトグル） */}
+        {/* 他店舗（★でサブ店舗トグル） */}
         {!loading &&
           !err &&
           otherStores.map((store, i) => {
-            const fav = isFav(store);
+            const fav = store.is_sub;
+            const disabled = savingId === store.id;
             return (
               <div key={store._key}>
                 <div
@@ -181,16 +274,18 @@ export default function StorePanelContent() {
                     alignItems: "flex-start",
                     gap: 10,
                     padding: "14px 14px",
+                    opacity: disabled ? 0.6 : 1,
                   }}
                 >
                   <StarButton
                     active={fav}
                     onClick={() => toggleFavorite(store)}
-                    title={fav ? "お気に入り解除" : "お気に入り追加"}
+                    disabled={disabled}
+                    title={fav ? "サブ店舗から外す" : "サブ店舗として登録"}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, lineHeight: 1.2 }}>
-                      {store.name} {store.branch || ""}
+                      {store.name}
                     </div>
                     <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
                       {formatKm(store.distance)}
@@ -213,10 +308,10 @@ export default function StorePanelContent() {
         )}
       </div>
 
-      {/* 件数 */}
-      {!loading && !err && favorites.length > 0 && (
+      {/* 件数など */}
+      {!loading && !err && favoritesCount > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: "#555" }}>
-          登録済み: {favorites.length} 店舗
+          登録済みサブ店舗: {favoritesCount} 店舗
         </div>
       )}
 
