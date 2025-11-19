@@ -312,17 +312,15 @@ export default function MyAccountPanelContent() {
       setResetLoading(true);
       setResetStatus({ type: "info", message: "送信中です…" });
 
-      const res = await fetch(
-        `${API_BASE}/api/app/password-reset/request?v=20251118`,
-        {
+      // ★ バックエンドと一致するルートを使用
+      const res = await fetch(`${API_BASE}/auth/forgot-password`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_login_id: email }),
+          body: JSON.stringify({ email }),
         }
       );
 
       const data = await res.json().catch(() => ({}));
-      const detail = (data && data.detail) || "";
 
       if (res.ok) {
         setResetStatus({

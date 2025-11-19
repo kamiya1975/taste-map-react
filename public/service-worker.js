@@ -1,18 +1,11 @@
-// -----------------------------
-// TasteMap PWA: Custom Service Worker
-// -----------------------------
+// public/service-worker.js
 
 const CACHE_NAME = "tm-static-v1";
 const API_CACHE = "tm-api-cache-v1";
 
-// === キャッシュしたい静的ファイル（自由拡張可） ===
-const STATIC_ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.json"
-];
+const STATIC_ASSETS = ["/", "/index.html", "/manifest.json"];
 
-// Install: 静的ファイルをキャッシュ
+// install
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -20,7 +13,7 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
-// Activate: 古いキャッシュを削除
+// activate
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -36,14 +29,12 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// -----------------------------
-// ★ 最重要：API は NetworkFirst（再発防止）
-// -----------------------------
+// fetch
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // API は常にサーバ優先
-  if (url.pathname.startsWith("/api/")) {
+  // 🔹 API は GET だけ NetworkFirst
+  if (url.pathname.startsWith("/api/") && event.request.method === "GET") {
     event.respondWith(
       (async () => {
         try {
@@ -61,10 +52,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 静的ファイルは CacheFirst（PWAの基本）
+  // 🔹 静的ファイルは CacheFirst
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
-    })
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });
