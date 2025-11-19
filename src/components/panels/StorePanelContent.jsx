@@ -1,7 +1,6 @@
 // src/components/panels/StorePanelContent.jsx
 import React, { useEffect, useState } from "react";
 
-// バックエンドのベースURL
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
 /* ============ 位置情報ユーティリティ ============ */
@@ -15,7 +14,6 @@ async function resolveLocation() {
     );
   });
   if (geo) return geo;
-  // 取得できなかった場合は東京駅
   return { lat: 35.681236, lon: 139.767125 };
 }
 
@@ -57,9 +55,9 @@ function StarButton({ active, onClick, disabled = false, size = 20, title }) {
   );
 }
 
-/* ============ 本体（ドロワー内で使用） ============ */
+/* ============ 本体 ============ */
 export default function StorePanelContent() {
-  const [stores, setStores] = useState([]); // {id, name, distance, is_main, is_sub, ...}
+  const [stores, setStores] = useState([]); // {id, name, distance, is_main, is_sub}
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [savingId, setSavingId] = useState(null);
@@ -67,7 +65,6 @@ export default function StorePanelContent() {
   const formatKm = (d) =>
     Number.isFinite(d) && d !== Infinity ? `${d.toFixed(1)}km` : "—";
 
-  // 起動時：/api/app/sub-stores/selector から一覧取得
   useEffect(() => {
     let alive = true;
 
@@ -105,19 +102,21 @@ export default function StorePanelContent() {
         }
 
         const raw = await res.json();
+        console.log("[StorePanel] raw selector:", raw);
+
         const list = Array.isArray(raw) ? raw : [];
 
         const mapped = list.map((s, idx) => {
-          const d =
-            typeof s.distance_km === "number" && isFinite(s.distance_km)
-              ? s.distance_km
-              : Infinity;
+          const rawD = s.distance_km;
+          const numD =
+            rawD === null || rawD === undefined ? NaN : Number(rawD);
+          const d = Number.isFinite(numD) ? numD : Infinity;
 
           return {
             id: s.store_id,
             name: s.store_name,
             distance: d,
-            distance_km: s.distance_km,
+            distance_km: numD,
             is_main: !!s.is_main,
             is_sub: !!s.is_sub,
             updated_at: s.updated_at,
@@ -125,7 +124,6 @@ export default function StorePanelContent() {
           };
         });
 
-        // サーバー側でもソート済みだが、念のため距離昇順
         mapped.sort((a, b) => a.distance - b.distance);
 
         if (alive) {
@@ -149,16 +147,13 @@ export default function StorePanelContent() {
     };
   }, []);
 
-  // メイン店舗（DB側の main_store_id ベース）
   const mainStore = stores.find((s) => s.is_main) || null;
   const otherStores = stores.filter((s) => !s.is_main);
-
   const favoritesCount = stores.filter((s) => s.is_sub).length;
 
-  // サブ店舗トグル（/api/app/sub-stores でUPSERT）
   const toggleFavorite = async (store) => {
-    if (store.is_main) return; // メイン店舗はトグル不可
-    if (savingId !== null) return; // 連打防止
+    if (store.is_main) return;
+    if (savingId !== null) return;
 
     try {
       const token = localStorage.getItem("app.access_token");
@@ -167,7 +162,6 @@ export default function StorePanelContent() {
       }
 
       const nextActive = !store.is_sub;
-
       setSavingId(store.id);
 
       const res = await fetch(`${API_BASE}/api/app/sub-stores`, {
@@ -188,7 +182,6 @@ export default function StorePanelContent() {
         throw new Error("UPSERT_FAILED");
       }
 
-      // 成功したらローカル状態更新
       setStores((prev) =>
         prev.map((s) =>
           s.id === store.id ? { ...s, is_sub: nextActive } : s
@@ -211,7 +204,6 @@ export default function StorePanelContent() {
       {loading && <div style={{ padding: 8 }}>読み込み中…</div>}
       {err && <div style={{ padding: 8, color: "crimson" }}>{err}</div>}
 
-      {/* カード風の白背景ラッパ */}
       <div
         style={{
           background: "#fff",
@@ -221,7 +213,6 @@ export default function StorePanelContent() {
           border: "1px solid #eee",
         }}
       >
-        {/* 固定店舗（あれば最上段） */}
         {mainStore && (
           <>
             <div
@@ -232,7 +223,6 @@ export default function StorePanelContent() {
                 padding: "14px 14px",
               }}
             >
-              {/* 左の濃い★（固定） */}
               <StarButton active disabled title="固定店舗" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, lineHeight: 1.2 }}>
@@ -242,7 +232,6 @@ export default function StorePanelContent() {
                   {formatKm(mainStore.distance)}
                 </div>
               </div>
-              {/* 右「固定」バッジ */}
               <div
                 style={{
                   fontSize: 12,
@@ -260,7 +249,6 @@ export default function StorePanelContent() {
           </>
         )}
 
-        {/* 他店舗（★でサブ店舗トグル） */}
         {!loading &&
           !err &&
           otherStores.map((store, i) => {
@@ -292,7 +280,6 @@ export default function StorePanelContent() {
                     </div>
                   </div>
                 </div>
-                {/* 区切り線（末尾は非表示） */}
                 {i !== otherStores.length - 1 && (
                   <div style={{ height: 1, background: "#eee" }} />
                 )}
@@ -300,7 +287,6 @@ export default function StorePanelContent() {
             );
           })}
 
-        {/* 空状態 */}
         {!loading && !err && !mainStore && otherStores.length === 0 && (
           <div style={{ padding: 16, fontSize: 13, color: "#666" }}>
             近隣店舗が見つかりませんでした。
@@ -308,7 +294,6 @@ export default function StorePanelContent() {
         )}
       </div>
 
-      {/* 件数など */}
       {!loading && !err && favoritesCount > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: "#555" }}>
           登録済みサブ店舗: {favoritesCount} 店舗

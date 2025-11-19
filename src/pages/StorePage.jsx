@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-// バックエンドのベースURL（例: https://tdb-backend-xxxx.onrender.com）
+// バックエンドのベースURL
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
 /* ========= 位置情報取得ユーティリティ ========= */
@@ -16,8 +16,7 @@ async function resolveLocation() {
     );
   });
   if (geo) return geo;
-  // 取得できなかった場合は東京駅
-  return { lat: 35.681236, lon: 139.767125 };
+  return { lat: 35.681236, lon: 139.767125 }; // 東京駅
 }
 
 /* ========= 本体 ========= */
@@ -66,7 +65,6 @@ export default function StorePage() {
           params.set("user_lon", String(loc.lon));
         }
 
-        // ★ ここを /api/app/stores に修正
         const url = `${API_BASE}/api/app/stores?${params.toString()}`;
         console.log("[StorePage] fetch:", url);
 
@@ -84,25 +82,25 @@ export default function StorePage() {
         }
 
         const raw = await res.json();
+        console.log("[StorePage] raw stores:", raw);
+
         const list = Array.isArray(raw) ? raw : [];
 
-        // バックエンドの AppStoreOut をフロント用に整形
+        // ★ distance_km を number に正規化してから使う
         const enriched = list.map((s, i) => {
-          const d =
-            typeof s.distance_km === "number" && isFinite(s.distance_km)
-              ? s.distance_km
-              : Infinity;
+          const rawD = s.distance_km;
+          const numD =
+            rawD === null || rawD === undefined ? NaN : Number(rawD);
+          const d = Number.isFinite(numD) ? numD : Infinity;
 
           return {
-            // バックエンド由来
             id: s.store_id,
             name: s.store_name,
-            distance: d, // 旧コード互換（formatKm が使う）
-            distance_km: s.distance_km,
+            distance: d,
+            distance_km: numD,
             is_main: !!s.is_main,
             updated_at: s.updated_at,
 
-            // /stores.mock.json 互換のダミー項目（他のコードと合わせる用）
             branch: "",
             address: "",
             genre: "",
@@ -111,7 +109,6 @@ export default function StorePage() {
           };
         });
 
-        // 距離昇順（バックエンドもソートしているが念のため）
         enriched.sort((a, b) => a.distance - b.distance);
 
         setStores(enriched);
@@ -147,13 +144,9 @@ export default function StorePage() {
 
   const handleStoreSelect = (store) => {
     try {
-      // 通常の選択記録
       localStorage.setItem("selectedStore", JSON.stringify(store));
-
-      // 固定店舗（基準ワイン購入店舗）を常に 1 件に保つ（上書き保存）
       localStorage.setItem("main_store", JSON.stringify(store));
 
-      // ついでに allStores にも取り込み（重複回避）
       const all = JSON.parse(localStorage.getItem("allStores") || "[]");
       const k = (s) => `${s?.name || ""}@@${s?.branch || ""}`;
       const exists = all.some((s) => k(s) === k(store));
@@ -220,7 +213,6 @@ export default function StorePage() {
                 <div className="store-link">
                   {store.name} {store.branch || ""}
                 </div>
-                {/* address / genre は今は空だが、将来拡張用に残しておく */}
                 <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
                   {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
                 </div>
