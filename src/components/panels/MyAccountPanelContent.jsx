@@ -573,6 +573,8 @@ export default function MyAccountPanelContent() {
               localStorage.removeItem("app.refresh_token");
               localStorage.removeItem("app.user");
               localStorage.removeItem("app.user_login_id");
+              localStorage.removeItem("userRatings");
+
               setIsLoggedIn(false);
               alert("ログアウトしました。");
             }}
