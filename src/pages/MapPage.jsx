@@ -1467,7 +1467,7 @@ function MapPage() {
           <div
             style={{
               position: "absolute",
-              bottom: 20,
+              bottom: 30,
               left: "50%",
               transform: "translateX(-50%)",
               zIndex: UI_Z_TOP,
