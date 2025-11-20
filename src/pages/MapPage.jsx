@@ -1471,11 +1471,12 @@ function MapPage() {
             style={{
               padding: "4px 12px",
               borderRadius: 999,
-              background: "rgba(255,255,255,0.9)",
-              border: "1px solid #ddd",
+              background: "rgba(255,255,255,0.4)",
+              backdropFilter: "blur(4px)",
               fontSize: 12,
               color: "#333",
               whiteSpace: "nowrap",
+              border: "none",
             }}
           >
             {userDisplayName} さんの地図
