@@ -735,7 +735,7 @@ export default function MyAccountPanelContent() {
               cursor: "pointer",
             }}
           >
-            新規の方はこちら（会員登録）
+            新規の方はこちら（会員登録・変更）
           </button>
         </div>
       </div>
@@ -764,7 +764,7 @@ export default function MyAccountPanelContent() {
                 fontWeight: 600,
               }}
             >
-              新規登録
+              新規登録・変更
             </div>
 
             {/* ニックネーム */}
@@ -921,7 +921,7 @@ export default function MyAccountPanelContent() {
                 opacity: !agreed || saving ? 0.6 : 1,
               }}
             >
-              {saving ? "新規登録中..." : "新規登録"}
+              {saving ? "新規登録・変更中..." : "新規登録・変更を保存"}
             </button>
           </div>
         </>
