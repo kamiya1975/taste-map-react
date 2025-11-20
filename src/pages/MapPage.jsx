@@ -1456,33 +1456,44 @@ function MapPage() {
       </Drawer>
 
       {/* 下部中央: 「○○さんの地図」ラベル */}
-      {userDisplayName && (
-        <div
-          style={{
-            position: "absolute",
-            bottom: 8,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: UI_Z_TOP,
-            pointerEvents: "none", // 地図操作の邪魔をしない
-          }}
-        >
+      {(() => {
+        try {
+          const token = localStorage.getItem("app.access_token");
+          if (!token) return null;          // ★ ログアウト → 非表示
+
+          if (!userDisplayName) return null;
+
+          return (
           <div
             style={{
-              padding: "4px 12px",
-              borderRadius: 999,
-              background: "rgba(255,255,255,0.4)",
-              backdropFilter: "blur(4px)",
-              fontSize: 12,
-              color: "#333",
-              whiteSpace: "nowrap",
-              border: "none",
+              position: "absolute",
+             bottom: 8,
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: UI_Z_TOP,
+              pointerEvents: "none", // 地図操作の邪魔をしない
             }}
           >
-            {userDisplayName} さんの地図
+            <div
+              style={{
+                padding: "4px 12px",
+                borderRadius: 999,
+                background: "transparent",
+                backdropFilter: "none",
+                fontSize: 12,
+                color: "#333",
+                whiteSpace: "nowrap",
+                border: "none",
+              }}
+            >
+              {userDisplayName} さんの地図
+            </div>
           </div>
-        </div>
-      )}
+        );
+      } catch {
+        return null;
+      }
+    })()}
 
       {process.env.NODE_ENV === "development" && <CartProbe />}
     </div>
