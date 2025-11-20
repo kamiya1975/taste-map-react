@@ -65,6 +65,39 @@ function MapPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // ★ ログインユーザー名（ニックネーム）表示用
+  const [userDisplayName, setUserDisplayName] = useState("");
+
+  useEffect(() => {
+    const readUserFromStorage = () => {
+      try {
+        const appUserStr = localStorage.getItem("app.user");
+        if (appUserStr) {
+          const u = JSON.parse(appUserStr);
+          const name =
+            (u && (u.display_name || u.nickname || u.name)) || "";
+          setUserDisplayName(name);
+          return;
+        }
+        // 旧キーのフォールバック
+        const legacy = localStorage.getItem("user.nickname") || "";
+        setUserDisplayName(legacy);
+      } catch {
+        setUserDisplayName("");
+      }
+    };
+
+    readUserFromStorage();
+
+    // フォーカス戻りや別タブでのログイン変更を拾う
+    window.addEventListener("focus", readUserFromStorage);
+    window.addEventListener("storage", readUserFromStorage);
+    return () => {
+      window.removeEventListener("focus", readUserFromStorage);
+      window.removeEventListener("storage", readUserFromStorage);
+    };
+  }, []);
+
   // ★ ロット → 基準ワイン座標
   const lotId = getLotId();
   const reference = useMemo(() => getReferenceLotById(lotId), [lotId]);
@@ -132,10 +165,10 @@ function MapPage() {
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
   const [iframeNonce, setIframeNonce] = useState(0);
 
-  // ★ 評価パネルを開いたタイミングでサーバーと評価一覧を同期
   useEffect(() => {
-    if (!isRatedOpen) return;          // パネルが開いていないときは何もしない
+    if (!isRatedOpen) return;
 
+    // 未ログインなら同期しない
     const token = (() => {
       try {
         return localStorage.getItem("app.access_token") || "";
@@ -143,15 +176,16 @@ function MapPage() {
         return "";
       }
     })();
-    if (!token) return;               // 未ログインなら同期しない
+   if (!token) return;
 
     let cancelled = false;
 
     (async () => {
       try {
-        const res = await fetchLatestRatings("date");   // { items: [...] }
-        const nextMap = {};
+        const res = await fetchLatestRatings("date");
+        if (cancelled) return;
 
+        const nextMap = {};
         for (const item of res.items || []) {
           if (item.rating > 0) {
             nextMap[item.jan_code] = {
@@ -160,13 +194,10 @@ function MapPage() {
             };
           }
         }
-
-        if (!cancelled) {
-          setUserRatings(nextMap);
-          try {
-            localStorage.setItem("userRatings", JSON.stringify(nextMap));
-          } catch {}
-        }
+        setUserRatings(nextMap);
+        try {
+          localStorage.setItem("userRatings", JSON.stringify(nextMap));
+       } catch {}
       } catch (e) {
         console.error("評価一覧の同期に失敗しました", e);
       }
@@ -175,7 +206,7 @@ function MapPage() {
     return () => {
       cancelled = true;
     };
-  }, [isRatedOpen, fetchLatestRatings]);
+  }, [isRatedOpen]);
 
   // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
@@ -1423,6 +1454,35 @@ function MapPage() {
           <FaqPanelContent />
         </div>
       </Drawer>
+
+      {/* 下部中央: 「○○さんの地図」ラベル */}
+      {userDisplayName && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 8,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: UI_Z_TOP,
+            pointerEvents: "none", // 地図操作の邪魔をしない
+          }}
+        >
+          <div
+            style={{
+              padding: "4px 12px",
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.9)",
+              border: "1px solid #ddd",
+              fontSize: 12,
+              color: "#333",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {userDisplayName} さんの地図
+          </div>
+        </div>
+      )}
+
       {process.env.NODE_ENV === "development" && <CartProbe />}
     </div>
   );
