@@ -2,10 +2,10 @@
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-// バックエンドのベースURL
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
 /* ========= 位置情報取得ユーティリティ ========= */
+// 成功: { lat, lon } / 失敗・拒否: null
 async function resolveLocation() {
   const geo = await new Promise((resolve) => {
     if (!("geolocation" in navigator)) return resolve(null);
@@ -15,8 +15,7 @@ async function resolveLocation() {
       { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
     );
   });
-  if (geo) return geo;
-  return { lat: 35.681236, lon: 139.767125 }; // 東京駅
+  return geo;
 }
 
 /* ========= 本体 ========= */
@@ -26,9 +25,9 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // ヘッダー高さ計測
   const headerRef = useRef(null);
   const [headerH, setHeaderH] = useState(0);
+
   useLayoutEffect(() => {
     if (!headerRef.current) return;
     const el = headerRef.current;
@@ -50,7 +49,6 @@ export default function StorePage() {
 
       const token = localStorage.getItem("app.access_token");
 
-      // ★ トークンが無い場合はここで終了（throw しない）
       if (!token) {
         setStores([]);
         setErr(
@@ -62,8 +60,10 @@ export default function StorePage() {
 
       try {
         const loc = await resolveLocation();
+        const locAllowed = !!(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lon));
+
         const params = new URLSearchParams();
-        if (Number.isFinite(loc.lat) && Number.isFinite(loc.lon)) {
+        if (locAllowed) {
           params.set("user_lat", String(loc.lat));
           params.set("user_lon", String(loc.lon));
         }
@@ -109,10 +109,14 @@ export default function StorePage() {
         });
 
         enriched.sort((a, b) => a.distance - b.distance);
-        setStores(enriched);
+
+        // ★ 位置情報NGなら EC(id=1) だけ残す
+        const finalStores = locAllowed ? enriched : enriched.filter((s) => s.id === 1);
+
+        setStores(finalStores);
 
         try {
-          localStorage.setItem("allStores", JSON.stringify(enriched));
+          localStorage.setItem("allStores", JSON.stringify(finalStores));
         } catch {}
       } catch (e) {
         console.error(e);
@@ -130,16 +134,13 @@ export default function StorePage() {
       }
     };
 
-    // 初回
     run();
-
-    // タブ復帰時にももう一度 run する
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
   const formatKm = (d, id) => {
-    if (id === 1) return "";   // ★ EC のとき完全に非表示
+    if (id === 1) return ""; // EC は非表示
     if (Number.isFinite(d) && d !== Infinity) {
       return `${d.toFixed(1)}km`;
     }

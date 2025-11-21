@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
 /* ============ 位置情報ユーティリティ ============ */
+// 成功: { lat, lon } / 失敗・拒否: null
 async function resolveLocation() {
   const geo = await new Promise((resolve) => {
     if (!("geolocation" in navigator)) return resolve(null);
@@ -13,8 +14,7 @@ async function resolveLocation() {
       { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
     );
   });
-  if (geo) return geo;
-  return { lat: 35.681236, lon: 139.767125 };
+  return geo; // 失敗時は null
 }
 
 /* ============ 小物：★ボタン ============ */
@@ -63,7 +63,7 @@ export default function StorePanelContent() {
   const [savingId, setSavingId] = useState(null);
 
   const formatKm = (d, id) => {
-    if (id === 1) return ""; // ★ EC のとき完全に非表示
+    if (id === 1) return ""; // EC のとき完全に非表示
     if (Number.isFinite(d) && d !== Infinity) {
       return `${d.toFixed(1)}km`;
     }
@@ -79,11 +79,13 @@ export default function StorePanelContent() {
 
       const token = localStorage.getItem("app.access_token");
 
-      // ★ トークンがない場合はここで終了（throw しない）
+      // トークンなし
       if (!token) {
         if (alive) {
           setStores([]);
-          setErr("ログイン情報が見つかりません。マイページからログインしてからお試しください。");
+          setErr(
+            "ログイン情報が見つかりません。マイページからログインしてからお試しください。"
+          );
           setLoading(false);
         }
         return;
@@ -91,8 +93,11 @@ export default function StorePanelContent() {
 
       try {
         const loc = await resolveLocation();
+        const locAllowed = !!(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lon));
+
+        // クエリパラメータ（位置情報が取れたときだけ付与）
         const params = new URLSearchParams();
-        if (Number.isFinite(loc.lat) && Number.isFinite(loc.lon)) {
+        if (locAllowed) {
           params.set("user_lat", String(loc.lat));
           params.set("user_lon", String(loc.lon));
         }
@@ -136,10 +141,14 @@ export default function StorePanelContent() {
           };
         });
 
+        // 距離順ソート
         mapped.sort((a, b) => a.distance - b.distance);
 
+        // ★ 位置情報が取れなかった場合は EC(id=1) だけ残す
+        const finalStores = locAllowed ? mapped : mapped.filter((s) => s.id === 1);
+
         if (alive) {
-          setStores(mapped);
+          setStores(finalStores);
         }
       } catch (e) {
         console.error(e);
