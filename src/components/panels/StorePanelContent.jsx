@@ -63,7 +63,7 @@ export default function StorePanelContent() {
   const [savingId, setSavingId] = useState(null);
 
   const formatKm = (d, id) => {
-    if (id === 1) return "";   // ★ EC のとき完全に非表示
+    if (id === 1) return ""; // ★ EC のとき完全に非表示
     if (Number.isFinite(d) && d !== Infinity) {
       return `${d.toFixed(1)}km`;
     }
@@ -77,12 +77,19 @@ export default function StorePanelContent() {
       setLoading(true);
       setErr("");
 
-      try {
-        const token = localStorage.getItem("app.access_token");
-        if (!token) {
-          throw new Error("NO_APP_TOKEN");
-        }
+      const token = localStorage.getItem("app.access_token");
 
+      // ★ トークンがない場合はここで終了（throw しない）
+      if (!token) {
+        if (alive) {
+          setStores([]);
+          setErr("ログイン情報が見つかりません。マイページからログインしてからお試しください。");
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
         const loc = await resolveLocation();
         const params = new URLSearchParams();
         if (Number.isFinite(loc.lat) && Number.isFinite(loc.lon)) {
@@ -137,11 +144,9 @@ export default function StorePanelContent() {
       } catch (e) {
         console.error(e);
         if (!alive) return;
-        if (e.message === "NO_APP_TOKEN") {
-          setErr("ログイン情報が見つかりません。マイページからログインしてからお試しください。");
-        } else {
-          setErr("店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。");
-        }
+        setErr(
+          "店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。"
+        );
       } finally {
         if (alive) setLoading(false);
       }
@@ -160,12 +165,13 @@ export default function StorePanelContent() {
     if (store.is_main) return;
     if (savingId !== null) return;
 
-    try {
-      const token = localStorage.getItem("app.access_token");
-      if (!token) {
-        throw new Error("NO_APP_TOKEN");
-      }
+    const token = localStorage.getItem("app.access_token");
+    if (!token) {
+      alert("ログイン情報が見つかりません。マイページからログインしてからお試しください。");
+      return;
+    }
 
+    try {
       const nextActive = !store.is_sub;
       setSavingId(store.id);
 
@@ -194,11 +200,7 @@ export default function StorePanelContent() {
       );
     } catch (e) {
       console.error(e);
-      if (e.message === "NO_APP_TOKEN") {
-        alert("ログイン情報が見つかりません。マイページからログインしてからお試しください。");
-      } else {
-        alert("店舗の登録更新に失敗しました。通信状況をご確認のうえ、再度お試しください。");
-      }
+      alert("店舗の登録更新に失敗しました。通信状況をご確認のうえ、再度お試しください。");
     } finally {
       setSavingId(null);
     }
