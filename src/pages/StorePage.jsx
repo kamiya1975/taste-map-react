@@ -25,7 +25,6 @@ export default function StorePage() {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const askedRef = useRef(false);
 
   // ヘッダー高さ計測
   const headerRef = useRef(null);
@@ -46,18 +45,22 @@ export default function StorePage() {
 
   useEffect(() => {
     const run = async () => {
-      if (askedRef.current) return;
-      askedRef.current = true;
-
       setLoading(true);
       setErr("");
 
-      try {
-        const token = localStorage.getItem("app.access_token");
-        if (!token) {
-          throw new Error("NO_APP_TOKEN");
-        }
+      const token = localStorage.getItem("app.access_token");
 
+      // ★ トークンが無い場合はここで終了（throw しない）
+      if (!token) {
+        setStores([]);
+        setErr(
+          "ログイン情報が見つかりません。マイページからログインしてからお試しください。"
+        );
+        setLoading(false);
+        return;
+      }
+
+      try {
         const loc = await resolveLocation();
         const params = new URLSearchParams();
         if (Number.isFinite(loc.lat) && Number.isFinite(loc.lon)) {
@@ -83,10 +86,8 @@ export default function StorePage() {
 
         const raw = await res.json();
         console.log("[StorePage] raw stores:", raw);
-
         const list = Array.isArray(raw) ? raw : [];
 
-        // ★ distance_km を number に正規化してから使う
         const enriched = list.map((s, i) => {
           const rawD = s.distance_km;
           const numD =
@@ -100,43 +101,41 @@ export default function StorePage() {
             distance_km: numD,
             is_main: !!s.is_main,
             updated_at: s.updated_at,
-
             branch: "",
             address: "",
             genre: "",
-
             _key: `${s.store_id}@@${i}`,
           };
         });
 
         enriched.sort((a, b) => a.distance - b.distance);
-
         setStores(enriched);
+
         try {
           localStorage.setItem("allStores", JSON.stringify(enriched));
         } catch {}
       } catch (e) {
         console.error(e);
-        if (e.message === "NO_APP_TOKEN") {
-          setErr("ログイン情報が見つかりません。マイページからログインしてからお試しください。");
-        } else {
-          setErr("店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。");
-        }
+        setErr(
+          "店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。"
+        );
       } finally {
         setLoading(false);
       }
     };
 
     const onVisible = () => {
-      if (document.visibilityState === "visible") run();
+      if (document.visibilityState === "visible") {
+        run();
+      }
     };
 
-    if (document.visibilityState === "visible") {
-      run();
-    } else {
-      document.addEventListener("visibilitychange", onVisible, { once: true });
-      return () => document.removeEventListener("visibilitychange", onVisible);
-    }
+    // 初回
+    run();
+
+    // タブ復帰時にももう一度 run する
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
   const formatKm = (d, id) => {
