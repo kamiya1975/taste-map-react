@@ -382,8 +382,8 @@ export default function SliderPage() {
               marginBottom: 4,
             }}
           >
-            <span>← もっと酸味が欲しい</span>
-            <span>酸味は控えめが良い →</span>
+            <span>← 酸味は控えめが良い</span>
+            <span>もっと酸味が欲しい →</span>
           </div>
           <input
             type="range"
