@@ -5,17 +5,19 @@ import PanelHeader from "../components/ui/PanelHeader";
 import { getReferenceLotById } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 
-/* ============ 小ユーティリティ（既存） ============ */
+/* ============ 小ユーティリティ ============ */
 const num = (v, def = 0) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : def;
 };
-//const median = (arr) => { if (!arr.length) return 0; const a=[...arr].sort((x,y)=>x-y); const m=Math.floor(a.length/2); return a.length%2?a[m]:(a[m-1]+a[m])/2; };
-const dist2 = (x1, y1, x2, y2) => {
-  const dx = x1 - x2,
-    dy = y1 - y2;
-  return dx * dx + dy * dy;
+
+const dist2 = (x1, y1, x2, x3, y2, y3) => {
+  const dx = x1 - x2;
+  const dy = y1 - y2;
+  const dz = x3 - y3;
+  return dx * dx + dy * dy + dz * dz;
 };
+
 const centerGradient = (val) => {
   const base = "#e9e9e9",
     active = "#b59678"; // ← 見本の色味
@@ -26,112 +28,40 @@ const centerGradient = (val) => {
   return `linear-gradient(to right, ${base} 0%, ${base} ${a}%, ${active} ${a}%, ${active} ${b}%, ${base} ${b}%, ${base} 100%)`;
 };
 
-// 逆行列/近傍写像（既存）
-function invert3x3(M) {
-  const [
-    [a, b, c],
-    [d, e, f],
-    [g, h, i],
-  ] = M;
-  const A = e * i - f * h,
-    B = -(d * i - f * g),
-    C = d * h - e * g;
-  const D = -(b * i - c * h),
-    E = a * i - c * g,
-    F = -(a * h - b * d);
-  const G = b * f - c * e,
-    H = -(a * f - c * d),
-    I = a * e - b * d;
-  const det = a * A + b * B + c * C;
-  if (Math.abs(det) < 1e-12) return null;
-  const s = 1 / det;
-  return [
-    [A * s, D * s, G * s],
-    [B * s, E * s, H * s],
-    [C * s, F * s, I * s],
-  ];
-}
-function mulMatVec(M, v) {
-  return [
-    M[0][0] * v[0] + M[0][1] * v[1] + M[0][2] * v[2],
-    M[1][0] * v[0] + M[1][1] * v[1] + M[1][2] * v[2],
-    M[2][0] * v[0] + M[2][1] * v[1] + M[2][2] * v[2],
-  ];
-}
-function fitLocalAffineAndPredict(px, py, neigh) {
-  if (neigh.length < 3) {
-    let wsum = 0,
-      u1 = 0,
-      u2 = 0;
-    for (const n of neigh) {
-      wsum += n.w;
-      u1 += n.w * n.UMAP1;
-      u2 += n.w * n.UMAP2;
+// 0–100 → PC の線形変換
+const sliderToPC = (sliderVal, min, max) => {
+  const v = Math.max(0, Math.min(100, Number(sliderVal)));
+  if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
+    return (min + max) / 2 || 0;
+  }
+  const t = v / 100; // 0〜1
+  return min + t * (max - min);
+};
+
+// PC → 0–100 の線形変換
+const pcToSlider = (pc, min, max) => {
+  if (!Number.isFinite(pc) || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
+    return 50;
+  }
+  const t = (pc - min) / (max - min);
+  const v = t * 100;
+  return Math.max(0, Math.min(100, v));
+};
+
+// (PC1,PC2,PC3) に最も近いワインを rows から探す
+const findNearestWineByPC = (rows, px, py, pz) => {
+  if (!rows.length) return null;
+  let best = null;
+  let bestD2 = Infinity;
+  for (const d of rows) {
+    const d2 = dist2(px, py, pz, d.PC1, d.PC2, d.PC3);
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      best = d;
     }
-    if (!wsum) return [0, 0];
-    return [u1 / wsum, u2 / wsum];
   }
-  let Sxx = 0,
-    Sxy = 0,
-    Sx1 = 0,
-    Syx = 0,
-    Syy = 0,
-    Sy1 = 0,
-    S1x = 0,
-    S1y = 0,
-    S11 = 0,
-    Tx1 = 0,
-    Ty1 = 0,
-    T11 = 0,
-    Tx2 = 0,
-    Ty2 = 0,
-    T12 = 0;
-  for (const n of neigh) {
-    const w = n.w,
-      x = n.PC1,
-      y = n.PC2,
-      u1 = n.UMAP1,
-      u2 = n.UMAP2;
-    const wx = w * x,
-      wy = w * y;
-    Sxx += wx * x;
-    Sxy += wx * y;
-    Sx1 += wx;
-    Syx += wy * x;
-    Syy += wy * y;
-    Sy1 += wy;
-    S1x += w * x;
-    S1y += w * y;
-    S11 += w;
-    Tx1 += wx * u1;
-    Ty1 += wy * u1;
-    T11 += w * u1;
-    Tx2 += wx * u2;
-    Ty2 += wy * u2;
-    T12 += w * u2;
-  }
-  const M = [
-      [Sxx, Sxy, Sx1],
-      [Syx, Syy, Sy1],
-      [S1x, S1y, S11],
-    ],
-    invM = invert3x3(M);
-  if (!invM) {
-    let wsum = 0,
-      u1 = 0,
-      u2 = 0;
-    for (const n of neigh) {
-      wsum += n.w;
-      u1 += n.w * n.UMAP1;
-      u2 += n.w * n.UMAP2;
-    }
-    if (!wsum) return [0, 0];
-    return [u1 / wsum, u2 / wsum];
-  }
-  const a1 = mulMatVec(invM, [Tx1, Ty1, T11]);
-  const a2 = mulMatVec(invM, [Tx2, Ty2, T12]);
-  return [a1[0] * px + a1[1] * py + a1[2], a2[0] * px + a2[1] * py + a2[2]];
-}
+  return best;
+};
 
 export default function SliderPage() {
   const navigate = useNavigate();
@@ -163,9 +93,10 @@ export default function SliderPage() {
   }, [selectedStore, navigate, location.state]);
 
   /* ---------- UI 状態 ---------- */
-  const [acidity, setAcidity] = useState(50);   // ★ 酸味（PC3）
-  const [sweetness, setSweetness] = useState(50);
-  const [body, setBody] = useState(50);
+  const [acidity, setAcidity] = useState(50);   // PC3
+  const [sweetness, setSweetness] = useState(50); // PC2
+  const [body, setBody] = useState(50);        // PC1
+  const [initializedFromPC, setInitializedFromPC] = useState(false);
 
   /* ---------- データ読込 & 写像 ---------- */
   const [rows, setRows] = useState([]);
@@ -204,7 +135,7 @@ export default function SliderPage() {
             JAN: String(d.jan_code ?? ""),
             PC1: num(d.PC1),
             PC2: num(d.PC2),
-            PC3: num(d.PC3), // ★ 追加：酸味軸
+            PC3: num(d.PC3),
             UMAP1: num(d.umap_x),
             UMAP2: num(d.umap_y),
           }))
@@ -212,7 +143,7 @@ export default function SliderPage() {
             (r) =>
               Number.isFinite(r.PC1) &&
               Number.isFinite(r.PC2) &&
-              Number.isFinite(r.PC3) && // ★ PC3 も必須に
+              Number.isFinite(r.PC3) &&
               Number.isFinite(r.UMAP1) &&
               Number.isFinite(r.UMAP2)
           );
@@ -227,8 +158,8 @@ export default function SliderPage() {
             maxPC1: Math.max(...pc1s),
             minPC2: Math.min(...pc2s),
             maxPC2: Math.max(...pc2s),
-            minPC3: Math.min(...pc3s), // ★ 追加
-            maxPC3: Math.max(...pc3s), // ★ 追加
+            minPC3: Math.min(...pc3s),
+            maxPC3: Math.max(...pc3s),
           });
         } else {
           setPcMinMax(null);
@@ -237,79 +168,55 @@ export default function SliderPage() {
       .catch((e) => console.error("load failed:", e));
   }, []);
 
-  // ★ PC3 を考慮した重みで近傍写像
-  const pca2umap = (px, py, pz, k = 20) => {
-    if (!rows.length) return [0, 0];
-    const eps = 1e-6;
-    const lambda = 1.0; // PC3（酸味）の効き具合。必要なら 0.5 などで調整可能
+  // ★ 基準ロットの PC1/2/3 を 0–100 にスケールしてスライダー初期値に反映
+  useEffect(() => {
+    if (!referenceLot || !pcMinMax || initializedFromPC) return;
 
-    const neigh = rows
-      .map((d) => {
-        const d2xy = dist2(px, py, d.PC1, d.PC2);
-        const dz = pz - d.PC3;
-        const d2 = d2xy + lambda * dz * dz;
-        return { ...d, d2, w: 1 / (d2 + eps) };
-      })
-      .sort((a, b) => a.d2 - b.d2)
-      .slice(0, Math.min(k, rows.length));
-    return fitLocalAffineAndPredict(px, py, neigh);
-  };
+    const { minPC1, maxPC1, minPC2, maxPC2, minPC3, maxPC3 } = pcMinMax;
+    const basePC1 = num(referenceLot.pc1);
+    const basePC2 = num(referenceLot.pc2);
+    const basePC3 = num(referenceLot.pc3);
+
+    const bodySlider = pcToSlider(basePC1, minPC1, maxPC1);
+    const sweetnessSlider = pcToSlider(basePC2, minPC2, maxPC2);
+    const aciditySlider = pcToSlider(basePC3, minPC3, maxPC3);
+
+    setBody(bodySlider);
+    setSweetness(sweetnessSlider);
+    setAcidity(aciditySlider);
+    setInitializedFromPC(true);
+  }, [referenceLot, pcMinMax, initializedFromPC]);
 
   const handleGenerate = () => {
-    if (!referenceLot) return;
+    if (!referenceLot || !pcMinMax || !rows.length) return;
 
-    let umapX, umapY;
+    const { minPC1, maxPC1, minPC2, maxPC2, minPC3, maxPC3 } = pcMinMax;
 
-    // ★スライダーを全くいじっていない（50, 50, 50）のときは、
-    //   ロット定義の UMAP 座標をそのまま使う
-    if (
-      acidity === 50 &&
-      sweetness === 50 &&
-      body === 50 &&
-      typeof referenceLot.umap_x === "number" &&
-      typeof referenceLot.umap_y === "number"
-    ) {
-      umapX = referenceLot.umap_x;
-      umapY = referenceLot.umap_y;
-    } else {
-      // ★それ以外のときは、PC → UMAP 写像を使う
-      if (!pcMinMax || !rows.length) return;
+    // スライダー値 → PC1/2/3 へ逆変換
+    const pc1Value = sliderToPC(body, minPC1, maxPC1);       // ボディ
+    const pc2Value = sliderToPC(sweetness, minPC2, maxPC2);  // 甘味
+    const pc3Value = sliderToPC(acidity, minPC3, maxPC3);    // 酸味
 
-      const { minPC1, maxPC1, minPC2, maxPC2, minPC3, maxPC3 } = pcMinMax;
+    // PC空間で最も近いワインを 1 本選ぶ
+    const nearest = findNearestWineByPC(rows, pc1Value, pc2Value, pc3Value);
+    if (!nearest) return;
 
-      // ロットごとの基準点（PC空間）
-      const basePC1 = referenceLot.pc1;
-      const basePC2 = referenceLot.pc2;
-      const basePC3 = referenceLot.pc3; // ★ 酸味軸
+    const umapX = nearest.UMAP1;
+    const umapY = nearest.UMAP2;
 
-      // 0-100(中央50) → PC1（ボディ）へ線形補間
-      const pc1Value =
-        body <= 50
-          ? basePC1 - ((50 - body) / 50) * (basePC1 - minPC1)
-          : basePC1 + ((body - 50) / 50) * (maxPC1 - basePC1);
-
-      // 0-100(中央50) → PC2（甘味側の軸）へ線形補間
-      const pc2Value =
-        sweetness <= 50
-          ? basePC2 - ((50 - sweetness) / 50) * (basePC2 - minPC2)
-          : basePC2 + ((sweetness - 50) / 50) * (maxPC2 - basePC2);
-
-      // 0-100(中央50) → PC3（酸味軸）へ線形補間
-      const pc3Value =
-        acidity <= 50
-          ? basePC3 - ((50 - acidity) / 50) * (basePC3 - minPC3)
-          : basePC3 + ((acidity - 50) / 50) * (maxPC3 - basePC3);
-
-      [umapX, umapY] = pca2umap(pc1Value, pc2Value, pc3Value);
-    }
-
-    // ユーザー嗜好ピンを保存（どのロットを基準にしたかも一緒に）
+    // ユーザー嗜好ピンを保存（どのロットを基準にしたか・PC値・最近傍JANも保存）
     localStorage.setItem(
       "userPinCoords",
       JSON.stringify({
         coordsUMAP: [umapX, umapY],
-        version: 2,
+        version: 3, // 新仕様
         referenceLotId: referenceLot.lotId,
+        pcValues: {
+          pc1: pc1Value,
+          pc2: pc2Value,
+          pc3: pc3Value,
+        },
+        nearestJan: nearest.JAN,
       })
     );
     try {
@@ -323,7 +230,7 @@ export default function SliderPage() {
     navigate("/map?open=guide", { state: { centerOnUserPin: true } });
   };
 
-  /* ---------- スタイル（簡潔） ---------- */
+  /* ---------- スタイル ---------- */
   const pagePad = "16px";
   const cardW = "min(480px, 92svw)";
 
@@ -394,7 +301,7 @@ export default function SliderPage() {
           .taste-slider::-moz-range-thumb{ width:22px; height:22px; border-radius:50%; background:#262626; border:0; box-shadow:0 1px 2px rgba(0,0,0,.25); cursor:pointer; }
         `}</style>
 
-        {/* 酸味 */}
+        {/* 酸味（PC3） */}
         <div style={{ width: cardW, marginBottom: 24 }}>
           <div
             style={{
@@ -418,7 +325,7 @@ export default function SliderPage() {
           />
         </div>
 
-        {/* 甘み */}
+        {/* 甘み（PC2） */}
         <div style={{ width: cardW, marginBottom: 24 }}>
           <div
             style={{
@@ -442,7 +349,7 @@ export default function SliderPage() {
           />
         </div>
 
-        {/* コク（ボディ） */}
+        {/* コク（ボディ, PC1） */}
         <div style={{ width: cardW, marginBottom: 32 }}>
           <div
             style={{
