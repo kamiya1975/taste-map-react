@@ -21,7 +21,7 @@ const dist2_3d = (x1, y1, z1, x2, y2, z2) => {
 
 const centerGradient = (val) => {
   const base = "#e9e9e9",
-    active = "#b59678"; // ← 見本の色味
+    active = "#b59678";
   const v = Math.max(0, Math.min(100, Number(val)));
   if (v === 50) return base;
   const a = Math.min(50, v),
@@ -30,11 +30,10 @@ const centerGradient = (val) => {
 };
 
 /**
- * ★ PC → スライダー(0–100)
- *   0   : minPC
- *   50  : basePC（基準ロット）
- *   100 : maxPC
- *   左右でレンジが非対称でもOKな仕様
+ * PC → スライダー(0–100)
+ * 0   : minPC
+ * 50  : basePC（基準ロット）
+ * 100 : maxPC
  */
 const pcToSliderCenter = (pc, min, base, max) => {
   if (
@@ -46,7 +45,6 @@ const pcToSliderCenter = (pc, min, base, max) => {
     return 50;
   }
 
-  // 左側：min → base を 0〜50 に
   if (pc <= base) {
     const denom = base - min;
     if (denom <= 0) return 50;
@@ -54,7 +52,6 @@ const pcToSliderCenter = (pc, min, base, max) => {
     return Math.max(0, Math.min(50, t * 50));
   }
 
-  // 右側：base → max を 50〜100 に
   const denom = max - base;
   if (denom <= 0) return 50;
   const t = (pc - base) / denom; // 0〜1
@@ -62,10 +59,7 @@ const pcToSliderCenter = (pc, min, base, max) => {
 };
 
 /**
- * ★ スライダー(0–100) → PC
- *   0   : minPC
- *   50  : basePC（基準ロット）
- *   100 : maxPC
+ * スライダー(0–100) → PC
  */
 const sliderToPCCenter = (sliderVal, min, base, max) => {
   const v = Math.max(0, Math.min(100, Number(sliderVal)));
@@ -77,7 +71,6 @@ const sliderToPCCenter = (sliderVal, min, base, max) => {
     return base || 0;
   }
 
-  // 左側：0〜50 → min〜base
   if (v <= 50) {
     const denom = 50;
     if (base <= min || denom <= 0) return base;
@@ -85,7 +78,6 @@ const sliderToPCCenter = (sliderVal, min, base, max) => {
     return min + (base - min) * t;
   }
 
-  // 右側：50〜100 → base〜max
   const denom = 50;
   if (max <= base || denom <= 0) return base;
   const t = (v - 50) / denom; // 0〜1
@@ -141,31 +133,29 @@ export default function SliderPage() {
   const [sweetness, setSweetness] = useState(50); // PC2
   const [body, setBody] = useState(50);        // PC1
   const [initializedFromPC, setInitializedFromPC] = useState(false);
+  const [initialSliders, setInitialSliders] = useState(null);
 
   /* ---------- データ読込 & 写像 ---------- */
   const [rows, setRows] = useState([]);
-  const [referenceLot, setReferenceLot] = useState(null); // ← 基準ワイン（ロット）情報
+  const [referenceLot, setReferenceLot] = useState(null);
   const [pcMinMax, setPcMinMax] = useState(null);
 
-  // 基準ワインロットの決定
+  // 基準ロットローディング
   useEffect(() => {
-    const lotId = getLotId(); // MapPage と同じロジックを使う
+    const lotId = getLotId();
     const lot = getReferenceLotById(lotId);
 
     if (lot) {
       setReferenceLot(lot);
       try {
         localStorage.setItem("referenceLotId", lot.lotId);
-      } catch {
-        // ignore
-      }
+      } catch {}
     } else {
-      // 不正な lotId のときも落ちないように
       setReferenceLot(null);
     }
   }, []);
 
-  // UMAP座標＆PC1/PC2/PC3 全体分布の読み込み
+  // PCA/UMAP 全体をロード
   useEffect(() => {
     const url = `${process.env.PUBLIC_URL || ""}/umap_coords_c.json`;
     fetch(url)
@@ -212,7 +202,7 @@ export default function SliderPage() {
       .catch((e) => console.error("load failed:", e));
   }, []);
 
-  // ★ 基準ロットの PC1/2/3 を「中央50」としてスライダー初期値に反映
+  // 基準ロットの PC を中央50にマッピングしてスライダー初期化
   useEffect(() => {
     if (!referenceLot || !pcMinMax || initializedFromPC) return;
 
@@ -228,6 +218,11 @@ export default function SliderPage() {
     setBody(bodySlider);
     setSweetness(sweetnessSlider);
     setAcidity(aciditySlider);
+    setInitialSliders({
+      body: bodySlider,
+      sweetness: sweetnessSlider,
+      acidity: aciditySlider,
+    });
     setInitializedFromPC(true);
   }, [referenceLot, pcMinMax, initializedFromPC]);
 
@@ -235,38 +230,67 @@ export default function SliderPage() {
     if (!referenceLot || !pcMinMax || !rows.length) return;
 
     const { minPC1, maxPC1, minPC2, maxPC2, minPC3, maxPC3 } = pcMinMax;
-
     const basePC1 = num(referenceLot.pc1);
     const basePC2 = num(referenceLot.pc2);
     const basePC3 = num(referenceLot.pc3);
 
-    // スライダー値 → PC1/2/3 へ逆変換（中央=基準ロット）
-    const pc1Value = sliderToPCCenter(body, minPC1, basePC1, maxPC1);       // ボディ
-    const pc2Value = sliderToPCCenter(sweetness, minPC2, basePC2, maxPC2);  // 甘味
-    const pc3Value = sliderToPCCenter(acidity, minPC3, basePC3, maxPC3);    // 酸味
+    // ★初期スライダー位置のままなら、必ず基準ロットのUMAPにピンを立てる
+    const isAtInitial =
+      initialSliders &&
+      acidity === initialSliders.acidity &&
+      sweetness === initialSliders.sweetness &&
+      body === initialSliders.body;
 
-    // PC空間で最も近いワインを 1 本選ぶ
-    const nearest = findNearestWineByPC(rows, pc1Value, pc2Value, pc3Value);
-    if (!nearest) return;
+    if (
+      isAtInitial &&
+      typeof referenceLot.umap_x === "number" &&
+      typeof referenceLot.umap_y === "number"
+    ) {
+      const umapX = referenceLot.umap_x;
+      const umapY = referenceLot.umap_y;
 
-    const umapX = nearest.UMAP1;
-    const umapY = nearest.UMAP2;
+      localStorage.setItem(
+        "userPinCoords",
+        JSON.stringify({
+          coordsUMAP: [umapX, umapY],
+          version: 3,
+          referenceLotId: referenceLot.lotId,
+          pcValues: {
+            pc1: basePC1,
+            pc2: basePC2,
+            pc3: basePC3,
+          },
+          nearestJan: referenceLot.JAN || null,
+        })
+      );
+    } else {
+      // ★好みを動かした場合は、PC → 最近傍ワイン → そのUMAP
+      const pc1Value = sliderToPCCenter(body, minPC1, basePC1, maxPC1);
+      const pc2Value = sliderToPCCenter(sweetness, minPC2, basePC2, maxPC2);
+      const pc3Value = sliderToPCCenter(acidity, minPC3, basePC3, maxPC3);
 
-    // ユーザー嗜好ピンを保存
-    localStorage.setItem(
-      "userPinCoords",
-      JSON.stringify({
-        coordsUMAP: [umapX, umapY],
-        version: 3, // 新仕様
-        referenceLotId: referenceLot.lotId,
-        pcValues: {
-          pc1: pc1Value,
-          pc2: pc2Value,
-          pc3: pc3Value,
-        },
-        nearestJan: nearest.JAN,
-      })
-    );
+      const nearest = findNearestWineByPC(rows, pc1Value, pc2Value, pc3Value);
+      if (!nearest) return;
+
+      const umapX = nearest.UMAP1;
+      const umapY = nearest.UMAP2;
+
+      localStorage.setItem(
+        "userPinCoords",
+        JSON.stringify({
+          coordsUMAP: [umapX, umapY],
+          version: 3,
+          referenceLotId: referenceLot.lotId,
+          pcValues: {
+            pc1: pc1Value,
+            pc2: pc2Value,
+            pc3: pc3Value,
+          },
+          nearestJan: nearest.JAN,
+        })
+      );
+    }
+
     try {
       sessionStorage.setItem("tm_center_on_userpin", "1");
     } catch {}
@@ -274,7 +298,6 @@ export default function SliderPage() {
       sessionStorage.setItem("tm_autopen_nearest", "1");
     } catch {}
 
-    // ガイドドロワーを一度だけ開く（?open=guide）
     navigate("/map?open=guide", { state: { centerOnUserPin: true } });
   };
 
@@ -325,7 +348,7 @@ export default function SliderPage() {
           基準のワインを飲んだ印象は？
         </p>
 
-        {/* 現在のロット表示（任意） */}
+        {/* 現在のロット表示 */}
         {referenceLot && (
           <p
             style={{
@@ -340,7 +363,7 @@ export default function SliderPage() {
           </p>
         )}
 
-        {/* スライダーCSS（中央を強調） */}
+        {/* スライダーCSS */}
         <style>{`
           .taste-slider{ appearance:none; -webkit-appearance:none; width:100%; height:6px; background:transparent; margin-top:6px; outline:none; }
           .taste-slider::-webkit-slider-runnable-track{ height:6px; border-radius:9999px; background:var(--range,#e9e9e9); }
@@ -359,8 +382,8 @@ export default function SliderPage() {
               marginBottom: 4,
             }}
           >
-            <span>← 酸味は控えめが良い</span>
-            <span>もっと酸味が欲しい →</span>
+            <span>← もっと酸味が欲しい</span>
+            <span>酸味は控えめが良い →</span>
           </div>
           <input
             type="range"
