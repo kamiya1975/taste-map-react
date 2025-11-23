@@ -38,7 +38,7 @@ function invert3x3(M) {
     C = d * h - e * g;
   const D = -(b * i - c * h),
     E = a * i - c * g,
-    F = -(a * h - b * g);
+    F = -(a * h - b * d);
   const G = b * f - c * e,
     H = -(a * f - c * d),
     I = a * e - b * d;
@@ -163,6 +163,7 @@ export default function SliderPage() {
   }, [selectedStore, navigate, location.state]);
 
   /* ---------- UI 状態 ---------- */
+  const [acidity, setAcidity] = useState(50);   // ★ 酸味（PC3）
   const [sweetness, setSweetness] = useState(50);
   const [body, setBody] = useState(50);
 
@@ -173,7 +174,7 @@ export default function SliderPage() {
 
   // 基準ワインロットの決定
   useEffect(() => {
-    const lotId = getLotId();                 // MapPage と同じロジックを使う
+    const lotId = getLotId(); // MapPage と同じロジックを使う
     const lot = getReferenceLotById(lotId);
 
     if (lot) {
@@ -189,7 +190,7 @@ export default function SliderPage() {
     }
   }, []);
 
-  // UMAP座標＆PC1/PC2 全体分布の読み込み
+  // UMAP座標＆PC1/PC2/PC3 全体分布の読み込み
   useEffect(() => {
     const url = `${process.env.PUBLIC_URL || ""}/umap_coords_c.json`;
     fetch(url)
@@ -203,6 +204,7 @@ export default function SliderPage() {
             JAN: String(d.jan_code ?? ""),
             PC1: num(d.PC1),
             PC2: num(d.PC2),
+            PC3: num(d.PC3), // ★ 追加：酸味軸
             UMAP1: num(d.umap_x),
             UMAP2: num(d.umap_y),
           }))
@@ -210,6 +212,7 @@ export default function SliderPage() {
             (r) =>
               Number.isFinite(r.PC1) &&
               Number.isFinite(r.PC2) &&
+              Number.isFinite(r.PC3) && // ★ PC3 も必須に
               Number.isFinite(r.UMAP1) &&
               Number.isFinite(r.UMAP2)
           );
@@ -218,11 +221,14 @@ export default function SliderPage() {
         if (cleaned.length) {
           const pc1s = cleaned.map((r) => r.PC1);
           const pc2s = cleaned.map((r) => r.PC2);
+          const pc3s = cleaned.map((r) => r.PC3);
           setPcMinMax({
             minPC1: Math.min(...pc1s),
             maxPC1: Math.max(...pc1s),
             minPC2: Math.min(...pc2s),
             maxPC2: Math.max(...pc2s),
+            minPC3: Math.min(...pc3s), // ★ 追加
+            maxPC3: Math.max(...pc3s), // ★ 追加
           });
         } else {
           setPcMinMax(null);
@@ -231,12 +237,17 @@ export default function SliderPage() {
       .catch((e) => console.error("load failed:", e));
   }, []);
 
-  const pca2umap = (px, py, k = 20) => {
+  // ★ PC3 を考慮した重みで近傍写像
+  const pca2umap = (px, py, pz, k = 20) => {
     if (!rows.length) return [0, 0];
     const eps = 1e-6;
+    const lambda = 1.0; // PC3（酸味）の効き具合。必要なら 0.5 などで調整可能
+
     const neigh = rows
       .map((d) => {
-        const d2 = dist2(px, py, d.PC1, d.PC2);
+        const d2xy = dist2(px, py, d.PC1, d.PC2);
+        const dz = pz - d.PC3;
+        const d2 = d2xy + lambda * dz * dz;
         return { ...d, d2, w: 1 / (d2 + eps) };
       })
       .sort((a, b) => a.d2 - b.d2)
@@ -249,9 +260,10 @@ export default function SliderPage() {
 
     let umapX, umapY;
 
-    // ★スライダーを全くいじっていない（50, 50）のときは、
+    // ★スライダーを全くいじっていない（50, 50, 50）のときは、
     //   ロット定義の UMAP 座標をそのまま使う
     if (
+      acidity === 50 &&
       sweetness === 50 &&
       body === 50 &&
       typeof referenceLot.umap_x === "number" &&
@@ -260,27 +272,35 @@ export default function SliderPage() {
       umapX = referenceLot.umap_x;
       umapY = referenceLot.umap_y;
     } else {
-      // ★それ以外のときは、今まで通り PC → UMAP 写像を使う
+      // ★それ以外のときは、PC → UMAP 写像を使う
       if (!pcMinMax || !rows.length) return;
 
-      const { minPC1, maxPC1, minPC2, maxPC2 } = pcMinMax;
+      const { minPC1, maxPC1, minPC2, maxPC2, minPC3, maxPC3 } = pcMinMax;
 
       // ロットごとの基準点（PC空間）
       const basePC1 = referenceLot.pc1;
       const basePC2 = referenceLot.pc2;
+      const basePC3 = referenceLot.pc3; // ★ 酸味軸
 
-     // 0-100(中央50) → PC空間へ線形補間
+      // 0-100(中央50) → PC1（ボディ）へ線形補間
       const pc1Value =
         body <= 50
           ? basePC1 - ((50 - body) / 50) * (basePC1 - minPC1)
           : basePC1 + ((body - 50) / 50) * (maxPC1 - basePC1);
 
+      // 0-100(中央50) → PC2（甘味側の軸）へ線形補間
       const pc2Value =
         sweetness <= 50
           ? basePC2 - ((50 - sweetness) / 50) * (basePC2 - minPC2)
           : basePC2 + ((sweetness - 50) / 50) * (maxPC2 - basePC2);
 
-      [umapX, umapY] = pca2umap(pc1Value, pc2Value);
+      // 0-100(中央50) → PC3（酸味軸）へ線形補間
+      const pc3Value =
+        acidity <= 50
+          ? basePC3 - ((50 - acidity) / 50) * (basePC3 - minPC3)
+          : basePC3 + ((acidity - 50) / 50) * (maxPC3 - basePC3);
+
+      [umapX, umapY] = pca2umap(pc1Value, pc2Value, pc3Value);
     }
 
     // ユーザー嗜好ピンを保存（どのロットを基準にしたかも一緒に）
@@ -374,8 +394,32 @@ export default function SliderPage() {
           .taste-slider::-moz-range-thumb{ width:22px; height:22px; border-radius:50%; background:#262626; border:0; box-shadow:0 1px 2px rgba(0,0,0,.25); cursor:pointer; }
         `}</style>
 
+        {/* 酸味 */}
+        <div style={{ width: cardW, marginBottom: 24 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: 13,
+              marginBottom: 4,
+            }}
+          >
+            <span>← もっと酸味が欲しい</span>
+            <span>酸味は控えめが良い →</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={acidity}
+            onChange={(e) => setAcidity(Number(e.target.value))}
+            className="taste-slider"
+            style={{ "--range": centerGradient(acidity) }}
+          />
+        </div>
+
         {/* 甘み */}
-        <div style={{ width: cardW, marginBottom: 28 }}>
+        <div style={{ width: cardW, marginBottom: 24 }}>
           <div
             style={{
               display: "flex",
@@ -399,7 +443,7 @@ export default function SliderPage() {
         </div>
 
         {/* コク（ボディ） */}
-        <div style={{ width: cardW, marginBottom: 36 }}>
+        <div style={{ width: cardW, marginBottom: 32 }}>
           <div
             style={{
               display: "flex",
@@ -427,7 +471,7 @@ export default function SliderPage() {
           onClick={handleGenerate}
           style={{
             alignSelf: "center",
-            marginTop: 60,
+            marginTop: 40,
             marginBottom: 8,
             width: "min(calc(100svw - 32px), calc(100svh - 34svh))",
             maxWidth: 560,
