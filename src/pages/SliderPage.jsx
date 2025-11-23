@@ -11,10 +11,11 @@ const num = (v, def = 0) => {
   return Number.isFinite(n) ? n : def;
 };
 
-const dist2 = (x1, y1, x2, x3, y2, y3) => {
+// 3次元ユークリッド距離^2
+const dist2_3d = (x1, y1, z1, x2, y2, z2) => {
   const dx = x1 - x2;
   const dy = y1 - y2;
-  const dz = x3 - y3;
+  const dz = z1 - z2;
   return dx * dx + dy * dy + dz * dz;
 };
 
@@ -28,24 +29,67 @@ const centerGradient = (val) => {
   return `linear-gradient(to right, ${base} 0%, ${base} ${a}%, ${active} ${a}%, ${active} ${b}%, ${base} ${b}%, ${base} 100%)`;
 };
 
-// 0–100 → PC の線形変換
-const sliderToPC = (sliderVal, min, max) => {
-  const v = Math.max(0, Math.min(100, Number(sliderVal)));
-  if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
-    return (min + max) / 2 || 0;
-  }
-  const t = v / 100; // 0〜1
-  return min + t * (max - min);
-};
-
-// PC → 0–100 の線形変換
-const pcToSlider = (pc, min, max) => {
-  if (!Number.isFinite(pc) || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
+/**
+ * ★ PC → スライダー(0–100)
+ *   0   : minPC
+ *   50  : basePC（基準ロット）
+ *   100 : maxPC
+ *   左右でレンジが非対称でもOKな仕様
+ */
+const pcToSliderCenter = (pc, min, base, max) => {
+  if (
+    !Number.isFinite(pc) ||
+    !Number.isFinite(min) ||
+    !Number.isFinite(base) ||
+    !Number.isFinite(max)
+  ) {
     return 50;
   }
-  const t = (pc - min) / (max - min);
-  const v = t * 100;
-  return Math.max(0, Math.min(100, v));
+
+  // 左側：min → base を 0〜50 に
+  if (pc <= base) {
+    const denom = base - min;
+    if (denom <= 0) return 50;
+    const t = (pc - min) / denom; // 0〜1
+    return Math.max(0, Math.min(50, t * 50));
+  }
+
+  // 右側：base → max を 50〜100 に
+  const denom = max - base;
+  if (denom <= 0) return 50;
+  const t = (pc - base) / denom; // 0〜1
+  return Math.max(50, Math.min(100, 50 + t * 50));
+};
+
+/**
+ * ★ スライダー(0–100) → PC
+ *   0   : minPC
+ *   50  : basePC（基準ロット）
+ *   100 : maxPC
+ */
+const sliderToPCCenter = (sliderVal, min, base, max) => {
+  const v = Math.max(0, Math.min(100, Number(sliderVal)));
+  if (
+    !Number.isFinite(min) ||
+    !Number.isFinite(base) ||
+    !Number.isFinite(max)
+  ) {
+    return base || 0;
+  }
+
+  // 左側：0〜50 → min〜base
+  if (v <= 50) {
+    const denom = 50;
+    if (base <= min || denom <= 0) return base;
+    const t = v / denom; // 0〜1
+    return min + (base - min) * t;
+  }
+
+  // 右側：50〜100 → base〜max
+  const denom = 50;
+  if (max <= base || denom <= 0) return base;
+  const t = (v - 50) / denom; // 0〜1
+  return base + (max - base) * t;
 };
 
 // (PC1,PC2,PC3) に最も近いワインを rows から探す
@@ -54,7 +98,7 @@ const findNearestWineByPC = (rows, px, py, pz) => {
   let best = null;
   let bestD2 = Infinity;
   for (const d of rows) {
-    const d2 = dist2(px, py, pz, d.PC1, d.PC2, d.PC3);
+    const d2 = dist2_3d(px, py, pz, d.PC1, d.PC2, d.PC3);
     if (d2 < bestD2) {
       bestD2 = d2;
       best = d;
@@ -168,7 +212,7 @@ export default function SliderPage() {
       .catch((e) => console.error("load failed:", e));
   }, []);
 
-  // ★ 基準ロットの PC1/2/3 を 0–100 にスケールしてスライダー初期値に反映
+  // ★ 基準ロットの PC1/2/3 を「中央50」としてスライダー初期値に反映
   useEffect(() => {
     if (!referenceLot || !pcMinMax || initializedFromPC) return;
 
@@ -177,9 +221,9 @@ export default function SliderPage() {
     const basePC2 = num(referenceLot.pc2);
     const basePC3 = num(referenceLot.pc3);
 
-    const bodySlider = pcToSlider(basePC1, minPC1, maxPC1);
-    const sweetnessSlider = pcToSlider(basePC2, minPC2, maxPC2);
-    const aciditySlider = pcToSlider(basePC3, minPC3, maxPC3);
+    const bodySlider = pcToSliderCenter(basePC1, minPC1, basePC1, maxPC1);
+    const sweetnessSlider = pcToSliderCenter(basePC2, minPC2, basePC2, maxPC2);
+    const aciditySlider = pcToSliderCenter(basePC3, minPC3, basePC3, maxPC3);
 
     setBody(bodySlider);
     setSweetness(sweetnessSlider);
@@ -192,10 +236,14 @@ export default function SliderPage() {
 
     const { minPC1, maxPC1, minPC2, maxPC2, minPC3, maxPC3 } = pcMinMax;
 
-    // スライダー値 → PC1/2/3 へ逆変換
-    const pc1Value = sliderToPC(body, minPC1, maxPC1);       // ボディ
-    const pc2Value = sliderToPC(sweetness, minPC2, maxPC2);  // 甘味
-    const pc3Value = sliderToPC(acidity, minPC3, maxPC3);    // 酸味
+    const basePC1 = num(referenceLot.pc1);
+    const basePC2 = num(referenceLot.pc2);
+    const basePC3 = num(referenceLot.pc3);
+
+    // スライダー値 → PC1/2/3 へ逆変換（中央=基準ロット）
+    const pc1Value = sliderToPCCenter(body, minPC1, basePC1, maxPC1);       // ボディ
+    const pc2Value = sliderToPCCenter(sweetness, minPC2, basePC2, maxPC2);  // 甘味
+    const pc3Value = sliderToPCCenter(acidity, minPC3, basePC3, maxPC3);    // 酸味
 
     // PC空間で最も近いワインを 1 本選ぶ
     const nearest = findNearestWineByPC(rows, pc1Value, pc2Value, pc3Value);
@@ -204,7 +252,7 @@ export default function SliderPage() {
     const umapX = nearest.UMAP1;
     const umapY = nearest.UMAP2;
 
-    // ユーザー嗜好ピンを保存（どのロットを基準にしたか・PC値・最近傍JANも保存）
+    // ユーザー嗜好ピンを保存
     localStorage.setItem(
       "userPinCoords",
       JSON.stringify({
