@@ -183,7 +183,8 @@ export default function StorePage() {
           {/* ★追記文 */}
           <p style={{ marginTop: 8, fontSize: 12, color: "#555", lineHeight: 1.5 }}>
             購入した店舗が表示されない場合は、<br />
-            端末の「設定」から、位置情報取得の許可をしてください。
+            端末の「設定」から、位置情報取得の許可をしてください。<br />
+            位置情報の許可が難しい場合は、TasteMap公式Shopを選択してください。
           </p>
         </div>
         <div style={{ height: 1, background: "#ccc" }} />
