@@ -189,9 +189,6 @@ function slides(handleGoStore) {
               >
                 店舗選択
               </button>
-              <div style={{ marginTop: 10, fontSize: 12, color: "#6e6e73", textAlign: "center" }}>
-                ※ ゲストで開始し、評価時にアカウント作成して保存します
-              </div>
             </div>
           </div>
         </>

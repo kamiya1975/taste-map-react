@@ -180,6 +180,10 @@ export default function StorePage() {
           <h2 className="store-header" style={{ margin: 0 }}>
             購入した店舗を選んでください。
           </h2>
+          {/* ★追記文 */}
+          <p style={{ marginTop: 8, fontSize: 14, color: "#555", lineHeight: 1.5 }}>
+            購入した店舗が出ない場合は「TasteMap公式ECショップ」を選択してください。
+          </p>
         </div>
         <div style={{ height: 1, background: "#ccc" }} />
       </div>
