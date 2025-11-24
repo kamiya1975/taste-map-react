@@ -181,8 +181,9 @@ export default function StorePage() {
             購入した店舗を選択してください。
           </h2>
           {/* ★追記文 */}
-          <p style={{ marginTop: 8, fontSize: 10, color: "#555", lineHeight: 1.5 }}>
-            購入した店舗が表示されない場合は「TasteMap公式Shop」を選択してください。
+          <p style={{ marginTop: 8, fontSize: 12, color: "#555", lineHeight: 1.5 }}>
+            購入した店舗が表示されない場合は、
+            「TasteMap公式Shop」を選択してください。
           </p>
         </div>
         <div style={{ height: 1, background: "#ccc" }} />
