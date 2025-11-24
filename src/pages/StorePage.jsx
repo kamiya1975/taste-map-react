@@ -28,6 +28,9 @@ export default function StorePage() {
   const headerRef = useRef(null);
   const [headerH, setHeaderH] = useState(0);
 
+  // ★ 位置情報取得に失敗したかどうか
+  const [locationFailed, setLocationFailed] = useState(false);
+
   useLayoutEffect(() => {
     if (!headerRef.current) return;
     const el = headerRef.current;
@@ -46,6 +49,7 @@ export default function StorePage() {
     const run = async () => {
       setLoading(true);
       setErr("");
+      setLocationFailed(false); // 毎回いったんリセット
 
       const token = localStorage.getItem("app.access_token");
 
@@ -61,6 +65,9 @@ export default function StorePage() {
       try {
         const loc = await resolveLocation();
         const locAllowed = !!(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lon));
+
+        // ★ 位置情報拒否/失敗フラグを更新
+        setLocationFailed(!locAllowed);
 
         const params = new URLSearchParams();
         if (locAllowed) {
@@ -110,8 +117,8 @@ export default function StorePage() {
 
         enriched.sort((a, b) => a.distance - b.distance);
 
-        // ★ 位置情報NGなら EC(id=1) だけ残す
-        const finalStores = locAllowed ? enriched : enriched.filter((s) => s.id === 1);
+        // （位置情報の有無に関わらず一応計算しておく。表示は locationFailed で制御）
+        const finalStores = enriched;
 
         setStores(finalStores);
 
@@ -123,6 +130,7 @@ export default function StorePage() {
         setErr(
           "店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。"
         );
+        setLocationFailed(false); // 通信エラー時は位置情報メッセージは出さない
       } finally {
         setLoading(false);
       }
@@ -203,8 +211,30 @@ export default function StorePage() {
         {loading && <div style={{ padding: 16 }}>読み込み中…</div>}
         {err && <div style={{ padding: 16, color: "crimson" }}>{err}</div>}
 
+        {/* ★位置情報拒否時：「もう一度、違い店舗を探す」を表示 */}
+        {!loading && !err && locationFailed && (
+          <div style={{ padding: 40, textAlign: "center", color: "#555" }}>
+            <div style={{ marginBottom: 12, fontSize: 14 }}>
+              位置情報が取得できませんでした。
+            </div>
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 600,
+                textDecoration: "underline",
+                cursor: "pointer",
+              }}
+              onClick={() => window.location.reload()}
+            >
+              もう一度、違い店舗を探す
+            </div>
+          </div>
+        )}
+
+        {/* 通常：店舗一覧 */}
         {!loading &&
           !err &&
+          !locationFailed &&
           stores.map((store) => (
             <div
               key={store._key}
