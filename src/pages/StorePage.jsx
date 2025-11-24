@@ -1,5 +1,11 @@
 // src/pages/StorePage.jsx
-import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useLayoutEffect,
+  useCallback,   // ★追加
+} from "react";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
@@ -28,6 +34,9 @@ export default function StorePage() {
   const headerRef = useRef(null);
   const [headerH, setHeaderH] = useState(0);
 
+  // ★ 位置情報NG時の「再取得ボタン」表示フラグ
+  const [showRetry, setShowRetry] = useState(false);
+
   useLayoutEffect(() => {
     if (!headerRef.current) return;
     const el = headerRef.current;
@@ -42,92 +51,99 @@ export default function StorePage() {
     };
   }, []);
 
-  useEffect(() => {
-    const run = async () => {
-      setLoading(true);
-      setErr("");
+  // ★ 店舗取得処理を useCallback 化 → ボタンからも呼べるようにする
+  const run = useCallback(async () => {
+    setLoading(true);
+    setErr("");
+    setShowRetry(false); // 毎回いったん隠す
 
-      const token = localStorage.getItem("app.access_token");
+    const token = localStorage.getItem("app.access_token");
 
-      if (!token) {
-        setStores([]);
-        setErr(
-          "ログイン情報が見つかりません。マイページからログインしてからお試しください。"
-        );
-        setLoading(false);
-        return;
+    if (!token) {
+      setStores([]);
+      setErr(
+        "ログイン情報が見つかりません。マイページからログインしてからお試しください。"
+      );
+      setLoading(false);
+      setShowRetry(false);
+      return;
+    }
+
+    try {
+      const loc = await resolveLocation();
+      const locAllowed = !!(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lon));
+
+      // ★ 位置情報が取れなかった場合は再試行ボタンを表示
+      setShowRetry(!locAllowed);
+
+      const params = new URLSearchParams();
+      if (locAllowed) {
+        params.set("user_lat", String(loc.lat));
+        params.set("user_lon", String(loc.lon));
       }
+
+      const url = `${API_BASE}/api/app/stores?${params.toString()}`;
+      console.log("[StorePage] fetch:", url);
+
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        console.error("[StorePage] /api/app/stores error", res.status);
+        throw new Error("FETCH_FAILED");
+      }
+
+      const raw = await res.json();
+      console.log("[StorePage] raw stores:", raw);
+      const list = Array.isArray(raw) ? raw : [];
+
+      const enriched = list.map((s, i) => {
+        const rawD = s.distance_km;
+        const numD =
+          rawD === null || rawD === undefined ? NaN : Number(rawD);
+        const d = Number.isFinite(numD) ? numD : Infinity;
+
+        return {
+          id: s.store_id,
+          name: s.store_name,
+          distance: d,
+          distance_km: numD,
+          is_main: !!s.is_main,
+          updated_at: s.updated_at,
+          branch: "",
+          address: "",
+          genre: "",
+          _key: `${s.store_id}@@${i}`,
+        };
+      });
+
+      enriched.sort((a, b) => a.distance - b.distance);
+
+      // ★ 位置情報NGなら EC(id=1) だけ残す
+      const finalStores = locAllowed ? enriched : enriched.filter((s) => s.id === 1);
+
+      setStores(finalStores);
 
       try {
-        const loc = await resolveLocation();
-        const locAllowed = !!(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lon));
+        localStorage.setItem("allStores", JSON.stringify(finalStores));
+      } catch {}
+    } catch (e) {
+      console.error(e);
+      setErr(
+        "店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。"
+      );
+      setShowRetry(false); // 通信エラー時はボタンも隠す
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-        const params = new URLSearchParams();
-        if (locAllowed) {
-          params.set("user_lat", String(loc.lat));
-          params.set("user_lon", String(loc.lon));
-        }
-
-        const url = `${API_BASE}/api/app/stores?${params.toString()}`;
-        console.log("[StorePage] fetch:", url);
-
-        const res = await fetch(url, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        });
-
-        if (!res.ok) {
-          console.error("[StorePage] /api/app/stores error", res.status);
-          throw new Error("FETCH_FAILED");
-        }
-
-        const raw = await res.json();
-        console.log("[StorePage] raw stores:", raw);
-        const list = Array.isArray(raw) ? raw : [];
-
-        const enriched = list.map((s, i) => {
-          const rawD = s.distance_km;
-          const numD =
-            rawD === null || rawD === undefined ? NaN : Number(rawD);
-          const d = Number.isFinite(numD) ? numD : Infinity;
-
-          return {
-            id: s.store_id,
-            name: s.store_name,
-            distance: d,
-            distance_km: numD,
-            is_main: !!s.is_main,
-            updated_at: s.updated_at,
-            branch: "",
-            address: "",
-            genre: "",
-            _key: `${s.store_id}@@${i}`,
-          };
-        });
-
-        enriched.sort((a, b) => a.distance - b.distance);
-
-        // ★ 位置情報NGなら EC(id=1) だけ残す
-        const finalStores = locAllowed ? enriched : enriched.filter((s) => s.id === 1);
-
-        setStores(finalStores);
-
-        try {
-          localStorage.setItem("allStores", JSON.stringify(finalStores));
-        } catch {}
-      } catch (e) {
-        console.error(e);
-        setErr(
-          "店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。"
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         run();
@@ -137,7 +153,7 @@ export default function StorePage() {
     run();
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, []);
+  }, [run]);
 
   const formatKm = (d, id) => {
     if (id === 1) return ""; // EC は非表示
@@ -163,7 +179,14 @@ export default function StorePage() {
   };
 
   return (
-    <div style={{ fontFamily: "sans-serif", height: "100vh", overflow: "hidden" }}>
+    <div
+      style={{
+        fontFamily: "sans-serif",
+        height: "100vh",
+        overflow: "hidden",
+        position: "relative", // ★オーバーレイ用
+      }}
+    >
       {/* 固定ヘッダ */}
       <div
         ref={headerRef}
@@ -233,6 +256,45 @@ export default function StorePage() {
             </div>
           ))}
       </div>
+
+      {/* ★ 位置情報NG時の「もう一度、違い店舗を探す」オーバーレイ */}
+      {showRetry && !loading && !err && (
+        <div
+          style={{
+            position: "fixed",              // 画面中央に固定
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 200,
+            textAlign: "center",
+            padding: "16px 20px",
+            background: "rgba(255,255,255,0.96)",
+            borderRadius: 12,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          }}
+        >
+          <p style={{ fontSize: 14, marginBottom: 12, lineHeight: 1.6 }}>
+            位置情報が取得できませんでした。<br />
+            「もう一度、違い店舗を探す」を押して再度お試しください。
+          </p>
+          <button
+            onClick={run}
+            style={{
+              padding: "10px 24px",
+              fontSize: 16,
+              fontWeight: 700,
+              background: "rgb(230,227,219)", // カートボタンと同系
+              color: "#000",
+              border: "none",
+              borderRadius: 10,
+              cursor: "pointer",
+              boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
+            }}
+          >
+            もう一度、違い店舗を探す
+          </button>
+        </div>
+      )}
     </div>
   );
 }
