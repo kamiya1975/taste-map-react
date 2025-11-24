@@ -187,7 +187,7 @@ function slides(handleGoStore) {
                 aria-label="店舗選択へ進む"
                 title="店舗選択へ進む"
               >
-                店舗選択
+                購入店舗を探す
               </button>
             </div>
           </div>
