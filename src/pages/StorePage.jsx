@@ -180,7 +180,8 @@ export default function StorePage() {
           </h2>
           {/* ★追記文 */}
           <p style={{ marginTop: 8, fontSize: 12, color: "#555", lineHeight: 1.5 }}>
-            購入した店舗がない場合は、TasteMap公式Shopをお選びください。
+            購入した店舗がない場合は、<br />
+            TasteMap公式Shopをお選びください。
           </p>
         </div>
         <div style={{ height: 1, background: "#ccc" }} />
