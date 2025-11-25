@@ -180,9 +180,8 @@ export default function StorePage() {
           </h2>
           {/* ★追記文 */}
           <p style={{ marginTop: 8, fontSize: 12, color: "#555", lineHeight: 1.5 }}>
-            購入した店舗が表示されない場合は、<br />
-            端末の「設定」から、位置情報取得の許可をしてください。<br />
-            位置情報の許可が難しい場合は、TasteMap公式Shopを選択してください。
+            購入した店舗がない場合は、<br />
+            TasteMap公式Shopを選択してください。
           </p>
         </div>
         <div style={{ height: 1, background: "#ccc" }} />
@@ -241,7 +240,9 @@ export default function StorePage() {
                     background: "rgb(250,250,250)",
                   }}
                 >
-                  位置情報が取れず、近い店舗が探せませんでした。
+                  購入した店舗が表示されない場合は、<br />
+                  端末の「設定」から、位置情報取得の許可をしてください。<br />
+                  位置情報の許可が難しい場合は、TasteMap公式Shopを選択してください。
                 </div>
               )}
             </React.Fragment>
