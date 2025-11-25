@@ -84,7 +84,7 @@ export default function StorePanelContent() {
         if (alive) {
           setStores([]);
           setErr(
-            "お気に入り店舗登録の更新にはログインが必要です。<br/>マイカウントからログインしてから再度お試しください。"
+            "お気に入り店舗登録の更新にはログインが必要です。マイカウントからログインしてから再度お試しください。"
           );
           setLoading(false);
         }
@@ -176,7 +176,7 @@ export default function StorePanelContent() {
 
     const token = localStorage.getItem("app.access_token");
     if (!token) {
-      alert("お気に入り店舗登録の更新にはログインが必要です。<br/>マイカウントからログインしてから再度お試しください。");
+      alert("お気に入り店舗登録の更新にはログインが必要です。マイカウントからログインしてから再度お試しください。");
       return;
     }
 

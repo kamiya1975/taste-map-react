@@ -114,6 +114,16 @@ export default function MyAccountPanelContent() {
   const [loginShowPassword, setLoginShowPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
 
+  // ★ ページ全体をリロードする共通処理
+  const reloadApp = () => {
+    try {
+      // 同じURLにリダイレクト（履歴を汚しにくい）
+      window.location.replace(window.location.href);
+    } catch {
+      window.location.reload();
+    }
+  };
+
   // ▼ パスワードリセット用
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
@@ -281,7 +291,12 @@ export default function MyAccountPanelContent() {
       if (ok) {
         setIsLoggedIn(true);
         setLoginPassword("");
-        alert("ログインしました。");
+
+        // ★ ここでアプリ全体をリロードして他パネルも最新状態にする
+        //   （アラートは消してしまうか、どうしても必要なら setTimeout で）
+        // alert("ログインしました。");
+        reloadApp();
+        return;
       }
     } catch (e) {
       console.error(e);
@@ -589,7 +604,10 @@ export default function MyAccountPanelContent() {
               localStorage.removeItem("userRatings");
 
               setIsLoggedIn(false);
-              alert("ログアウトしました。");
+
+              // ★ ログアウト後にアプリ全体をリロード
+              // alert("ログアウトしました。");
+              reloadApp();
             }}
             style={{
               marginTop: 16,
@@ -602,7 +620,7 @@ export default function MyAccountPanelContent() {
               borderRadius: 10,
               fontSize: 18,
               fontWeight: 700,
-             cursor: "pointer",
+              cursor: "pointer",
               boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
               WebkitBackdropFilter: "blur(2px)",
               backdropFilter: "blur(2px)",
