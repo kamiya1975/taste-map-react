@@ -84,7 +84,7 @@ export default function StorePanelContent() {
         if (alive) {
           setStores([]);
           setErr(
-            "ログイン情報が見つかりません。マイページからログインしてからお試しください。"
+            "お気に入り店舗登録の更新にはログインが必要です。<br/>マイカウントからログインしてから再度お試しください。"
           );
           setLoading(false);
         }
