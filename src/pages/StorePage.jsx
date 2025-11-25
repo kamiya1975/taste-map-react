@@ -24,6 +24,7 @@ export default function StorePage() {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [locFailed, setLocFailed] = useState(false); // ★ 位置情報NGフラグ
 
   const headerRef = useRef(null);
   const [headerH, setHeaderH] = useState(0);
@@ -54,6 +55,9 @@ export default function StorePage() {
         const loc = await resolveLocation();
         const locAllowed = !!(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lon));
 
+        // ★ 位置情報が取れたかどうかを保存
+        setLocFailed(!locAllowed);
+
         const params = new URLSearchParams();
         if (locAllowed) {
           params.set("user_lat", String(loc.lat));
@@ -63,7 +67,7 @@ export default function StorePage() {
         const url = `${API_BASE}/api/app/stores?${params.toString()}`;
         console.log("[StorePage] fetch:", url);
 
-       const headers = {
+        const headers = {
           Accept: "application/json",
         };
         if (token) {
@@ -201,31 +205,46 @@ export default function StorePage() {
         {!loading &&
           !err &&
           stores.map((store) => (
-            <div
-              key={store._key}
-              onClick={() => handleStoreSelect(store)}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "12px 16px",
-                borderBottom: "1px solid #eee",
-                cursor: "pointer",
-                alignItems: "flex-start",
-                background: "#fff",
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <div className="store-link">
-                  {store.name} {store.branch || ""}
+            <React.Fragment key={store._key}>
+              <div
+                onClick={() => handleStoreSelect(store)}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "12px 16px",
+                  borderBottom: "1px solid #eee",
+                  cursor: "pointer",
+                  alignItems: "flex-start",
+                  background: "#fff",
+                }}
+              >
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div className="store-link">
+                    {store.name} {store.branch || ""}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
+                    {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
-                  {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
+                <div style={{ marginLeft: 12 }}>
+                  {formatKm(store.distance, store.id)}
                 </div>
               </div>
-              <div style={{ marginLeft: 12 }}>
-                {formatKm(store.distance, store.id)}
-              </div>
-            </div>
+
+              {/* ★ 公式Shopのすぐ下に表示するメッセージ */}
+              {locFailed && store.id === 1 && (
+                <div
+                  style={{
+                    padding: "8px 16px 16px",
+                    fontSize: 12,
+                    color: "#555",
+                    background: "rgb(250,250,250)",
+                  }}
+                >
+                  位置情報が取れず、近い店舗が探せませんでした。
+                </div>
+              )}
+            </React.Fragment>
           ))}
       </div>
     </div>
