@@ -25,9 +25,6 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // ★ 位置情報取得に失敗したかどうか
-  const [locFailed, setLocFailed] = useState(false);
-
   const headerRef = useRef(null);
   const [headerH, setHeaderH] = useState(0);
 
@@ -45,97 +42,95 @@ export default function StorePage() {
     };
   }, []);
 
-  // ★ 店舗一覧取得処理を関数化してボタンからも呼べるようにする
-  const fetchStores = async () => {
-    setLoading(true);
-    setErr("");
+  useEffect(() => {
+    const run = async () => {
+      setLoading(true);
+      setErr("");
 
-    const token = localStorage.getItem("app.access_token") || null;
-
-    try {
-      const loc = await resolveLocation();
-      const locAllowed = !!(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lon));
-      setLocFailed(!locAllowed); // ← 位置情報NGフラグを更新
-
-      const params = new URLSearchParams();
-      if (locAllowed) {
-        params.set("user_lat", String(loc.lat));
-        params.set("user_lon", String(loc.lon));
-      }
-
-      const url = `${API_BASE}/api/app/stores?${params.toString()}`;
-      console.log("[StorePage] fetch:", url);
-
-      const headers = {
-        Accept: "application/json",
-      };
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      const res = await fetch(url, {
-        method: "GET",
-        headers,
-      });
-
-      if (!res.ok) {
-        console.error("[StorePage] /api/app/stores error", res.status);
-        throw new Error("FETCH_FAILED");
-      }
-
-      const raw = await res.json();
-      console.log("[StorePage] raw stores:", raw);
-      const list = Array.isArray(raw) ? raw : [];
-
-      const enriched = list.map((s, i) => {
-        const rawD = s.distance_km;
-        const numD =
-          rawD === null || rawD === undefined ? NaN : Number(rawD);
-        const d = Number.isFinite(numD) ? numD : Infinity;
-
-        return {
-          id: s.store_id,
-          name: s.store_name,
-          distance: d,
-          distance_km: numD,
-          is_main: !!s.is_main,
-          updated_at: s.updated_at,
-          branch: "",
-          address: "",
-          genre: "",
-          _key: `${s.store_id}@@${i}`,
-        };
-      });
-
-      enriched.sort((a, b) => a.distance - b.distance);
-
-      // ★ 位置情報NG時は EC(id=1) のみ
-      const finalStores = locAllowed ? enriched : enriched.filter((s) => s.id === 1);
-
-      setStores(finalStores);
+      // ★ ログイントークンは「あるなら使う」程度にする
+      const token = localStorage.getItem("app.access_token") || null;
 
       try {
-        localStorage.setItem("allStores", JSON.stringify(finalStores));
-      } catch {}
-    } catch (e) {
-      console.error(e);
-      setErr("店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。");
-    } finally {
-      setLoading(false);
-    }
-  };
+        const loc = await resolveLocation();
+        const locAllowed = !!(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lon));
 
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        fetchStores();
+        const params = new URLSearchParams();
+        if (locAllowed) {
+          params.set("user_lat", String(loc.lat));
+          params.set("user_lon", String(loc.lon));
+        }
+
+        const url = `${API_BASE}/api/app/stores?${params.toString()}`;
+        console.log("[StorePage] fetch:", url);
+
+       const headers = {
+          Accept: "application/json",
+        };
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers,
+        });
+
+        if (!res.ok) {
+          console.error("[StorePage] /api/app/stores error", res.status);
+          throw new Error("FETCH_FAILED");
+        }
+
+        const raw = await res.json();
+        console.log("[StorePage] raw stores:", raw);
+        const list = Array.isArray(raw) ? raw : [];
+
+        const enriched = list.map((s, i) => {
+          const rawD = s.distance_km;
+          const numD =
+            rawD === null || rawD === undefined ? NaN : Number(rawD);
+          const d = Number.isFinite(numD) ? numD : Infinity;
+
+          return {
+            id: s.store_id,
+            name: s.store_name,
+            distance: d,
+            distance_km: numD,
+            is_main: !!s.is_main,
+            updated_at: s.updated_at,
+            branch: "",
+            address: "",
+            genre: "",
+            _key: `${s.store_id}@@${i}`,
+          };
+        });
+
+        enriched.sort((a, b) => a.distance - b.distance);
+
+        // ★ 位置情報NGなら EC(id=1) だけ残す仕様はそのまま
+        const finalStores = locAllowed ? enriched : enriched.filter((s) => s.id === 1);
+
+        setStores(finalStores);
+
+        try {
+          localStorage.setItem("allStores", JSON.stringify(finalStores));
+        } catch {}
+      } catch (e) {
+        console.error(e);
+        setErr("店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。");
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchStores();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        run();
+      }
+    };
+
+    run();
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatKm = (d, id) => {
@@ -175,34 +170,16 @@ export default function StorePage() {
           zIndex: 100,
         }}
       >
-        <div style={{ padding: "70px 16px 16px" }}>
+        <div style={{ padding: "70px 16px 30px" }}>
           <h2 className="store-header" style={{ margin: 0 }}>
             購入した店舗を選択してください。
           </h2>
+          {/* ★追記文 */}
           <p style={{ marginTop: 8, fontSize: 12, color: "#555", lineHeight: 1.5 }}>
             購入した店舗が表示されない場合は、<br />
             端末の「設定」から、位置情報取得の許可をしてください。<br />
             位置情報の許可が難しい場合は、TasteMap公式Shopを選択してください。
           </p>
-
-          {/* ★ 位置情報NG時だけ再試行ボタンを表示 */}
-          {locFailed && !loading && !err && (
-            <button
-              type="button"
-              onClick={fetchStores}
-              style={{
-                marginTop: 8,
-                padding: "6px 12px",
-                fontSize: 12,
-                borderRadius: 999,
-                border: "1px solid #999",
-                background: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              位置情報が取得できませんでした。もう一度近い店舗を探す。
-            </button>
-          )}
         </div>
         <div style={{ height: 1, background: "#ccc" }} />
       </div>
