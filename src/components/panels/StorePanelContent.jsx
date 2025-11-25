@@ -73,7 +73,7 @@ export default function StorePanelContent() {
   useEffect(() => {
     let alive = true;
 
-    (async () => {
+    const fetchStores = async () => {
       setLoading(true);
       setErr("");
 
@@ -95,7 +95,6 @@ export default function StorePanelContent() {
         const loc = await resolveLocation();
         const locAllowed = !!(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lon));
 
-        // クエリパラメータ（位置情報が取れたときだけ付与）
         const params = new URLSearchParams();
         if (locAllowed) {
           params.set("user_lat", String(loc.lat));
@@ -141,14 +140,13 @@ export default function StorePanelContent() {
           };
         });
 
-        // 距離順ソート
         mapped.sort((a, b) => a.distance - b.distance);
 
-        // ★ 位置情報が取れなかった場合は EC(id=1) だけ残す
-        const finalStores = locAllowed ? mapped : mapped.filter((s) => s.id === 1);
+        const finalStores = mapped; // ここは既存仕様のままでOK
 
         if (alive) {
           setStores(finalStores);
+          setErr("");
         }
       } catch (e) {
         console.error(e);
@@ -159,10 +157,20 @@ export default function StorePanelContent() {
       } finally {
         if (alive) setLoading(false);
       }
-    })();
+    };
+
+    // ★ 初回マウント時に 1 回実行
+    fetchStores();
+
+    // ★ ログイン状態が変わったときに再取得
+    const handleAuthChanged = () => {
+      fetchStores();
+    };
+    window.addEventListener("tm_auth_changed", handleAuthChanged);
 
     return () => {
       alive = false;
+      window.removeEventListener("tm_auth_changed", handleAuthChanged);
     };
   }, []);
 

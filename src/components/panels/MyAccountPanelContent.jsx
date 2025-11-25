@@ -107,6 +107,13 @@ const BorderlessSelect = ({ rightIcon = true, ...props }) => (
   </div>
 );
 
+// MyAccountPanelContent.jsx の先頭付近に追加（export default の上ならOK）
+const fireAuthChanged = () => {
+  try {
+    window.dispatchEvent(new Event("tm_auth_changed"));
+  } catch {}
+};
+
 export default function MyAccountPanelContent() {
   // ▼ ログイン用
   const [loginEmail, setLoginEmail] = useState("");
@@ -185,6 +192,10 @@ export default function MyAccountPanelContent() {
     }
 
     setUserId(loginIdForStorage || user.user_login_id || "");
+
+    // ★ ここで「ログイン状態が変わったよ」と通知
+    fireAuthChanged();
+
     return true;
   };
 
@@ -292,10 +303,7 @@ export default function MyAccountPanelContent() {
         setIsLoggedIn(true);
         setLoginPassword("");
 
-        // ★ ここでアプリ全体をリロードして他パネルも最新状態にする
-        //   （アラートは消してしまうか、どうしても必要なら setTimeout で）
-        // alert("ログインしました。");
-        reloadApp();
+        alert("ログインしました。");
         return;
       }
     } catch (e) {
@@ -605,9 +613,9 @@ export default function MyAccountPanelContent() {
 
               setIsLoggedIn(false);
 
-              // ★ ログアウト後にアプリ全体をリロード
-              // alert("ログアウトしました。");
-              reloadApp();
+              // ★ ログアウトしたことを通知
+              fireAuthChanged();
+              alert("ログアウトしました。");
             }}
             style={{
               marginTop: 16,
