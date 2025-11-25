@@ -176,7 +176,7 @@ export default function StorePanelContent() {
 
     const token = localStorage.getItem("app.access_token");
     if (!token) {
-      alert("ログイン情報が見つかりません。マイページからログインしてからお試しください。");
+      alert("お気に入り店舗登録の更新にはログインが必要です。<br/>マイカウントからログインしてから再度お試しください。");
       return;
     }
 
