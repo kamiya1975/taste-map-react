@@ -32,7 +32,6 @@ const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
 const ANCHOR_JAN = "4964044046324";
 const UI_Z_TOP = 2400;
-const OFFICIAL_STORE_ID = 1; // ★ 公式Shopの store_id
 
 function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
   const worldPerPx = 1 / Math.pow(2, Number(zoom) || 0);
@@ -135,79 +134,8 @@ function MapPage() {
   const [cartOpen,       setCartOpen]       = useState(false); // カート
   const [isScannerOpen,  setIsScannerOpen]  = useState(false); // バーコードスキャナ
 
-  // ★ 公式Shopが選択されているか（メイン or 追加店舗）
-  const [hasEcStoreSelected, setHasEcStoreSelected] = useState(false);
-
   // ---- SimpleCart（ローカル）----
   const { totalQty, add: addLocal } = useSimpleCart();
-
-  // ★ 公式Shop（store_id = 1）が選択されているかを判定
-  const readEcStoreSelection = useCallback(() => {
-    try {
-      // メイン店舗
-      const mainRaw =
-        localStorage.getItem("app.main_store_id") ||
-        localStorage.getItem("store.mainStoreId") ||
-        "0";
-      const mainId = Number(mainRaw) || 0;
-
-      // 追加店舗（配列: [store_id, ...] を想定）
-      let subIds = [];
-      const rawSub =
-        localStorage.getItem("app.sub_store_ids") ||
-        localStorage.getItem("app.subStoreIds") ||
-        localStorage.getItem("store.subStoreIds") ||
-        "";
-      if (rawSub) {
-        try {
-          const parsed = JSON.parse(rawSub);
-          if (Array.isArray(parsed)) {
-            subIds = parsed
-              .map((v) => Number(v))
-              .filter((v) => Number.isFinite(v));
-          }
-        } catch {
-          // 解析失敗は無視
-        }
-      }
-
-      const hasOfficial =
-        mainId === OFFICIAL_STORE_ID || subIds.includes(OFFICIAL_STORE_ID);
-      setHasEcStoreSelected(hasOfficial);
-    } catch {
-      setHasEcStoreSelected(false);
-    }
-  }, []);
-
-  // ★ 起動時＆フォーカス時などに 公式Shop 選択状況を同期
-  useEffect(() => {
-    readEcStoreSelection();
-
-    const onFocus = () => readEcStoreSelection();
-    const onStorage = (e) => {
-      if (
-        !e ||
-        e.key === "app.main_store_id" ||
-        e.key === "app.sub_store_ids" ||
-        e.key === "app.subStoreIds" ||
-        e.key === "store.mainStoreId" ||
-        e.key === "store.subStoreIds"
-      ) {
-        readEcStoreSelection();
-      }
-    };
-    const onAuthChanged = () => readEcStoreSelection();
-
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("tm_auth_changed", onAuthChanged);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("tm_auth_changed", onAuthChanged);
-    };
-  }, [readEcStoreSelection]);
-
 
   // ✅ Shopify チェックアウト復帰時のローカル掃除
   useEffect(() => {
@@ -763,10 +691,6 @@ function MapPage() {
 
       // === ProductPage からのカート関連メッセージ ===
       if (type === "OPEN_CART") {
-        if (!hasEcStoreSelected) {
-          alert("カート機能をご利用いただくには、公式Shopをお気に入り店舗に登録してください。");
-          return;
-        }
         setCartOpen(true);
         return;
       }
@@ -896,7 +820,6 @@ function MapPage() {
     closeUIsThen,
     navigate,
     addLocal,
-    hasEcStoreSelected,
   ]);
 
   // ====== レンダリング
@@ -1071,66 +994,47 @@ function MapPage() {
         <img src={`${process.env.PUBLIC_URL || ""}/img/search.svg`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
       </button>
 
+      {/* 右サイド: 評価 */}
+      <button
+        onClick={() => openPanel("rated")}
+        style={{ /* 110px */ pointerEvents: "auto", position:"absolute", top:"110px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
+        aria-label="評価一覧"
+        title="評価（◎）一覧"
+      >
+        <img src={`${process.env.PUBLIC_URL || ""}/img/hyouka.svg`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
+      </button>
+
       {/* 右サイド: カート */}
-      {hasEcStoreSelected && (
-        <button
-          onClick={() => openPanel("cart")}
-          style={{
-            /* 160px */
-            pointerEvents: "auto",
-            position: "absolute",
-            top: "160px",
-            right: "10px",
-            zIndex: UI_Z_TOP,
-            width: "40px",
-            height: "40px",
-            background: "透明",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-          }}
-          aria-label="カートを開く"
-          title="カートを開く"
-        >
-          <img
-            src={`${process.env.PUBLIC_URL || ""}/img/icon cart1.png`}
-            alt=""
+      <button
+        onClick={() => openPanel("cart")}
+        style={{ /* 160px */ pointerEvents: "auto", position:"absolute", top:"160px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
+        aria-label="カートを開く"
+        title="カートを開く"
+      >
+        <img src={`${process.env.PUBLIC_URL || ""}/img/icon cart1.png`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
+        {totalQty > 0 && (
+          <span
             style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-              display: "block",
-              pointerEvents: "none",
+             position: "absolute",
+              top: "-4px",
+              right: "-4px",
+              backgroundColor: "#111",
+              color: "#fff",
+              borderRadius: "50%",
+              fontSize: "10px",
+              lineHeight: "1",
+              width: "18px",
+              height: "18px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "1px solid #fff",
             }}
-            draggable={false}
-          />
-          {totalQty > 0 && (
-            <span
-              style={{
-                position: "absolute",
-                top: "-4px",
-                right: "-4px",
-                backgroundColor: "#111",
-                color: "#fff",
-                borderRadius: "50%",
-                fontSize: "10px",
-                lineHeight: "1",
-                width: "18px",
-                height: "18px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "1px solid #fff",
-              }}
-            >
-              {totalQty}
-            </span>
-          )}
-        </button>
-      )}
+          >
+            {totalQty}
+          </span>
+       )}
+      </button>
 
       {/* ====== 検索パネル ====== */}
       <SearchPanel
