@@ -98,41 +98,6 @@ function MapPage() {
     };
   }, []);
 
-  // ★ 追加: 選択店舗（main_store / selectedStore）を読む
-  const [selectedStore, setSelectedStore] = useState(null);
-
-    useEffect(() => {
-    const readStoreFromStorage = () => {
-      try {
-        // StorePage で保存しているキーを両方見る
-        const raw =
-          localStorage.getItem("selectedStore") ||
-          localStorage.getItem("main_store");
-        if (!raw) {
-          setSelectedStore(null);
-          return;
-        }
-        const s = JSON.parse(raw);
-        setSelectedStore(s && typeof s === "object" ? s : null);
-      } catch {
-        setSelectedStore(null);
-      }
-    };
-
-    readStoreFromStorage();
-
-    window.addEventListener("focus", readStoreFromStorage);
-    window.addEventListener("storage", readStoreFromStorage);
-    return () => {
-      window.removeEventListener("focus", readStoreFromStorage);
-      window.removeEventListener("storage", readStoreFromStorage);
-    };
-  }, []);
-
-  // ★ 追加: EC 店舗かどうか（id === 1 を TasteMap公式Shop とみなす）
-  const isEcStore =
-    selectedStore && Number(selectedStore.id) === 1;
-
   // ★ ロット → 基準ワイン座標
   const lotId = getLotId();
   const reference = useMemo(() => getReferenceLotById(lotId), [lotId]);
@@ -1040,66 +1005,36 @@ function MapPage() {
       </button>
 
       {/* 右サイド: カート */}
-      {isEcStore && (
-        <button
-          onClick={() => openPanel("cart")}
-          style={{
-            /* 160px */
-            pointerEvents: "auto",
-            position: "absolute",
-            top: "160px",
-            right: "10px",
-            zIndex: UI_Z_TOP,
-            width: "40px",
-            height: "40px",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 0,
-          }}
-          aria-label="カートを開く"
-          title="カートを開く"
-        >
-          <img
-            src={`${process.env.PUBLIC_URL || ""}/img/icon cart1.png`}
-            alt=""
+      <button
+        onClick={() => openPanel("cart")}
+        style={{ /* 160px */ pointerEvents: "auto", position:"absolute", top:"160px", right:"10px", zIndex:UI_Z_TOP, width:"40px", height:"40px", background:"transparent", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}
+        aria-label="カートを開く"
+        title="カートを開く"
+      >
+        <img src={`${process.env.PUBLIC_URL || ""}/img/icon cart1.png`} alt="" style={{ width:"100%", height:"100%", objectFit:"contain", display:"block", pointerEvents:"none" }} draggable={false}/>
+        {totalQty > 0 && (
+          <span
             style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-              display: "block",
-              pointerEvents: "none",
+             position: "absolute",
+              top: "-4px",
+              right: "-4px",
+              backgroundColor: "#111",
+              color: "#fff",
+              borderRadius: "50%",
+              fontSize: "10px",
+              lineHeight: "1",
+              width: "18px",
+              height: "18px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "1px solid #fff",
             }}
-            draggable={false}
-          />
-          {totalQty > 0 && (
-            <span
-              style={{
-                position: "absolute",
-                top: "-4px",
-                right: "-4px",
-                backgroundColor: "#111",
-                color: "#fff",
-                borderRadius: "50%",
-                fontSize: "10px",
-                lineHeight: "1",
-                width: "18px",
-                height: "18px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "1px solid #fff",
-              }}
-            >
-              {totalQty}
-            </span>
-          )}
-        </button>
-      )}
-
+          >
+            {totalQty}
+          </span>
+       )}
+      </button>
 
       {/* ====== 検索パネル ====== */}
       <SearchPanel
@@ -1307,58 +1242,54 @@ function MapPage() {
       </Drawer>
 
       {/* カート（SimpleCartPanel） */}
-      {isEcStore && (
-        <Drawer
-          id="cart-drawer"
-          anchor="bottom"
-          open={cartOpen}
+      <Drawer
+        id="cart-drawer"
+        anchor="bottom"
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        sx={{ zIndex: 1850, pointerEvents: "none" }}                // MapGuideより手前/後ろはお好みで
+        BackdropProps={{ 
+          style: { 
+            background: "transparent",
+            pointerEvents: "none",
+          } }}
+        ModalProps={{ 
+          ...drawerModalProps, 
+          keepMounted: true,
+          disableEnforceFocus: true,   // ★ フォーカスロック解除
+          disableAutoFocus: true,      // ★ 自動フォーカス抑止
+          disableRestoreFocus: true,   // ★ フォーカス復元抑止
+          disableScrollLock: true,
+        }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            height: DRAWER_HEIGHT,
+            display: "flex",
+            flexDirection: "column",
+            outline: "none",
+          },
+          sx: { pointerEvents: "auto" },
+        }}
+      >
+        <PanelHeader
+          title="カート"
+          icon="cart.svg"
           onClose={() => setCartOpen(false)}
-          sx={{ zIndex: 1850, pointerEvents: "none" }}
-          BackdropProps={{
-            style: {
-              background: "transparent",
-              pointerEvents: "none",
-            },
-          }}
-          ModalProps={{
-            ...drawerModalProps,
-            keepMounted: true,
-            disableEnforceFocus: true,   // ★ フォーカスロック解除
-            disableAutoFocus: true,      // ★ フォーカス抑止
-            disableRestoreFocus: true,   // ★ フォーカス復元抑止
-            disableScrollLock: true,
-          }}
-          PaperProps={{
-            style: {
-              ...paperBaseStyle,
-              borderTop: "1px solid #c9c9b0",
-              height: DRAWER_HEIGHT,
-              display: "flex",
-              flexDirection: "column",
-              outline: "none",
-            },
-            sx: { pointerEvents: "auto" },
-          }}
+        />
+        <div
+          className="drawer-scroll"
+          style={{ flex: 1, overflowY: "auto" }}
+          tabIndex={-1}
+          data-autofocus="cart"
         >
-          <PanelHeader
-            title="カート"
-            icon="cart.svg"
-            onClose={() => setCartOpen(false)}
-          />
-          <div
-            className="drawer-scroll"
-            style={{ flex: 1, overflowY: "auto" }}
-            tabIndex={-1}
-            data-autofocus="cart"
-          >
-            <SimpleCartPanel
-              isOpen={cartOpen}
-              onClose={() => setCartOpen(false)}
-            />
-          </div>
-        </Drawer>
-      )}
-
+          {/* ★ isOpen を渡しておくと在庫チェックの依存が素直になる */}
+          <SimpleCartPanel
+            isOpen={cartOpen}
+            onClose={() => setCartOpen(false)} />
+        </div>
+      </Drawer>
 
       {/* アプリガイド（メニュー） */}
       <Drawer
@@ -1393,13 +1324,7 @@ function MapPage() {
           onClose={() => setIsMyPageOpen(false)}
         />
         <MyPagePanelContent
-          onOpenCart={() => {
-            if (!isEcStore) {
-              alert("TasteMap公式Shopを選択したときのみカート機能をご利用いただけます。");
-              return;
-            }
-            openOverlayAboveMenu("cart");
-          }}
+          onOpenCart={() => openOverlayAboveMenu("cart")}
           onOpenMapGuide={() => openOverlayAboveMenu("mapguide")}
           onOpenStore={() => openOverlayAboveMenu("store")}
           onOpenAccount={() => openOverlayAboveMenu("account")}
