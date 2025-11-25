@@ -36,7 +36,6 @@ const fromApiGender = (apiGender) => {
   }
 };
 
-// メイン店舗IDの取得（ローカルにあればそれを使い、なければ 1 をデフォルトに）
 const getCurrentMainStoreId = () => {
   try {
     const fromApp = Number(localStorage.getItem("app.main_store_id") || "0");
@@ -44,6 +43,16 @@ const getCurrentMainStoreId = () => {
 
     const fromLegacy = Number(localStorage.getItem("store.mainStoreId") || "0");
     if (fromLegacy > 0) return fromLegacy;
+
+    // ★ 追加: 店舗選択ページが保存した selectedStore / main_store からも拾う
+    const stored =
+      localStorage.getItem("selectedStore") ||
+      localStorage.getItem("main_store");
+    if (stored) {
+      const s = JSON.parse(stored);
+      const id = Number(s?.id ?? s?.store_id ?? 0);
+      if (id > 0) return id;
+    }
   } catch {
     // 何もしない
   }

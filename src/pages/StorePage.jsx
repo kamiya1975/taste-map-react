@@ -150,6 +150,12 @@ export default function StorePage() {
       localStorage.setItem("selectedStore", JSON.stringify(store));
       localStorage.setItem("main_store", JSON.stringify(store));
 
+      // ★ 新方式・旧方式の両方で main_store_id を保存しておく
+      if (store && store.id) {
+        localStorage.setItem("app.main_store_id", String(store.id));
+        localStorage.setItem("store.mainStoreId", String(store.id)); // 互換用
+      }
+
       const all = JSON.parse(localStorage.getItem("allStores") || "[]");
       const k = (s) => `${s?.name || ""}@@${s?.branch || ""}`;
       const exists = all.some((s) => k(s) === k(store));
