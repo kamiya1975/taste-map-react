@@ -47,16 +47,8 @@ export default function StorePage() {
       setLoading(true);
       setErr("");
 
-      const token = localStorage.getItem("app.access_token");
-
-      if (!token) {
-        setStores([]);
-        setErr(
-          "ログイン情報が見つかりません。マイページからログインしてからお試しください。"
-        );
-        setLoading(false);
-        return;
-      }
+      // ★ ログイントークンは「あるなら使う」程度にする
+      const token = localStorage.getItem("app.access_token") || null;
 
       try {
         const loc = await resolveLocation();
@@ -71,12 +63,16 @@ export default function StorePage() {
         const url = `${API_BASE}/api/app/stores?${params.toString()}`;
         console.log("[StorePage] fetch:", url);
 
+       const headers = {
+          Accept: "application/json",
+        };
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
         const res = await fetch(url, {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
+          headers,
         });
 
         if (!res.ok) {
@@ -110,7 +106,7 @@ export default function StorePage() {
 
         enriched.sort((a, b) => a.distance - b.distance);
 
-        // ★ 位置情報NGなら EC(id=1) だけ残す
+        // ★ 位置情報NGなら EC(id=1) だけ残す仕様はそのまま
         const finalStores = locAllowed ? enriched : enriched.filter((s) => s.id === 1);
 
         setStores(finalStores);
@@ -120,9 +116,7 @@ export default function StorePage() {
         } catch {}
       } catch (e) {
         console.error(e);
-        setErr(
-          "店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。"
-        );
+        setErr("店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。");
       } finally {
         setLoading(false);
       }
