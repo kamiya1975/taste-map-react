@@ -372,9 +372,14 @@ function MapPage() {
               cluster: Number(r.cluster),
               UMAP1: Number(r.umap_x),
               UMAP2: Number(r.umap_y),
-              PC1: Number(r.PC1),
-              PC2: Number(r.PC2),
-              PC3: Number(r.PC3),
+              // PC1/PC2/PC3 と pc1/pc2/pc3 の両方に対応させる
+              PC1: Number(r.PC1 ?? r.pc1),
+              PC2: Number(r.PC2 ?? r.pc2),
+              PC3: Number(r.PC3 ?? r.pc3),
+              // 小文字キーも用意しておく（セレクタ value= "pc3" 等のため）
+              pc1: Number(r.PC1 ?? r.pc1),
+              pc2: Number(r.PC2 ?? r.pc2),
+              pc3: Number(r.PC3 ?? r.pc3),
               商品名: r["temp_name"],
               国: r["国"],
               産地: r["産地"],
