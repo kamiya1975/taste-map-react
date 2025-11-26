@@ -113,8 +113,8 @@ export const REFERENCE_LOTS = {
   rw1_2025_11: {
     lotId: "rw1_2025_11",
     label: "初回ロット（2025-11）",
-    umap_x: 4.744835,
-    umap_y: 7.667319,
+    umap_x: 7.8115444,
+    umap_y: 12.722937,
     pc1: 1.6196,
     pc2: 0.8110,
   },
