@@ -350,9 +350,23 @@ function MapPage() {
     return { xmin: xmin - pad, xmax: xmax + pad, ymin: ymin - pad, ymax: ymax + pad };
   }, [data]);
 
-  // ====== データ読み込み
+  // ====== データ読み込み（PWA対応・絶対パス化・fallback付き）
   useEffect(() => {
-    const url = `${process.env.PUBLIC_URL || ""}/umap_coords_c.json`;
+    // PUBLIC_URL / origin を考慮して絶対パスを作る
+    const buildBase = () => {
+      // PUBLIC_URL がフルURL形式のとき（例: https://xxx.vercel.app）
+      if (process.env.PUBLIC_URL && /^https?:\/\//.test(process.env.PUBLIC_URL)) {
+        return process.env.PUBLIC_URL.replace(/\/$/, "");
+      }
+
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const prefix = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
+      return `${origin}${prefix}`;
+    };
+
+    const base = buildBase();
+    const url = `${base}/umap_coords_c.json`;
+
     fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -390,10 +404,25 @@ function MapPage() {
             Number.isFinite(r.umap_y) &&
             r.jan_code !== ""
           );
+
         setData(cleaned);
         localStorage.setItem("umapData", JSON.stringify(cleaned));
       })
-      .catch((err) => console.error("UMAP_PCA_coordinates.json の取得に失敗:", err));
+      .catch((err) => {
+        console.error("umap_coords_c.json の取得に失敗:", err);
+
+        // ★ fallback: PWA が 404 / オフライン時にここを通る
+        try {
+          const cached = localStorage.getItem("umapData");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            console.log("[MapPage] fallback from local umapData:", parsed.length);
+            setData(parsed);
+          }
+        } catch (e) {
+          console.warn("fallback も失敗:", e);
+        }
+      });
   }, []);
 
   // スキャナ：未登録JANの警告リセット
