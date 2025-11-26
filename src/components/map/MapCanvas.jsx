@@ -202,6 +202,12 @@ const MapCanvas = forwardRef(function MapCanvas(
     const vals = data
       .map(d => Number(d[highlight2D]))
       .filter(v => Number.isFinite(v));
+
+    // ★ 追加: PWA で泡が出ない原因を特定するログ
+    console.log("[MapCanvas] highlight2D =", highlight2D);
+    console.log("[MapCanvas] data length =", data.length);
+    console.log("[MapCanvas] vals length =", vals.length);
+
     if (!vals.length) return [];
 
     vals.sort((a, b) => a - b);
@@ -212,7 +218,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     const vHi = hi - lo < 1e-9 ? lo + 1e-9 : hi;
 
     // 各商品点へ t と座標を付与
-    return data
+    const bubbles = data
       .map(d => {
         const v = Number(d[highlight2D]);
         if (!Number.isFinite(v)) return null;
@@ -226,6 +232,11 @@ const MapCanvas = forwardRef(function MapCanvas(
         };
       })
     .filter(Boolean);
+
+    // ★ 追加: 最終的な pointBubbles の数
+    console.log("[MapCanvas] pointBubbles length =", bubbles.length);
+
+    return bubbles;
   }, [data, highlight2D]);
 
 

@@ -407,6 +407,8 @@ function MapPage() {
 
         setData(cleaned);
         localStorage.setItem("umapData", JSON.stringify(cleaned));
+
+        console.log("[MapPage] after load cleaned length =", cleaned.length);
       })
       .catch((err) => {
         console.error("umap_coords_c.json の取得に失敗:", err);
