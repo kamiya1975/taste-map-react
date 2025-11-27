@@ -31,21 +31,78 @@ import { fetchLatestRatings } from "../lib/appRatings";
 // ★ バックエンドのベースURL（.env の REACT_APP_API_BASE_URL を利用）
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
-// 追加
+// ★ 現在のメイン店舗IDを localStorage から推定
+const getCurrentMainStoreId = () => {
+  try {
+    // 新仕様：アプリ用
+    const fromApp = Number(localStorage.getItem("app.main_store_id") || "0");
+    if (fromApp > 0) return fromApp;
+
+    // 旧仕様：store.mainStoreId
+    const fromLegacy = Number(localStorage.getItem("store.mainStoreId") || "0");
+    if (fromLegacy > 0) return fromLegacy;
+
+    // 店舗選択ページで保存している可能性のある JSON
+    const stored =
+      localStorage.getItem("selectedStore") ||
+      localStorage.getItem("main_store");
+    if (stored) {
+      const s = JSON.parse(stored);
+      const id = Number(s?.id ?? s?.store_id ?? 0);
+      if (id > 0) return id;
+    }
+  } catch {
+    // 何もしない
+  }
+  return 0;
+};
+
+// ★ メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
 async function fetchAllowedJansAuto() {
   let token = "";
   try {
     token = localStorage.getItem("app.access_token") || "";
   } catch {}
-  if (!token) return null; // 未ログイン時はフィルタ無しで全件表示
 
-  const res = await fetch(`${API_BASE}/api/app/allowed-jans/auto`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(`allowed-jans/auto HTTP ${res.status}`);
+  // 1) ログイン済みなら、従来どおり auto を使う（main+sub を自動集計）
+  if (token) {
+    const res = await fetch(`${API_BASE}/api/app/allowed-jans/auto`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`allowed-jans/auto HTTP ${res.status}`);
+    const json = await res.json();
+    return Array.isArray(json.allowed_jans)
+      ? json.allowed_jans.map(String)
+      : null;
+  }
+
+  // 2) 未ログイン時：メイン店舗IDから allowed-jans?stores=... をたたく
+  const mainStoreId = getCurrentMainStoreId();
+  if (!mainStoreId) {
+    // 店舗未選択 → 全打点表示（従来どおり）
+    return null;
+  }
+
+  const params = new URLSearchParams();
+  params.set("stores", String(mainStoreId));
+  // 必要なら EC も含める場合：params.set("include_ec", "true");
+
+  const res = await fetch(
+    `${API_BASE}/api/app/allowed-jans?${params.toString()}`
+  );
+  if (!res.ok) {
+    // 401/403 などの場合はログだけ出して全件表示にフォールバック
+    console.warn(
+      `allowed-jans(stores=${mainStoreId}) HTTP ${res.status} → 全件表示にフォールバック`
+    );
+    return null;
+  }
   const json = await res.json();
-  return Array.isArray(json.allowed_jans) ? json.allowed_jans.map(String) : null;
+  return Array.isArray(json.allowed_jans)
+    ? json.allowed_jans.map(String)
+    : null;
 }
+
 
 const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
