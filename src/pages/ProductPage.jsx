@@ -535,7 +535,7 @@ export default function ProductPage() {
 
       try {
         const res = await fetch(
-          `${API_BASE}/api/app/map-products/${encodeURIComponent(jan_code)}${qsStr}`,
+          `${API_BASE}/api/map-products/${encodeURIComponent(jan_code)}${qsStr}`,
           { signal: controller.signal }
         );
         if (!res.ok) {
