@@ -28,6 +28,9 @@ import { getReferenceLotById } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 import { fetchLatestRatings } from "../lib/appRatings";
 
+// ★ バックエンドのベースURL（.env の REACT_APP_API_BASE_URL を利用）
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
+
 const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
 const ANCHOR_JAN = "4964044046324";
@@ -352,7 +355,9 @@ function MapPage() {
 
   // ====== データ読み込み
   useEffect(() => {
-    const url = `${process.env.PUBLIC_URL || ""}/umap_coords_c.json`;
+    // ★ 風味データをバックエンドから取得
+    const url = `${API_BASE}/static/points/umap_coords_c.json`;
+
     fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -398,7 +403,7 @@ function MapPage() {
         setData(cleaned);
         localStorage.setItem("umapData", JSON.stringify(cleaned));
       })
-      .catch((err) => console.error("UMAP_PCA_coordinates.json の取得に失敗:", err));
+      .catch((err) => console.error("umap_coords_c.json の取得に失敗:", err));
   }, []);
 
   // スキャナ：未登録JANの警告リセット
