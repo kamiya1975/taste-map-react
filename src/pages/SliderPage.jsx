@@ -5,6 +5,9 @@ import PanelHeader from "../components/ui/PanelHeader";
 import { getReferenceLotById } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 
+// ★ バックエンドのベースURL（.env の REACT_APP_API_BASE_URL）
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
+
 /* ============ 小ユーティリティ ============ */
 const num = (v, def = 0) => {
   const n = Number(v);
@@ -157,17 +160,22 @@ export default function SliderPage() {
 
   // PCA/UMAP 全体をロード
   useEffect(() => {
-    const url = `${process.env.PUBLIC_URL || ""}/umap_coords_c.json`;
-    fetch(url)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((data) => {
+    const url = `${API_BASE}/static/points/umap_coords_c.json`;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        if (cancelled) return;
+
         const cleaned = (data || [])
           .map((d) => ({
             JAN: String(d.jan_code ?? d.JAN ?? ""),
-            // ★ ここを修正：pc1/pc2/pc3 → なければPC1/PC2/PC3
+            // ★ pc1/pc2/pc3 → 無ければ PC1/PC2/PC3
             PC1: num(d.pc1 ?? d.PC1),
             PC2: num(d.pc2 ?? d.PC2),
             PC3: num(d.pc3 ?? d.PC3),
@@ -184,6 +192,7 @@ export default function SliderPage() {
           );
 
         setRows(cleaned);
+
         if (cleaned.length) {
           const pc1s = cleaned.map((r) => r.PC1);
           const pc2s = cleaned.map((r) => r.PC2);
@@ -199,9 +208,16 @@ export default function SliderPage() {
         } else {
           setPcMinMax(null);
         }
-      })
+      } catch (e) {
+        if (!cancelled) {
+          console.error("SliderPage: umap_coords_c.json の取得に失敗:", e);
+        }
+      }
+    })();
 
-      .catch((e) => console.error("load failed:", e));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // 基準ロットの PC を中央50にマッピングしてスライダー初期化
