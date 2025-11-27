@@ -166,10 +166,11 @@ export default function SliderPage() {
       .then((data) => {
         const cleaned = (data || [])
           .map((d) => ({
-            JAN: String(d.jan_code ?? ""),
-            PC1: num(d.PC1),
-            PC2: num(d.PC2),
-            PC3: num(d.PC3),
+            JAN: String(d.jan_code ?? d.JAN ?? ""),
+            // ★ ここを修正：pc1/pc2/pc3 → なければPC1/PC2/PC3
+            PC1: num(d.pc1 ?? d.PC1),
+            PC2: num(d.pc2 ?? d.PC2),
+            PC3: num(d.pc3 ?? d.PC3),
             UMAP1: num(d.umap_x),
             UMAP2: num(d.umap_y),
           }))
@@ -199,6 +200,7 @@ export default function SliderPage() {
           setPcMinMax(null);
         }
       })
+
       .catch((e) => console.error("load failed:", e));
   }, []);
 
