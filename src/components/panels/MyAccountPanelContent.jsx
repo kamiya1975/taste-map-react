@@ -471,6 +471,9 @@ export default function MyAccountPanelContent() {
 
       setPassword("");
       alert("保存しました。");
+      // ★ 登録内容（main_store_id, トークンなど）を反映させるために
+      //    アプリ全体をリロード → MapPage が最新状態で再マウントされる
+      reloadApp();
     } catch (e) {
       console.error(e);
       alert("通信に失敗しました。電波状況をご確認の上、再度お試しください。");

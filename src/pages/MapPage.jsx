@@ -534,9 +534,6 @@ function MapPage() {
           const allowed = await fetchAllowedJansAuto(); // 未ログインなら null が返る想定
           if (Array.isArray(allowed) && allowed.length > 0) {
             allowedSet = new Set(allowed.map(String));
-          } else {
-            // ★ 修正 1-A: APIから空の配列が返ってきた場合、フィルタリングを無効化するために allowedSet を null のままにする
-            // allowedSet = null; // 既に null で初期化されているので、このままでOK
           }
         } catch (e) {
           console.warn(
@@ -554,7 +551,7 @@ function MapPage() {
         if (cancelled) return;
 
         // ③ 正規化 & フィルタ
-        const rawCleaned = (rows || []) // <-- ★ ここで正規化前の配列を定義
+        const cleaned = (rows || [])
           .filter(Boolean)
           .map((r) => {
             const toNum = (v) => (v === "" || v == null ? NaN : Number(v));
@@ -593,18 +590,12 @@ function MapPage() {
               希望小売価格: toNum(r["希望小売価格"]),
               コメント: r["コメント"] ?? r["comment"] ?? r["説明"] ?? "",
             };
-          });
-
-        const cleaned = rawCleaned.filter((r) => { // <-- ★ ここで filter を適用し、cleaned を定義
+          })
+          .filter((r) => {
             if (!Number.isFinite(r.umap_x) || !Number.isFinite(r.umap_y)) return false;
             if (!r.jan_code) return false;
-
-            // 修正 2-A: allowedSet が存在し、かつ、JANが含まれていない場合は除外
-            if (allowedSet && allowedSet.size > 0) {
-                if (!allowedSet.has(String(r.jan_code))) {
-                    return false;
-                }
-            }
+            // ログイン済み & 店舗選択済みなら、その店舗の取扱 JAN だけ残す
+            if (allowedSet && !allowedSet.has(String(r.jan_code))) return false;
             return true;
           });
 
@@ -614,16 +605,15 @@ function MapPage() {
         try {
           localStorage.setItem("umapData", JSON.stringify(cleaned));
         } catch {}
-      // ★★★ 修正箇所: ここで try ブロックを閉じます ★★★
       } catch (err) {
         if (!cancelled) {
           console.error("umap_coords_c.json の取得または整形に失敗:", err);
         }
       }
-    })(); // ★★★ 修正箇所: ここで非同期関数の実行を閉じます ★★★
+    })();
 
     return () => {
-      cancelled = true;       
+      cancelled = true;
     };
   }, []);
 

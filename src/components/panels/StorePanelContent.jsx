@@ -17,6 +17,16 @@ async function resolveLocation() {
   return geo; // 失敗時は null
 }
 
+// ★ ページ全体をリロードする共通処理
+const reloadApp = () => {
+  try {
+    // 同じURLにリダイレクト（履歴を汚しにくい）
+    window.location.replace(window.location.href);
+  } catch {
+    window.location.reload();
+  }
+};
+
 /* ============ 小物：★ボタン ============ */
 function StarButton({ active, onClick, disabled = false, size = 20, title }) {
   const color = disabled ? "rgb(179,83,103)" : active ? "rgb(179,83,103)" : "rgb(190,190,190)";
@@ -215,6 +225,10 @@ export default function StorePanelContent() {
           s.id === store.id ? { ...s, is_sub: nextActive } : s
         )
       );
+
+      // ★ サブ店舗の登録状態が変わったので、Allowed JAN などを取り直すために
+      //    アプリ全体をリロード（MapPage も最新状態で再マウントされる）
+      reloadApp();
     } catch (e) {
       console.error(e);
       alert("店舗の登録更新に失敗しました。通信状況をご確認のうえ、再度お試しください。");
