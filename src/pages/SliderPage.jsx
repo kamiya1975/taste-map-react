@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import PanelHeader from "../components/ui/PanelHeader";
-import { getReferenceLotById } from "../ui/constants";
+import { getReferenceLotById, TASTEMAP_POINTS_URL } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 
 // ★ バックエンドのベースURL（.env の REACT_APP_API_BASE_URL）
@@ -160,7 +160,7 @@ export default function SliderPage() {
 
   // PCA/UMAP 全体をロード
   useEffect(() => {
-    const url = `${API_BASE}/static/points/umap_coords_c.json`;
+    const url = TASTEMAP_POINTS_URL;
     let cancelled = false;
 
     (async () => {

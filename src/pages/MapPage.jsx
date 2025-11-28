@@ -23,13 +23,12 @@ import {
   INITIAL_ZOOM, 
   CENTER_Y_OFFSET, 
   DRAWER_HEIGHT,
+  TASTEMAP_POINTS_URL,
 } from "../ui/constants";
 import { getReferenceLotById } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 import { fetchLatestRatings } from "../lib/appRatings";
 
-// ★ バックエンドのベースURL（.env の REACT_APP_API_BASE_URL を利用）
-const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
 // ★ 現在のメイン店舗IDを localStorage から推定
 const getCurrentMainStoreId = () => {
@@ -448,7 +447,7 @@ function MapPage() {
         }
 
         // ② 風味データ本体（UMAP 座標 JSON）
-        const url = `${API_BASE}/static/points/umap_coords_c.json`;
+        const url = TASTEMAP_POINTS_URL;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const rows = await res.json();

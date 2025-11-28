@@ -22,6 +22,12 @@ export const paperBaseStyle = {
   pointerEvents: "auto",
 };
 
+// TasteMap APIベースURL
+export const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
+
+// TasteMap 打点APIのURL（MapPage / SliderPage で共通利用）
+export const TASTEMAP_POINTS_URL = `${API_BASE}/api/app/tastemap-points`;
+
 // ===== Map共通 =====
 export const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 export const CENTER_Y_OFFSET = -3.5;
@@ -117,6 +123,7 @@ export const REFERENCE_LOTS = {
     umap_y: 12.722937,
     pc1: 1.6196,
     pc2: 0.8110,
+    pc3: 2.8896,
   },
   rw1_2026_08: {
     lotId: "rw1_2026_08",
@@ -125,6 +132,7 @@ export const REFERENCE_LOTS = {
     umap_y: 6.457314,
     pc1: 1.5571,
     pc2: 3.2194,
+    pc3: -0.2300,
   },
 };
 
@@ -132,3 +140,4 @@ export const REFERENCE_LOTS = {
 // 該当がなければデフォルト（初回ロット）を返す。
 export const getReferenceLotById = (lotId) =>
   REFERENCE_LOTS[lotId] || REFERENCE_LOTS["rw1_2025_11"];
+
