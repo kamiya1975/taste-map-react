@@ -72,9 +72,36 @@ const showAllowedJansErrorOnce = () => {
   }
 };
 
+// ★ 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
+async function fetchAllowedJansForStore(storeId) {
+  if (!storeId) return null;
+
+  const params = new URLSearchParams();
+  params.set("stores", String(storeId));
+
+  const res = await fetch(
+    `${API_BASE}/api/app/allowed-jans?${params.toString()}`
+  );
+
+  if (!res.ok) {
+    throw new Error(
+      `allowed-jans(stores=${storeId}) HTTP ${res.status}`
+    );
+  }
+
+  const json = await res.json();
+  const arr = Array.isArray(json.allowed_jans)
+    ? json.allowed_jans.map(String)
+    : null;
+
+  return (arr && arr.length > 0) ? arr : null;
+}
+
 // ★ メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
+//    - まず「ユーザーが選んだ店舗」で取得を試みる
+//    - 失敗 or 0件なら「公式Shop(ID=1)」で再トライ
+//    - それもダメな場合のみ null を返し、全件表示にフォールバック
 async function fetchAllowedJansAuto() {
-  // まず main_store_id
   const mainStoreId = getCurrentMainStoreId();
 
   let token = "";
@@ -82,53 +109,95 @@ async function fetchAllowedJansAuto() {
     token = localStorage.getItem("app.access_token") || "";
   } catch {}
 
-  // ① 未ログイン or トークンなし → /allowed-jans?stores=...
+  // -----------------------------
+  // ① 未ログイン or トークンなし
+  // -----------------------------
   if (!token) {
-    if (!mainStoreId) {
-      console.warn("mainStoreId not found → allowed-jans フィルタなしで全件表示");
-      showAllowedJansErrorOnce();
-      return null;
+    // ①-1. ユーザーが選んだ店舗IDで試す
+    if (mainStoreId && mainStoreId !== 1) {
+      try {
+        const arr = await fetchAllowedJansForStore(mainStoreId);
+        if (arr && arr.length > 0) {
+          return arr;
+        }
+      } catch (e) {
+        console.warn(
+          `allowed-jans(stores=${mainStoreId}) の取得に失敗 → 公式Shopにフォールバック`,
+          e
+        );
+      }
     }
 
-    const params = new URLSearchParams();
-    params.set("stores", String(mainStoreId));
-
-    const res = await fetch(
-      `${API_BASE}/api/app/allowed-jans?${params.toString()}`
-    );
-
-    if (!res.ok) {
+    // ①-2. 公式Shop(ID=1)で再トライ
+    try {
+      console.warn("allowed-jans: fallback to official store (id=1)");
+      const fallback = await fetchAllowedJansForStore(1);
+      if (fallback && fallback.length > 0) {
+        return fallback;
+      }
+    } catch (e) {
       console.warn(
-        `allowed-jans(stores=${mainStoreId}) HTTP ${res.status} → 全件表示にフォールバック`
+        "allowed-jans(stores=1) の取得にも失敗 → 全件表示にフォールバック",
+        e
       );
       showAllowedJansErrorOnce();
       return null;
     }
 
-    const json = await res.json();
-    return Array.isArray(json.allowed_jans)
-      ? json.allowed_jans.map(String)
-      : null;
-  }
-
-  // ② ログイン済み → /allowed-jans/auto?include_ec=true&main_store_id=...
-  const url =
-    `${API_BASE}/api/app/allowed-jans/auto?include_ec=true&main_store_id=${mainStoreId}`;
-
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!res.ok) {
-    console.warn(`allowed-jans/auto HTTP ${res.status}`);
+    // ここに来ることはほぼないが保険
     showAllowedJansErrorOnce();
     return null;
   }
 
-  const json = await res.json();
-  return Array.isArray(json.allowed_jans)
-    ? json.allowed_jans.map(String)
-    : null;
+  // -----------------------------
+  // ② ログイン済み
+  // -----------------------------
+  // ②-1. 通常は /allowed-jans/auto でユーザー＋メイン店舗ベースの集合を取得
+  try {
+    const url =
+      `${API_BASE}/api/app/allowed-jans/auto` +
+      `?include_ec=true&main_store_id=${mainStoreId || ""}`;
+
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      const arr = Array.isArray(json.allowed_jans)
+        ? json.allowed_jans.map(String)
+        : null;
+      if (arr && arr.length > 0) {
+        return arr;
+      }
+      console.warn(
+        "allowed-jans/auto は成功したが allowed_jans が空 → 公式Shopにフォールバック"
+      );
+    } else {
+      console.warn(`allowed-jans/auto HTTP ${res.status} → 公式Shopにフォールバック`);
+    }
+  } catch (e) {
+    console.warn("allowed-jans/auto の取得に失敗 → 公式Shopにフォールバック", e);
+  }
+
+  // ②-2. ログイン済みだが、公式Shop(ID=1) の取扱JANで再トライ
+  try {
+    console.warn("allowed-jans/auto 失敗のため allowed-jans(stores=1) を使用");
+    const fallback = await fetchAllowedJansForStore(1);
+    if (fallback && fallback.length > 0) {
+      return fallback;
+    }
+  } catch (e) {
+    console.warn(
+      "allowed-jans(stores=1) の取得にも失敗 → 全件表示にフォールバック",
+      e
+    );
+    showAllowedJansErrorOnce();
+    return null;
+  }
+
+  showAllowedJansErrorOnce();
+  return null;
 }
 
 const REREAD_LS_KEY = "tm_reread_until";
