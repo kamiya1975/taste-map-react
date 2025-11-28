@@ -56,7 +56,7 @@ const getCurrentMainStoreId = () => {
   }
 
   // ④ デフォルトの EC ショップ
-  return 0;
+  return 1;
 };
 
 // ★ allowed-jans 取得エラー時に表示
