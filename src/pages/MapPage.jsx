@@ -23,9 +23,10 @@ import {
   INITIAL_ZOOM, 
   CENTER_Y_OFFSET, 
   DRAWER_HEIGHT,
+  API_BASE,
   TASTEMAP_POINTS_URL,
+  getReferenceLotById,
 } from "../ui/constants";
-import { getReferenceLotById } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 import { fetchLatestRatings } from "../lib/appRatings";
 
