@@ -30,31 +30,33 @@ import {
 import { getLotId } from "../utils/lot";
 import { fetchLatestRatings } from "../lib/appRatings";
 
-
-// ★ 現在のメイン店舗IDを localStorage から推定
+//現在のメイン店舗IDを取得
 const getCurrentMainStoreId = () => {
   try {
-    // 新仕様：アプリ用
-    const fromApp = Number(localStorage.getItem("app.main_store_id") || "0");
-    if (fromApp > 0) return fromApp;
-
-    // 旧仕様：store.mainStoreId
-    const fromLegacy = Number(localStorage.getItem("store.mainStoreId") || "0");
-    if (fromLegacy > 0) return fromLegacy;
-
-    // 店舗選択ページで保存している可能性のある JSON
-    const stored =
+    // ★ 初回店舗設定を最優先
+    const raw =
       localStorage.getItem("selectedStore") ||
       localStorage.getItem("main_store");
-    if (stored) {
-      const s = JSON.parse(stored);
+    if (raw) {
+      const s = JSON.parse(raw);
       const id = Number(s?.id ?? s?.store_id ?? 0);
       if (id > 0) return id;
     }
-  } catch {
-    // 何もしない
+
+    // ② 新方式（ログイン後）
+    const v1 = Number(localStorage.getItem("app.main_store_id") || "0");
+    if (v1 > 0) return v1;
+
+    // ③ 旧方式（互換）
+    const v2 = Number(localStorage.getItem("store.mainStoreId") || "0");
+    if (v2 > 0) return v2;
+
+  } catch (e) {
+    console.warn("getCurrentMainStoreId error:", e);
   }
-  return 0;
+
+  // ④ デフォルトの EC ショップ
+  return 1;
 };
 
 // ★ allowed-jans 取得エラー時に表示
@@ -72,20 +74,33 @@ const showAllowedJansErrorOnce = () => {
 
 // ★ メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
 async function fetchAllowedJansAuto() {
+  // まず main_store_id
+  const mainStoreId = getCurrentMainStoreId();
+
   let token = "";
   try {
     token = localStorage.getItem("app.access_token") || "";
   } catch {}
 
-  // 1) ログイン済みなら、従来どおり auto を使う（main+sub を自動集計）
-  if (token) {
-    const res = await fetch(`${API_BASE}/api/app/allowed-jans/auto`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  // ① 未ログイン or トークンなし → /allowed-jans?stores=...
+  if (!token) {
+    if (!mainStoreId) {
+      console.warn("mainStoreId not found → allowed-jans フィルタなしで全件表示");
+      showAllowedJansErrorOnce();
+      return null;
+    }
+
+    const params = new URLSearchParams();
+    params.set("stores", String(mainStoreId));
+
+    const res = await fetch(
+      `${API_BASE}/api/app/allowed-jans?${params.toString()}`
+    );
 
     if (!res.ok) {
-      // ★ 失敗 → アラート + 全件表示
-      console.warn(`allowed-jans/auto HTTP ${res.status}`);
+      console.warn(
+        `allowed-jans(stores=${mainStoreId}) HTTP ${res.status} → 全件表示にフォールバック`
+      );
       showAllowedJansErrorOnce();
       return null;
     }
@@ -96,27 +111,16 @@ async function fetchAllowedJansAuto() {
       : null;
   }
 
-  // 2) 未ログイン時：メイン店舗IDから allowed-jans?stores=... をたたく
-  const mainStoreId = getCurrentMainStoreId();
-  if (!mainStoreId) {
-    // ★ 店舗未選択 → アラート + 全件表示
-    console.warn("mainStoreId not found → allowed-jans フィルタなしで全件表示");
-    showAllowedJansErrorOnce();
-    return null;
-  }
+  // ② ログイン済み → /allowed-jans/auto?include_ec=true&main_store_id=...
+  const url =
+    `${API_BASE}/api/app/allowed-jans/auto?include_ec=true&main_store_id=${mainStoreId}`;
 
-  const params = new URLSearchParams();
-  params.set("stores", String(mainStoreId));
-
-  const res = await fetch(
-    `${API_BASE}/api/app/allowed-jans?${params.toString()}`
-  );
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
   if (!res.ok) {
-    // ★ 失敗 → アラート + 全件表示
-    console.warn(
-      `allowed-jans(stores=${mainStoreId}) HTTP ${res.status} → 全件表示にフォールバック`
-    );
+    console.warn(`allowed-jans/auto HTTP ${res.status}`);
     showAllowedJansErrorOnce();
     return null;
   }
