@@ -57,6 +57,19 @@ const getCurrentMainStoreId = () => {
   return 0;
 };
 
+// ★ allowed-jans 取得エラー時に表示
+let allowedJansErrorShown = false;
+
+const showAllowedJansErrorOnce = () => {
+  if (allowedJansErrorShown) return;
+  allowedJansErrorShown = true;
+  try {
+    alert("allowed-jans の取得に失敗しました。全件表示にフォールバックします。");
+  } catch (e) {
+    console.warn("allowed-jans error (alert failed)", e);
+  }
+};
+
 // ★ メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
 async function fetchAllowedJansAuto() {
   let token = "";
@@ -69,7 +82,14 @@ async function fetchAllowedJansAuto() {
     const res = await fetch(`${API_BASE}/api/app/allowed-jans/auto`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) throw new Error(`allowed-jans/auto HTTP ${res.status}`);
+
+    if (!res.ok) {
+      // ★ 失敗 → アラート + 全件表示
+      console.warn(`allowed-jans/auto HTTP ${res.status}`);
+      showAllowedJansErrorOnce();
+      return null;
+    }
+
     const json = await res.json();
     return Array.isArray(json.allowed_jans)
       ? json.allowed_jans.map(String)
@@ -79,30 +99,33 @@ async function fetchAllowedJansAuto() {
   // 2) 未ログイン時：メイン店舗IDから allowed-jans?stores=... をたたく
   const mainStoreId = getCurrentMainStoreId();
   if (!mainStoreId) {
-    // 店舗未選択 → 全打点表示（従来どおり）
+    // ★ 店舗未選択 → アラート + 全件表示
+    console.warn("mainStoreId not found → allowed-jans フィルタなしで全件表示");
+    showAllowedJansErrorOnce();
     return null;
   }
 
   const params = new URLSearchParams();
   params.set("stores", String(mainStoreId));
-  // 必要なら EC も含める場合：params.set("include_ec", "true");
 
   const res = await fetch(
     `${API_BASE}/api/app/allowed-jans?${params.toString()}`
   );
+
   if (!res.ok) {
-    // 401/403 などの場合はログだけ出して全件表示にフォールバック
+    // ★ 失敗 → アラート + 全件表示
     console.warn(
       `allowed-jans(stores=${mainStoreId}) HTTP ${res.status} → 全件表示にフォールバック`
     );
+    showAllowedJansErrorOnce();
     return null;
   }
+
   const json = await res.json();
   return Array.isArray(json.allowed_jans)
     ? json.allowed_jans.map(String)
     : null;
 }
-
 
 const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
@@ -444,7 +467,7 @@ function MapPage() {
             "allowed-jans/auto の取得に失敗しました（全件表示にフォールバック）:",
             e
           );
-          // 失敗時は allowedSet=null のまま → 全件表示
+          showAllowedJansErrorOnce();
         }
 
         // ② 風味データ本体（UMAP 座標 JSON）
