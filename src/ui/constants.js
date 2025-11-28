@@ -26,7 +26,9 @@ export const paperBaseStyle = {
 export const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
 // TasteMap 打点APIのURL（MapPage / SliderPage で共通利用）
-export const TASTEMAP_POINTS_URL = `${API_BASE}/static/points/umap_coords_c.json`;
+export const TASTEMAP_POINTS_URL =
+  process.env.REACT_APP_POINTS_JSON_URL ||
+  `${API_BASE}/static/points/umap_coords_c.json`;
 
 // ===== Map共通 =====
 export const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
