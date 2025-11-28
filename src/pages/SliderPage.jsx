@@ -207,7 +207,7 @@ export default function SliderPage() {
         }
       } catch (e) {
         if (!cancelled) {
-          console.error("SliderPage: tastemap-points API の取得に失敗:", e);
+          console.error("SliderPage: umap_coords_c.json の取得に失敗:", e);
         }
       }
     })();

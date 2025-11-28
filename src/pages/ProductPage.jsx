@@ -702,7 +702,10 @@ export default function ProductPage() {
   const typeColor = typeColors[wineTypeKey];
 
   const title =
-    product?.title || product?.name_kana || product?.jan_code || "（名称不明）";
+    product?.name_kana || 
+    product?.title || 
+    product?.jan_code || 
+    "（名称不明）";
 
   const handleAddToCart = async () => {
     try {
