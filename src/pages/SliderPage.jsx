@@ -5,9 +5,6 @@ import PanelHeader from "../components/ui/PanelHeader";
 import { getReferenceLotById, TASTEMAP_POINTS_URL } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 
-// ★ バックエンドのベースURL（.env の REACT_APP_API_BASE_URL）
-const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
-
 /* ============ 小ユーティリティ ============ */
 const num = (v, def = 0) => {
   const n = Number(v);
@@ -210,7 +207,7 @@ export default function SliderPage() {
         }
       } catch (e) {
         if (!cancelled) {
-          console.error("SliderPage: umap_coords_c.json の取得に失敗:", e);
+          console.error("SliderPage: tastemap-points API の取得に失敗:", e);
         }
       }
     })();
