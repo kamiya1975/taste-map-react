@@ -78,6 +78,7 @@ async function fetchAllowedJansForStore(storeId) {
 
   const params = new URLSearchParams();
   params.set("stores", String(storeId));
+  params.set("include_ec", "true");
 
   const res = await fetch(
     `${API_BASE}/api/app/allowed-jans?${params.toString()}`
