@@ -8,7 +8,6 @@ import {
   PathLayer,
   IconLayer,
   BitmapLayer,
-  TextLayer,
 } from "@deck.gl/layers";
 import {
   ZOOM_LIMITS,
@@ -427,30 +426,6 @@ const MapCanvas = forwardRef(function MapCanvas(
     [data, favorites, userRatings, clusterColorMode]
   );
 
-  // ★ 公式Shop 取り扱い商品の ★ 表示レイヤー
-  const officialStarLayer = useMemo(
-    () =>
-      new TextLayer({
-        id: "official-ec-stars",
-        // data 側で isOfficialEc / is_official_ec などのフラグを持っている前提
-        data: (data || []).filter(
-          (d) => d.isOfficialEc || d.is_official_ec
-        ),
-        getPosition: (d) => [xOf(d), -yOf(d), 0],
-        getText: () => "★",
-        getSize: 16,
-        getColor: [0, 0, 0, 255],
-        getTextAnchor: "middle",
-        getAlignmentBaseline: "center",
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        billboard: true,
-        background: false,
-        pickable: false,
-      }),
-    [data]
-  );  
-
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
     const lineColor = [255, 0, 0, 255];
@@ -788,9 +763,6 @@ const MapCanvas = forwardRef(function MapCanvas(
 
         // 打点
         mainLayer,
-
-        // ★ 公式Shop商品に重ねる ★ レイヤー
-        officialStarLayer,
 
         // ★ 選択中のみ dot.svg を重ねる
         ...selectedDotLayers,
