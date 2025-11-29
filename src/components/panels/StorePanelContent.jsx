@@ -20,7 +20,6 @@ async function resolveLocation() {
 // ★ ページ全体をリロードする共通処理
 const reloadApp = () => {
   try {
-    // 同じURLにリダイレクト（履歴を汚しにくい）
     window.location.replace(window.location.href);
   } catch {
     window.location.reload();
@@ -73,7 +72,8 @@ export default function StorePanelContent() {
   const [savingId, setSavingId] = useState(null);
 
   const formatKm = (d, id) => {
-    if (id === 1) return ""; // EC のとき完全に非表示
+    // 公式Shop(EC) は距離表示なし
+    if (id === 1) return "";
     if (Number.isFinite(d) && d !== Infinity) {
       return `${d.toFixed(1)}km`;
     }
@@ -89,7 +89,7 @@ export default function StorePanelContent() {
 
       const token = localStorage.getItem("app.access_token");
 
-      // トークンなし
+      // トークンなし → ログインを促す
       if (!token) {
         if (alive) {
           setStores([]);
@@ -132,6 +132,7 @@ export default function StorePanelContent() {
 
         const list = Array.isArray(raw) ? raw : [];
 
+        // 距離情報整形
         const mapped = list.map((s, idx) => {
           const rawD = s.distance_km;
           const numD =
@@ -141,8 +142,8 @@ export default function StorePanelContent() {
           return {
             id: s.store_id,
             name: s.store_name,
-            distance: d,
-            distance_km: numD,
+            distance: d,          // 並べ替え用
+            distance_km: numD,    // 生の値（参考）
             is_main: !!s.is_main,
             is_sub: !!s.is_sub,
             updated_at: s.updated_at,
@@ -150,12 +151,12 @@ export default function StorePanelContent() {
           };
         });
 
+        // ★ 仕様：メイン店舗は別枠で固定表示
+        // それ以外は距離昇順にソートして、そのまま下に並べる
         mapped.sort((a, b) => a.distance - b.distance);
 
-        const finalStores = mapped; // ここは既存仕様のままでOK
-
         if (alive) {
-          setStores(finalStores);
+          setStores(mapped);
           setErr("");
         }
       } catch (e) {
@@ -169,10 +170,8 @@ export default function StorePanelContent() {
       }
     };
 
-    // ★ 初回マウント時に 1 回実行
     fetchStores();
 
-    // ★ ログイン状態が変わったときに再取得
     const handleAuthChanged = () => {
       fetchStores();
     };
@@ -184,12 +183,16 @@ export default function StorePanelContent() {
     };
   }, []);
 
+  // ★ メイン店舗（どの店舗でもOK。公式Shop(1) がメインならそれがここに入る）
   const mainStore = stores.find((s) => s.is_main) || null;
+
+  // ★ メイン店舗以外を距離順で表示
   const otherStores = stores.filter((s) => !s.is_main);
+
   const favoritesCount = stores.filter((s) => s.is_sub).length;
 
   const toggleFavorite = async (store) => {
-    if (store.is_main) return;
+    if (store.is_main) return;          // メイン店舗はトグル不可
     if (savingId !== null) return;
 
     const token = localStorage.getItem("app.access_token");
@@ -226,8 +229,7 @@ export default function StorePanelContent() {
         )
       );
 
-      // ★ サブ店舗の登録状態が変わったので、Allowed JAN などを取り直すために
-      //    アプリ全体をリロード（MapPage も最新状態で再マウントされる）
+      // サブ店舗更新 → allowed-jans 取り直しのためアプリ全体リロード
       reloadApp();
     } catch (e) {
       console.error(e);
@@ -251,6 +253,7 @@ export default function StorePanelContent() {
           border: "1px solid #eee",
         }}
       >
+        {/* 最上位：メイン店舗（公式Shop を含めて固定表示） */}
         {mainStore && (
           <>
             <div
@@ -287,6 +290,7 @@ export default function StorePanelContent() {
           </>
         )}
 
+        {/* 2段目以降：メイン以外を距離順で全表示 */}
         {!loading &&
           !err &&
           otherStores.map((store, i) => {
