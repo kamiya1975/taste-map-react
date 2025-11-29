@@ -143,3 +143,31 @@ export const REFERENCE_LOTS = {
 export const getReferenceLotById = (lotId) =>
   REFERENCE_LOTS[lotId] || REFERENCE_LOTS["rw1_2025_11"];
 
+export const WINE_TYPE_LABELS = {
+  sparkling: "スパークリング",
+  spark: "スパークリング",
+  spa: "スパークリング",
+
+  white: "白ワイン",
+  blanc: "白ワイン",
+
+  red: "赤ワイン",
+  rouge: "赤ワイン",
+
+  rose: "ロゼワイン",
+  rosé: "ロゼワイン",
+  ros: "ロゼワイン",
+};
+
+export const toJapaneseWineType = (raw) => {
+  if (!raw) return "—";
+  const key = String(raw).trim().toLowerCase();
+  return WINE_TYPE_LABELS[key] || raw;
+};
+
+export const clusterRGBAtoCSS = (rgba) => {
+  if (!rgba) return "rgb(200,200,200)";
+  const [r, g, b] = rgba;
+  return `rgb(${r}, ${g}, ${b})`;
+};
+

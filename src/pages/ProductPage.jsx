@@ -4,6 +4,11 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import "../index.css";
 import { useSimpleCart } from "../cart/simpleCart";
 import { postRating } from "../lib/appRatings";
+import {
+  getClusterRGBA,
+  clusterRGBAtoCSS,
+  toJapaneseWineType,
+} from "../ui/constants";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 const PUBLIC_BASE = process.env.PUBLIC_URL || "";
@@ -327,7 +332,7 @@ function ProductInfoSection({ product }) {
   if (!product) return null;
 
   const detailRows = [
-    ["タイプ", product.wine_type || "—"],
+    ["タイプ", toJapaneseWineType(product.wine_type)],
     ["生産者名", product.producer_name || "—"],
     ["容量", product.volume_ml ? `${product.volume_ml}ml` : "—"],
     ["国", product.country || "—"],
@@ -687,19 +692,9 @@ export default function ProductPage() {
   const displayPrice =
     price != null ? `¥${Number(price).toLocaleString()}` : "価格未定";
 
-  const typeColors = {
-    Red: "#8B2E3B",
-    White: "#D9D76C",
-    Rose: "#E48E8E",
-    Sparkling: "#6BAED6",
-    Spa: "#6BAED6",
-    Other: "#CCCCCC",
-  };
-  const wineTypeKey =
-    product?.wine_type && typeColors[product.wine_type]
-      ? product.wine_type
-      : "Other";
-  const typeColor = typeColors[wineTypeKey];
+  // ★ クラスタ色へ変更（typeColors は廃止）
+  const clusterRgba = getClusterRGBA(product?.cluster_id);
+  const typeColor = clusterRGBAtoCSS(clusterRgba);
 
   const title =
     product?.name_kana || 
