@@ -116,6 +116,7 @@ export default function StorePanelContent() {
 
         const res = await fetch(url, {
           method: "GET",
+          cache: "no-store",
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/json",
