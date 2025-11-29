@@ -104,56 +104,43 @@ async function fetchAllowedJansForStore(storeId) {
 //    - それもダメな場合のみ null を返し、全件表示にフォールバック
 async function fetchAllowedJansAuto() {
   const mainStoreId = getCurrentMainStoreId();
-
   let token = "";
   try {
     token = localStorage.getItem("app.access_token") || "";
   } catch {}
 
-  // -----------------------------
-  // ① 未ログイン or トークンなし
-  // -----------------------------
+  // ===== 未ログイン =====
   if (!token) {
-    // ①-1. ユーザーが選んだ店舗IDで試す
-    if (mainStoreId && mainStoreId !== 1) {
+    // ★ メイン店舗 + 公式Shop(1) の両方を UNION する
+    const targetIds = [];
+    if (mainStoreId && mainStoreId !== 1) targetIds.push(mainStoreId);
+    targetIds.push(1); // 公式Shop は必ず含める
+
+    const union = new Set();
+
+    for (const sid of targetIds) {
       try {
-        const arr = await fetchAllowedJansForStore(mainStoreId);
-        if (arr && arr.length > 0) {
-          return arr;
+        const arr = await fetchAllowedJansForStore(sid);
+        if (Array.isArray(arr)) {
+          arr.forEach((j) => union.add(String(j)));
         }
       } catch (e) {
-        console.warn(
-          `allowed-jans(stores=${mainStoreId}) の取得に失敗 → 公式Shopにフォールバック`,
-          e
-        );
+        console.warn(`allowed-jans(stores=${sid}) 取得失敗`, e);
       }
     }
 
-    // ①-2. 公式Shop(ID=1)で再トライ
-    try {
-      console.warn("allowed-jans: fallback to official store (id=1)");
-      const fallback = await fetchAllowedJansForStore(1);
-      if (fallback && fallback.length > 0) {
-        return fallback;
-      }
-    } catch (e) {
-      console.warn(
-        "allowed-jans(stores=1) の取得にも失敗 → 全件表示にフォールバック",
-        e
-      );
-      showAllowedJansErrorOnce();
-      return null;
+    if (union.size > 0) {
+      return Array.from(union);
     }
 
-    // ここに来ることはほぼないが保険
     showAllowedJansErrorOnce();
     return null;
   }
 
-  // -----------------------------
-  // ② ログイン済み
-  // -----------------------------
-  // ②-1. 通常は /allowed-jans/auto でユーザー＋メイン店舗ベースの集合を取得
+  // ===== ログイン済み =====
+  const union = new Set();
+
+  // ②-1. /allowed-jans/auto （ユーザー＋メイン店舗ベース）
   try {
     const url =
       `${API_BASE}/api/app/allowed-jans/auto` +
@@ -169,32 +156,29 @@ async function fetchAllowedJansAuto() {
         ? json.allowed_jans.map(String)
         : null;
       if (arr && arr.length > 0) {
-        return arr;
+        arr.forEach((j) => union.add(j));
+      } else {
+        console.warn("allowed-jans/auto は空");
       }
-      console.warn(
-        "allowed-jans/auto は成功したが allowed_jans が空 → 公式Shopにフォールバック"
-      );
     } else {
-      console.warn(`allowed-jans/auto HTTP ${res.status} → 公式Shopにフォールバック`);
+      console.warn(`allowed-jans/auto HTTP ${res.status}`);
     }
   } catch (e) {
-    console.warn("allowed-jans/auto の取得に失敗 → 公式Shopにフォールバック", e);
+    console.warn("allowed-jans/auto の取得に失敗", e);
   }
 
-  // ②-2. ログイン済みだが、公式Shop(ID=1) の取扱JANで再トライ
+  // ②-2. 公式Shop(1) の allowed_jans も必ずマージ
   try {
-    console.warn("allowed-jans/auto 失敗のため allowed-jans(stores=1) を使用");
-    const fallback = await fetchAllowedJansForStore(1);
-    if (fallback && fallback.length > 0) {
-      return fallback;
+    const ecArr = await fetchAllowedJansForStore(1);
+    if (Array.isArray(ecArr)) {
+      ecArr.forEach((j) => union.add(String(j)));
     }
   } catch (e) {
-    console.warn(
-      "allowed-jans(stores=1) の取得にも失敗 → 全件表示にフォールバック",
-      e
-    );
-    showAllowedJansErrorOnce();
-    return null;
+    console.warn("allowed-jans(stores=1) の取得に失敗", e);
+  }
+
+  if (union.size > 0) {
+    return Array.from(union);
   }
 
   showAllowedJansErrorOnce();
