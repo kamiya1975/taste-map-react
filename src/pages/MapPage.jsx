@@ -72,6 +72,9 @@ const showAllowedJansErrorOnce = () => {
   }
 };
 
+// ★ 公式Shop ID を定数に
+const OFFICIAL_STORE_ID = 1;
+
 // ★ 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
 async function fetchAllowedJansForStore(storeId) {
   if (!storeId) return null;
@@ -99,9 +102,8 @@ async function fetchAllowedJansForStore(storeId) {
 }
 
 // ★ メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
-//    - まず「ユーザーが選んだ店舗」で取得を試みる
-//    - 失敗 or 0件なら「公式Shop(ID=1)」で再トライ
-//    - それもダメな場合のみ null を返し、全件表示にフォールバック
+//    - all: 全ての取扱JAN（メイン＋サブ＋公式Shop）
+//    - official: 公式Shop(ID=1) が扱っているJAN
 async function fetchAllowedJansAuto() {
   const mainStoreId = getCurrentMainStoreId();
   let token = "";
@@ -111,34 +113,46 @@ async function fetchAllowedJansAuto() {
 
   // ===== 未ログイン =====
   if (!token) {
-    // ★ メイン店舗 + 公式Shop(1) の両方を UNION する
-    const targetIds = [];
-    if (mainStoreId && mainStoreId !== 1) targetIds.push(mainStoreId);
-    targetIds.push(1); // 公式Shop は必ず含める
-
     const union = new Set();
+    let officialArr = [];
 
-    for (const sid of targetIds) {
+    // メイン店舗側
+    if (mainStoreId && mainStoreId !== OFFICIAL_STORE_ID) {
       try {
-        const arr = await fetchAllowedJansForStore(sid);
-        if (Array.isArray(arr)) {
-          arr.forEach((j) => union.add(String(j)));
+        const mainArr = await fetchAllowedJansForStore(mainStoreId);
+        if (Array.isArray(mainArr)) {
+          mainArr.forEach((j) => union.add(String(j)));
         }
       } catch (e) {
-        console.warn(`allowed-jans(stores=${sid}) 取得失敗`, e);
+        console.warn(`allowed-jans(stores=${mainStoreId}) 取得失敗`, e);
       }
     }
 
-    if (union.size > 0) {
-      return Array.from(union);
+    // 公式Shop 側
+    try {
+      const arr = await fetchAllowedJansForStore(OFFICIAL_STORE_ID);
+      if (Array.isArray(arr)) {
+        officialArr = arr.map(String);
+        officialArr.forEach((j) => union.add(j));
+      }
+    } catch (e) {
+      console.warn("allowed-jans(stores=1) 取得失敗", e);
     }
 
-    showAllowedJansErrorOnce();
-    return null;
+    if (union.size === 0) {
+      showAllowedJansErrorOnce();
+      return null;
+    }
+
+    return {
+      all: Array.from(union),
+      official: officialArr,
+    };
   }
 
   // ===== ログイン済み =====
   const union = new Set();
+  let officialArr = [];
 
   // ②-1. /allowed-jans/auto （ユーザー＋メイン店舗ベース）
   try {
@@ -169,20 +183,24 @@ async function fetchAllowedJansAuto() {
 
   // ②-2. 公式Shop(1) の allowed_jans も必ずマージ
   try {
-    const ecArr = await fetchAllowedJansForStore(1);
-    if (Array.isArray(ecArr)) {
-      ecArr.forEach((j) => union.add(String(j)));
+    const arr = await fetchAllowedJansForStore(OFFICIAL_STORE_ID);
+    if (Array.isArray(arr)) {
+      officialArr = arr.map(String);
+      officialArr.forEach((j) => union.add(j));
     }
   } catch (e) {
     console.warn("allowed-jans(stores=1) の取得に失敗", e);
   }
 
-  if (union.size > 0) {
-    return Array.from(union);
+  if (union.size === 0) {
+    showAllowedJansErrorOnce();
+    return null;
   }
 
-  showAllowedJansErrorOnce();
-  return null;
+  return {
+    all: Array.from(union),
+    official: officialArr,
+  };
 }
 
 const REREAD_LS_KEY = "tm_reread_until";
@@ -513,23 +531,28 @@ function MapPage() {
 
     (async () => {
       try {
-        // ① ログイン & 店舗設定済みなら、allowed-jans/auto から取扱 JAN を取得
-       let allowedSet = null;
-       try {
-         const allowed = await fetchAllowedJansAuto();
-         if (Array.isArray(allowed) && allowed.length > 0) {
-           allowedSet = new Set(allowed.map(String));
-         }
-       } catch (e) {
-         console.warn(
-           "allowed-jans 系の取得に失敗（公式Shop フォールバックも失敗）→ 全件表示:",
-           e
-         );
-         showAllowedJansErrorOnce();
-       }
+        // ① allowed-jans/auto から取扱 JAN を取得（all と official を両方）
+        let allowedSet = null;
+        let officialSet = null;
+
+        try {
+          const allowedInfo = await fetchAllowedJansAuto();
+          if (allowedInfo && Array.isArray(allowedInfo.all) && allowedInfo.all.length > 0) {
+            allowedSet = new Set(allowedInfo.all.map(String));
+          }
+          if (allowedInfo && Array.isArray(allowedInfo.official) && allowedInfo.official.length > 0) {
+            officialSet = new Set(allowedInfo.official.map(String));
+          }
+        } catch (e) {
+          console.warn(
+            "allowed-jans 系の取得に失敗（公式Shop フォールバックも失敗）→ 全件表示:",
+            e
+          );
+          showAllowedJansErrorOnce();
+        }
 
         // ② 風味データ本体（UMAP 座標 JSON）
-        const url = TASTEMAP_POINTS_URL; // ← SliderPage と同じ URL を参照
+        const url = TASTEMAP_POINTS_URL;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const rows = await res.json();
@@ -543,16 +566,18 @@ function MapPage() {
           .filter(Boolean)
           .map((r) => {
             const jan = String(r.jan_code ?? r.JAN ?? "");
- 
+
             const umap_x = num(r.umap_x);
             const umap_y = num(r.umap_y);
             const cluster = num(r.cluster);
- 
-            // ★ 小文字 pc1/2/3 を優先しつつ、旧PC1/2/3 もフォールバック
+
             const pc1 = num(r.pc1 ?? r.PC1);
             const pc2 = num(r.pc2 ?? r.PC2);
             const pc3 = num(r.pc3 ?? r.PC3);
- 
+
+            const isOfficialEc =
+              officialSet ? officialSet.has(jan) : false; // ★ 公式Shop取扱かどうか
+
             return {
               JAN: jan,
               jan_code: jan,
@@ -568,6 +593,8 @@ function MapPage() {
               pc1,
               pc2,
               pc3,
+              isOfficialEc, // ★ 追加
+
               商品名: r["temp_name"],
               国: r["国"],
               産地: r["産地"],

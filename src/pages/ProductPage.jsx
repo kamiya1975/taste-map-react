@@ -746,6 +746,18 @@ export default function ProductPage() {
   const displayPrice =
     price != null ? `¥${Number(price).toLocaleString()}` : "価格未定";
 
+  // ★ どの店舗の価格か（バックエンドのフィールド候補を順に見る）
+  const priceStoreName =
+    product?.price_store_name ||     // 推奨：価格算出元の店舗名
+    product?.store_name ||          // 一般的な店舗名フィールド
+    product?.main_store_name ||     // メイン店舗の名前
+    product?.ec_store_name ||       // EC用の表示名（もしあれば）
+    "";
+
+  const priceStoreLine = priceStoreName
+    ? `${priceStoreName}でお買い求めいただけます。（在庫・価格は店舗でご確認ください）`
+    : "";  
+
   // ★ クラスタ色へ変更（typeColors は廃止）
   //   風味データ由来の clusterId を優先し、なければ product.cluster_id を使う
   const clusterRgba = getClusterRGBA(
@@ -835,11 +847,11 @@ export default function ProductPage() {
         {title}
       </h2>
 
-      {/* タイプマーク＋価格 */}
+      {/* タイプマーク＋価格＋「どの店舗の商品か」 */}
       <div
         style={{
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           margin: "4px 0 12px 0",
         }}
       >
@@ -851,10 +863,35 @@ export default function ProductPage() {
             borderRadius: 4,
             marginRight: 8,
             display: "inline-block",
+            marginTop: 4,
           }}
         />
-        <span style={{ marginLeft: 8 }}>{displayPrice}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 600,
+              lineHeight: 1.4,
+            }}
+          >
+            {displayPrice}
+          </div>
+
+          {priceStoreLine && (
+            <div
+              style={{
+                marginTop: 2,
+                fontSize: 11,
+                lineHeight: 1.6,
+                color: "#555",
+              }}
+            >
+              {priceStoreLine}
+            </div>
+          )}
+        </div>
       </div>
+
 
       {/* カートに入れる */}
       <div style={{ margin: "8px 0 16px" }}>
