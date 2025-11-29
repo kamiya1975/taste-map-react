@@ -21,7 +21,7 @@ async function resolveLocation() {
 // ★ 公式Shop（EC）用の仮想店舗エントリ（id=0）
 const EC_STORE_ENTRY = {
   id: 0,
-  name: "TasteMap公式Shop（EC）",
+  name: "TasteMap公式Shop",
   distance: Infinity,
   distance_km: null,
   is_main: false,
