@@ -8,6 +8,7 @@ import {
   getClusterRGBA,
   clusterRGBAtoCSS,
   toJapaneseWineType,
+  TASTEMAP_POINTS_URL,
 } from "../ui/constants";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
@@ -431,6 +432,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(0);
+  const [clusterId, setClusterId] = useState(null);
 
   // ★ CartContext（ローカル積み → カートで同期）
   const [adding, setAdding] = useState(false);
@@ -586,6 +588,58 @@ export default function ProductPage() {
     };
   }, [jan_code]);
 
+  // 風味データ（umapData or JSON）から cluster を取得
+  useEffect(() => {
+    if (!jan_code) return;
+
+    let cancelled = false;
+
+    const findCluster = async () => {
+      // 1) まず MapPage が保存した umapData を見る
+      try {
+        const raw = localStorage.getItem("umapData");
+        if (raw) {
+          const arr = JSON.parse(raw);
+          const hit = (arr || []).find(
+            (r) => String(r.jan_code || r.JAN) === String(jan_code)
+          );
+          if (hit && Number.isFinite(Number(hit.cluster))) {
+            if (!cancelled) setClusterId(Number(hit.cluster));
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("ProductPage: umapData 読み込み失敗:", e);
+      }
+
+      // 2) なければ風味データJSONを直接 fetch
+      try {
+        const res = await fetch(TASTEMAP_POINTS_URL);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const rows = await res.json();
+        if (cancelled) return;
+
+        const hit = (rows || []).find(
+          (r) => String(r.jan_code || r.JAN) === String(jan_code)
+        );
+        if (hit && Number.isFinite(Number(hit.cluster))) {
+          setClusterId(Number(hit.cluster));
+        } else {
+          setClusterId(null);
+        }
+      } catch (e) {
+        console.error("ProductPage: クラスタ取得に失敗:", e);
+        if (!cancelled) setClusterId(null);
+      }
+    };
+
+    findCluster();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [jan_code]);
+
   // 評価の同期（STATE_SNAPSHOT / SET_RATING）は従来通り
   useEffect(() => {
     const onMsgSnapshot = (e) => {
@@ -693,7 +747,10 @@ export default function ProductPage() {
     price != null ? `¥${Number(price).toLocaleString()}` : "価格未定";
 
   // ★ クラスタ色へ変更（typeColors は廃止）
-  const clusterRgba = getClusterRGBA(product?.cluster_id);
+  //   風味データ由来の clusterId を優先し、なければ product.cluster_id を使う
+  const clusterRgba = getClusterRGBA(
+    clusterId != null ? clusterId : product?.cluster_id
+  );
   const typeColor = clusterRGBAtoCSS(clusterRgba);
 
   const title =
