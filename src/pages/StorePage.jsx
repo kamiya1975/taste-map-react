@@ -18,13 +18,27 @@ async function resolveLocation() {
   return geo;
 }
 
+// ★ 公式Shop（EC）用の仮想店舗エントリ（id=0）
+const EC_STORE_ENTRY = {
+  id: 0,
+  name: "TasteMap公式Shop（EC）",
+  distance: Infinity,
+  distance_km: null,
+  is_main: false,
+  updated_at: null,
+  branch: "",
+  address: "",
+  genre: "",
+  _key: "ec@@0",
+};
+
 /* ========= 本体 ========= */
 export default function StorePage() {
   const navigate = useNavigate();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [locFailed, setLocFailed] = useState(false); // ★ 位置情報NGフラグ
+  const [locFailed, setLocFailed] = useState(false); // 位置情報NGフラグ
 
   const headerRef = useRef(null);
   const [headerH, setHeaderH] = useState(0);
@@ -48,14 +62,18 @@ export default function StorePage() {
       setLoading(true);
       setErr("");
 
-      // ★ ログイントークンは「あるなら使う」程度にする
+      // ログイントークンは「あるなら使う」程度
       const token = localStorage.getItem("app.access_token") || null;
 
       try {
         const loc = await resolveLocation();
-        const locAllowed = !!(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lon));
+        const locAllowed = !!(
+          loc &&
+          Number.isFinite(loc.lat) &&
+          Number.isFinite(loc.lon)
+        );
 
-        // ★ 位置情報が取れたかどうかを保存
+        // 位置情報が取れたかどうかを保存
         setLocFailed(!locAllowed);
 
         const params = new URLSearchParams();
@@ -88,6 +106,7 @@ export default function StorePage() {
         console.log("[StorePage] raw stores:", raw);
         const list = Array.isArray(raw) ? raw : [];
 
+        // API からの店舗情報を整形
         const enriched = list.map((s, i) => {
           const rawD = s.distance_km;
           const numD =
@@ -108,10 +127,14 @@ export default function StorePage() {
           };
         });
 
+        // 距離順ソート（位置情報が取れなかった店舗は Infinity で末尾へ）
         enriched.sort((a, b) => a.distance - b.distance);
 
-        // ★ 位置情報NGなら EC(id=1) だけ残す仕様はそのまま
-        const finalStores = locAllowed ? enriched : enriched.filter((s) => s.id === 1);
+        // ★ 公式Shop（EC, id=0）を先頭に差し込む
+        const finalStores = [
+          EC_STORE_ENTRY,
+          ...enriched.filter((s) => s.id !== 0), // 念のため0を除外
+        ];
 
         setStores(finalStores);
 
@@ -120,7 +143,9 @@ export default function StorePage() {
         } catch {}
       } catch (e) {
         console.error(e);
-        setErr("店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。");
+        setErr(
+          "店舗データの読み込みに失敗しました。しばらく経ってから再度お試しください。"
+        );
       } finally {
         setLoading(false);
       }
@@ -138,7 +163,8 @@ export default function StorePage() {
   }, []);
 
   const formatKm = (d, id) => {
-    if (id === 1) return ""; // EC は非表示
+    // ★ EC(id=0) は距離表示なし
+    if (id === 0) return "";
     if (Number.isFinite(d) && d !== Infinity) {
       return `${d.toFixed(1)}km`;
     }
@@ -150,8 +176,8 @@ export default function StorePage() {
       localStorage.setItem("selectedStore", JSON.stringify(store));
       localStorage.setItem("main_store", JSON.stringify(store));
 
-      // ★ 新方式・旧方式の両方で main_store_id を保存しておく
-      if (store && store.id) {
+      // ★ id=0 も正しく保存されるように判定を修正
+      if (store && store.id !== undefined && store.id !== null) {
         localStorage.setItem("app.main_store_id", String(store.id));
         localStorage.setItem("store.mainStoreId", String(store.id)); // 互換用
       }
@@ -167,7 +193,13 @@ export default function StorePage() {
   };
 
   return (
-    <div style={{ fontFamily: "sans-serif", height: "100vh", overflow: "hidden" }}>
+    <div
+      style={{
+        fontFamily: "sans-serif",
+        height: "100vh",
+        overflow: "hidden",
+      }}
+    >
       {/* 固定ヘッダ */}
       <div
         ref={headerRef}
@@ -184,9 +216,16 @@ export default function StorePage() {
           <h2 className="store-header" style={{ margin: 0 }}>
             購入した店舗を選択してください。
           </h2>
-          {/* ★追記文 */}
-          <p style={{ marginTop: 8, fontSize: 12, color: "#555", lineHeight: 1.5 }}>
-            購入した店舗がない場合は、<br />
+          <p
+            style={{
+              marginTop: 8,
+              fontSize: 12,
+              color: "#555",
+              lineHeight: 1.5,
+            }}
+          >
+            購入した店舗がない場合は、
+            <br />
             TasteMap公式Shopをお選びください。
           </p>
         </div>
@@ -205,7 +244,9 @@ export default function StorePage() {
         }}
       >
         {loading && <div style={{ padding: 16 }}>読み込み中…</div>}
-        {err && <div style={{ padding: 16, color: "crimson" }}>{err}</div>}
+        {err && (
+          <div style={{ padding: 16, color: "crimson" }}>{err}</div>
+        )}
 
         {!loading &&
           !err &&
@@ -227,8 +268,15 @@ export default function StorePage() {
                   <div className="store-link">
                     {store.name} {store.branch || ""}
                   </div>
-                  <div style={{ fontSize: 12, color: "#6e6e73", whiteSpace: "normal" }}>
-                    {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#6e6e73",
+                      whiteSpace: "normal",
+                    }}
+                  >
+                    {store.address || ""}{" "}
+                    {store.genre ? ` / ${store.genre}` : ""}
                   </div>
                 </div>
                 <div style={{ marginLeft: 12 }}>
@@ -236,8 +284,8 @@ export default function StorePage() {
                 </div>
               </div>
 
-              {/* ★ 公式Shopのすぐ下に表示するメッセージ */}
-              {locFailed && store.id === 1 && (
+              {/* ★ 位置情報NG時は、EC(id=0) の下に説明メッセージ */}
+              {locFailed && store.id === 0 && (
                 <div
                   style={{
                     padding: "8px 16px 16px",
@@ -246,8 +294,10 @@ export default function StorePage() {
                     background: "rgb(250,250,250)",
                   }}
                 >
-                  購入した店舗が表示されない場合は、<br />
-                  端末の「設定」から、位置情報取得の許可をしてください。<br />
+                  購入した店舗が表示されない場合は、
+                  <br />
+                  端末の「設定」から、位置情報取得の許可をしてください。
+                  <br />
                   位置情報の許可が難しい場合は、TasteMap公式Shopを選択してください。
                 </div>
               )}
