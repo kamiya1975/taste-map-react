@@ -30,6 +30,13 @@ import {
 import { getLotId } from "../utils/lot";
 import { fetchLatestRatings } from "../lib/appRatings";
 
+// 任意のオブジェクトから JAN を安全に取り出す共通ヘルパー
+const getJanFromItem = (item) => {
+  if (!item) return "";
+  const jan = item.JAN ?? item.jan_code ?? item.jan ?? null;
+  return jan ? String(jan) : "";
+};
+
 //現在のメイン店舗IDを取得
 const getCurrentMainStoreId = () => {
   try {
@@ -848,7 +855,8 @@ function MapPage() {
      const wx = userPin[0];
      const wy = -userPin[1];
      const nearest = findNearestWineWorld(wx, wy);
-     if (nearest?.JAN) {
+     const janStr = getJanFromItem(nearest);
+     if (janStr) {
        setHideHeartForJAN(null);
        setSelectedJAN(nearest.JAN);
        setIframeNonce(Date.now());
@@ -1045,20 +1053,24 @@ function MapPage() {
         onPickWine={async (item) => {
           if (!item) return;
 
-          // ★ もう基準ワインも特別扱いせず、通常どおり商品ページを開く
+          const janStr = getJanFromItem(item);
+          if (!janStr) {
+            console.warn("onPickWine: JAN が取得できませんでした", item);
+            return;
+          }
+
           await closeUIsThen({
             preserveMyPage: true,
             preserveSearch: true,
             preserveCluster: true,
           });
 
-          // ★★★ クラスターパネルを畳む（ここ！！）
           setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
 
-          setSelectedJAN(item.JAN);
+          setSelectedJAN(janStr);
           setIframeNonce(Date.now());
           setProductDrawerOpen(true);
-          
+
           focusOnWine(item, { recenter: false });
         }}
         clusterColorMode={clusterColorMode}
@@ -1249,6 +1261,12 @@ function MapPage() {
         onPick={async (item) => {
           if (!item) return;
 
+          const janStr = getJanFromItem(item);
+          if (!janStr) {
+            console.warn("SearchPanel onPick: JAN が取得できませんでした", item);
+            return;
+          }
+
           await closeUIsThen({
             preserveMyPage: true,
             preserveSearch: true,
@@ -1310,8 +1328,11 @@ function MapPage() {
             }
           }
 
-          const hit = data.find((d) => String(d.JAN) === jan);
+          const hit = data.find((d) => String(getJanFromItem(d)) === jan);
           if (hit) {
+            const janStr = getJanFromItem(hit);
+            if (!janStr) return false;
+
             await closeUIsThen({
               preserveMyPage: true,
               preserveCluster: true
@@ -1360,7 +1381,7 @@ function MapPage() {
           setHideHeartForJAN(String(jan));
           setSelectedJAN(jan);
           setIframeNonce(Date.now());
-          const item = data.find((d) => String(d.JAN) === String(jan));
+          const item = data.find((d) => String(getJanFromItem(d)) === String(jan));
           if (item) {
             const tx = Number(item.umap_x), ty = Number(item.umap_y);
             if (Number.isFinite(tx) && Number.isFinite(ty)) {
