@@ -25,10 +25,12 @@ export const paperBaseStyle = {
 // TasteMap APIベースURL
 export const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
-// TasteMap 打点APIのURL（MapPage / SliderPage で共通利用）
+// TasteMap 打点JSONのURL（MapPage / SliderPage で共通利用）
+// 1. 本番では Vercel の env REACT_APP_POINTS_JSON_URL を優先
+// 2. なければ heteml の points_current.json をデフォルトで使う
 export const TASTEMAP_POINTS_URL =
   process.env.REACT_APP_POINTS_JSON_URL ||
-  `${API_BASE}/api/app/points`;
+  "https://yaoyoshi.heteml.net/points/points_current.json";
 
 // ===== Map共通 =====
 export const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
