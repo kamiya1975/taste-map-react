@@ -156,6 +156,9 @@ function clampViewState(nextVS, panBounds, sizePx, margins = {}) {
 const MapCanvas = forwardRef(function MapCanvas(
   {
     data,
+    allowedJansSet,
+    janStoreMap,
+    activeStoreId,
     userRatings,
     selectedJAN,
     favorites,
@@ -193,13 +196,36 @@ const MapCanvas = forwardRef(function MapCanvas(
     return [cx - K * halfW, cy - K * halfH, cx + K * halfW, cy + K * halfH];
   }, [viewState.zoom, viewState.target]);
 
+  // --- 店舗情報に基づいて打点をフィルタするデータ ---
+  const filteredData = useMemo(() => {
+    if (!Array.isArray(data) || data.length === 0) return [];
+
+    // allowedJansSet が無ければ従来どおり全件
+    if (!allowedJansSet) return data;
+
+    return data.filter((d) => {
+      const jan = janOf(d);
+      if (!jan) return false;
+
+      // ① 自分の店舗群が扱う JAN かどうか
+      if (!allowedJansSet.has(jan)) return false;
+
+      // ② activeStoreId が指定されているときは、その店舗が扱う JAN のみに絞る
+      if (activeStoreId != null && janStoreMap) {
+        const stores = janStoreMap[jan] || [];
+        if (!stores.includes(activeStoreId)) return false;
+      }
+
+      return true;
+    });
+  }, [data, allowedJansSet, janStoreMap, activeStoreId]);
 
   // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
   const pointBubbles = useMemo(() => {
     if (!highlight2D) return [];
 
     // 値分布（外れ値カットは従来ヒートと同じ HEAT_CLIP_PCT を踏襲）
-    const vals = data
+    const vals = filteredData
       .map(d => Number(d[highlight2D]))
       .filter(v => Number.isFinite(v));
     if (!vals.length) return [];
@@ -212,7 +238,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     const vHi = hi - lo < 1e-9 ? lo + 1e-9 : hi;
 
     // 各商品点へ t と座標を付与
-    return data
+    return filteredData
       .map(d => {
         const v = Number(d[highlight2D]);
         if (!Number.isFinite(v)) return null;
@@ -226,8 +252,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         };
       })
     .filter(Boolean);
-  }, [data, highlight2D]);
-
+  }, [filteredData, highlight2D]);
 
   // 初期クランプ
   useEffect(() => {
@@ -335,7 +360,7 @@ const MapCanvas = forwardRef(function MapCanvas(
   // --- セル集計（評価フラグ） ---
   const cells = useMemo(() => {
     const map = new Map();
-    data.forEach((d) => {
+    filteredData.forEach((d) => {
       const ix = toIndex(xOf(d));
       const iy = toIndex(-yOf(d));
       const key = keyOf(ix, iy);
@@ -358,12 +383,12 @@ const MapCanvas = forwardRef(function MapCanvas(
       map.get(key).count += 1;
     });
     return Array.from(map.values());
-  }, [data, userRatings]);
+  }, [filteredData, userRatings]);
 
   // ★ ベクタで描く選択ドット（外黒→内白→中心黒）
   const selectedDotLayers = useMemo(() => {
     if (!selectedJAN) return [];
-    const hit = data.find(d => janOf(d) === String(selectedJAN));
+    const hit = filteredData.find(d => janOf(d) === String(selectedJAN));
     if (!hit || !Number.isFinite(xOf(hit)) || !Number.isFinite(yOf(hit))) return [];
 
     const pos = [xOf(hit), -yOf(hit), 0];
@@ -394,14 +419,14 @@ const MapCanvas = forwardRef(function MapCanvas(
     });
 
     return [outer, innerWhite];
-  }, [data, selectedJAN]);
+  }, [filteredData, selectedJAN]);
 
   // --- レイヤ：打点 ---
   const mainLayer = useMemo(
     () =>
       new ScatterplotLayer({
         id: "scatter",
-        data,
+        data: filteredData,
         getPosition: (d) => [xOf(d), -yOf(d), 0],
         getFillColor: (d) => {
           const janStr = janOf(d);
@@ -423,14 +448,14 @@ const MapCanvas = forwardRef(function MapCanvas(
         getRadius: 0.03,
         pickable: true,
       }),
-    [data, favorites, userRatings, clusterColorMode]
+     [filteredData, favorites, userRatings, clusterColorMode]
   );
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
     const lineColor = [255, 0, 0, 255];
     return Object.entries(userRatings || {}).flatMap(([jan_code, ratingObj]) => {
-      const item = data.find(d => janOf(d) === String(jan_code));
+      const item = filteredData.find(d => janOf(d) === String(jan_code));
       if (!item || !Number.isFinite(xOf(item)) || !Number.isFinite(yOf(item))) return [];
       const count = Math.min(Number(ratingObj?.rating) || 0, 5);
       if (count <= 0) return [];
@@ -457,7 +482,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         });
       });
     });
-  }, [data, userRatings]);
+  }, [filteredData, userRatings]);
 
   // --- レイヤ：嗜好コンパス（ユーザー重心）をピン化 ---
   const compassLayer = useMemo(() => {
@@ -514,7 +539,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       yUMAP = Number(basePoint.y);
     } else {
       // ② なければ従来通り ANCHOR_JAN の座標にフォールバック
-      const item = data.find(d => String(d.JAN) === ANCHOR_JAN);
+      const item = filteredData.find(d => String(d.JAN) === ANCHOR_JAN);
       if (!item || !Number.isFinite(xOf(item)) || !Number.isFinite(yOf(item))) {
         return null;
       }
@@ -542,16 +567,16 @@ const MapCanvas = forwardRef(function MapCanvas(
       },
       parameters: { depthTest: false },
     });
-  }, [data, basePoint, onOpenSlider]);  // ★ 依存に onOpenSlider を追加
+  }, [filteredData, basePoint, onOpenSlider]);
 
   // --- 近傍探索（クリック時） ---
   const findNearestWine = useCallback(
     (coord) => {
-      if (!coord || !Array.isArray(data) || data.length === 0) return null;
+      if (!coord || !Array.isArray(filteredData) || filteredData.length === 0) return null;
       const [cx, cy] = coord;
       let best = null,
         bestD2 = Infinity;
-      for (const d of data) {
+      for (const d of filteredData) {
         const x = xOf(d), y = -yOf(d);
         const dx = x - cx,
           dy = y - cy;
@@ -563,7 +588,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       }
       return best;
     },
-    [data]
+    [filteredData]
   );
 
   // --- 操作終了時クランプ ---

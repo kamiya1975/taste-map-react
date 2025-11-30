@@ -754,13 +754,14 @@ export default function ProductPage() {
     product?.ec_store_name || // EC用の表示名（もしあれば）
     "";
 
-  // ★ 在庫状況コメント
-  //  1) 店舗名があれば従来どおり
-  //  2) 価格が取れなかったときは「現在取扱なし」を明示
+  // ★ 選択中店舗にアクティブ取扱があるか（バックエンド新フィールド）
+  const availableInSelected =
+    product?.available_in_selected_stores;
+
   const availabilityLine =
     priceStoreName
       ? `${priceStoreName}でお買い求めいただけます。（在庫・価格は店舗でご確認ください）`
-      : price === null
+      : availableInSelected === false
       ? "現在、お選びの店舗ではお取り扱いがありません。（過去の評価履歴として表示しています）"
       : "";
 

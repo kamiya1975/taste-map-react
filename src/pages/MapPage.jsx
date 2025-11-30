@@ -336,6 +336,10 @@ function MapPage() {
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
   const [iframeNonce, setIframeNonce] = useState(0);
+  const [allowedJansSet, setAllowedJansSet] = useState(null);
+  const [storeList, setStoreList] = useState([]);          // 店舗の詳細リスト
+  const [janStoreMap, setJanStoreMap] = useState({});      // jan -> [store_id,...]
+  const [activeStoreId, setActiveStoreId] = useState(null); // フィルタ用（任意）
 
   useEffect(() => {
     if (!isRatedOpen) return;
@@ -526,95 +530,40 @@ function MapPage() {
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
-      try {
-        // ① ログイン & 店舗設定済みなら、allowed-jans/auto から取扱 JAN を取得
-        let allowedSet = null;
-        try {
-          const allowed = await fetchAllowedJansAuto(); // 未ログインなら null が返る想定
-          if (Array.isArray(allowed) && allowed.length > 0) {
-            allowedSet = new Set(allowed.map(String));
-          }
-        } catch (e) {
-          console.warn(
-            "allowed-jans/auto の取得に失敗しました（全件表示にフォールバック）:",
-            e
-          );
-          showAllowedJansErrorOnce();
-        }
+  (async () => {
+    try {
+      const arr = await fetchAllowedJansAuto();  // ← 上で定義したヘルパーを使う
+      if (cancelled) return;
 
-        // ② 風味データ本体（UMAP 座標 JSON）
-        const url = TASTEMAP_POINTS_URL;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const rows = await res.json();
-        if (cancelled) return;
-
-        // ③ 正規化 & フィルタ
-        const cleaned = (rows || [])
-          .filter(Boolean)
-          .map((r) => {
-            const toNum = (v) => (v === "" || v == null ? NaN : Number(v));
-            const jan = String(r.jan_code ?? r.JAN ?? "");
-
-            const umap_x = Number(r.umap_x);
-            const umap_y = Number(r.umap_y);
-            const cluster = Number(r.cluster);
-
-            const pc1 = Number(r.PC1 ?? r.pc1);
-            const pc2 = Number(r.PC2 ?? r.pc2);
-            const pc3 = Number(r.PC3 ?? r.pc3);
-
-            return {
-              JAN: jan,
-              jan_code: jan,
-              Type: r.wine_type ?? "Other",
-              umap_x,
-              umap_y,
-              cluster,
-              UMAP1: umap_x,
-              UMAP2: umap_y,
-              // PC1/PC2/PC3 と pc1/pc2/pc3 の両方に対応
-              PC1: pc1,
-              PC2: pc2,
-              PC3: pc3,
-              pc1,
-              pc2,
-              pc3,
-              商品名: r["temp_name"],
-              国: r["国"],
-              産地: r["産地"],
-              葡萄品種: r["葡萄品種"],
-              生産年: r["生産年"],
-              "容量 ml": toNum(r["容量 ml"]),
-              希望小売価格: toNum(r["希望小売価格"]),
-              コメント: r["コメント"] ?? r["comment"] ?? r["説明"] ?? "",
-            };
-          })
-          .filter((r) => {
-            if (!Number.isFinite(r.umap_x) || !Number.isFinite(r.umap_y)) return false;
-            if (!r.jan_code) return false;
-            // ログイン済み & 店舗選択済みなら、その店舗の取扱 JAN だけ残す
-            if (allowedSet && !allowedSet.has(String(r.jan_code))) return false;
-            return true;
-          });
-
-        if (cancelled) return;
-
-        setData(cleaned);
-        try {
-          localStorage.setItem("umapData", JSON.stringify(cleaned));
-        } catch {}
-      } catch (err) {
-        if (!cancelled) {
-          console.error("umap_coords_c.json の取得または整形に失敗:", err);
-        }
+      // 取得に失敗 or 0件 → フィルタ無し（全件表示）
+      if (!arr || arr.length === 0) {
+        setAllowedJansSet(null);
+        setStoreList([]);
+        setJanStoreMap({});
+        return;
       }
-    })();
 
-    return () => {
-      cancelled = true;
-    };
+      setAllowedJansSet(new Set(arr));
+
+      // ★ 店舗一覧や janStoreMap が必要なら、
+      //    fetchAllowedJansAuto の戻り値を { allowedJans, stores } に拡張して、
+      //    ここで stores から組み立てる形にするとよいです。
+      // ひとまず今は「自分の店舗群の JAN セットによるフィルタ」だけ効けばOKなら空のままでよい。
+      setStoreList([]);
+      setJanStoreMap({});
+    } catch (e) {
+      console.error("allowed-jans の取得に失敗:", e);
+      if (!cancelled) {
+        // エラー時もフィルタ無し（全件表示）にする
+        setAllowedJansSet(null);
+        setStoreList([]);
+        setJanStoreMap({});
+      }
+    }
+  })();
+  return () => {
+     cancelled = true;
+  };
   }, []);
 
   // スキャナ：未登録JANの警告リセット
@@ -1048,6 +997,9 @@ function MapPage() {
     <div id="map-root" className="map-root" tabIndex={-1}>
       <MapCanvas
         ref={deckRef}
+        allowedJansSet={allowedJansSet}
+        janStoreMap={janStoreMap}
+        activeStoreId={activeStoreId}
         data={data}
         userRatings={userRatings}
         selectedJAN={selectedJAN}
