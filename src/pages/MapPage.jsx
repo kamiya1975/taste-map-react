@@ -566,6 +566,38 @@ function MapPage() {
   };
   }, []);
 
+  // ====== 打点データ読み込み（TASTEMAP_POINTS_URL から）=====
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+     try {
+        console.log("[MapPage] fetch points from", TASTEMAP_POINTS_URL);
+        const res = await fetch(TASTEMAP_POINTS_URL);
+        if (!res.ok) {
+          console.error("[MapPage] points fetch !ok", res.status, res.statusText);
+          return;
+        }
+
+        const json = await res.json();
+
+        // 配列ならそのまま / {points:[...]} 形式なら中身を使う
+        const list = Array.isArray(json) ? json : json.points || [];
+        console.log("[MapPage] points length =", list.length);
+
+        if (!cancelled) {
+          setData(list);
+        }
+      } catch (e) {
+        console.error("[MapPage] points fetch error", e);
+      }
+    })();
+
+   return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // スキャナ：未登録JANの警告リセット
   useEffect(() => {
     if (isScannerOpen) unknownWarnedRef.current.clear();
@@ -1675,4 +1707,3 @@ function MapPage() {
 }
 
 export default MapPage;
-
