@@ -748,15 +748,21 @@ export default function ProductPage() {
 
   // ★ どの店舗の価格か（バックエンドのフィールド候補を順に見る）
   const priceStoreName =
-    product?.price_store_name ||     // 推奨：価格算出元の店舗名
-    product?.store_name ||          // 一般的な店舗名フィールド
-    product?.main_store_name ||     // メイン店舗の名前
-    product?.ec_store_name ||       // EC用の表示名（もしあれば）
+    product?.price_store_name || // 推奨：価格算出元の店舗名
+    product?.store_name || // 一般的な店舗名フィールド
+    product?.main_store_name || // メイン店舗の名前
+    product?.ec_store_name || // EC用の表示名（もしあれば）
     "";
 
-  const priceStoreLine = priceStoreName
-    ? `${priceStoreName}でお買い求めいただけます。（在庫・価格は店舗でご確認ください）`
-    : "";  
+  // ★ 在庫状況コメント
+  //  1) 店舗名があれば従来どおり
+  //  2) 価格が取れなかったときは「現在取扱なし」を明示
+  const availabilityLine =
+    priceStoreName
+      ? `${priceStoreName}でお買い求めいただけます。（在庫・価格は店舗でご確認ください）`
+      : price === null
+      ? "現在、お選びの店舗ではお取り扱いがありません。（過去の評価履歴として表示しています）"
+      : "";
 
   // ★ クラスタ色へ変更（typeColors は廃止）
   //   風味データ由来の clusterId を優先し、なければ product.cluster_id を使う
@@ -877,7 +883,7 @@ export default function ProductPage() {
             {displayPrice}
           </div>
 
-          {priceStoreLine && (
+          {availabilityLine && (
             <div
               style={{
                 marginTop: 2,
@@ -886,7 +892,7 @@ export default function ProductPage() {
                 color: "#555",
               }}
             >
-              {priceStoreLine}
+              {availabilityLine}
             </div>
           )}
         </div>
