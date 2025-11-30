@@ -16,7 +16,6 @@ import {
   HEAT_CLIP_PCT,
   MAP_POINT_COLOR,
   getClusterRGBA,
-  TASTEMAP_POINTS_URL,
 } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
