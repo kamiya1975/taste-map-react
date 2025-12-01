@@ -8,6 +8,7 @@ import {
   PathLayer,
   IconLayer,
   BitmapLayer,
+  TextLayer,
 } from "@deck.gl/layers";
 import {
   ZOOM_LIMITS,
@@ -54,48 +55,6 @@ const makePinSVG = ({
     height: h,
     anchorX: w / 2,   // 先端が座標に刺さるよう、Xは中央
     anchorY: h - 1,   // Yは最下点付近（微調整は -1/-2 で）
-  };
-};
-
-// EC 商品用の★アイコン（SVG埋め込み）
-const makeStarSVG = ({
-  fill = "#000000",
-  stroke = "#FFFFFF",
-  strokeWidth = 1.5,
-} = {}) => {
-  const w = 40;
-  const h = 40;
-
-  // パス用の座標系（元の 80x80 のまま固定）
-  const vbW = 80;
-  const vbH = 80;
-
-  // ざっくり5角形の星パス
-  const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" 
-       width="${w}" height="${h}" 
-       viewBox="0 0 ${w} ${h}">
-    <path d="
-      M40 4
-      L49 28
-      L75 28
-      L54 43
-      L62 69
-      L40 54
-      L18 69
-      L26 43
-      L5 28
-      L31 28
-      Z
-    "
-      fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" />
-  </svg>`;
-  return {
-    url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`,
-    width: w,
-    height: h,
-    anchorX: w / 2,
-    anchorY: h / 2,
   };
 };
 
@@ -541,18 +500,21 @@ const MapCanvas = forwardRef(function MapCanvas(
   // --- レイヤ：EC商品の★マーカー ---
   const ecStarLayer = useMemo(() => {
     if (!ecPoints || ecPoints.length === 0) return null;
-    const icon = makeStarSVG({
-      fill: "#000000",    // 本体色（必要なら constants 側に出せる）
-      stroke: "#FFFFFF",
-      strokeWidth: 1.5,
-    });
-    return new IconLayer({
+
+    const STAR_FONT_SIZE = 22; // ●と大きさを合わせる調整用（18〜24で微調整）
+
+    return new TextLayer({
       id: "ec-stars",
       data: ecPoints,
       getPosition: (d) => [xOf(d), -yOf(d), 0],
-      getIcon: () => icon,
-      sizeUnits: "meters",
-      getSize: 0.45,      // ★の見た目サイズ（好みで 0.35〜0.6）
+      getText: () => "★",
+      getSize: () => STAR_FONT_SIZE,
+      getColor: () => [0, 0, 0, 255], // 黒
+      getTextAnchor: () => "middle",
+      getAlignmentBaseline: () => "center",
+      characterSet: ["★"],
+      fontFamily:
+        'system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
       billboard: true,
       pickable: true,
       parameters: { depthTest: false },
