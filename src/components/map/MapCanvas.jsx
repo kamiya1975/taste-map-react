@@ -192,6 +192,7 @@ const MapCanvas = forwardRef(function MapCanvas(
   {
     data,
     allowedJansSet,
+    ecOnlyJansSet,
     janStoreMap,
     activeStoreId,
     userRatings,
@@ -257,19 +258,27 @@ const MapCanvas = forwardRef(function MapCanvas(
 
   // --- EC商品 / 店舗商品 の振り分け ---
   const { nonEcPoints, ecPoints } = useMemo(() => {
+    if (!Array.isArray(filteredData) || filteredData.length === 0) {
+      return { nonEcPoints: [], ecPoints: [] };
+    }
+
+    // EC専用JAN集合が未指定なら、すべて通常点として扱う
+    if (!ecOnlyJansSet || ecOnlyJansSet.size === 0) {
+      return { nonEcPoints: filteredData, ecPoints: [] };
+    }
+
     const nonEc = [];
     const ec = [];
-    (filteredData || []).forEach((d) => {
-      const isStore = !!d.is_store_product;
-      const isEcOnly = !!d.is_ec_product && !isStore; // 店舗取扱が無い純EC商品だけ★にする想定
-      if (isEcOnly) {
-        ec.push(d);
+    for (const d of filteredData) {
+      const jan = janOf(d);
+      if (jan && ecOnlyJansSet.has(jan)) {
+        ec.push(d);      // 純EC商品 → ★にする
       } else {
-        nonEc.push(d);
+        nonEc.push(d);   // それ以外 → ●
       }
-    });
+    }
     return { nonEcPoints: nonEc, ecPoints: ec };
-  }, [filteredData]);
+  }, [filteredData, ecOnlyJansSet]);
 
   // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
   const pointBubbles = useMemo(() => {
