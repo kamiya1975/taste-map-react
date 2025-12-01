@@ -502,22 +502,13 @@ const MapCanvas = forwardRef(function MapCanvas(
     if (!ecPoints || ecPoints.length === 0) return null;
 
     // ===== ズームに応じたフォントサイズ計算 =====
-    const zoom = Math.max(
-      ZOOM_LIMITS.min,
-      Math.min(ZOOM_LIMITS.max, viewState?.zoom ?? 0)
-    );
-    const MIN_SIZE = 10;
-    const MAX_SIZE = 26;
-    const range = ZOOM_LIMITS.max - ZOOM_LIMITS.min || 1;
-    const t = (zoom - ZOOM_LIMITS.min) / range; // 0〜1
-    const STAR_FONT_SIZE = MIN_SIZE + (MAX_SIZE - MIN_SIZE) * t;
-
     return new TextLayer({
       id: "ec-stars",
       data: ecPoints,
       getPosition: (d) => [xOf(d), -yOf(d), 0],
       getText: () => "★",
-      getSize: () => STAR_FONT_SIZE,
+      sizeUnits: "meters",
+      getSize: () => 0.055,
       getColor: (d) => {
         const janStr = janOf(d);
         if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;          // 評価ありは黒
@@ -536,7 +527,6 @@ const MapCanvas = forwardRef(function MapCanvas(
       pickable: true,
       parameters: { depthTest: false },
       updateTriggers: {
-        getSize: [zoom],
         getColor: [
           JSON.stringify(favorites || {}),
           JSON.stringify(userRatings || {}),
@@ -544,7 +534,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         ],
       },
     });
-  }, [ecPoints, viewState.zoom, favorites, userRatings, clusterColorMode]);
+  }, [ecPoints, favorites, userRatings, clusterColorMode]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
