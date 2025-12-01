@@ -258,27 +258,37 @@ const MapCanvas = forwardRef(function MapCanvas(
 
   // --- EC商品 / 店舗商品 の振り分け ---
   const { nonEcPoints, ecPoints } = useMemo(() => {
-    if (!Array.isArray(filteredData) || filteredData.length === 0) {
-      return { nonEcPoints: [], ecPoints: [] };
-    }
-
-    // EC専用JAN集合が未指定なら、すべて通常点として扱う
-    if (!ecOnlyJansSet || ecOnlyJansSet.size === 0) {
-      return { nonEcPoints: filteredData, ecPoints: [] };
-    }
-
     const nonEc = [];
     const ec = [];
-    for (const d of filteredData) {
-      const jan = janOf(d);
-      if (jan && ecOnlyJansSet.has(jan)) {
-        ec.push(d);      // 純EC商品 → ★にする
+
+    (filteredData || []).forEach((d) => {
+      // バックエンド側の色々なフラグ名に少しだけ対応
+      const isStore =
+        d.is_store_product ??
+        d.has_store_product ??
+       d.store_product ??
+        false;
+
+      const isEc =
+        d.is_ec_product ??
+        d.has_ec_product ??
+        d.ec_product ??
+        false;
+
+      const isEcBool = Boolean(isEc);
+      // 「ECで買える商品」は★にする
+      if (isEcBool) {
+        ec.push(d);
       } else {
-        nonEc.push(d);   // それ以外 → ●
+        // それ以外は従来通り●
+        nonEc.push(d);
       }
-    }
+    });
+
+    // デバッグ用：一度だけ様子を見るならコメントアウト外してOK
+    // console.log("[MapCanvas] ecPoints =", ec.length, "nonEcPoints =", nonEc.length);
     return { nonEcPoints: nonEc, ecPoints: ec };
-  }, [filteredData, ecOnlyJansSet]);
+  }, [filteredData]);
 
   // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
   const pointBubbles = useMemo(() => {
