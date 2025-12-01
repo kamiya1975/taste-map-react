@@ -501,7 +501,19 @@ const MapCanvas = forwardRef(function MapCanvas(
   const ecStarLayer = useMemo(() => {
     if (!ecPoints || ecPoints.length === 0) return null;
 
-    const STAR_FONT_SIZE = 22; // ●と大きさを合わせる調整用（18〜24で微調整）
+    // ===== ズームに応じたフォントサイズ計算 =====
+    const zoom =
+      Math.max(
+        ZOOM_LIMITS.min,
+        Math.min(ZOOM_LIMITS.max, viewState?.zoom ?? 0)
+      );
+
+    // zoom が最小のとき 12px、最大のとき 30px になるよう線形に補間
+    const MIN_SIZE = 12;
+    const MAX_SIZE = 30;
+    const range = ZOOM_LIMITS.max - ZOOM_LIMITS.min || 1;
+    const t = (zoom - ZOOM_LIMITS.min) / range; // 0〜1
+    const STAR_FONT_SIZE = MIN_SIZE + (MAX_SIZE - MIN_SIZE) * t;
 
     return new TextLayer({
       id: "ec-stars",
@@ -509,7 +521,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       getPosition: (d) => [xOf(d), -yOf(d), 0],
       getText: () => "★",
       getSize: () => STAR_FONT_SIZE,
-      getColor: () => [0, 0, 0, 255], // 黒
+      getColor: () => [0, 0, 0, 255],
       getTextAnchor: () => "middle",
       getAlignmentBaseline: () => "center",
       characterSet: ["★"],
@@ -518,8 +530,11 @@ const MapCanvas = forwardRef(function MapCanvas(
       billboard: true,
       pickable: true,
       parameters: { depthTest: false },
+      updateTriggers: {
+        getSize: [zoom], // ★ ズーム値が変わったらサイズを再計算
+      },
     });
-  }, [ecPoints]);
+  }, [ecPoints, viewState.zoom]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
