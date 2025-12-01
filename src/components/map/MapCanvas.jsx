@@ -502,15 +502,12 @@ const MapCanvas = forwardRef(function MapCanvas(
     if (!ecPoints || ecPoints.length === 0) return null;
 
     // ===== ズームに応じたフォントサイズ計算 =====
-    const zoom =
-      Math.max(
-        ZOOM_LIMITS.min,
-        Math.min(ZOOM_LIMITS.max, viewState?.zoom ?? 0)
-      );
-
-    // zoom が最小のとき 12px、最大のとき 30px になるよう線形に補間
-    const MIN_SIZE = 12;
-    const MAX_SIZE = 30;
+    const zoom = Math.max(
+      ZOOM_LIMITS.min,
+      Math.min(ZOOM_LIMITS.max, viewState?.zoom ?? 0)
+    );
+    const MIN_SIZE = 10;
+    const MAX_SIZE = 26;
     const range = ZOOM_LIMITS.max - ZOOM_LIMITS.min || 1;
     const t = (zoom - ZOOM_LIMITS.min) / range; // 0〜1
     const STAR_FONT_SIZE = MIN_SIZE + (MAX_SIZE - MIN_SIZE) * t;
@@ -521,7 +518,15 @@ const MapCanvas = forwardRef(function MapCanvas(
       getPosition: (d) => [xOf(d), -yOf(d), 0],
       getText: () => "★",
       getSize: () => STAR_FONT_SIZE,
-      getColor: () => [0, 0, 0, 255],
+      getColor: (d) => {
+        const janStr = janOf(d);
+        if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;          // 評価ありは黒
+        if (favorites && favorites[janStr]) return FAVORITE_RED;              // お気に入りは赤
+        if (clusterColorMode && Number.isFinite(d.cluster)) {                 // クラスタ色モード
+          return getClusterRGBA(d.cluster);
+        }
+        return MAP_POINT_COLOR;                                               // それ以外は●と同じグレー
+     },
       getTextAnchor: () => "middle",
       getAlignmentBaseline: () => "center",
       characterSet: ["★"],
@@ -531,10 +536,15 @@ const MapCanvas = forwardRef(function MapCanvas(
       pickable: true,
       parameters: { depthTest: false },
       updateTriggers: {
-        getSize: [zoom], // ★ ズーム値が変わったらサイズを再計算
+        getSize: [zoom],
+        getColor: [
+          JSON.stringify(favorites || {}),
+          JSON.stringify(userRatings || {}),
+          clusterColorMode,
+        ],
       },
     });
-  }, [ecPoints, viewState.zoom]);
+  }, [ecPoints, viewState.zoom, favorites, userRatings, clusterColorMode]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
