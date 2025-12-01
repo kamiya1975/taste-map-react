@@ -63,8 +63,8 @@ const makeStarSVG = ({
   stroke = "#FFFFFF",
   strokeWidth = 1.5,
 } = {}) => {
-  const w = 80;
-  const h = 80;
+  const w = 20;
+  const h = 20;
   // ざっくり5角形の星パス
   const svg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
