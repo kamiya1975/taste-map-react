@@ -81,7 +81,9 @@ const showAllowedJansErrorOnce = () => {
 
 // ★ 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
 async function fetchAllowedJansForStore(storeId) {
-  if (!storeId) return null;
+  if (!storeId) {
+    return { allowedJans: null, ecOnlyJans: null };
+  }
 
   const params = new URLSearchParams();
   params.set("stores", String(storeId));
@@ -97,11 +99,19 @@ async function fetchAllowedJansForStore(storeId) {
   }
 
   const json = await res.json();
-  const arr = Array.isArray(json.allowed_jans)
+
+  const allowedArr = Array.isArray(json.allowed_jans)
     ? json.allowed_jans.map(String)
     : null;
 
-  return arr && arr.length > 0 ? arr : null;
+  const ecArr = Array.isArray(json.ec_only_jans)
+    ? json.ec_only_jans.map(String)
+    : null;
+
+  return {
+    allowedJans: allowedArr && allowedArr.length > 0 ? allowedArr : null,
+    ecOnlyJans: ecArr && ecArr.length > 0 ? ecArr : null,
+  };
 }
 
 // ★ メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
@@ -122,63 +132,61 @@ async function fetchAllowedJansAuto() {
   // ① 未ログイン or トークンなし
   // -----------------------------
   if (!token) {
-    // メイン店舗IDがあれば、その店舗の取扱JAN＋EC取扱JANで絞り込み
     if (mainStoreId && mainStoreId > 0) {
       try {
-        const arr = await fetchAllowedJansForStore(mainStoreId);
-        if (arr && arr.length > 0) {
-          return arr;
-        }
-        // 0件の場合はフィルタ無し（null）で返す
-        return null;
+        const { allowedJans, ecOnlyJans } =
+          await fetchAllowedJansForStore(mainStoreId);
+
+        return { allowedJans, ecOnlyJans };
       } catch (e) {
         console.warn(
           `allowed-jans(stores=${mainStoreId}) の取得に失敗 → 全件表示にフォールバック`,
           e
         );
         showAllowedJansErrorOnce();
-        return null;
+        return { allowedJans: null, ecOnlyJans: null };
       }
     }
 
-    // メイン店舗未選択（公式Shop=0） → フィルタ無し
-    return null;
+    // メイン店舗未選択 → フィルタ無し
+    return { allowedJans: null, ecOnlyJans: null };
   }
 
   // -----------------------------
   // ② ログイン済み
   // -----------------------------
-  // /allowed-jans/auto で main/sub + EC + 評価JAN を一括取得
   try {
     const url = `${API_BASE}/api/app/allowed-jans/auto`;
-
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
     if (res.ok) {
       const json = await res.json();
-      const arr = Array.isArray(json.allowed_jans)
+
+      const allowedArr = Array.isArray(json.allowed_jans)
         ? json.allowed_jans.map(String)
         : null;
-      if (arr && arr.length > 0) {
-        return arr;
-      }
-      console.warn(
-        "allowed-jans/auto は成功したが allowed_jans が空 → フィルタ無しで続行"
-      );
-      return null;
+
+      const ecArr = Array.isArray(json.ec_only_jans)
+        ? json.ec_only_jans.map(String)
+        : null;
+
+      return {
+        allowedJans: allowedArr && allowedArr.length > 0 ? allowedArr : null,
+        ecOnlyJans: ecArr && ecArr.length > 0 ? ecArr : null,
+      };
     } else {
       console.warn(
         `allowed-jans/auto HTTP ${res.status} → フィルタ無しで続行`
       );
       showAllowedJansErrorOnce();
-      return null;
+      return { allowedJans: null, ecOnlyJans: null };
     }
   } catch (e) {
     console.warn("allowed-jans/auto の取得に失敗 → フィルタ無しで続行", e);
     showAllowedJansErrorOnce();
-    return null;
+    return { allowedJans: null, ecOnlyJans: null };
   }
 }
 
@@ -338,6 +346,7 @@ function MapPage() {
   const [storeList, setStoreList] = useState([]); // 店舗の詳細リスト（今は未使用）
   const [janStoreMap, setJanStoreMap] = useState({}); // jan -> [store_id,...]（今は未使用）
   const [activeStoreId, setActiveStoreId] = useState(null); // フィルタ用（任意）
+  const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null);
 
   useEffect(() => {
     if (!isRatedOpen) return;
@@ -586,39 +595,42 @@ function MapPage() {
   }, [data]);
 
   // ====== データ読み込み（店舗の取扱 JAN でフィルタ）=====
+  // ====== データ読み込み（店舗の取扱 JAN でフィルタ）=====
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       try {
-        const arr = await fetchAllowedJansAuto(); // ← 上で定義したヘルパーを使う
+       const { allowedJans, ecOnlyJans } = await fetchAllowedJansAuto();
         if (cancelled) return;
 
-        // 取得に失敗 or 0件 → フィルタ無し（全件表示）
-        if (!arr || arr.length === 0) {
+        if (!allowedJans || allowedJans.length === 0) {
+          // フィルタ無し
           setAllowedJansSet(null);
+          setEcOnlyJansSet(null);
           setStoreList([]);
           setJanStoreMap({});
           return;
         }
 
-        setAllowedJansSet(new Set(arr));
+        setAllowedJansSet(new Set(allowedJans));
+        setEcOnlyJansSet(
+          ecOnlyJans && ecOnlyJans.length > 0 ? new Set(ecOnlyJans) : null
+        );
 
-        // ★ 店舗一覧や janStoreMap が必要になったら、
-        //   fetchAllowedJansAuto の戻り値を { allowedJans, stores } に拡張し、
-        //   ここで stores から組み立てる。
         setStoreList([]);
         setJanStoreMap({});
       } catch (e) {
         console.error("allowed-jans の取得に失敗:", e);
         if (!cancelled) {
-          // エラー時もフィルタ無し（全件表示）にする
           setAllowedJansSet(null);
+          setEcOnlyJansSet(null);
           setStoreList([]);
           setJanStoreMap({});
         }
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -1176,6 +1188,7 @@ function MapPage() {
       <MapCanvas
         ref={deckRef}
         allowedJansSet={allowedJansSet}
+        ecOnlyJansSet={ecOnlyJansSet}
         janStoreMap={janStoreMap}
         activeStoreId={activeStoreId}
         data={data}
