@@ -93,26 +93,39 @@ async function fetchAllowedJansForStore(storeId) {
   const res = await fetch(
     `${API_BASE}/api/app/allowed-jans?${params.toString()}`
   );
-
   if (!res.ok) {
     throw new Error(`allowed-jans(stores=${storeId}) HTTP ${res.status}`);
   }
 
   const json = await res.json();
-
-  const allowedArr = Array.isArray(json.allowed_jans)
-    ? json.allowed_jans.map(String)
-    : null;
-
-  const ecArr = Array.isArray(json.ec_only_jans)
-    ? json.ec_only_jans.map(String)
-    : null;
+    const { allowedJans, ecOnlyJans } = parseAllowedJansResponse(json);
 
   return {
-    allowedJans: allowedArr && allowedArr.length > 0 ? allowedArr : null,
-    ecOnlyJans: ecArr && ecArr.length > 0 ? ecArr : null,
+    allowedJans: allowedJans.length > 0 ? allowedJans : null,
+    ecOnlyJans: ecOnlyJans.length > 0 ? ecOnlyJans : null,
   };
 }
+
+  // ★ 共通のパース小ユーティリティ
+  const parseAllowedJansResponse = (json) => {
+    const allowedArr = Array.isArray(json.allowed_jans)
+      ? json.allowed_jans
+      : Array.isArray(json.jans)
+      ? json.jans
+      : [];
+
+    // ec_jans / ec_only_jans どちらでも拾う
+    const ecArr = Array.isArray(json.ec_jans)
+      ? json.ec_jans
+      : Array.isArray(json.ec_only_jans)
+      ? json.ec_only_jans
+      : [];
+
+    return {
+      allowedJans: allowedArr.map(String),
+      ecOnlyJans: ecArr.map(String),
+    };
+  };
 
 // ★ メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
 //    - 未ログイン: ローカルにメイン店舗IDがあれば /allowed-jans?stores=...&include_ec=true
@@ -124,19 +137,14 @@ async function fetchAllowedJansAuto() {
   let token = "";
   try {
     token = localStorage.getItem("app.access_token") || "";
-  } catch {
-    // ignore
-  }
+  } catch {}
 
-  // -----------------------------
   // ① 未ログイン or トークンなし
-  // -----------------------------
   if (!token) {
     if (mainStoreId && mainStoreId > 0) {
       try {
         const { allowedJans, ecOnlyJans } =
           await fetchAllowedJansForStore(mainStoreId);
-
         return { allowedJans, ecOnlyJans };
       } catch (e) {
         console.warn(
@@ -144,17 +152,13 @@ async function fetchAllowedJansAuto() {
           e
         );
         showAllowedJansErrorOnce();
-        return { allowedJans: null, ecOnlyJans: null };
+          return { allowedJans: null, ecOnlyJans: null };
       }
     }
-
-    // メイン店舗未選択 → フィルタ無し
     return { allowedJans: null, ecOnlyJans: null };
   }
 
-  // -----------------------------
   // ② ログイン済み
-  // -----------------------------
   try {
     const url = `${API_BASE}/api/app/allowed-jans/auto`;
     const res = await fetch(url, {
@@ -163,30 +167,22 @@ async function fetchAllowedJansAuto() {
 
     if (res.ok) {
       const json = await res.json();
-
-      const allowedArr = Array.isArray(json.allowed_jans)
-        ? json.allowed_jans.map(String)
-        : null;
-
-      const ecArr = Array.isArray(json.ec_only_jans)
-        ? json.ec_only_jans.map(String)
-        : null;
-
+         const { allowedJans, ecOnlyJans } = parseAllowedJansResponse(json);
       return {
-        allowedJans: allowedArr && allowedArr.length > 0 ? allowedArr : null,
-        ecOnlyJans: ecArr && ecArr.length > 0 ? ecArr : null,
+        allowedJans: allowedJans.length > 0 ? allowedJans : null,
+        ecOnlyJans: ecOnlyJans.length > 0 ? ecOnlyJans : null,
       };
     } else {
       console.warn(
         `allowed-jans/auto HTTP ${res.status} → フィルタ無しで続行`
       );
       showAllowedJansErrorOnce();
-      return { allowedJans: null, ecOnlyJans: null };
+       return { allowedJans: null, ecOnlyJans: null };
     }
   } catch (e) {
     console.warn("allowed-jans/auto の取得に失敗 → フィルタ無しで続行", e);
     showAllowedJansErrorOnce();
-    return { allowedJans: null, ecOnlyJans: null };
+     return { allowedJans: null, ecOnlyJans: null };
   }
 }
 
@@ -344,10 +340,10 @@ function MapPage() {
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
   const [iframeNonce, setIframeNonce] = useState(0);
   const [allowedJansSet, setAllowedJansSet] = useState(null);
+  const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null); // ★ EC対象JAN set
   const [storeList, setStoreList] = useState([]); // 店舗の詳細リスト（今は未使用）
-  const [janStoreMap, setJanStoreMap] = useState({}); // jan -> [store_id,...]（今は未使用）
+  const [janStoreMap, setJanStoreMap] = useState({});       // jan -> [store_id,...]（今は未使用）
   const [activeStoreId, setActiveStoreId] = useState(null); // フィルタ用（任意）
-  const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null);
 
   useEffect(() => {
     if (!isRatedOpen) return;
@@ -605,7 +601,6 @@ function MapPage() {
         if (cancelled) return;
 
         if (!allowedJans || allowedJans.length === 0) {
-          // フィルタ無し
           setAllowedJansSet(null);
           setEcOnlyJansSet(null);
           setStoreList([]);
@@ -614,9 +609,9 @@ function MapPage() {
         }
 
         setAllowedJansSet(new Set(allowedJans));
-        setEcOnlyJansSet(
+         setEcOnlyJansSet(
           ecOnlyJans && ecOnlyJans.length > 0 ? new Set(ecOnlyJans) : null
-        );
+         );
 
         setStoreList([]);
         setJanStoreMap({});
@@ -645,17 +640,19 @@ function MapPage() {
 
     const next = data.map((d) => {
       const jan = getJanFromItem(d);
-      // ecOnlyJansSet に含まれている JAN を「EC専用」とみなす
-      const isEcOnly =
+
+      // ★ EC で買える JAN は全部 is_ec_product=true
+      const isEc =
         ecOnlyJansSet && ecOnlyJansSet.size > 0
           ? ecOnlyJansSet.has(jan)
           : false;
 
       return {
         ...d,
-        // MapCanvas が見るフラグ
-        is_ec_product: isEcOnly,
-        is_store_product: !isEcOnly,
+        is_ec_product: isEc,
+        // store_product フラグは今は色分けに使っていないので
+        // とりあえず逆の値を入れておく（将来の拡張用）
+        is_store_product: !isEc,
       };
     });
 
@@ -1021,7 +1018,7 @@ function MapPage() {
       const janStr = getJanFromItem(nearest);
       if (janStr) {
         setHideHeartForJAN(null);
-        setSelectedJAN(nearest.JAN);
+        setSelectedJAN(janStr);
         setIframeNonce(Date.now());
         setProductDrawerOpen(true);
         focusOnWine(nearest, { zoom: INITIAL_ZOOM });
@@ -1548,15 +1545,16 @@ function MapPage() {
           setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
 
           setHideHeartForJAN(null);
-          setSelectedJAN(item.JAN);
+          setSelectedJAN(janStr);
+
           setIframeNonce(Date.now());
-          setProductDrawerOpen(true);
 
           const tx = Number(item.umap_x),
             ty = Number(item.umap_y);
           if (Number.isFinite(tx) && Number.isFinite(ty)) {
             centerToUMAP(tx, ty, { zoom: viewState.zoom });
           }
+          setProductDrawerOpen(true);
         }}
         onScanClick={async () => {
           await closeUIsThen({ preserveCluster: true });
@@ -1617,10 +1615,12 @@ function MapPage() {
               preserveCluster: true,
             });
             setHideHeartForJAN(null);
-            setSelectedJAN(hit.JAN);
+
+            setSelectedJAN(janStr);
+
             setIframeNonce(Date.now());
-            setProductDrawerOpen(true);
             lastCommittedRef.current = { code: jan, at: now };
+
             const tx = Number(hit.umap_x),
               ty = Number(hit.umap_y);
             if (Number.isFinite(tx) && Number.isFinite(ty)) {
