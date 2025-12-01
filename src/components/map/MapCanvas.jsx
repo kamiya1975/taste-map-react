@@ -524,6 +524,13 @@ const MapCanvas = forwardRef(function MapCanvas(
      [nonEcPoints, favorites, userRatings, clusterColorMode]
   );
 
+  // MapCanvas.jsx 内、ecStarLayer を定義している useMemo の直前あたり
+  useEffect(() => {
+    if (!Array.isArray(data)) return;
+    const ecCount = data.filter(d => d.is_ec_product).length;
+    console.log("[MapCanvas] EC points count =", ecCount);
+  }, [data]);
+
   // --- レイヤ：EC商品の★マーカー ---
   const ecStarLayer = useMemo(() => {
     if (!ecPoints || ecPoints.length === 0) return null;
