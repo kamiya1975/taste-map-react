@@ -63,11 +63,18 @@ const makeStarSVG = ({
   stroke = "#FFFFFF",
   strokeWidth = 1.5,
 } = {}) => {
-  const w = 40;
-  const h = 40;
+  const w = 20;
+  const h = 20;
+
+  // パス用の座標系（元の 80x80 のまま固定）
+  const vbW = 80;
+  const vbH = 80;
+
   // ざっくり5角形の星パス
   const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <svg xmlns="http://www.w3.org/2000/svg" 
+       width="${w}" height="${h}" 
+       viewBox="0 0 ${w} ${h}">
     <path d="
       M40 4
       L49 28
