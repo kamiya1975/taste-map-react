@@ -508,7 +508,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       getPosition: (d) => [xOf(d), -yOf(d), 0],
       getText: () => "★",
       sizeUnits: "meters",
-      getSize: () => 0.055,
+      getSize: () => 0.07,
       getColor: (d) => {
         const janStr = janOf(d);
         if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;          // 評価ありは黒
