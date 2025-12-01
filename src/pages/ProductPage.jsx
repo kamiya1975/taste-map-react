@@ -778,6 +778,21 @@ export default function ProductPage() {
     product?.jan_code || 
     "（名称不明）";
 
+  // ★ EC商品かどうか（バックエンドからのフラグをそのまま使用）
+  const isEcProduct = !!product?.ec_product;
+
+  // ★ メイン店舗が EC 有効かどうか（boolean が来たときだけ尊重）
+  const mainStoreEcActive =
+    typeof product?.main_store_ec_active === "boolean"
+      ? product.main_store_ec_active
+      : null;
+
+  // ★ カートボタンを表示して良いかどうか
+  //   - ec_product が true のときだけ
+  //   - main_store_ec_active が false と明示されている場合は非表示
+  const canShowCartButton =
+    isEcProduct && (mainStoreEcActive !== false);
+
   const handleAddToCart = async () => {
     try {
       setAdding(true);
@@ -899,65 +914,66 @@ export default function ProductPage() {
         </div>
       </div>
 
-
-      {/* カートに入れる */}
-      <div style={{ margin: "8px 0 16px" }}>
-        <button
-          onClick={handleAddToCart}
-          disabled={adding}
-          style={{
-            marginTop: 16,
-            width: "100%",
-            padding: "8px 20px",
-            lineHeight: 1.2,
-            background: "rgb(230,227,219)", // SliderPage と統一
-            color: "#000",
-            border: "none",
-            borderRadius: 10,
-            fontSize: 18,
-            fontWeight: 700,
-            lineHeight: 1,
-            cursor: adding ? "default" : "pointer",
-            boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
-            WebkitBackdropFilter: "blur(2px)",
-            backdropFilter: "blur(2px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            opacity: adding ? 0.7 : 1,
-          }}
-        >
-          <img
-            src={`${PUBLIC_BASE}/img/icon cart2.png`}
-            alt="cart"
+      {/* カートに入れる（EC対象商品のときだけ表示） */}
+      {canShowCartButton && (
+        <div style={{ margin: "8px 0 16px" }}>
+          <button
+            onClick={handleAddToCart}
+            disabled={adding}
             style={{
-              width: 40,
-              height: 40,
-              objectFit: "contain",
-              display: "block",
-            }}
-          />
-          カートに入れる
-        </button>
-
-        {toast && (
-          <div
-            role="status"
-            style={{
-              marginTop: 8,
-              fontSize: 20,
-              background: "#111",
-              color: "#fff",
-              display: "inline-block",
-              padding: "6px 10px",
-              borderRadius: 8,
+              marginTop: 16,
+              width: "100%",
+              padding: "8px 20px",
+              lineHeight: 1.2,
+              background: "rgb(230,227,219)", // SliderPage と統一
+              color: "#000",
+              border: "none",
+              borderRadius: 10,
+              fontSize: 18,
+              fontWeight: 700,
+              lineHeight: 1,
+              cursor: adding ? "default" : "pointer",
+              boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
+              WebkitBackdropFilter: "blur(2px)",
+              backdropFilter: "blur(2px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              opacity: adding ? 0.7 : 1,
             }}
           >
-            カートに入れました
-          </div>
-        )}
-      </div>
+            <img
+              src={`${PUBLIC_BASE}/img/icon cart2.png`}
+              alt="cart"
+              style={{
+                width: 40,
+                height: 40,
+                objectFit: "contain",
+                display: "block",
+              }}
+            />
+            カートに入れる
+          </button>
+
+          {toast && (
+            <div
+              role="status"
+              style={{
+                marginTop: 8,
+                fontSize: 20,
+                background: "#111",
+                color: "#fff",
+                display: "inline-block",
+                padding: "6px 10px",
+                borderRadius: 8,
+              }}
+            >
+              カートに入れました
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 評価（◎） */}
       <div

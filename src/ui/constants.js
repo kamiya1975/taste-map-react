@@ -171,3 +171,33 @@ export const clusterRGBAtoCSS = (rgba) => {
   return `rgb(${r}, ${g}, ${b})`;
 };
 
+export const toJapaneseWineType = (raw) => {
+  if (!raw) return "—";
+  const key = String(raw).trim().toLowerCase();
+  return WINE_TYPE_LABELS[key] || raw;
+};
+
+export const clusterRGBAtoCSS = (rgba) => {
+  if (!rgba) return "rgb(200,200,200)";
+  const [r, g, b] = rgba;
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
+/* =============================
+ *  EC商品（★表示）用 定数
+ * ============================= */
+
+// ★マーカーの基本サイズ（DeckGL world座標系）
+export const EC_STAR_BASE_RADIUS = 0.09;      // 本体サイズ
+export const EC_STAR_OUTLINE_RADIUS = 0.14;   // 外側の縁取りサイズ
+
+// ★マーカーの色（RGBA）
+export const EC_STAR_FILL_COLOR   = [0, 0, 0, 255];       // 中の★の色
+export const EC_STAR_OUTLINE_COLOR = [255, 255, 255, 255]; // 外枠のカラー
+
+// ★アイコン画像（IconLayer で使う場合）
+export const EC_STAR_ICON_URL = `${process.env.PUBLIC_URL || ""}/img/ec-star.png`;
+
+// ★凡例などで使う説明テキスト
+export const EC_STAR_DESCRIPTION =
+  "★はTasteMap公式ECで購入できるワインを表します。";

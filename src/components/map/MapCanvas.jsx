@@ -539,7 +539,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       yUMAP = Number(basePoint.y);
     } else {
       // ② なければ従来通り ANCHOR_JAN の座標にフォールバック
-      const item = filteredData.find(d => String(d.JAN) === ANCHOR_JAN);
+      const item = filteredData.find(d => janOf(d) === ANCHOR_JAN);
       if (!item || !Number.isFinite(xOf(item)) || !Number.isFinite(yOf(item))) {
         return null;
       }
