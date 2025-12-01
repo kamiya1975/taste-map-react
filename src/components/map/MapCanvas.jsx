@@ -63,8 +63,8 @@ const makeStarSVG = ({
   stroke = "#FFFFFF",
   strokeWidth = 1.5,
 } = {}) => {
-  const w = 20;
-  const h = 20;
+  const w = 40;
+  const h = 40;
 
   // パス用の座標系（元の 80x80 のまま固定）
   const vbW = 80;
