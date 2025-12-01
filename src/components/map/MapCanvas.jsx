@@ -266,7 +266,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       const isStore =
         d.is_store_product ??
         d.has_store_product ??
-       d.store_product ??
+        d.store_product ??
         false;
 
       const isEc =
@@ -275,18 +275,21 @@ const MapCanvas = forwardRef(function MapCanvas(
         d.ec_product ??
         false;
 
+      const isStoreBool = Boolean(isStore);
       const isEcBool = Boolean(isEc);
-      // 「ECで買える商品」は★にする
-      if (isEcBool) {
+
+      if (isStoreBool) {
+        // ① 店舗で扱っている商品が最優先 → ●として描画
+        nonEc.push(d);
+      } else if (isEcBool) {
+        // ② 店舗では扱っていないが、EC商品なら ★ として描画
         ec.push(d);
       } else {
-        // それ以外は従来通り●
+        // ③ どちらでもない通常点（将来のために残しておく）
         nonEc.push(d);
       }
     });
 
-    // デバッグ用：一度だけ様子を見るならコメントアウト外してOK
-    // console.log("[MapCanvas] ecPoints =", ec.length, "nonEcPoints =", nonEc.length);
     return { nonEcPoints: nonEc, ecPoints: ec };
   }, [filteredData]);
 

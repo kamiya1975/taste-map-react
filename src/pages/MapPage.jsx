@@ -334,6 +334,7 @@ function MapPage() {
 
   // データ & 状態
   const [data, setData] = useState([]);
+  const [points, setPoints] = useState([]);
   const [userRatings, setUserRatings] = useState({});
   const [favorites, setFavorites] = useState({});
   const [userPin, setUserPin] = useState(null);
@@ -595,7 +596,6 @@ function MapPage() {
   }, [data]);
 
   // ====== データ読み込み（店舗の取扱 JAN でフィルタ）=====
-  // ====== データ読み込み（店舗の取扱 JAN でフィルタ）=====
   useEffect(() => {
     let cancelled = false;
 
@@ -635,6 +635,32 @@ function MapPage() {
       cancelled = true;
     };
   }, []);
+
+  // ====== data に「EC専用かどうか」のフラグを付けて points を作る ======
+  useEffect(() => {
+    if (!Array.isArray(data) || data.length === 0) {
+      setPoints([]);
+      return;
+    }
+
+    const next = data.map((d) => {
+      const jan = getJanFromItem(d);
+      // ecOnlyJansSet に含まれている JAN を「EC専用」とみなす
+      const isEcOnly =
+        ecOnlyJansSet && ecOnlyJansSet.size > 0
+          ? ecOnlyJansSet.has(jan)
+          : false;
+
+      return {
+        ...d,
+        // MapCanvas が見るフラグ
+        is_ec_product: isEcOnly,
+        is_store_product: !isEcOnly,
+      };
+    });
+
+    setPoints(next);
+  }, [data, ecOnlyJansSet]);
 
   // ====== 打点データ読み込み（TASTEMAP_POINTS_URL から）=====
   useEffect(() => {
@@ -1186,12 +1212,11 @@ function MapPage() {
   return (
     <div id="map-root" className="map-root" tabIndex={-1}>
       <MapCanvas
-        ref={deckRef}
+        data={points}
         allowedJansSet={allowedJansSet}
         ecOnlyJansSet={ecOnlyJansSet}
         janStoreMap={janStoreMap}
         activeStoreId={activeStoreId}
-        data={data}
         userRatings={userRatings}
         selectedJAN={selectedJAN}
         favorites={favorites}
