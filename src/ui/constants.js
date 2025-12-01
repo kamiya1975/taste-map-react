@@ -171,18 +171,6 @@ export const clusterRGBAtoCSS = (rgba) => {
   return `rgb(${r}, ${g}, ${b})`;
 };
 
-export const toJapaneseWineType = (raw) => {
-  if (!raw) return "—";
-  const key = String(raw).trim().toLowerCase();
-  return WINE_TYPE_LABELS[key] || raw;
-};
-
-export const clusterRGBAtoCSS = (rgba) => {
-  if (!rgba) return "rgb(200,200,200)";
-  const [r, g, b] = rgba;
-  return `rgb(${r}, ${g}, ${b})`;
-};
-
 /* =============================
  *  EC商品（★表示）用 定数
  * ============================= */

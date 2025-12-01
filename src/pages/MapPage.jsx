@@ -1240,7 +1240,7 @@ function MapPage() {
               fontSize: "8px",
               color: "#666",
               backgroundColor: "#fff",
-              border: "0.5px solid "#000",
+              border: "0.5px solid #000",
               borderRadius: "6px",
               outline: "none",
               appearance: "none",

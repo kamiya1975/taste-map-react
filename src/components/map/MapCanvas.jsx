@@ -57,6 +57,41 @@ const makePinSVG = ({
   };
 };
 
+// EC 商品用の★アイコン（SVG埋め込み）
+const makeStarSVG = ({
+  fill = "#000000",
+  stroke = "#FFFFFF",
+  strokeWidth = 1.5,
+} = {}) => {
+  const w = 80;
+  const h = 80;
+  // ざっくり5角形の星パス
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <path d="
+      M40 4
+      L49 28
+      L75 28
+      L54 43
+      L62 69
+      L40 54
+      L18 69
+      L26 43
+      L5 28
+      L31 28
+      Z
+    "
+      fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" />
+  </svg>`;
+  return {
+    url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`,
+    width: w,
+    height: h,
+    anchorX: w / 2,
+    anchorY: h / 2,
+  };
+};
+
 // クリック時に最近傍を許可する半径（px）
 const CLICK_NEAR_PX = 24; // お好みで 14〜24 あたり
 
@@ -219,6 +254,22 @@ const MapCanvas = forwardRef(function MapCanvas(
       return true;
     });
   }, [data, allowedJansSet, janStoreMap, activeStoreId]);
+
+  // --- EC商品 / 店舗商品 の振り分け ---
+  const { nonEcPoints, ecPoints } = useMemo(() => {
+    const nonEc = [];
+    const ec = [];
+    (filteredData || []).forEach((d) => {
+      const isStore = !!d.is_store_product;
+      const isEcOnly = !!d.is_ec_product && !isStore; // 店舗取扱が無い純EC商品だけ★にする想定
+      if (isEcOnly) {
+        ec.push(d);
+      } else {
+        nonEc.push(d);
+      }
+    });
+    return { nonEcPoints: nonEc, ecPoints: ec };
+  }, [filteredData]);
 
   // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
   const pointBubbles = useMemo(() => {
@@ -421,12 +472,12 @@ const MapCanvas = forwardRef(function MapCanvas(
     return [outer, innerWhite];
   }, [filteredData, selectedJAN]);
 
-  // --- レイヤ：打点 ---
+  // --- レイヤ：打点（店舗商品＋通常点） ---
   const mainLayer = useMemo(
     () =>
       new ScatterplotLayer({
         id: "scatter",
-        data: filteredData,
+        data: nonEcPoints,
         getPosition: (d) => [xOf(d), -yOf(d), 0],
         getFillColor: (d) => {
           const janStr = janOf(d);
@@ -448,8 +499,29 @@ const MapCanvas = forwardRef(function MapCanvas(
         getRadius: 0.03,
         pickable: true,
       }),
-     [filteredData, favorites, userRatings, clusterColorMode]
+     [nonEcPoints, favorites, userRatings, clusterColorMode]
   );
+
+  // --- レイヤ：EC商品の★マーカー ---
+  const ecStarLayer = useMemo(() => {
+    if (!ecPoints || ecPoints.length === 0) return null;
+    const icon = makeStarSVG({
+      fill: "#000000",    // 本体色（必要なら constants 側に出せる）
+      stroke: "#FFFFFF",
+      strokeWidth: 1.5,
+    });
+    return new IconLayer({
+      id: "ec-stars",
+      data: ecPoints,
+      getPosition: (d) => [xOf(d), -yOf(d), 0],
+      getIcon: () => icon,
+      sizeUnits: "meters",
+      getSize: 0.45,      // ★の見た目サイズ（好みで 0.35〜0.6）
+      billboard: true,
+      pickable: true,
+      parameters: { depthTest: false },
+    });
+  }, [ecPoints]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
@@ -719,75 +791,78 @@ const MapCanvas = forwardRef(function MapCanvas(
           widthUnits: "pixels",
         }),
 
-      // ① セルの地模様（タイル）は「バブル無し かつ クラスタ色OFFのときだけ」表示
-      (!highlight2D && !clusterColorMode) ? new IconLayer({
-        id: "cell-tiles",
-        data: cells,
-        getPosition: (d) => d.center,
-        getIcon: (d) => ({
-          url: d.hasRating ? TILE_OCHRE : TILE_GRAY,
-          width: 32,
-          height: 32,
-          anchorX: 16,
-          anchorY: 16,
-        }),
-        sizeUnits: "meters",
-        getSize: GRID_CELL_SIZE,
-        billboard: true,
-        pickable: false,
-        parameters: { depthTest: false },
-        updateTriggers: {
-          getIcon: [JSON.stringify(cells.map((c) => c.hasRating))],
-          getPosition: [GRID_CELL_SIZE],
-          getSize: [GRID_CELL_SIZE],
-        },
-      }) : null,
+        // ① セルの地模様（タイル）は「バブル無し かつ クラスタ色OFFのときだけ」表示
+        (!highlight2D && !clusterColorMode) ? new IconLayer({
+          id: "cell-tiles",
+          data: cells,
+          getPosition: (d) => d.center,
+          getIcon: (d) => ({
+            url: d.hasRating ? TILE_OCHRE : TILE_GRAY,
+            width: 32,
+            height: 32,
+            anchorX: 16,
+            anchorY: 16,
+          }),
+          sizeUnits: "meters",
+          getSize: GRID_CELL_SIZE,
+          billboard: true,
+          pickable: false,
+          parameters: { depthTest: false },
+          updateTriggers: {
+            getIcon: [JSON.stringify(cells.map((c) => c.hasRating))],
+            getPosition: [GRID_CELL_SIZE],
+            getSize: [GRID_CELL_SIZE],
+          },
+        }) : null,
 
-      // ② 商品打点に付くバブル（highlight2D 選択時のみ）
-      highlight2D
-        ? new ScatterplotLayer({
-            id: `point-bubbles-${highlight2D}`,
-            data: pointBubbles,                 // { position, t }
-            getPosition: d => d.position,
-            radiusUnits: "meters",
-            // ★ 3段階（下位20%/中間60%/上位20%）
-            getRadius: d => {
-              const R_SMALL = 0.06;  // 下位サイズ
-              const R_MED   = 0.10;  // 中間サイズ
-              const R_LARGE = 0.22;  // 上位サイズ
-              const t = Math.max(0, Math.min(1, d.t));  // 0..1（分位点クリップ＆ガンマ後）
-              if (t < 0.50) return R_SMALL;      // 下位50%
-              if (t < 0.90) return R_MED;        // 上位10%
-              return R_LARGE;
-            },
-            getFillColor: (d) => {
-              // クラスタ配色ONのときだけ、クラスタごとの色でバブルを描く
-              if (clusterColorMode && Number.isFinite(d.cluster)) {
-                const c = getClusterRGBA(d.cluster) || [210,210,205,255];
-                // バブルは少し透けさせたいのでαを上書き（好みで調整）
-                return [c[0], c[1], c[2], 150];
-              }
-              // 通常は従来どおりグレー
-              return [210, 210, 205, 150];
-            },
-            stroked: false,
-            getLineWidth: 0,
-            pickable: false,
-            parameters: { depthTest: false },
-            updateTriggers: {
-              getRadius: [HEAT_GAMMA], // t生成はHEAT_GAMMA/CLIP依存（pointBubblesで計算）
-              getFillColor: [clusterColorMode],
-            },
-          })
-        : null,
+        // ② 商品打点に付くバブル（highlight2D 選択時のみ）
+        highlight2D
+          ? new ScatterplotLayer({
+              id: `point-bubbles-${highlight2D}`,
+              data: pointBubbles,                 // { position, t }
+              getPosition: d => d.position,
+              radiusUnits: "meters",
+              // ★ 3段階（下位20%/中間60%/上位20%）
+              getRadius: d => {
+                const R_SMALL = 0.06;  // 下位サイズ
+                const R_MED   = 0.10;  // 中間サイズ
+                const R_LARGE = 0.22;  // 上位サイズ
+                const t = Math.max(0, Math.min(1, d.t));  // 0..1（分位点クリップ＆ガンマ後）
+                if (t < 0.50) return R_SMALL;      // 下位50%
+                if (t < 0.90) return R_MED;        // 上位10%
+                return R_LARGE;
+              },
+              getFillColor: (d) => {
+                // クラスタ配色ONのときだけ、クラスタごとの色でバブルを描く
+                if (clusterColorMode && Number.isFinite(d.cluster)) {
+                  const c = getClusterRGBA(d.cluster) || [210,210,205,255];
+                  // バブルは少し透けさせたいのでαを上書き（好みで調整）
+                  return [c[0], c[1], c[2], 150];
+                }
+                // 通常は従来どおりグレー
+                return [210, 210, 205, 150];
+              },
+              stroked: false,
+              getLineWidth: 0,
+              pickable: false,
+              parameters: { depthTest: false },
+              updateTriggers: {
+                getRadius: [HEAT_GAMMA], // t生成はHEAT_GAMMA/CLIP依存（pointBubblesで計算）
+                getFillColor: [clusterColorMode],
+              },
+            })
+          : null,
 
         // ピン/コンパス
         userPinCompassLayer,
         compassLayer,
         anchorCompassLayer,
 
-        // 打点
+        // 打点（店舗側の●）
         mainLayer,
+
+        // EC商品の★
+        ecStarLayer,
 
         // ★ 選択中のみ dot.svg を重ねる
         ...selectedDotLayers,
