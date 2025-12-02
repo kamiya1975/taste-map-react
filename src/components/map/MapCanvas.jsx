@@ -230,8 +230,6 @@ const MapCanvas = forwardRef(function MapCanvas(
   }, [data, allowedJansSet, ecOnlyJansSet, janStoreMap, activeStoreId]);
 
   // --- EC商品 / 店舗商品 の振り分け ---
-  //   storePoints   … 店舗で扱っている商品（★で表示）
-  //   ecOnlyPoints  … ECのみ or 通常商品（●で表示）
   const { storePoints, ecOnlyPoints } = useMemo(() => {
     const store = [];
     const ecOnly = [];
