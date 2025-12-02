@@ -21,6 +21,7 @@ import {
 
 const BLACK = [0, 0, 0, 255];
 const FAVORITE_RED = [178, 53, 103, 255];
+const STAR_ORANGE = [247, 147, 30, 255]; // #F7931E くらいのオレンジ（★）
 const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
@@ -518,7 +519,8 @@ const MapCanvas = forwardRef(function MapCanvas(
         if (clusterColorMode && Number.isFinite(d.cluster)) {                 // クラスタ色モード
           return getClusterRGBA(d.cluster);
         }
-        return MAP_POINT_COLOR;                                               // それ以外は●と同じグレー
+        //return MAP_POINT_COLOR;                                               // それ以外は●と同じグレー
+        return STAR_ORANGE;
      },
       getTextAnchor: () => "middle",
       getAlignmentBaseline: () => "center",
