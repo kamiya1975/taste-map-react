@@ -789,7 +789,7 @@ export default function ProductPage() {
   } else if (availableInSelected) {
     // ② 店舗取扱あり
     const name = priceStoreName || "店舗";
-    availabilityLine = `この商品は、近くの${name}でお買い求めいただけます。（在庫・価格は店舗でご確認ください）`;
+    availabilityLine = `この商品は、近くの${name}でお買い求めいただけます。<br />（在庫・価格は店舗でご確認ください）`;
   } else if (availableInSelected === false) {
     // ③ 店舗・ECともに登録なし
     availabilityLine =
