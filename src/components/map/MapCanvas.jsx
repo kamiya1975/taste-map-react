@@ -223,9 +223,11 @@ const MapCanvas = forwardRef(function MapCanvas(
   }, [data, allowedJansSet, janStoreMap, activeStoreId]);
 
   // --- EC商品 / 店舗商品 の振り分け ---
-  const { nonEcPoints, ecPoints } = useMemo(() => {
-    const nonEc = [];
-    const ec = [];
+  //   storePoints   … 店舗で扱っている商品（★で表示）
+  //   ecOnlyPoints  … ECのみ or 通常商品（●で表示）
+  const { storePoints, ecOnlyPoints } = useMemo(() => {
+    const store = [];
+    const ecOnly = [];
 
     (filteredData || []).forEach((d) => {
       // バックエンド側の色々なフラグ名に少しだけ対応
@@ -245,18 +247,18 @@ const MapCanvas = forwardRef(function MapCanvas(
       const isEcBool = Boolean(isEc);
 
       if (isStoreBool) {
-        // ① 店舗で扱っている商品が最優先 → ●として描画
-        nonEc.push(d);
+        // ① 店舗で扱っている商品 → ★で描画したい
+        store.push(d);
       } else if (isEcBool) {
-        // ② 店舗では扱っていないが、EC商品なら ★ として描画
-        ec.push(d);
+        // ② 店舗では扱っていないが、EC商品 → ●で描画
+        ecOnly.push(d);
       } else {
-        // ③ どちらでもない通常点（将来のために残しておく）
-        nonEc.push(d);
+        // ③ どちらでもない通常点 → ●で描画（従来どおり）
+        ecOnly.push(d);
       }
     });
 
-    return { nonEcPoints: nonEc, ecPoints: ec };
+    return { storePoints: store, ecOnlyPoints: ecOnly };
   }, [filteredData]);
 
   // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
@@ -465,7 +467,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     () =>
       new ScatterplotLayer({
         id: "scatter",
-        data: nonEcPoints,
+        data: ecOnlyPoints,  // ← EC/通常商品を●で表示
         getPosition: (d) => [xOf(d), -yOf(d), 0],
         getFillColor: (d) => {
           const janStr = janOf(d);
@@ -487,7 +489,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         getRadius: 0.03,
         pickable: true,
       }),
-     [nonEcPoints, favorites, userRatings, clusterColorMode]
+     [ecOnlyPoints, favorites, userRatings, clusterColorMode]
   );
 
   // MapCanvas.jsx 内、ecStarLayer を定義している useMemo の直前あたり
@@ -499,12 +501,12 @@ const MapCanvas = forwardRef(function MapCanvas(
 
   // --- レイヤ：EC商品の★マーカー ---
   const ecStarLayer = useMemo(() => {
-    if (!ecPoints || ecPoints.length === 0) return null;
+    if (!storePoints || storePoints.length === 0) return null;
 
     // ===== ズームに応じたフォントサイズ計算 =====
     return new TextLayer({
       id: "ec-stars",
-      data: ecPoints,
+      data: storePoints,   // ← 店舗取扱商品を★で表示
       getPosition: (d) => [xOf(d), -yOf(d), 0],
       getText: () => "★",
       sizeUnits: "meters",
@@ -534,7 +536,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         ],
       },
     });
-  }, [ecPoints, favorites, userRatings, clusterColorMode]);
+  }, [storePoints, favorites, userRatings, clusterColorMode]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
