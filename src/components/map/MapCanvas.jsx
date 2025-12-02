@@ -237,31 +237,60 @@ const MapCanvas = forwardRef(function MapCanvas(
     const ecOnly = [];
 
     (filteredData || []).forEach((d) => {
-      // バックエンド側の色々なフラグ名に少しだけ対応
-      const isStore =
+      const rawStore =
         d.is_store_product ??
         d.has_store_product ??
         d.store_product ??
         false;
 
-      const isEc =
+      const rawEc =
         d.is_ec_product ??
         d.has_ec_product ??
         d.ec_product ??
         false;
 
-      const isStoreBool = Boolean(isStore);
-      const isEcBool = Boolean(isEc);
+      let isStoreBool = false;
+      let isEcBool = false;
+
+      // 店舗フラグの型別判定
+      if (typeof rawStore === "boolean") {
+        isStoreBool = rawStore;
+      } else if (typeof rawStore === "number") {
+        // 0/1 の数値なら 1 を true とみなす
+        isStoreBool = rawStore === 1;
+      } else if (typeof rawStore === "string") {
+        // "0"/"1" や "true"/"false" に対応
+        const v = rawStore.trim().toLowerCase();
+        isStoreBool = v === "1" || v === "true";
+      } else if (Array.isArray(rawStore)) {
+        // 配列なら「要素数 > 0」のときのみ true
+        isStoreBool = rawStore.length > 0;
+      } else if (rawStore && typeof rawStore === "object") {
+        // オブジェクトなら「null でない」だけだと危険なので必要ならキーを見る
+        // isStoreBool = Object.keys(rawStore).length > 0;
+        isStoreBool = false; // ここは仕様に合わせて調整
+      }
+
+      // ECフラグの型別判定
+      if (typeof rawEc === "boolean") {
+        isEcBool = rawEc;
+      } else if (typeof rawEc === "number") {
+        isEcBool = rawEc === 1;
+      } else if (typeof rawEc === "string") {
+        const v = rawEc.trim().toLowerCase();
+        isEcBool = v === "1" || v === "true";
+      } else if (Array.isArray(rawEc)) {
+        isEcBool = rawEc.length > 0;
+      } else if (rawEc && typeof rawEc === "object") {
+        isEcBool = false;
+      }
 
       if (isStoreBool) {
-        // ① 店舗で扱っている商品 → ★で描画したい
-        store.push(d);
+        store.push(d);      // ★
       } else if (isEcBool) {
-        // ② 店舗では扱っていないが、EC商品 → ●で描画
-        ecOnly.push(d);
+        ecOnly.push(d);     // ●（EC専用）
       } else {
-        // ③ どちらでもない通常点 → ●で描画（従来どおり）
-        ecOnly.push(d);
+        ecOnly.push(d);     // ●（その他）
       }
     });
 
@@ -881,10 +910,10 @@ const MapCanvas = forwardRef(function MapCanvas(
         compassLayer,
         anchorCompassLayer,
 
-        // 打点（店舗側の●）
+        // 打点（店舗側の★）
         mainLayer,
 
-        // EC商品の★
+        // EC商品の●
         ecStarLayer,
 
         // ★ 選択中のみ dot.svg を重ねる
