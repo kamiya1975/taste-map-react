@@ -81,13 +81,12 @@ const showAllowedJansErrorOnce = () => {
 
 // ★ 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
 async function fetchAllowedJansForStore(storeId) {
-  if (!storeId) {
+  if (storeId === null || storeId === undefined) {
     return { allowedJans: null, ecOnlyJans: null };
   }
 
   const params = new URLSearchParams();
   params.set("stores", String(storeId));
-  // EC取扱JAN（tdb_product.ec_product=true）も合成する
   params.set("include_ec", "true");
 
   const res = await fetch(
@@ -98,12 +97,8 @@ async function fetchAllowedJansForStore(storeId) {
   }
 
   const json = await res.json();
-    const { allowedJans, ecOnlyJans } = parseAllowedJansResponse(json);
-
-  return {
-    allowedJans: allowedJans.length > 0 ? allowedJans : null,
-    ecOnlyJans: ecOnlyJans.length > 0 ? ecOnlyJans : null,
-  };
+  const { allowedJans, ecOnlyJans } = parseAllowedJansResponse(json);
+  return { allowedJans, ecOnlyJans };
 }
 
   // ★ 共通のパース小ユーティリティ
@@ -141,22 +136,31 @@ async function fetchAllowedJansAuto() {
 
   // ① 未ログイン or トークンなし
   if (!token) {
-    if (mainStoreId && mainStoreId > 0) {
       try {
         const { allowedJans, ecOnlyJans } =
           await fetchAllowedJansForStore(mainStoreId);
-        return { allowedJans, ecOnlyJans };
+
+          // ★ allowed が空だが ecOnly がある場合（公式Shop=0想定）は、ecOnly をフィルタに使う
+          const merged =
+            allowedJans && allowedJans.length > 0
+              ? allowedJans
+              : ecOnlyJans && ecOnlyJans.length > 0
+              ? ecOnlyJans
+              : [];
+
+        return { 
+          allowedJans: merged,
+          ecOnlyJans: ecOnlyJans || [],
+        };
       } catch (e) {
         console.warn(
           `allowed-jans(stores=${mainStoreId}) の取得に失敗 → 全件表示にフォールバック`,
           e
         );
         showAllowedJansErrorOnce();
-          return { allowedJans: null, ecOnlyJans: null };
+        return { allowedJans: null, ecOnlyJans: null };
       }
     }
-    return { allowedJans: null, ecOnlyJans: null };
-  }
 
   // ② ログイン済み
   try {
@@ -167,17 +171,25 @@ async function fetchAllowedJansAuto() {
 
     if (res.ok) {
       const json = await res.json();
-         const { allowedJans, ecOnlyJans } = parseAllowedJansResponse(json);
+      const { allowedJans, ecOnlyJans } = parseAllowedJansResponse(json);
+
+      const merged =
+        allowedJans && allowedJans.length > 0
+          ? allowedJans
+          : ecOnlyJans && ecOnlyJans.length > 0
+          ? ecOnlyJans
+          : [];
+
       return {
-        allowedJans: allowedJans.length > 0 ? allowedJans : null,
-        ecOnlyJans: ecOnlyJans.length > 0 ? ecOnlyJans : null,
+        allowedJans: merged, 
+        ecOnlyJans: ecOnlyJans || [],
       };
     } else {
       console.warn(
         `allowed-jans/auto HTTP ${res.status} → フィルタ無しで続行`
       );
       showAllowedJansErrorOnce();
-       return { allowedJans: null, ecOnlyJans: null };
+      return { allowedJans: null, ecOnlyJans: null };
     }
   } catch (e) {
     console.warn("allowed-jans/auto の取得に失敗 → フィルタ無しで続行", e);

@@ -203,17 +203,23 @@ const MapCanvas = forwardRef(function MapCanvas(
   const filteredData = useMemo(() => {
     if (!Array.isArray(data) || data.length === 0) return [];
 
-    // allowedJansSet が無ければ従来どおり全件
+    // allowedJansSet が無いが ecOnlyJansSet がある → EC商品のみ表示（公式Shop想定）
+    if (!allowedJansSet && ecOnlyJansSet && ecOnlyJansSet.size > 0) {
+      return data.filter((d) => {
+        const jan = janOf(d);
+        return jan && ecOnlyJansSet.has(jan);
+      });
+    }
+
+    // 両方無ければ従来どおり全件（完全フォールバック）
     if (!allowedJansSet) return data;
 
     return data.filter((d) => {
       const jan = janOf(d);
       if (!jan) return false;
 
-      // ① 自分の店舗群が扱う JAN かどうか
       if (!allowedJansSet.has(jan)) return false;
 
-      // ② activeStoreId が指定されているときは、その店舗が扱う JAN のみに絞る
       if (activeStoreId != null && janStoreMap) {
         const stores = janStoreMap[jan] || [];
         if (!stores.includes(activeStoreId)) return false;
@@ -221,7 +227,7 @@ const MapCanvas = forwardRef(function MapCanvas(
 
       return true;
     });
-  }, [data, allowedJansSet, janStoreMap, activeStoreId]);
+  }, [data, allowedJansSet, ecOnlyJansSet, janStoreMap, activeStoreId]);
 
   // --- EC商品 / 店舗商品 の振り分け ---
   //   storePoints   … 店舗で扱っている商品（★で表示）
