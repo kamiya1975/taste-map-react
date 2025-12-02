@@ -120,7 +120,7 @@ async function fetchAllowedJansForStore(storeId) {
 
     return {
       allowedJans: allowedArr.map(String),
-      ecOnlyJans: ecArr.map(String),
+      ecOnlyJans: ecOnlyArr.map(String),
     };
   };
 
