@@ -793,7 +793,7 @@ export default function ProductPage() {
   } else if (availableInSelected === false) {
     // ③ 店舗・ECともに登録なし
     availabilityLine =
-      "現在、お選びの店舗ではお取り扱いがありません。（過去の評価履歴として表示しています）";
+      "現在、お選びの店舗ではお取り扱いがありません。<br />（過去の評価履歴として表示しています）";
   }
 
   const handleAddToCart = async () => {
