@@ -230,8 +230,10 @@ const MapCanvas = forwardRef(function MapCanvas(
   }, [data, allowedJansSet, ecOnlyJansSet, janStoreMap, activeStoreId]);
 
   // --- EC商品 / 店舗商品 の振り分け ---
+  //   storePoints   … 店舗で扱っている商品（★で表示）
+  //   ecOnlyPoints  … ECのみ or 通常商品（●で表示）
   const { storePoints, ecOnlyPoints } = useMemo(() => {
-    const store = [];
+   const store = [];
     const ecOnly = [];
 
     (filteredData || []).forEach((d) => {
@@ -250,45 +252,41 @@ const MapCanvas = forwardRef(function MapCanvas(
       let isStoreBool = false;
       let isEcBool = false;
 
-      // 店舗フラグの型別判定
+      // ===== 店舗フラグの型ごとに判定 =====
       if (typeof rawStore === "boolean") {
         isStoreBool = rawStore;
       } else if (typeof rawStore === "number") {
-        // 0/1 の数値なら 1 を true とみなす
         isStoreBool = rawStore === 1;
       } else if (typeof rawStore === "string") {
-        // "0"/"1" や "true"/"false" に対応
         const v = rawStore.trim().toLowerCase();
-        isStoreBool = v === "1" || v === "true";
+        isStoreBool = (v === "1" || v === "true" || v === "yes");
       } else if (Array.isArray(rawStore)) {
-        // 配列なら「要素数 > 0」のときのみ true
+        // 店舗取扱を list で返す API の場合：空配列=NO、1件以上=YES
         isStoreBool = rawStore.length > 0;
       } else if (rawStore && typeof rawStore === "object") {
-        // オブジェクトなら「null でない」だけだと危険なので必要ならキーを見る
-        // isStoreBool = Object.keys(rawStore).length > 0;
-        isStoreBool = false; // ここは仕様に合わせて調整
+        // object は危険なので基本 false。仕様に合わせて調整。
+        isStoreBool = false;
       }
 
-      // ECフラグの型別判定
+      // ===== ECフラグ =====
       if (typeof rawEc === "boolean") {
         isEcBool = rawEc;
       } else if (typeof rawEc === "number") {
         isEcBool = rawEc === 1;
       } else if (typeof rawEc === "string") {
         const v = rawEc.trim().toLowerCase();
-        isEcBool = v === "1" || v === "true";
+        isEcBool = (v === "1" || v === "true" || v === "yes");
       } else if (Array.isArray(rawEc)) {
         isEcBool = rawEc.length > 0;
       } else if (rawEc && typeof rawEc === "object") {
         isEcBool = false;
       }
 
+      // ===== 描画グループ振り分け =====
       if (isStoreBool) {
         store.push(d);      // ★
-      } else if (isEcBool) {
-        ecOnly.push(d);     // ●（EC専用）
       } else {
-        ecOnly.push(d);     // ●（その他）
+        ecOnly.push(d);     // ●（EC or 通常点）
       }
     });
 

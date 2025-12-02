@@ -73,7 +73,7 @@ export default function StorePanelContent() {
 
   const formatKm = (d, id) => {
     // 公式Shop(EC) は距離表示なし
-    if (id === 1) return "";
+    if (id === 0) return "";
     if (Number.isFinite(d) && d !== Infinity) {
       return `${d.toFixed(1)}km`;
     }
