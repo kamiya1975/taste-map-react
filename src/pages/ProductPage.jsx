@@ -782,22 +782,24 @@ export default function ProductPage() {
   const canShowCartButton = isEcProduct && mainStoreEcActive !== false;
 
   // ★ 価格下の文言（EC / 店舗 / どちらも無し）
+  const hasStoreName = !!priceStoreName;
+
   let availabilityLine = "";
   if (canShowCartButton) {
     // ① EC商品
     availabilityLine = "この商品はネット購入できます。";
-  } else if (availableInSelected) {
-    // ② 店舗取扱あり
-    const name = priceStoreName || "店舗";
+  } else if (hasStoreName) {
+    // ② バックエンドが店舗名（price_store_name）を返している → 店舗取扱あり
+    const name = priceStoreName;
     availabilityLine = (
       <>
-      この商品は、近くの{name}でお買い求めいただけます。
-      <br />
-      在庫・価格は店舗でご確認ください。
+        この商品は、近くの{name}でお買い求めいただけます。
+        <br />
+        在庫・価格は店舗でご確認ください。
       </>
     );
   } else if (availableInSelected === false) {
-    // ③ 店舗・ECともに登録なし
+    // ③ 本当にどこにも無い（評価履歴として表示）
     availabilityLine = (
       <>
         現在、お選びの店舗ではお取り扱いがありません。
