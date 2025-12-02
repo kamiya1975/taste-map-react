@@ -749,36 +749,27 @@ export default function ProductPage() {
   // ★ どの店舗の価格か（バックエンドのフィールド候補を順に見る）
   const priceStoreName =
     product?.price_store_name || // 推奨：価格算出元の店舗名
-    product?.store_name || // 一般的な店舗名フィールド
-    product?.main_store_name || // メイン店舗の名前
-    product?.ec_store_name || // EC用の表示名（もしあれば）
+    product?.store_name ||       // 一般的な店舗名フィールド
+    product?.main_store_name ||  // メイン店舗の名前
+    product?.ec_store_name ||    // EC用の表示名（もしあれば）
     "";
 
   // ★ 選択中店舗にアクティブ取扱があるか（バックエンド新フィールド）
-  const availableInSelected =
-    product?.available_in_selected_stores;
+  const availableInSelected = product?.available_in_selected_stores;
 
-  const availabilityLine =
-    priceStoreName
-      ? `${priceStoreName}でお買い求めいただけます。（在庫・価格は店舗でご確認ください）`
-      : availableInSelected === false
-      ? "現在、お選びの店舗ではお取り扱いがありません。（過去の評価履歴として表示しています）"
-      : "";
-
-  // ★ クラスタ色へ変更（typeColors は廃止）
-  //   風味データ由来の clusterId を優先し、なければ product.cluster_id を使う
+  // ★ クラスタ色
   const clusterRgba = getClusterRGBA(
     clusterId != null ? clusterId : product?.cluster_id
   );
   const typeColor = clusterRGBAtoCSS(clusterRgba);
 
   const title =
-    product?.name_kana || 
-    product?.title || 
-    product?.jan_code || 
+    product?.name_kana ||
+    product?.title ||
+    product?.jan_code ||
     "（名称不明）";
 
-  // ★ EC商品かどうか（バックエンドからのフラグをそのまま使用）
+  // ★ EC商品かどうか
   const isEcProduct = !!product?.ec_product;
 
   // ★ メイン店舗が EC 有効かどうか（boolean が来たときだけ尊重）
@@ -788,10 +779,22 @@ export default function ProductPage() {
       : null;
 
   // ★ カートボタンを表示して良いかどうか
-  //   - ec_product が true のときだけ
-  //   - main_store_ec_active が false と明示されている場合は非表示
-  const canShowCartButton =
-    isEcProduct && (mainStoreEcActive !== false);
+  const canShowCartButton = isEcProduct && mainStoreEcActive !== false;
+
+  // ★ 価格下の文言（EC / 店舗 / どちらも無し）
+  let availabilityLine = "";
+  if (canShowCartButton) {
+    // ① EC商品
+    availabilityLine = "この商品はネット購入できます。";
+  } else if (availableInSelected) {
+    // ② 店舗取扱あり
+    const name = priceStoreName || "お近くの店舗";
+    availabilityLine = `この商品は、近くの${name}でお買い求めいただけます。（在庫・価格は店舗でご確認ください）`;
+  } else if (availableInSelected === false) {
+    // ③ 店舗・ECともに登録なし
+    availabilityLine =
+      "現在、お選びの店舗ではお取り扱いがありません。（過去の評価履歴として表示しています）";
+  }
 
   const handleAddToCart = async () => {
     try {
