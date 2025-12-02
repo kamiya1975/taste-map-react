@@ -15,6 +15,7 @@ import {
   IconLayer,
   BitmapLayer,
   TextLayer,
+  PathLayer as _PathLayer, // 型補完用（重複でも問題なし）
 } from "@deck.gl/layers";
 import {
   ZOOM_LIMITS,
@@ -27,7 +28,7 @@ import {
 
 const BLACK = [0, 0, 0, 255];
 const FAVORITE_RED = [178, 53, 103, 255];
-const STAR_ORANGE = [247, 147, 30, 255]; // ★用オレンジ
+const STAR_ORANGE = [247, 147, 30, 255]; // ★色
 const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
@@ -44,8 +45,8 @@ const makePinSVG = ({
   strokeWidth = 2,
   innerFill = "#FFFFFF",
 } = {}) => {
-  const w = 64,
-    h = 96;
+  const w = 64;
+  const h = 96;
   const svg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
     <path d="M32 4
@@ -156,18 +157,6 @@ function clampViewState(nextVS, panBounds, sizePx, margins = {}) {
   return { ...nextVS, zoom, target: [x, y, 0] };
 }
 
-// ---------- 汎用 toBool ----------
-const toBool = (v) => {
-  if (typeof v === "boolean") return v;
-  if (typeof v === "number") return v === 1;
-  if (typeof v === "string") {
-    const w = v.trim().toLowerCase();
-    return w === "1" || w === "true" || w === "yes";
-  }
-  if (Array.isArray(v)) return v.length > 0;
-  return false;
-};
-
 const MapCanvas = forwardRef(function MapCanvas(
   {
     data,
@@ -212,27 +201,26 @@ const MapCanvas = forwardRef(function MapCanvas(
     return [cx - K * halfW, cy - K * halfH, cx + K * halfW, cy + K * halfH];
   }, [viewState.zoom, viewState.target]);
 
-  // --- 店舗情報に基づいて打点をフィルタするデータ ---
-  //   ※ ここでは「どの店舗の点か」は絞り込まない。
-  //      ・公式Shop(id=0) → EC専用JAN(ecOnlyJansSet)だけを採用
-  //      ・それ以外 → allowedJansSet だけでフィルタ
+  // --- 打点フィルタ ---
+  // 公式Shopモード（allowedJansSet なし && ecOnlyJansSet あり）は EC 専用 JAN だけ。
+  // それ以外は allowedJansSet でフィルタ。
   const filteredData = useMemo(() => {
     if (!Array.isArray(data) || data.length === 0) return [];
 
-    // 公式Shopモード（allowedJansSet が無く、ecOnlyJansSet だけある）
     if (!allowedJansSet && ecOnlyJansSet && ecOnlyJansSet.size > 0) {
+      // 公式Shopモード
       return data.filter((d) => {
         const jan = janOf(d);
         return jan && ecOnlyJansSet.has(jan);
       });
     }
 
-    // フォールバック：allowedJansSet が無ければ全部表示（開発・デバッグ用）
     if (!allowedJansSet) {
+      // フォールバック：全部表示
       return data;
     }
 
-    // 通常モード：allowedJansSet だけでフィルタ
+    // 通常：allowedJansSet のみ
     return data.filter((d) => {
       const jan = janOf(d);
       if (!jan) return false;
@@ -240,49 +228,45 @@ const MapCanvas = forwardRef(function MapCanvas(
     });
   }, [data, allowedJansSet, ecOnlyJansSet]);
 
-  // --- EC商品 / 店舗商品 の振り分け ---
-  //   storePoints   … 店舗で扱っている商品（★で表示）
-  //   ecOnlyPoints  … ECのみ or 通常点（●で表示）
+  // --- EC商品 / 店舗商品の振り分け ---
+  // ★ 店舗で扱っているかどうかは「janStoreMap + activeStoreId」だけで判定する。
+  //   → バックエンドの is_store_product / is_ec_product フラグは一切見ない。
   const { storePoints, ecOnlyPoints } = useMemo(() => {
     const store = [];
     const ecOnly = [];
 
+    const hasActiveStore = activeStoreId != null && activeStoreId !== 0;
+
     (filteredData || []).forEach((d) => {
       const jan = janOf(d);
+      let isStore = false;
 
-      // バックエンド側のフラグを優先
-      const rawStore =
-        d.is_store_product ??
-        d.has_store_product ??
-        false; // store_product は使わない（構造変更の影響を避ける）
+      if (hasActiveStore && jan && janStoreMap) {
+        const stores = janStoreMap[jan] || [];
+        if (Array.isArray(stores) && stores.includes(activeStoreId)) {
+          isStore = true;
+        }
+      }
 
-      const rawEc =
-        d.is_ec_product ??
-        d.has_ec_product ??
-        d.ec_product ??
-        false;
-
-      let isStoreBool = toBool(rawStore);
-      const isEcBool = toBool(rawEc);
-
-      // ★ 店舗判定は「フラグ」が正なら優先、それ以外は janStoreMap を「参考」にする程度にしたければここで足す
-      //   ただし今は janStoreMap に依存しない（ここで依存するとまた全部★になりうる）
-      //   if (!isStoreBool && activeStoreId != null && janStoreMap) {
-      //     const stores = janStoreMap[jan] || [];
-      //     if (stores.includes(activeStoreId)) isStoreBool = true;
-      //   }
-
-      if (isStoreBool) {
-        // ① 店舗で扱っている商品 → ★
+      if (isStore) {
+        // ① 選択中店舗で扱っている商品 → ★
         store.push(d);
       } else {
-        // ② それ以外はすべて ●（EC専用 + 通常点）
+        // ② それ以外（EC 専用＋その他）→ ●
         ecOnly.push(d);
       }
     });
 
+    console.log("[MapCanvas] points:", {
+      filtered: filteredData.length,
+      storeCount: store.length,
+      ecOnlyCount: ecOnly.length,
+      hasActiveStore,
+      activeStoreId,
+    });
+
     return { storePoints: store, ecOnlyPoints: ecOnly };
-  }, [filteredData]);
+  }, [filteredData, janStoreMap, activeStoreId]);
 
   // --- バブル用データ ---
   const pointBubbles = useMemo(() => {
@@ -489,12 +473,12 @@ const MapCanvas = forwardRef(function MapCanvas(
     return [outer, innerWhite];
   }, [filteredData, selectedJAN]);
 
-  // --- レイヤ：打点（EC + 通常点 → ●） ---
+  // --- レイヤ：打点（EC + その他 → ●） ---
   const mainLayer = useMemo(
     () =>
       new ScatterplotLayer({
         id: "scatter",
-        data: ecOnlyPoints, // ●
+        data: ecOnlyPoints,
         getPosition: (d) => [xOf(d), -yOf(d), 0],
         getFillColor: (d) => {
           const janStr = janOf(d);
@@ -519,25 +503,13 @@ const MapCanvas = forwardRef(function MapCanvas(
     [ecOnlyPoints, favorites, userRatings, clusterColorMode]
   );
 
-  // デバッグ：ECフラグ数
-  useEffect(() => {
-    if (!Array.isArray(filteredData)) return;
-    const ecCount = filteredData.filter((d) => d.is_ec_product).length;
-    const storeCount = filteredData.filter((d) => d.is_store_product).length;
-    console.log("[MapCanvas] points:", {
-      filtered: filteredData.length,
-      storeCount,
-      ecCount,
-    });
-  }, [filteredData]);
-
   // --- レイヤ：店舗商品の★マーカー ---
-  const ecStarLayer = useMemo(() => {
+  const starLayer = useMemo(() => {
     if (!storePoints || storePoints.length === 0) return null;
 
     return new TextLayer({
       id: "store-stars",
-      data: storePoints, // ★
+      data: storePoints,
       getPosition: (d) => [xOf(d), -yOf(d), 0],
       getText: () => "★",
       sizeUnits: "meters",
@@ -611,7 +583,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     );
   }, [filteredData, userRatings]);
 
-  // --- 嗜好コンパス（ユーザー重心） ---
+  // --- 嗜好コンパス ---
   const compassLayer = useMemo(() => {
     if (!compassPoint) return null;
     const icon = makePinSVG({
@@ -707,10 +679,10 @@ const MapCanvas = forwardRef(function MapCanvas(
       let best = null,
         bestD2 = Infinity;
       for (const d of filteredData) {
-        const x = xOf(d),
-          y = -yOf(d);
-        const dx = x - cx,
-          dy = y - cy;
+        const x = xOf(d);
+        const y = -yOf(d);
+        const dx = x - cx;
+        const dy = y - cy;
         const d2 = dx * dx + dy * dy;
         if (d2 < bestD2) {
           bestD2 = d2;
@@ -842,7 +814,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           widthUnits: "pixels",
         }),
 
-        // セルタイル（バブル無し & クラスタ色OFFのときだけ）
+        // セルのタイル（バブル無し & クラスタ色OFFのときだけ）
         !highlight2D && !clusterColorMode
           ? new IconLayer({
               id: "cell-tiles",
@@ -902,16 +874,16 @@ const MapCanvas = forwardRef(function MapCanvas(
             })
           : null,
 
-        // ピン/コンパス
+        // 嗜好コンパス類
         userPinCompassLayer,
         compassLayer,
         anchorCompassLayer,
 
-        // ● (EC + 通常点)
+        // ●（EC + その他）
         mainLayer,
 
-        // ★（店舗で扱っている商品）
-        ecStarLayer,
+        // ★（店舗商品）
+        starLayer,
 
         // 選択ドット
         ...selectedDotLayers,
