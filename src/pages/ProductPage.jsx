@@ -791,9 +791,9 @@ export default function ProductPage() {
     const name = priceStoreName || "店舗";
     availabilityLine = (
       <>
-      この商品は、近くの${name}でお買い求めいただけます。
+      この商品は、近くの{name}でお買い求めいただけます。
       <br />
-      （在庫・価格は店舗でご確認ください）
+      在庫・価格は店舗でご確認ください。
       </>
     );
   } else if (availableInSelected === false) {
@@ -802,7 +802,7 @@ export default function ProductPage() {
       <>
         現在、お選びの店舗ではお取り扱いがありません。
         <br />
-        （過去の評価履歴として表示しています）
+        過去の評価履歴として表示しています。
       </>
     );
   }
