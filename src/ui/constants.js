@@ -189,3 +189,9 @@ export const EC_STAR_ICON_URL = `${process.env.PUBLIC_URL || ""}/img/ec-star.png
 // ★凡例などで使う説明テキスト
 export const EC_STAR_DESCRIPTION =
   "★はTasteMap公式ECで購入できるワインを表します。";
+
+// =====================
+// OFFICIAL STORE ID
+// =====================
+export const OFFICIAL_STORE_ID =
+  Number(process.env.REACT_APP_OFFICIAL_STORE_ID || "1");
