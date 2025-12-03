@@ -359,6 +359,57 @@ function MapPage() {
   const [janStoreMap, setJanStoreMap] = useState({});       // jan -> [store_id,...]（今は未使用）
   const [activeStoreId, setActiveStoreId] = useState(null); // フィルタ用（任意）
 
+  // ====== allowed-jans を読み直す共通関数 ======
+  const reloadAllowedJans = useCallback(async () => {
+    try {
+      const { allowedJans, ecOnlyJans } = await fetchAllowedJansAuto();
+
+      if (!allowedJans || allowedJans.length === 0) {
+        // フィルタ無し（全件表示）
+        setAllowedJansSet(null);
+        setEcOnlyJansSet(null);
+        setStoreList([]);
+        setJanStoreMap({});
+        return;
+      }
+
+      setAllowedJansSet(new Set(allowedJans));
+      setEcOnlyJansSet(
+        ecOnlyJans && ecOnlyJans.length > 0 ? new Set(ecOnlyJans) : null
+      );
+      setStoreList([]);
+      setJanStoreMap({});
+    } catch (e) {
+      console.error("allowed-jans の取得に失敗:", e);
+      setAllowedJansSet(null);
+      setEcOnlyJansSet(null);
+      setStoreList([]);
+      setJanStoreMap({});
+    }
+  }, []);
+
+  // ====== 初回マウント時に allowed-jans を取得 ======
+  useEffect(() => {
+    reloadAllowedJans();
+  }, [reloadAllowedJans]);
+
+  // ====== ログイン状態や店舗選択の変更を拾って再取得 ======
+  useEffect(() => {
+    const handler = () => {
+      reloadAllowedJans();
+    };
+
+    // MyAccount でログイン/ログアウト時に発火させる想定
+    window.addEventListener("tm_auth_changed", handler);
+    // StorePanelContent から localStorage が書き換わったときも拾う
+    window.addEventListener("storage", handler);
+
+    return () => {
+      window.removeEventListener("tm_auth_changed", handler);
+      window.removeEventListener("storage", handler);
+    };
+  }, [reloadAllowedJans]);
+
   useEffect(() => {
     if (!isRatedOpen) return;
 
@@ -604,46 +655,6 @@ function MapPage() {
       ymax: ymax + pad,
     };
   }, [data]);
-
-  // ====== データ読み込み（店舗の取扱 JAN でフィルタ）=====
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-       const { allowedJans, ecOnlyJans } = await fetchAllowedJansAuto();
-        if (cancelled) return;
-
-        if (!allowedJans || allowedJans.length === 0) {
-          setAllowedJansSet(null);
-          setEcOnlyJansSet(null);
-          setStoreList([]);
-          setJanStoreMap({});
-          return;
-        }
-
-        setAllowedJansSet(new Set(allowedJans));
-         setEcOnlyJansSet(
-          ecOnlyJans && ecOnlyJans.length > 0 ? new Set(ecOnlyJans) : null
-         );
-
-        setStoreList([]);
-        setJanStoreMap({});
-      } catch (e) {
-        console.error("allowed-jans の取得に失敗:", e);
-        if (!cancelled) {
-          setAllowedJansSet(null);
-          setEcOnlyJansSet(null);
-          setStoreList([]);
-          setJanStoreMap({});
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // ====== data に「EC専用かどうか」のフラグを付けて points を作る ======
   useEffect(() => {

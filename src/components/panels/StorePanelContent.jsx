@@ -1,5 +1,6 @@
 // src/components/panels/StorePanelContent.jsx
 import React, { useEffect, useState } from "react";
+import { OFFICIAL_STORE_ID } from "../../ui/constants";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
@@ -71,9 +72,7 @@ export default function StorePanelContent() {
   const [err, setErr] = useState("");
   const [savingId, setSavingId] = useState(null);
 
-  const formatKm = (d, id) => {
-    // 公式Shop(EC) は距離表示なし
-    if (id === 0) return "";
+  const formatKm = (d /* , id */) => {
     if (Number.isFinite(d) && d !== Infinity) {
       return `${d.toFixed(1)}km`;
     }
@@ -94,7 +93,7 @@ export default function StorePanelContent() {
         if (alive) {
           setStores([]);
           setErr(
-            "お気に入り店舗登録の更新にはログインが必要です。マイカウントからログインしてから再度お試しください。"
+            "お気に入り店舗登録の更新にはログインが必要です。マイアカウントからログインしてから再度お試しください。"
           );
           setLoading(false);
         }
@@ -136,15 +135,14 @@ export default function StorePanelContent() {
         // 距離情報整形
         const mapped = list.map((s, idx) => {
           const rawD = s.distance_km;
-          const numD =
-            rawD === null || rawD === undefined ? NaN : Number(rawD);
+          const numD = rawD === null || rawD === undefined ? NaN : Number(rawD);
           const d = Number.isFinite(numD) ? numD : Infinity;
 
           return {
             id: s.store_id,
             name: s.store_name,
-            distance: d,          // 並べ替え用
-            distance_km: numD,    // 生の値（参考）
+            distance: d, // 並べ替え用
+            distance_km: numD, // 生の値（参考）
             is_main: !!s.is_main,
             is_sub: !!s.is_sub,
             updated_at: s.updated_at,
@@ -184,21 +182,25 @@ export default function StorePanelContent() {
     };
   }, []);
 
-  // ★ メイン店舗（どの店舗でもOK。公式Shop(1) がメインならそれがここに入る）
+  // ★ メイン店舗（公式Shop を含めて固定表示）
   const mainStore = stores.find((s) => s.is_main) || null;
 
-  // ★ メイン店舗以外を距離順で表示
-  const otherStores = stores.filter((s) => !s.is_main);
+  // ★ メイン店舗以外 ＋ 公式Shop(id=1) は除外 → サブ候補一覧
+  const otherStores = stores.filter(
+    (s) => !s.is_main && s.id !== OFFICIAL_STORE_ID
+  );
 
   const favoritesCount = stores.filter((s) => s.is_sub).length;
 
   const toggleFavorite = async (store) => {
-    if (store.is_main) return;          // メイン店舗はトグル不可
+    if (store.is_main) return; // メイン店舗はトグル不可
     if (savingId !== null) return;
 
     const token = localStorage.getItem("app.access_token");
     if (!token) {
-      alert("お気に入り店舗登録の更新にはログインが必要です。マイカウントからログインしてから再度お試しください。");
+      alert(
+        "お気に入り店舗登録の更新にはログインが必要です。マイアカウントからログインしてから再度お試しください。"
+      );
       return;
     }
 
@@ -234,7 +236,9 @@ export default function StorePanelContent() {
       reloadApp();
     } catch (e) {
       console.error(e);
-      alert("店舗の登録更新に失敗しました。通信状況をご確認のうえ、再度お試しください。");
+      alert(
+        "店舗の登録更新に失敗しました。通信状況をご確認のうえ、再度お試しください。"
+      );
     } finally {
       setSavingId(null);
     }
@@ -271,7 +275,7 @@ export default function StorePanelContent() {
                   {mainStore.name}
                 </div>
                 <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
-                  {formatKm(mainStore.distance, mainStore.id)}
+                  {formatKm(mainStore.distance)}
                 </div>
               </div>
               <div
@@ -291,7 +295,7 @@ export default function StorePanelContent() {
           </>
         )}
 
-        {/* 2段目以降：メイン以外を距離順で全表示 */}
+        {/* 2段目以降：メイン以外を距離順で表示（公式Shopは除外済み） */}
         {!loading &&
           !err &&
           otherStores.map((store, i) => {
@@ -318,8 +322,14 @@ export default function StorePanelContent() {
                     <div style={{ fontWeight: 600, lineHeight: 1.2 }}>
                       {store.name}
                     </div>
-                    <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
-                      {formatKm(store.distance, store.id)}
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "#6e6e73",
+                        marginTop: 2,
+                      }}
+                    >
+                      {formatKm(store.distance)}
                     </div>
                   </div>
                 </div>

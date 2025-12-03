@@ -17,6 +17,7 @@ import {
   HEAT_CLIP_PCT,
   MAP_POINT_COLOR,
   getClusterRGBA,
+  OFFICIAL_STORE_ID,
 } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
@@ -244,11 +245,13 @@ const MapCanvas = forwardRef(function MapCanvas(
   }, [data, allowedJansSet, ecOnlyJansSet, janStoreMap, activeStoreId]);
 
   // --- EC商品 / 店舗商品 の振り分け ---
-  //   storePoints   … 店舗で扱っている商品（★で表示）
-  //   ecOnlyPoints  … ECのみ or 通常商品（●で表示）
+  //   storePoints   … 「このユーザーにとって店舗扱い」とみなす商品（★で表示）
+  //   ecOnlyPoints  … それ以外（●で表示）
   const { storePoints, ecOnlyPoints } = useMemo(() => {
-   const store = [];
+    const store = [];
     const ecOnly = [];
+
+    const isOfficial = activeStoreId != null && activeStoreId === OFFICIAL_STORE_ID;
 
     (filteredData || []).forEach((d) => {
       const rawStore =
@@ -273,13 +276,10 @@ const MapCanvas = forwardRef(function MapCanvas(
         isStoreBool = rawStore === 1;
       } else if (typeof rawStore === "string") {
         const v = rawStore.trim().toLowerCase();
-        isStoreBool = (v === "1" || v === "true" || v === "yes");
+        isStoreBool = v === "1" || v === "true" || v === "yes";
       } else if (Array.isArray(rawStore)) {
         // 店舗取扱を list で返す API の場合：空配列=NO、1件以上=YES
         isStoreBool = rawStore.length > 0;
-      } else if (rawStore && typeof rawStore === "object") {
-        // object は危険なので基本 false。仕様に合わせて調整。
-        isStoreBool = false;
       }
 
       // ===== ECフラグ =====
@@ -289,23 +289,42 @@ const MapCanvas = forwardRef(function MapCanvas(
         isEcBool = rawEc === 1;
       } else if (typeof rawEc === "string") {
         const v = rawEc.trim().toLowerCase();
-        isEcBool = (v === "1" || v === "true" || v === "yes");
+        isEcBool = v === "1" || v === "true" || v === "yes";
       } else if (Array.isArray(rawEc)) {
         isEcBool = rawEc.length > 0;
-      } else if (rawEc && typeof rawEc === "object") {
-        isEcBool = false;
       }
 
-      // ===== 描画グループ振り分け =====
-      if (isStoreBool) {
-        store.push(d);      // ★
+      const jan = janOf(d);
+
+      // ===== 「このユーザーにとって★か？」の判定 =====
+      if (isOfficial) {
+        // 公式Shopモード → EC商品を★として扱う
+        if (isEcBool) {
+          store.push(d);
+        } else {
+          ecOnly.push(d);
+        }
       } else {
-        ecOnly.push(d);     // ●（EC or 通常点）
+        // 通常店舗 → activeStoreId での取扱があるときだけ★
+        let isStoreHere = isStoreBool;
+        if (jan && isStoreBool && activeStoreId != null && janStoreMap) {
+          const stores = janStoreMap[jan] || [];
+          // この店舗で扱っていないなら、EC または「他店の商品」として ● 側へ
+          if (!stores.includes(activeStoreId)) {
+            isStoreHere = false;
+          }
+        }
+
+        if (isStoreHere) {
+          store.push(d);
+        } else {
+          ecOnly.push(d);
+        }
       }
     });
 
     return { storePoints: store, ecOnlyPoints: ecOnly };
-}, [filteredData]);
+  }, [filteredData, activeStoreId, janStoreMap]);
 
   // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
   const pointBubbles = useMemo(() => {
@@ -920,10 +939,10 @@ const MapCanvas = forwardRef(function MapCanvas(
         compassLayer,
         anchorCompassLayer,
 
-        // 打点（店舗側の★）
+        // 打点（EC/通常商品の●）
         mainLayer,
 
-        // EC商品の●
+        // 店舗扱い商品の★
         ecStarLayer,
 
         // ★ 選択中のみ dot.svg を重ねる

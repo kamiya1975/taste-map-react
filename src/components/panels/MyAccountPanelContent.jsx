@@ -38,13 +38,15 @@ const fromApiGender = (apiGender) => {
 
 const getCurrentMainStoreId = () => {
   try {
+    // 1. app.main_store_id（ログイン後サーバから返ってきたもの）
     const fromApp = Number(localStorage.getItem("app.main_store_id") || "0");
     if (fromApp > 0) return fromApp;
 
+    // 2. 旧キー（store.mainStoreId）
     const fromLegacy = Number(localStorage.getItem("store.mainStoreId") || "0");
     if (fromLegacy > 0) return fromLegacy;
 
-    // ★ 追加: 店舗選択ページが保存した selectedStore / main_store からも拾う
+    // 3. 店舗選択ページが保存した selectedStore / main_store からも拾う
     const stored =
       localStorage.getItem("selectedStore") ||
       localStorage.getItem("main_store");
@@ -54,10 +56,11 @@ const getCurrentMainStoreId = () => {
       if (id > 0) return id;
     }
   } catch {
-    // 何もしない
+    // 読み出しエラー時はそのまま下へ
   }
-  // 最低限、ECショップID=1をデフォルトにしておく（必要なら後で修正）
-  return 1;
+
+  // ★ デフォルト値は返さず、「見つからなかった」ことを示す
+  return 0;
 };
 
 const BorderlessInput = (props) => (

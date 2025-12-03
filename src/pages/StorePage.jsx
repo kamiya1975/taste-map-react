@@ -1,6 +1,7 @@
 // src/pages/StorePage.jsx
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { OFFICIAL_STORE_ID } from "../ui/constants";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
@@ -17,20 +18,6 @@ async function resolveLocation() {
   });
   return geo;
 }
-
-// ★ 公式Shop（EC）用の仮想店舗エントリ（id=0）
-const EC_STORE_ENTRY = {
-  id: 0,
-  name: "TasteMap公式Shop",
-  distance: Infinity,
-  distance_km: null,
-  is_main: false,
-  updated_at: null,
-  branch: "",
-  address: "",
-  genre: "",
-  _key: "ec@@0",
-};
 
 /* ========= 本体 ========= */
 export default function StorePage() {
@@ -67,11 +54,8 @@ export default function StorePage() {
 
       try {
         const loc = await resolveLocation();
-        const locAllowed = !!(
-          loc &&
-          Number.isFinite(loc.lat) &&
-          Number.isFinite(loc.lon)
-        );
+        const locAllowed =
+          !!(loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lon));
 
         // 位置情報が取れたかどうかを保存
         setLocFailed(!locAllowed);
@@ -106,7 +90,7 @@ export default function StorePage() {
         console.log("[StorePage] raw stores:", raw);
         const list = Array.isArray(raw) ? raw : [];
 
-        // API からの店舗情報を整形
+        // API からの店舗情報を整形（※順番はAPIのまま利用）
         const enriched = list.map((s, i) => {
           const rawD = s.distance_km;
           const numD =
@@ -127,14 +111,10 @@ export default function StorePage() {
           };
         });
 
-        // 距離順ソート（位置情報が取れなかった店舗は Infinity で末尾へ）
-        enriched.sort((a, b) => a.distance - b.distance);
-
-        // ★ 公式Shop（EC, id=0）を先頭に差し込む
-        const finalStores = [
-          EC_STORE_ENTRY,
-          ...enriched.filter((s) => s.id !== 0), // 念のため0を除外
-        ];
+        // ★ ここでは再ソートしない（バックエンドが
+        //    「公式Shop(OFFICIAL_STORE_ID) 最上段 → それ以外距離順」
+        //    を保証している前提）
+        const finalStores = enriched;
 
         setStores(finalStores);
 
@@ -162,9 +142,7 @@ export default function StorePage() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
-  const formatKm = (d, id) => {
-    // ★ EC(id=0) は距離表示なし
-    if (id === 0) return "";
+  const formatKm = (d /*, id */) => {
     if (Number.isFinite(d) && d !== Infinity) {
       return `${d.toFixed(1)}km`;
     }
@@ -176,7 +154,6 @@ export default function StorePage() {
       localStorage.setItem("selectedStore", JSON.stringify(store));
       localStorage.setItem("main_store", JSON.stringify(store));
 
-      // ★ id=0 も正しく保存されるように判定を修正
       if (store && store.id !== undefined && store.id !== null) {
         localStorage.setItem("app.main_store_id", String(store.id));
         localStorage.setItem("store.mainStoreId", String(store.id)); // 互換用
@@ -190,6 +167,13 @@ export default function StorePage() {
     } catch {}
 
     navigate("/slider", { state: { selectedStore: store } });
+  };
+
+  const displayName = (store) => {
+    if (store.id === OFFICIAL_STORE_ID) {
+      return "TasteMap公式Shop";
+    }
+    return `${store.name} ${store.branch || ""}`;
   };
 
   return (
@@ -244,9 +228,7 @@ export default function StorePage() {
         }}
       >
         {loading && <div style={{ padding: 16 }}>読み込み中…</div>}
-        {err && (
-          <div style={{ padding: 16, color: "crimson" }}>{err}</div>
-        )}
+        {err && <div style={{ padding: 16, color: "crimson" }}>{err}</div>}
 
         {!loading &&
           !err &&
@@ -266,7 +248,7 @@ export default function StorePage() {
               >
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <div className="store-link">
-                    {store.name} {store.branch || ""}
+                    {displayName(store)}
                   </div>
                   <div
                     style={{
@@ -280,12 +262,12 @@ export default function StorePage() {
                   </div>
                 </div>
                 <div style={{ marginLeft: 12 }}>
-                  {formatKm(store.distance, store.id)}
+                  {formatKm(store.distance)}
                 </div>
               </div>
 
-              {/* ★ 位置情報NG時は、EC(id=0) の下に説明メッセージ */}
-              {locFailed && store.id === 0 && (
+              {/* ★ 位置情報NG時は、公式Shop(id=1) の下に説明メッセージ */}
+              {locFailed && store.id === OFFICIAL_STORE_ID && (
                 <div
                   style={{
                     padding: "8px 16px 16px",
@@ -296,7 +278,7 @@ export default function StorePage() {
                 >
                   位置情報が取得できず、近くの店舗を表示できません。
                   <br />
-                  端末の「設定」から、位置情報取得を許可にするか、
+                  端末の「設定」から位置情報取得を許可するか、
                   <br />
                   許可が難しい場合は、TasteMap公式Shopをお選びください。
                 </div>
