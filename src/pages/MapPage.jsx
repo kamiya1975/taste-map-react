@@ -113,8 +113,8 @@ async function fetchAllowedJansForStore(storeId) {
     let ecOnlyArr = [];
     if (Array.isArray(json.ec_only_jans)) {
       ecOnlyArr = json.ec_only_jans;
-    } else if (!Array.isArray(json.allowed_jans) && Array.isArray(json.ec_jans)) {
-      // 公式Shop(id=0) などで allowed_jans が無く ec_jans だけ返る場合の保険
+    } else if (Array.isArray(json.ec_jans)) {
+      // ★ allowed_jans の有無に関係なく ec_jans を EC専用品として採用
       ecOnlyArr = json.ec_jans;
    }
 
