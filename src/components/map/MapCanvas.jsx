@@ -203,26 +203,40 @@ const MapCanvas = forwardRef(function MapCanvas(
   const filteredData = useMemo(() => {
     if (!Array.isArray(data) || data.length === 0) return [];
 
-    // allowedJansSet が無いが ecOnlyJansSet がある → EC商品のみ表示（公式Shop想定）
-    if (!allowedJansSet && ecOnlyJansSet && ecOnlyJansSet.size > 0) {
+    const hasAllowed = !!(allowedJansSet && allowedJansSet.size > 0);
+    const hasEcOnly  = !!(ecOnlyJansSet && ecOnlyJansSet.size > 0);
+
+    // どちらも無ければ全件表示（完全フォールバック）
+    if (!hasAllowed && !hasEcOnly) {
+      return data;
+    }
+
+    // allowed が無く EC セットだけある → EC のみ表示（公式Shop想定）
+    if (!hasAllowed && hasEcOnly) {
       return data.filter((d) => {
         const jan = janOf(d);
         return jan && ecOnlyJansSet.has(jan);
       });
     }
 
-    // 両方無ければ従来どおり全件（完全フォールバック）
-    if (!allowedJansSet) return data;
-
+    // allowed あり（通常モード）→ 店舗JAN ∪ ECJAN を許可
     return data.filter((d) => {
       const jan = janOf(d);
       if (!jan) return false;
 
-      if (!allowedJansSet.has(jan)) return false;
+      const allowStore = hasAllowed && allowedJansSet.has(jan);
+      const allowEc    = hasEcOnly  && ecOnlyJansSet.has(jan);
 
-      if (activeStoreId != null && janStoreMap) {
+      // 店舗にもECにも属さないなら除外
+      if (!allowStore && !allowEc) return false;
+
+      // 店舗JANとして許可されている場合だけ、activeStoreId フィルタを掛ける
+      if (allowStore && activeStoreId != null && janStoreMap) {
         const stores = janStoreMap[jan] || [];
-        if (!stores.includes(activeStoreId)) return false;
+        if (!stores.includes(activeStoreId)) {
+          // 「その店舗では扱っていないが ECJAN でもある」なら EC として残す
+          if (!allowEc) return false;
+        }
       }
 
       return true;
