@@ -779,7 +779,10 @@ export default function ProductPage() {
       : null;
 
   // ★ カートボタンを表示して良いかどうか
-  const canShowCartButton = isEcProduct && mainStoreEcActive !== false;
+  const canShowCartButton =
+    isEcProduct &&
+    mainStoreEcActive === true &&
+    availableInSelected === false;
 
   // ★ 価格下の文言（EC / 店舗 / どちらも無し）
   const hasStoreName = !!priceStoreName;

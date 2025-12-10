@@ -182,8 +182,16 @@ export default function StorePanelContent() {
     };
   }, []);
 
-  // ★ メイン店舗（公式Shop を含めて固定表示）
-  const mainStore = stores.find((s) => s.is_main) || null;
+  // ログイン中: is_main=true を最優先
+  let mainStore = stores.find((s) => s.is_main) || null;
+
+  // 非ログイン時: ローカルキャッシュのメイン店舗IDを使用
+  if (!mainStore) {
+    const localMainStoreId = Number(localStorage.getItem("app.main_store_id") || "0");
+    if (localMainStoreId) {
+      mainStore = stores.find((s) => s.id === localMainStoreId) || null;
+    }
+  }
 
   // ★ メイン店舗以外 ＋ 公式Shop(id=1) は除外 → サブ候補一覧
   const otherStores = stores.filter(
