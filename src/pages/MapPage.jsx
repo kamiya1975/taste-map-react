@@ -88,6 +88,11 @@ async function fetchAllowedJansForStore(storeId) {
   const params = new URLSearchParams();
   params.set("stores", String(storeId));
   params.set("include_ec", "true");
+  // ★ 実在店舗（id > 0）のときだけ main_store_id を付けて、
+  //   バックエンドに「この店舗の ec_active を見て EC 専用JANを出すか決めてね」と伝える
+  if (storeId > 0) {
+    params.set("main_store_id", String(storeId));
+  }
 
   const res = await fetch(
     `${API_BASE}/api/app/allowed-jans?${params.toString()}`
