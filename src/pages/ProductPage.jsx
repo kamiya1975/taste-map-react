@@ -813,6 +813,15 @@ export default function ProductPage() {
   }
 
   const handleAddToCart = async () => {
+    // ★ 未ログインなら MyAccount へ誘導（評価ボタンと同じ挙動）
+    if (!isAppLoggedIn()) {
+      alert("購入機能はログインしてからご利用いただけます。");
+      try {
+        window.parent?.postMessage({ type: "OPEN_MYACCOUNT" }, "*");
+      } catch {}
+      return;
+    }
+    
     try {
       setAdding(true);
       await add({

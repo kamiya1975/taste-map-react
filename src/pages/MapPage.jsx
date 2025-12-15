@@ -37,6 +37,8 @@ const getJanFromItem = (item) => {
   return jan ? String(jan) : "";
 };
 
+const OFFICIAL_STORE_ID = 1; // ★ 公式Shopは1
+
 // 現在のメイン店舗IDを取得
 // ※ メイン店舗未選択 = 0（= 公式Shop相当、「店舗なし」）
 const getCurrentMainStoreId = () => {
@@ -45,9 +47,15 @@ const getCurrentMainStoreId = () => {
     const raw =
       localStorage.getItem("selectedStore") ||
       localStorage.getItem("main_store");
+
     if (raw) {
-      const s = JSON.parse(raw);
-      const id = Number(s?.id ?? s?.store_id ?? 0);
+      let s;
+      try {
+        s = JSON.parse(raw); // JSONならここで読める
+      } catch {
+        s = raw; // JSONじゃない（"1"等）なら文字列として扱う
+      }
+      const id = Number(s?.id ?? s?.store_id ?? s ?? 0);
       if (id > 0) return id;
     }
 
@@ -62,8 +70,40 @@ const getCurrentMainStoreId = () => {
     console.warn("getCurrentMainStoreId error:", e);
   }
 
-  // ④ メイン店舗未選択（= 公式Shop 概念 / id=0）
-  return 0;
+  // ④ メイン店舗未選択 → 公式Shop（id=1）
+  return OFFICIAL_STORE_ID;
+};
+
+// メイン店舗の EC有効フラグをローカルから推定（JSONでも文字列でも耐える）
+const getCurrentMainStoreEcActiveFromStorage = () => {
+  try {
+    const raw =
+      localStorage.getItem("selectedStore") ||
+      localStorage.getItem("main_store");
+    if (!raw) return null;
+
+    let s;
+    try {
+      s = JSON.parse(raw);
+    } catch {
+      // JSONでない（"1"等）ならオブジェクト情報が無いので判定不能
+      return null;
+    }
+
+    const v =
+      s?.ec_active ??
+      s?.ecActive ??
+      s?.main_store_ec_active ??
+      s?.mainStoreEcActive ??
+      null;
+
+    if (typeof v === "boolean") return v;
+    if (v === "true") return true;
+    if (v === "false") return false;
+  } catch (e) {
+    console.warn("getCurrentMainStoreEcActiveFromStorage error:", e);
+  }
+  return null;
 };
 
 // ★ allowed-jans 取得エラー時に表示
@@ -79,55 +119,59 @@ const showAllowedJansErrorOnce = () => {
   }
 };
 
+// ★ 共通のパース小ユーティリティ（先に定義しておく！）
+function parseAllowedJansResponse(json) {
+  const allowedArr =
+    Array.isArray(json?.allowed_jans) ? json.allowed_jans :
+    Array.isArray(json?.jans) ? json.jans :
+    null; // ★ パースできない = フィルタ無しに倒す
+
+  // 「EC専用」を優先して拾う（allowed_jans の有無に関係なく採用）
+  let ecOnlyArr = [];
+  if (Array.isArray(json?.ec_only_jans)) {
+    ecOnlyArr = json.ec_only_jans;
+  } else if (Array.isArray(json?.ec_jans)) {
+    ecOnlyArr = json.ec_jans;
+  }
+
+  // ★ 追加：バックエンドが返すなら拾う
+  const mainStoreEcActive =
+    typeof json?.main_store_ec_active === "boolean"
+      ? json.main_store_ec_active
+      : null;
+
+  return {
+    allowedJans: allowedArr === null ? null : allowedArr.map(String),
+    ecOnlyJans: ecOnlyArr.map(String),
+    mainStoreEcActive, // ★返す！
+  };
+}
+
 // ★ 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
 async function fetchAllowedJansForStore(storeId) {
   if (storeId === null || storeId === undefined) {
-    return { allowedJans: null, ecOnlyJans: null };
+    return { allowedJans: null, ecOnlyJans: null, mainStoreEcActive: null };
   }
+
+  // ★ 互換：古い0運用が残っていたら公式Shop(1)へ丸める
+  const sid = Number(storeId) > 0 ? Number(storeId) : OFFICIAL_STORE_ID;
 
   const params = new URLSearchParams();
-  params.set("stores", String(storeId));
+  params.set("stores", String(sid));
   params.set("include_ec", "true");
-  // ★ 実在店舗（id > 0）のときだけ main_store_id を付けて、
-  //   バックエンドに「この店舗の ec_active を見て EC 専用JANを出すか決めてね」と伝える
-  if (storeId > 0) {
-    params.set("main_store_id", String(storeId));
-  }
 
-  const res = await fetch(
-    `${API_BASE}/api/app/allowed-jans?${params.toString()}`
-  );
+  // ★ 実在店舗（id > 0）のときだけ main_store_id を付ける
+  params.set("main_store_id", String(sid)); // ★ 常に付けてOK（sidは必ず>0）
+
+  const res = await fetch(`${API_BASE}/api/app/allowed-jans?${params.toString()}`);
   if (!res.ok) {
     throw new Error(`allowed-jans(stores=${storeId}) HTTP ${res.status}`);
   }
 
   const json = await res.json();
-  const { allowedJans, ecOnlyJans } = parseAllowedJansResponse(json);
-  return { allowedJans, ecOnlyJans };
+  const { allowedJans, ecOnlyJans, mainStoreEcActive } = parseAllowedJansResponse(json);
+  return { allowedJans, ecOnlyJans, mainStoreEcActive };
 }
-
-  // ★ 共通のパース小ユーティリティ
-  const parseAllowedJansResponse = (json) => {
-    const allowedArr = Array.isArray(json.allowed_jans)
-      ? json.allowed_jans
-      : Array.isArray(json.jans)
-      ? json.jans
-      : [];
-
-    // 「EC専用」を優先して拾う
-    let ecOnlyArr = [];
-    if (Array.isArray(json.ec_only_jans)) {
-      ecOnlyArr = json.ec_only_jans;
-    } else if (Array.isArray(json.ec_jans)) {
-      // ★ allowed_jans の有無に関係なく ec_jans を EC専用品として採用
-      ecOnlyArr = json.ec_jans;
-   }
-
-    return {
-      allowedJans: allowedArr.map(String),
-      ecOnlyJans: ecOnlyArr.map(String),
-    };
-  };
 
 // ★ メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
 //    - 未ログイン: ローカルにメイン店舗IDがあれば /allowed-jans?stores=...&include_ec=true
@@ -144,10 +188,10 @@ async function fetchAllowedJansAuto() {
   // ① 未ログイン or トークンなし
   if (!token) {
       try {
-        const { allowedJans, ecOnlyJans } =
+        const { allowedJans, ecOnlyJans, mainStoreEcActive } =
           await fetchAllowedJansForStore(mainStoreId);
 
-          // ★ allowed が空だが ecOnly がある場合（公式Shop=0想定）は、ecOnly をフィルタに使う
+          // ★ allowed が空でも ecOnly がある場合は、ecOnly をフィルタに使う（ECのみ表示を許容）
           const merged =
             allowedJans && allowedJans.length > 0
               ? allowedJans
@@ -158,6 +202,7 @@ async function fetchAllowedJansAuto() {
         return { 
           allowedJans: merged,
           ecOnlyJans: ecOnlyJans || [],
+          mainStoreEcActive,
         };
       } catch (e) {
         console.warn(
@@ -165,7 +210,7 @@ async function fetchAllowedJansAuto() {
           e
         );
         showAllowedJansErrorOnce();
-        return { allowedJans: null, ecOnlyJans: null };
+        return { allowedJans: null, ecOnlyJans: null, mainStoreEcActive: null };
       }
     }
 
@@ -178,7 +223,7 @@ async function fetchAllowedJansAuto() {
 
     if (res.ok) {
       const json = await res.json();
-      const { allowedJans, ecOnlyJans } = parseAllowedJansResponse(json);
+      const { allowedJans, ecOnlyJans, mainStoreEcActive } = parseAllowedJansResponse(json);
 
       const merged =
         allowedJans && allowedJans.length > 0
@@ -190,18 +235,19 @@ async function fetchAllowedJansAuto() {
       return {
         allowedJans: merged, 
         ecOnlyJans: ecOnlyJans || [],
+        mainStoreEcActive,
       };
     } else {
       console.warn(
         `allowed-jans/auto HTTP ${res.status} → フィルタ無しで続行`
       );
       showAllowedJansErrorOnce();
-      return { allowedJans: null, ecOnlyJans: null };
+      return { allowedJans: null, ecOnlyJans: null, mainStoreEcActive: null };
     }
   } catch (e) {
     console.warn("allowed-jans/auto の取得に失敗 → フィルタ無しで続行", e);
     showAllowedJansErrorOnce();
-     return { allowedJans: null, ecOnlyJans: null };
+     return { allowedJans: null, ecOnlyJans: null, mainStoreEcActive: null };
   }
 }
 
@@ -363,25 +409,36 @@ function MapPage() {
   const [storeList, setStoreList] = useState([]); // 店舗の詳細リスト（今は未使用）
   const [janStoreMap, setJanStoreMap] = useState({});       // jan -> [store_id,...]（今は未使用）
   const [activeStoreId, setActiveStoreId] = useState(null); // フィルタ用（任意）
+  const [cartEnabled, setCartEnabled] = useState(true);
 
   // ====== allowed-jans を読み直す共通関数 ======
   const reloadAllowedJans = useCallback(async () => {
     try {
-      const { allowedJans, ecOnlyJans } = await fetchAllowedJansAuto();
+      const { allowedJans, ecOnlyJans, mainStoreEcActive } = await fetchAllowedJansAuto();
 
-      if (!allowedJans || allowedJans.length === 0) {
-        // フィルタ無し（全件表示）
+      // --- cartEnabled 判定（優先順位つき） ---
+      const fromLs = getCurrentMainStoreEcActiveFromStorage();
+
+      const ecEnabled =
+        typeof fromLs === "boolean"
+          ? fromLs
+          : typeof mainStoreEcActive === "boolean"
+          ? mainStoreEcActive
+          : Array.isArray(ecOnlyJans) && ecOnlyJans.length > 0; // 最終手段
+
+      setCartEnabled(!!ecEnabled);
+
+      // ★ null = フィルタ無し（全件）
+      if (allowedJans === null) {
         setAllowedJansSet(null);
-        setEcOnlyJansSet(null);
-        setStoreList([]);
-        setJanStoreMap({});
-        return;
+      } else {
+        // ★ [] = 0件（何も表示しない）
+        setAllowedJansSet(new Set(allowedJans));
       }
 
-      setAllowedJansSet(new Set(allowedJans));
-      setEcOnlyJansSet(
-        ecOnlyJans && ecOnlyJans.length > 0 ? new Set(ecOnlyJans) : null
-      );
+      // ecOnly も同様（null=不明、[]=0件）
+      if (ecOnlyJans === null) setEcOnlyJansSet(null);
+      else setEcOnlyJansSet(new Set(ecOnlyJans));
       setStoreList([]);
       setJanStoreMap({});
     } catch (e) {
@@ -390,6 +447,7 @@ function MapPage() {
       setEcOnlyJansSet(null);
       setStoreList([]);
       setJanStoreMap({});
+      setCartEnabled(false);
     }
   }, []);
 
@@ -607,9 +665,12 @@ function MapPage() {
       else if (kind === "search") setIsSearchOpen(true);
       else if (kind === "rated") setIsRatedOpen(true);
       else if (kind === "cluster") setIsClusterOpen(true);
-      else if (kind === "cart") setCartOpen(true);
+      else if (kind === "cart") {
+       if (!cartEnabled) return;
+       setCartOpen(true);
+      }
     },
-    [closeUIsThen, isClusterOpen]
+    [closeUIsThen, isClusterOpen, cartEnabled]
   );
 
   /** メニューを開いたまま、上に重ねる版（レイヤー表示用） */
@@ -621,9 +682,12 @@ function MapPage() {
       else if (kind === "guide") setIsMapGuideOpen(true);
       else if (kind === "account") setIsAccountOpen(true);
       else if (kind === "faq") setIsFaqOpen(true);
-      else if (kind === "cart") setCartOpen(true);
-    },
-    [closeUIsThen]
+      else if (kind === "cart") {
+        if (!cartEnabled) return;
+        setCartOpen(true);
+      }
+
+    }, [closeUIsThen, cartEnabled]
   );
 
   // ★ クエリで各パネルを開く（/ ?open=mypage|search|rated|mapguide|guide|store）
@@ -1091,11 +1155,13 @@ function MapPage() {
 
       // === ProductPage からのカート関連メッセージ ===
       if (type === "OPEN_CART") {
+        if (!cartEnabled) return;
         setCartOpen(true);
         return;
       }
 
       if (type === "SIMPLE_CART_ADD" && msg.item) {
+         if (!cartEnabled) return;
         try {
           await addLocal(msg.item); // ローカルカートに積む
           setCartOpen(true); // ついでに開く
@@ -1233,6 +1299,7 @@ function MapPage() {
     closeUIsThen,
     navigate,
     addLocal,
+    cartEnabled,
   ]);
 
   // ====== レンダリング
@@ -1490,6 +1557,7 @@ function MapPage() {
       </button>
 
       {/* 右サイド: カート */}
+      {cartEnabled && (
       <button
         onClick={() => openPanel("cart")}
         style={{
@@ -1547,6 +1615,7 @@ function MapPage() {
           </span>
         )}
       </button>
+      )}
 
       {/* ====== 検索パネル ====== */}
       <SearchPanel
