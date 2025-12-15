@@ -164,6 +164,7 @@ export default function StorePage() {
       const exists = all.some((s) => k(s) === k(store));
       const next = exists ? all : [store, ...all];
       localStorage.setItem("allStores", JSON.stringify(next));
+      window.dispatchEvent(new Event("tm_store_changed"));
     } catch {}
 
     navigate("/slider", { state: { selectedStore: store } });

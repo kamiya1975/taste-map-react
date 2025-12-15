@@ -185,6 +185,12 @@ export default function StorePanelContent() {
   // ログイン中: is_main=true を最優先
   let mainStore = stores.find((s) => s.is_main) || null;
 
+  const storeDisplayName = (s) => {
+    if (!s) return "";
+    if (s.id === OFFICIAL_STORE_ID) return "TasteMap公式Shop";
+    return s.name;
+  };
+
   // 非ログイン時: ローカルキャッシュのメイン店舗IDを使用
   if (!mainStore) {
     const localMainStoreId = Number(localStorage.getItem("app.main_store_id") || "0");
@@ -240,6 +246,9 @@ export default function StorePanelContent() {
         )
       );
 
+      // ★ 先に通知（その後に全リロード）
+      window.dispatchEvent(new Event("tm_store_changed"));
+
       // サブ店舗更新 → allowed-jans 取り直しのためアプリ全体リロード
       reloadApp();
     } catch (e) {
@@ -280,7 +289,7 @@ export default function StorePanelContent() {
               <StarButton active disabled title="固定店舗" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, lineHeight: 1.2 }}>
-                  {mainStore.name}
+                  {storeDisplayName(mainStore)}
                 </div>
                 <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
                   {formatKm(mainStore.distance)}

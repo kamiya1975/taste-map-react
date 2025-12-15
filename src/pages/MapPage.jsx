@@ -419,12 +419,16 @@ function MapPage() {
       // --- cartEnabled 判定（優先順位つき） ---
       const fromLs = getCurrentMainStoreEcActiveFromStorage();
 
+      const mainStoreId = getCurrentMainStoreId();
       const ecEnabled =
-        typeof fromLs === "boolean"
+        // 公式Shopは常にEC扱い
+        mainStoreId === OFFICIAL_STORE_ID
+          ? true
+          : typeof fromLs === "boolean"
           ? fromLs
           : typeof mainStoreEcActive === "boolean"
           ? mainStoreEcActive
-          : Array.isArray(ecOnlyJans) && ecOnlyJans.length > 0; // 最終手段
+          : false; // 不明なら「非表示」に倒す（安全側）
 
       setCartEnabled(!!ecEnabled);
 
@@ -466,10 +470,12 @@ function MapPage() {
     window.addEventListener("tm_auth_changed", handler);
     // StorePanelContent から localStorage が書き換わったときも拾う
     window.addEventListener("storage", handler);
+    window.addEventListener("tm_store_changed", handler);
 
     return () => {
       window.removeEventListener("tm_auth_changed", handler);
       window.removeEventListener("storage", handler);
+      window.removeEventListener("tm_store_changed", handler);
     };
   }, [reloadAllowedJans]);
 
