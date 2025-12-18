@@ -351,26 +351,27 @@ function ProductInfoSection({ product, jan_code }) {
     ],
   ];
 
-  // まず ec_comment 系、その次に comment を表示
+  // ECなら ec_* だけ。店舗なら comment だけ。空ならブロックごと非表示（詰める）
+  const isEcContext = !!product?.is_ec_product; // ← ec_product ではなく最終判定を使う
+
   const commentBlocks = [];
-  if (
-    product.ec_title_1 ||
-    product.ec_comment_1 ||
-    product.ec_title_2 ||
-    product.ec_comment_2
-  ) {
+
+  if (isEcContext) {
+    // EC：ec_* だけ（1..5）
     for (let i = 1; i <= 5; i++) {
-      const t = product[`ec_title_${i}`];
-      const c = product[`ec_comment_${i}`];
+      const t = product?.[`ec_title_${i}`];
+      const c = product?.[`ec_comment_${i}`];
       if (!t && !c) continue;
       commentBlocks.push({ title: t, body: c });
     }
-  } else if (product.comment) {
-    commentBlocks.push({
-      title: "ワインの特徴",
-      body: product.comment,
-    });
+  } else {
+    // 店舗：comment だけ（title/comment は今回は使わない方針）
+    if (product?.comment) {
+      commentBlocks.push({ title: "ワインの特徴", body: product.comment });
+    }
   }
+
+  const hasComments = commentBlocks.length > 0;
 
   return (
     <div
@@ -379,30 +380,30 @@ function ProductInfoSection({ product, jan_code }) {
         paddingBottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
       }}
     >
-      {/* コメントブロック */}
-      {commentBlocks.map((b, idx) => (
-        <div
-          key={idx}
-          style={{ marginTop: idx === 0 ? 20 : 16, fontSize: 14, lineHeight: 1.6 }}
-        >
-          {b.title && (
-            <div
-              style={{
-                fontWeight: "bold",
-                marginBottom: 4,
-              }}
-            >
-              {b.title}
-            </div>
-          )}
-          {b.body && <div>{b.body}</div>}
-        </div>
-      ))}
+      {/* コメントブロック（あるときだけ） */}
+      {hasComments &&
+        commentBlocks.map((b, idx) => (
+          <div
+            key={idx}
+            style={{
+              marginTop: idx === 0 ? 20 : 16,
+              fontSize: 14,
+              lineHeight: 1.6,
+            }}
+          >
+            {b.title && (
+              <div style={{ fontWeight: "bold", marginBottom: 4 }}>
+                {b.title}
+              </div>
+            )}
+            {b.body && <div>{b.body}</div>}
+          </div>
+        ))}
 
       {/* 基本情報 */}
       <div
         style={{
-          marginTop: 24,
+          marginTop: hasComments ? 24 : 12, // ★コメントが無ければ詰める
           paddingTop: 8,
           paddingBottom: 8,
           borderTop: "1px solid #ccc",
@@ -410,6 +411,7 @@ function ProductInfoSection({ product, jan_code }) {
           marginBottom: 0,
         }}
       >
+
         <div style={{ fontSize: 14, lineHeight: 1.9 }}>
           {detailRows.map(([label, value]) => (
             <div
@@ -758,7 +760,7 @@ export default function ProductPage() {
     product?.ec_store_name ||    // EC用の表示名（もしあれば）
     "";
 
-  // ★ 選択中店舗にアクティブ取扱があるか（バックエンド新フィールド）
+  // ★ 選択中店舗にアクティブ取扱があるか（※EC判定には使わない。availabilityLineの「評価履歴」表示用）
   const availableInSelected = product?.available_in_selected_stores;
 
   // ★ クラスタ色
@@ -773,27 +775,16 @@ export default function ProductPage() {
     product?.jan_code ||
     "（名称不明）";
 
-  // ★ EC商品かどうか
-  const isEcProduct = !!product?.ec_product;
-
-  // ★ メイン店舗が EC 有効かどうか（boolean が来たときだけ尊重）
-  const mainStoreEcActive =
-    typeof product?.main_store_ec_active === "boolean"
-      ? product.main_store_ec_active
-      : null;
-
-  // ★ カートボタンを表示して良いかどうか
-  const canShowCartButton =
-    isEcProduct &&
-    mainStoreEcActive === true &&
-    availableInSelected === false;
+  // ★ EC商品かどうか　 is_ec_product で 1本化（これだけを真実にする）
+  const isEcContext = !!product?.is_ec_product;
+  const canShowCartButton = isEcContext;
 
   // ★ 価格下の文言（EC / 店舗 / どちらも無し）
   const hasStoreName = !!priceStoreName;
 
   let availabilityLine = "";
-  if (canShowCartButton) {
-    // ① EC商品
+  if (isEcContext) {
+    // ① EC商品（最優先）
     availabilityLine = "この商品はネット購入できます。";
   } else if (hasStoreName) {
     // ② バックエンドが店舗名（price_store_name）を返している → 店舗取扱あり
