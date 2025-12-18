@@ -329,8 +329,11 @@ function ProductImage({ product, jan_code, maxHeight = 225 }) {
 /** =========================
  *  商品説明セクション
  * ========================= */
-function ProductInfoSection({ product }) {
+function ProductInfoSection({ product, jan_code }) {
   if (!product) return null;
+
+  // 追加：表示用 JAN（APIが返す product.jan_code を優先、無ければURLの jan_code）
+  const janValue = product?.jan_code || jan_code || "—";
 
   const detailRows = [
     ["タイプ", toJapaneseWineType(product.wine_type)],
@@ -339,6 +342,7 @@ function ProductInfoSection({ product }) {
     ["国", product.country || "—"],
     ["産地", product.region || "—"],
     ["品種", product.grape_variety || "—"],
+    ["JAN", janValue],
     [
       "成分検査年",
       product.production_year_taste
@@ -1104,7 +1108,7 @@ export default function ProductPage() {
       </div>
 
       {/* 説明＋基本情報 */}
-      <ProductInfoSection product={product} />
+      <ProductInfoSection product={product} jan_code={jan_code} />
     </div>
   );
 }
