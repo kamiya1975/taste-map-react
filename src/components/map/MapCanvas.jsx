@@ -30,17 +30,6 @@ const janOf = (d) => String(d?.jan_code ?? d?.JAN ?? "");
 const xOf   = (d) => Number.isFinite(d?.umap_x) ? d.umap_x : d?.UMAP1;
 const yOf   = (d) => Number.isFinite(d?.umap_y) ? d.umap_y : d?.UMAP2;
 
-// ★ ここに入れる　ログ用2025.12.19.
-console.log(
-  "[JAN CHECK]",
-  {
-    jan,
-    janLength: jan.length,
-    allowed: allowedJansSet?.has(jan),
-    ecOnly: ecOnlyJansSet?.has(jan),
-  }
-);  //ここまでログ用
-
 const ANCHOR_JAN = "4964044046324";
 
 // （嗜好重心ピン）
@@ -275,6 +264,10 @@ const MapCanvas = forwardRef(function MapCanvas(
     (filteredData || []).forEach((d) => {
       const jan = janOf(d);
       if (!jan) return;
+
+      // ★ここから（const isEcHere / isStoreHere を作る直前）がベスト
+      if (jan === ANCHOR_JAN) console.log("[JAN CHECK split]", { jan, allow: allowedJansSet?.has(jan), ecOnly: ecOnlyJansSet?.has(jan), activeStoreId });
+      //ここまでログ用 2025.12.19.  
 
       const isEcHere = !!(ecOnlyJansSet && ecOnlyJansSet.has(jan));
       const isStoreHere = !!(allowedJansSet && allowedJansSet.has(jan)) && !isEcHere;
