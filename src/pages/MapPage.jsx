@@ -1,4 +1,4 @@
-// src/MapPage.jsx
+// src/pages/MapPage.jsx
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
@@ -29,6 +29,7 @@ import {
 } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 import { fetchLatestRatings } from "../lib/appRatings";
+import { OFFICIAL_STORE_ID } from "../ui/constants";  //2025.12.18.追加
 
 // 任意のオブジェクトから JAN を安全に取り出す共通ヘルパー
 const getJanFromItem = (item) => {
@@ -36,8 +37,6 @@ const getJanFromItem = (item) => {
   const jan = item.JAN ?? item.jan_code ?? item.jan ?? null;
   return jan ? String(jan) : "";
 };
-
-const OFFICIAL_STORE_ID = 1; // ★ 公式Shopは1
 
 // 現在のメイン店舗IDを取得
 // ※ メイン店舗未選択 = 0（= 公式Shop相当、「店舗なし」）
@@ -415,11 +414,12 @@ function MapPage() {
   const reloadAllowedJans = useCallback(async () => {
     try {
       const { allowedJans, ecOnlyJans, mainStoreEcActive } = await fetchAllowedJansAuto();
+      const mainStoreId = getCurrentMainStoreId();
+      setActiveStoreId(mainStoreId);
 
       // --- cartEnabled 判定（優先順位つき） ---
       const fromLs = getCurrentMainStoreEcActiveFromStorage();
 
-      const mainStoreId = getCurrentMainStoreId();
       const ecEnabled =
         // 公式Shopは常にEC扱い
         mainStoreId === OFFICIAL_STORE_ID
@@ -452,6 +452,7 @@ function MapPage() {
       setStoreList([]);
       setJanStoreMap({});
       setCartEnabled(false);
+      setActiveStoreId(getCurrentMainStoreId());
     }
   }, []);
 

@@ -204,16 +204,19 @@ const MapCanvas = forwardRef(function MapCanvas(
   const filteredData = useMemo(() => {
     if (!Array.isArray(data) || data.length === 0) return [];
 
-    const hasAllowed = !!(allowedJansSet && allowedJansSet.size > 0);
-    const hasEcOnly  = !!(ecOnlyJansSet && ecOnlyJansSet.size > 0);
+    const allowMode = allowedJansSet !== null;   // null=無効(全件), Set=有効(0件含む)
+    const ecMode    = ecOnlyJansSet !== null;    // null=不明/無効, Set=有効
 
-    // どちらも無ければ全件表示（完全フォールバック）
-    if (!hasAllowed && !hasEcOnly) {
-      return data;
+    // フィルタ無し（完全フォールバック）
+    if (!allowMode && !ecMode) return data;
+
+    // 0件を正しく表現（両方とも Set で size=0 のときは空配列）
+    if (allowMode && allowedJansSet.size === 0 && (!ecMode || ecOnlyJansSet.size === 0)) {
+      return [];
     }
 
     // allowed が無く EC セットだけある → EC のみ表示（公式Shop想定）
-    if (!hasAllowed && hasEcOnly) {
+    if (!allowMode && ecMode && ecOnlyJansSet.size > 0) {
       return data.filter((d) => {
         const jan = janOf(d);
         return jan && ecOnlyJansSet.has(jan);
@@ -225,8 +228,8 @@ const MapCanvas = forwardRef(function MapCanvas(
       const jan = janOf(d);
       if (!jan) return false;
 
-      const allowStore = hasAllowed && allowedJansSet.has(jan);
-      const allowEc    = hasEcOnly  && ecOnlyJansSet.has(jan);
+      const allowStore = allowMode && allowedJansSet.has(jan);
+      const allowEc    = ecMode && ecOnlyJansSet.has(jan);
 
       // 店舗にもECにも属さないなら除外
       if (!allowStore && !allowEc) return false;
@@ -245,8 +248,7 @@ const MapCanvas = forwardRef(function MapCanvas(
   }, [data, allowedJansSet, ecOnlyJansSet, janStoreMap, activeStoreId]);
 
   // --- EC商品 / 店舗商品 の振り分け ---
-  //   storePoints   … 「このユーザーにとって店舗扱い」とみなす商品（★で表示）
-  //   ecOnlyPoints  … それ以外（●で表示）
+  //   EC判定（★/●）の振り分けは “集合” ベースに寄せる
   const { storePoints, ecOnlyPoints } = useMemo(() => {
     const store = [];
     const ecOnly = [];
@@ -254,77 +256,33 @@ const MapCanvas = forwardRef(function MapCanvas(
     const isOfficial = activeStoreId != null && activeStoreId === OFFICIAL_STORE_ID;
 
     (filteredData || []).forEach((d) => {
-      const rawStore =
-        d.is_store_product ??
-        d.has_store_product ??
-        d.store_product ??
-        false;
-
-      const rawEc =
-        d.is_ec_product ??
-        d.has_ec_product ??
-        d.ec_product ??
-        false;
-
-      let isStoreBool = false;
-      let isEcBool = false;
-
-      // ===== 店舗フラグの型ごとに判定 =====
-      if (typeof rawStore === "boolean") {
-        isStoreBool = rawStore;
-      } else if (typeof rawStore === "number") {
-        isStoreBool = rawStore === 1;
-      } else if (typeof rawStore === "string") {
-        const v = rawStore.trim().toLowerCase();
-        isStoreBool = v === "1" || v === "true" || v === "yes";
-      } else if (Array.isArray(rawStore)) {
-        // 店舗取扱を list で返す API の場合：空配列=NO、1件以上=YES
-        isStoreBool = rawStore.length > 0;
-      }
-
-      // ===== ECフラグ =====
-      if (typeof rawEc === "boolean") {
-        isEcBool = rawEc;
-      } else if (typeof rawEc === "number") {
-        isEcBool = rawEc === 1;
-      } else if (typeof rawEc === "string") {
-        const v = rawEc.trim().toLowerCase();
-        isEcBool = v === "1" || v === "true" || v === "yes";
-      } else if (Array.isArray(rawEc)) {
-        isEcBool = rawEc.length > 0;
-      }
-
       const jan = janOf(d);
 
-      // ===== 「このユーザーにとって★か？」の判定 =====
-      if (isOfficial) {
-        // 公式Shopモード → EC商品を★として扱う
-        if (isEcBool) {
-          store.push(d);
-        } else {
-          ecOnly.push(d);
-        }
-      } else {
-        // 通常店舗 → activeStoreId での取扱があるときだけ★
-        let isStoreHere = isStoreBool;
-        if (jan && isStoreBool && activeStoreId != null && janStoreMap) {
-          const stores = janStoreMap[jan] || [];
-          // この店舗で扱っていないなら、EC または「他店の商品」として ● 側へ
-          if (!stores.includes(activeStoreId)) {
-            isStoreHere = false;
-          }
-        }
+    // 集合があれば集合を優先（判定の単一化）
+    const isEcBySet = ecOnlyJansSet && jan ? ecOnlyJansSet.has(jan) : false;
+    const isStoreBySet = allowedJansSet && jan ? allowedJansSet.has(jan) : false;
 
-        if (isStoreHere) {
-          store.push(d);
-        } else {
-          ecOnly.push(d);
-        }
-      }
-    });
+    let isStoreHere = isStoreBySet;
+    let isEcHere = isEcBySet;
+
+    if (isOfficial) {
+    // 公式Shopでは EC を★に寄せる（表示上の仕様）
+    if (isEcHere) store.push(d);
+    else ecOnly.push(d);
+    } else {
+    // activeStoreId フィルタは “店舗扱いのときだけ” かける
+    if (jan && isStoreHere && activeStoreId != null && janStoreMap) {
+      const stores = janStoreMap[jan] || [];
+      if (!stores.includes(activeStoreId)) isStoreHere = false;
+    }
+
+      if (isStoreHere) store.push(d);
+      else ecOnly.push(d);
+    }
+  });
 
     return { storePoints: store, ecOnlyPoints: ecOnly };
-  }, [filteredData, activeStoreId, janStoreMap]);
+  }, [filteredData, activeStoreId, janStoreMap, allowedJansSet, ecOnlyJansSet]);
 
   // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
   const pointBubbles = useMemo(() => {

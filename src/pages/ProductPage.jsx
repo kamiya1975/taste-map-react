@@ -1,4 +1,4 @@
-// src/ProductPage.jsx
+// src/pages/ProductPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import "../index.css";
@@ -504,34 +504,21 @@ export default function ProductPage() {
 
     const getCurrentMainStoreId = () => {
       try {
-        const fromApp = Number(
-          localStorage.getItem("app.main_store_id") || "0"
-        );
+        const fromApp = Number(localStorage.getItem("app.main_store_id") || "0");
         if (fromApp > 0) return fromApp;
 
-        const fromLegacy = Number(
-          localStorage.getItem("store.mainStoreId") || "0"
-        );
+        const fromLegacy = Number(localStorage.getItem("store.mainStoreId") || "0");
         if (fromLegacy > 0) return fromLegacy;
 
         const stored =
-          localStorage.getItem("selectedStore") ||
-          localStorage.getItem("main_store");
+          localStorage.getItem("selectedStore") || localStorage.getItem("main_store");
         if (stored) {
           const s = JSON.parse(stored);
           const id = Number(s?.id ?? s?.store_id ?? 0);
           if (id > 0) return id;
         }
       } catch {}
-      return 1; // デフォルト：ECショップ
-    };
-
-    const getSubStoreIds = () => {
-      try {
-        return localStorage.getItem("app.sub_store_ids") || "";
-      } catch {
-        return "";
-      }
+      return 1; // デフォルト：公式Shop
     };
 
     const fetchProduct = async () => {
@@ -539,12 +526,9 @@ export default function ProductPage() {
       setProduct(null);
 
       const mainId = getCurrentMainStoreId();
-      const subIds = getSubStoreIds();
 
-      const qs = [];
-      if (mainId) qs.push(`main_store_id=${mainId}`);
-      if (subIds) qs.push(`sub_store_ids=${encodeURIComponent(subIds)}`);
-      const qsStr = qs.length ? `?${qs.join("&")}` : "";
+      // ★ sub_store_ids は送らない（未ログイン時は main だけ、ログイン時はトークンで sub を見る）
+      const qsStr = mainId ? `?main_store_id=${encodeURIComponent(String(mainId))}` : "";
 
       try {
         const res = await fetch(
@@ -570,9 +554,7 @@ export default function ProductPage() {
 
       // ローカルの userRatings 読込（従来通り）
       try {
-        const ratings = JSON.parse(
-          localStorage.getItem("userRatings") || "{}"
-        );
+        const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
         if (ratings[jan_code]) {
           const meta = ratings[jan_code];
           const val =

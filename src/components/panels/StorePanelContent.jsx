@@ -145,6 +145,7 @@ export default function StorePanelContent() {
             distance_km: numD, // 生の値（参考）
             is_main: !!s.is_main,
             is_sub: !!s.is_sub,
+            ec_active: !!s.ec_active, // ★追加（レスポンスにあれば）
             updated_at: s.updated_at,
             _key: `${s.store_id}@@${idx}`,
           };

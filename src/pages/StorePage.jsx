@@ -103,6 +103,7 @@ export default function StorePage() {
             distance: d,
             distance_km: numD,
             is_main: !!s.is_main,
+            ec_active: !!s.ec_active, // ★追加：公式Shop/EC連携可否を保持
             updated_at: s.updated_at,
             branch: "",
             address: "",
