@@ -30,6 +30,17 @@ const janOf = (d) => String(d?.jan_code ?? d?.JAN ?? "");
 const xOf   = (d) => Number.isFinite(d?.umap_x) ? d.umap_x : d?.UMAP1;
 const yOf   = (d) => Number.isFinite(d?.umap_y) ? d.umap_y : d?.UMAP2;
 
+// ★ ここに入れる　ログ用2025.12.19.
+console.log(
+  "[JAN CHECK]",
+  {
+    jan,
+    janLength: jan.length,
+    allowed: allowedJansSet?.has(jan),
+    ecOnly: ecOnlyJansSet?.has(jan),
+  }
+);  //ここまでログ用
+
 const ANCHOR_JAN = "4964044046324";
 
 // （嗜好重心ピン）
@@ -255,7 +266,7 @@ const MapCanvas = forwardRef(function MapCanvas(
   // --- EC専用 / 店舗商品 の振り分け ---
   //  憲法：表示判定は “集合（allowed / ec_only）” を唯一の根拠にする
   //  表示：店舗=● / EC専用=★
-  //  EC★ = ecOnly　　店舗● = allowed かつ not ecOnly
+  //  EC★ = ecOnly　　
   const { storePoints, ecPoints } = useMemo(() => {
     const store = [];
     const ec = [];
