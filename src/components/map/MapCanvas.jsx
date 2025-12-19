@@ -247,41 +247,40 @@ const MapCanvas = forwardRef(function MapCanvas(
     });
   }, [data, allowedJansSet, ecOnlyJansSet, janStoreMap, activeStoreId]);
 
-  // --- EC商品 / 店舗商品 の振り分け ---
-  //   EC判定（★/●）の振り分けは “集合” ベースに寄せる
-  const { storePoints, ecOnlyPoints } = useMemo(() => {
+  // --- EC専用 / 店舗商品 の振り分け ---
+  //  憲法：表示判定は “集合（allowed / ec_only）” を唯一の根拠にする
+  //  表示：店舗=● / EC専用=★
+  //  事故で重複が混入した場合は店舗（allowed）優先
+  const { storePoints, ecPoints } = useMemo(() => {
     const store = [];
-    const ecOnly = [];
-
-    const isOfficial = activeStoreId != null && activeStoreId === OFFICIAL_STORE_ID;
+    const ec = [];
 
     (filteredData || []).forEach((d) => {
       const jan = janOf(d);
+      if (!jan) return;
 
-    // 集合があれば集合を優先（判定の単一化）
-    const isEcBySet = ecOnlyJansSet && jan ? ecOnlyJansSet.has(jan) : false;
-    const isStoreBySet = allowedJansSet && jan ? allowedJansSet.has(jan) : false;
+      const isStoreBySet = !!(allowedJansSet && allowedJansSet.has(jan));
+      const isEcBySet    = !!(ecOnlyJansSet && ecOnlyJansSet.has(jan));
 
-    let isStoreHere = isStoreBySet;
-    let isEcHere = isEcBySet;
+      // 事故で両方trueなら店舗優先（ECは落とす）
+      let isStoreHere = isStoreBySet;
+      let isEcHere    = isEcBySet && !isStoreHere;
 
-    if (isOfficial) {
-    // 公式Shopでは EC を★に寄せる（表示上の仕様）
-    if (isEcHere) store.push(d);
-    else ecOnly.push(d);
-    } else {
-    // activeStoreId フィルタは “店舗扱いのときだけ” かける
-    if (jan && isStoreHere && activeStoreId != null && janStoreMap) {
-      const stores = janStoreMap[jan] || [];
-      if (!stores.includes(activeStoreId)) isStoreHere = false;
-    }
+      // 店舗扱いのときだけ activeStoreId で絞る
+      if (isStoreHere && activeStoreId != null && janStoreMap) {
+        const stores = janStoreMap[jan] || [];
+        if (!stores.includes(activeStoreId)) {
+          isStoreHere = false;
+          // その店舗では扱っていないが EC専用ならECとして残す（通常はec_onlyがdisjointなので基本ここは起きない）
+          if (isEcBySet) isEcHere = true;
+        }
+      }
 
       if (isStoreHere) store.push(d);
-      else ecOnly.push(d);
-    }
-  });
+      else if (isEcHere) ec.push(d);
+    });
 
-    return { storePoints: store, ecOnlyPoints: ecOnly };
+    return { storePoints: store, ecPoints: ec };
   }, [filteredData, activeStoreId, janStoreMap, allowedJansSet, ecOnlyJansSet]);
 
   // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
@@ -449,7 +448,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     return Array.from(map.values());
   }, [filteredData, userRatings]);
 
-  // ★ ベクタで描く選択ドット（外黒→内白→中心黒）
+  // ベクタで描く選択ドット（外黒→内白→中心黒）
   const selectedDotLayers = useMemo(() => {
     if (!selectedJAN) return [];
     const hit = filteredData.find(d => janOf(d) === String(selectedJAN));
@@ -490,7 +489,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     () =>
       new ScatterplotLayer({
         id: "scatter",
-        data: ecOnlyPoints,  // ← EC/通常商品を●で表示
+        data: storePoints,  // ← 店舗商品を●で表示（憲法）
         getPosition: (d) => [xOf(d), -yOf(d), 0],
         getFillColor: (d) => {
           const janStr = janOf(d);
@@ -512,24 +511,26 @@ const MapCanvas = forwardRef(function MapCanvas(
         getRadius: 0.03,
         pickable: true,
       }),
-     [ecOnlyPoints, favorites, userRatings, clusterColorMode]
+     [storePoints, favorites, userRatings, clusterColorMode]
   );
 
-  // MapCanvas.jsx 内、ecStarLayer を定義している useMemo の直前あたり
+  // --- デバッグ（集合ベース） ---
   useEffect(() => {
-    if (!Array.isArray(data)) return;
-    const ecCount = data.filter(d => d.is_ec_product).length;
-    console.log("[MapCanvas] EC points count =", ecCount);
-  }, [data]);
+    // points.csv 由来の data には is_ec_product は基本載らない前提
+    const a = allowedJansSet ? allowedJansSet.size : null;
+    const e = ecOnlyJansSet ? ecOnlyJansSet.size : null;
+    console.log("[MapCanvas] allowedJansSet size =", a, "ecOnlyJansSet size =", e);
+    console.log("[MapCanvas] storePoints =", storePoints.length, "ecPoints =", ecPoints.length);
+  }, [allowedJansSet, ecOnlyJansSet, storePoints.length, ecPoints.length]);
 
   // --- レイヤ：EC商品の★マーカー ---
   const ecStarLayer = useMemo(() => {
-    if (!storePoints || storePoints.length === 0) return null;
+    if (!ecPoints || ecPoints.length === 0) return null;
 
     // ===== ズームに応じたフォントサイズ計算 =====
     return new TextLayer({
       id: "ec-stars",
-      data: storePoints,   // ← 店舗取扱商品を★で表示
+      data: ecPoints,   // ← EC専用商品を★で表示（憲法）
       getPosition: (d) => [xOf(d), -yOf(d), 0],
       getText: () => "★",
       sizeUnits: "meters",
@@ -541,7 +542,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         if (clusterColorMode && Number.isFinite(d.cluster)) {                 // クラスタ色モード
           return getClusterRGBA(d.cluster);
         }
-        //return MAP_POINT_COLOR;                                               // それ以外は●と同じグレー
+        //return MAP_POINT_COLOR;                                             // それ以外は●と同じグレー
         return STAR_ORANGE;
      },
       getTextAnchor: () => "middle",
@@ -560,7 +561,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         ],
       },
     });
-  }, [storePoints, favorites, userRatings, clusterColorMode]);
+  }, [ecPoints, favorites, userRatings, clusterColorMode]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {

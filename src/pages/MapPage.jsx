@@ -39,10 +39,10 @@ const getJanFromItem = (item) => {
 };
 
 // 現在のメイン店舗IDを取得
-// ※ メイン店舗未選択 = 0（= 公式Shop相当、「店舗なし」）
+// ※ メイン店舗未選択 → 1（return OFFICIAL_STORE_ID）
 const getCurrentMainStoreId = () => {
   try {
-    // ★ 初回店舗設定を最優先（StorePage で選んだ店舗）
+    // 初回店舗設定を最優先（StorePage で選んだ店舗）
     const raw =
       localStorage.getItem("selectedStore") ||
       localStorage.getItem("main_store");
@@ -105,7 +105,7 @@ const getCurrentMainStoreEcActiveFromStorage = () => {
   return null;
 };
 
-// ★ allowed-jans 取得エラー時に表示
+// allowed-jans 取得エラー時に表示
 let allowedJansErrorShown = false;
 
 const showAllowedJansErrorOnce = () => {
@@ -118,7 +118,7 @@ const showAllowedJansErrorOnce = () => {
   }
 };
 
-// ★ 共通のパース小ユーティリティ（先に定義しておく！）
+// 共通のパース小ユーティリティ（先に定義しておく！）
 function parseAllowedJansResponse(json) {
   const allowedArr =
     Array.isArray(json?.allowed_jans) ? json.allowed_jans :
@@ -133,7 +133,7 @@ function parseAllowedJansResponse(json) {
     ecOnlyArr = json.ec_jans;
   }
 
-  // ★ 追加：バックエンドが返すなら拾う
+  // 追加：バックエンドが返すなら拾う
   const mainStoreEcActive =
     typeof json?.main_store_ec_active === "boolean"
       ? json.main_store_ec_active
@@ -146,20 +146,20 @@ function parseAllowedJansResponse(json) {
   };
 }
 
-// ★ 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
+// 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
 async function fetchAllowedJansForStore(storeId) {
   if (storeId === null || storeId === undefined) {
     return { allowedJans: null, ecOnlyJans: null, mainStoreEcActive: null };
   }
 
-  // ★ 互換：古い0運用が残っていたら公式Shop(1)へ丸める
+  // 互換：古い0運用が残っていたら公式Shop(1)へ丸める
   const sid = Number(storeId) > 0 ? Number(storeId) : OFFICIAL_STORE_ID;
 
   const params = new URLSearchParams();
   params.set("stores", String(sid));
   params.set("include_ec", "true");
 
-  // ★ 実在店舗（id > 0）のときだけ main_store_id を付ける
+  // 実在店舗（id > 0）のときだけ main_store_id を付ける
   params.set("main_store_id", String(sid)); // ★ 常に付けてOK（sidは必ず>0）
 
   const res = await fetch(`${API_BASE}/api/app/allowed-jans?${params.toString()}`);
@@ -172,7 +172,7 @@ async function fetchAllowedJansForStore(storeId) {
   return { allowedJans, ecOnlyJans, mainStoreEcActive };
 }
 
-// ★ メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
+// メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
 //    - 未ログイン: ローカルにメイン店舗IDがあれば /allowed-jans?stores=...&include_ec=true
 //                  メイン店舗IDが無ければ null（= フィルタ無し）
 //    - ログイン済み: /allowed-jans/auto を呼び、失敗時のみ null（= フィルタ無し）
@@ -190,7 +190,7 @@ async function fetchAllowedJansAuto() {
         const { allowedJans, ecOnlyJans, mainStoreEcActive } =
           await fetchAllowedJansForStore(mainStoreId);
 
-          // ★ allowed が空でも ecOnly がある場合は、ecOnly をフィルタに使う（ECのみ表示を許容）
+          // allowed が空でも ecOnly がある場合は、ecOnly をフィルタに使う（ECのみ表示を許容）
           const merged =
             allowedJans && allowedJans.length > 0
               ? allowedJans
@@ -301,7 +301,7 @@ function MapPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ★ ログインユーザー名（ニックネーム）表示用
+  // ログインユーザー名（ニックネーム）表示用
   const [userDisplayName, setUserDisplayName] = useState("");
 
   useEffect(() => {
@@ -333,7 +333,7 @@ function MapPage() {
     };
   }, []);
 
-  // ★ ロット → 基準ワイン座標
+  // ロット → 基準ワイン座標
   const lotId = getLotId();
   const reference = useMemo(() => getReferenceLotById(lotId), [lotId]);
 
@@ -394,7 +394,6 @@ function MapPage() {
 
   // データ & 状態
   const [data, setData] = useState([]);
-  const [points, setPoints] = useState([]);
   const [userRatings, setUserRatings] = useState({});
   const [favorites, setFavorites] = useState({});
   const [userPin, setUserPin] = useState(null);
@@ -404,7 +403,7 @@ function MapPage() {
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
   const [iframeNonce, setIframeNonce] = useState(0);
   const [allowedJansSet, setAllowedJansSet] = useState(null);
-  const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null); // ★ EC対象JAN set
+  const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null); // EC対象JAN set
   const [storeList, setStoreList] = useState([]); // 店舗の詳細リスト（今は未使用）
   const [janStoreMap, setJanStoreMap] = useState({});       // jan -> [store_id,...]（今は未使用）
   const [activeStoreId, setActiveStoreId] = useState(null); // フィルタ用（任意）
@@ -432,11 +431,11 @@ function MapPage() {
 
       setCartEnabled(!!ecEnabled);
 
-      // ★ null = フィルタ無し（全件）
+      // null = フィルタ無し（全件）
       if (allowedJans === null) {
         setAllowedJansSet(null);
       } else {
-        // ★ [] = 0件（何も表示しない）
+        // [] = 0件（何も表示しない）
         setAllowedJansSet(new Set(allowedJans));
       }
 
@@ -623,7 +622,7 @@ function MapPage() {
         willClose = true;
       }
 
-      // ★ クラスタパネルは preserveCluster=true のときは閉じない
+      // クラスタパネルは preserveCluster=true のときは閉じない
       if (isClusterOpen && !preserveCluster) {
         setIsClusterOpen(false);
         setClusterCollapseKey(null);
@@ -663,7 +662,7 @@ function MapPage() {
         setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
       }
 
-      // ★ クラスタパネルは閉じずに残す
+      // クラスタパネルは閉じずに残す
       await closeUIsThen({ preserveCluster: true });
 
       if (kind === "mypage") setIsMyPageOpen(true);
@@ -697,7 +696,7 @@ function MapPage() {
     }, [closeUIsThen, cartEnabled]
   );
 
-  // ★ クエリで各パネルを開く（/ ?open=mypage|search|rated|mapguide|guide|store）
+  // クエリで各パネルを開く（/ ?open=mypage|search|rated|mapguide|guide|store）
   useEffect(() => {
     try {
       const p = new URLSearchParams(location.search);
@@ -731,34 +730,6 @@ function MapPage() {
       ymax: ymax + pad,
     };
   }, [data]);
-
-  // ====== data に「EC専用かどうか」のフラグを付けて points を作る ======
-  useEffect(() => {
-    if (!Array.isArray(data) || data.length === 0) {
-      setPoints([]);
-      return;
-    }
-
-    const next = data.map((d) => {
-      const jan = getJanFromItem(d);
-
-      // ★ EC で買える JAN は全部 is_ec_product=true
-      const isEc =
-        ecOnlyJansSet && ecOnlyJansSet.size > 0
-          ? ecOnlyJansSet.has(jan)
-          : false;
-
-      return {
-        ...d,
-        is_ec_product: isEc,
-        // store_product フラグは今は色分けに使っていないので
-        // とりあえず逆の値を入れておく（将来の拡張用）
-        is_store_product: !isEc,
-      };
-    });
-
-    setPoints(next);
-  }, [data, ecOnlyJansSet]);
 
   // ====== 打点データ読み込み（TASTEMAP_POINTS_URL から）=====
   useEffect(() => {
@@ -973,7 +944,7 @@ function MapPage() {
     didInitialCenterRef.current = true;
   }, [data, centerToUMAP, umapCentroid, basePoint]);
 
-  // ★ SliderPageから戻った直後にユーザーピンへセンタリング
+  // SliderPageから戻った直後にユーザーピンへセンタリング
   useEffect(() => {
     // state か sessionStorage の合図を読む
     const byState = location.state?.centerOnUserPin === true;
@@ -1199,7 +1170,7 @@ function MapPage() {
         } catch {}
       };
 
-      // ★ 評価を子iframeに明示的に適用させるための補助メッセージ
+      // 評価を子iframeに明示的に適用させるための補助メッセージ
       const sendRatingToChild = (janStr, ratingObjOrNull) => {
         try {
           iframeRef.current?.contentWindow?.postMessage(
@@ -1242,9 +1213,9 @@ function MapPage() {
           return next;
         });
 
-        // ★ まずスナップショットを送る
+        // まずスナップショットを送る
         sendSnapshotToChild(janStr, msg.payload || null);
-        // ★ さらに評価を明示適用（特に「評価クリア(null)」時のUI遅延対策）
+        // さらに評価を明示適用（特に「評価クリア(null)」時のUI遅延対策）
         sendRatingToChild(
           janStr,
           payload && Number(payload.rating) > 0 ? payload : null
@@ -1282,10 +1253,10 @@ function MapPage() {
           return next;
         });
 
-        // ★ スナップショット
+        // スナップショット
         const nextRating = rating > 0 ? { rating, date } : null;
         sendSnapshotToChild(janStr, nextRating);
-        // ★ 明示適用（評価クリア時のズレ解消）
+        // 明示適用（評価クリア時のズレ解消）
         sendRatingToChild(janStr, nextRating);
         return;
       }
@@ -1313,7 +1284,7 @@ function MapPage() {
   return (
     <div id="map-root" className="map-root" tabIndex={-1}>
       <MapCanvas
-        data={points}
+        data={data}
         allowedJansSet={allowedJansSet}
         ecOnlyJansSet={ecOnlyJansSet}
         janStoreMap={janStoreMap}
@@ -1470,7 +1441,7 @@ function MapPage() {
           alignItems: "center",
           justifyContent: "center",
           padding: 0,
-          pointerEvents: "auto", // ★ 追加
+          pointerEvents: "auto",
         }}
         aria-label="アプリガイド"
         title="アプリガイド"
@@ -1647,7 +1618,7 @@ function MapPage() {
             preserveCluster: true,
           });
 
-          // ★ クラスターパネルを畳む
+          // クラスターパネルを畳む
           setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
 
           setHideHeartForJAN(null);
@@ -1760,7 +1731,7 @@ function MapPage() {
             preserveCluster: true,
           });
 
-          // ★ クラスターパネルを畳む
+          // クラスターパネルを畳む
           setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
 
           try {
@@ -1792,7 +1763,7 @@ function MapPage() {
         height={DRAWER_HEIGHT}
         onPickCluster={centerToCluster}
         availableIds={clusterList} // 追加：存在クラスターのみ出す場合
-        collapseKey={clusterCollapseKey} // ★追加
+        collapseKey={clusterCollapseKey}
       />
 
       {/* 商品ページドロワー */}
@@ -1812,9 +1783,9 @@ function MapPage() {
         ModalProps={{
           ...drawerModalProps,
           keepMounted: true,
-          disableEnforceFocus: true, // ★ フォーカスロック解除
-          disableAutoFocus: true, // ★ 自動フォーカスを抑止
-          disableRestoreFocus: true, // ★ 閉じた後のフォーカス復元も抑止
+          disableEnforceFocus: true, // フォーカスロック解除
+          disableAutoFocus: true, // 自動フォーカスを抑止
+          disableRestoreFocus: true, // 閉じた後のフォーカス復元も抑止
         }}
         PaperProps={{
           style: {
@@ -1884,9 +1855,9 @@ function MapPage() {
         ModalProps={{
           ...drawerModalProps,
           keepMounted: true,
-          disableEnforceFocus: true, // ★ フォーカスロック解除
-          disableAutoFocus: true, // ★ 自動フォーカス抑止
-          disableRestoreFocus: true, // ★ フォーカス復元抑止
+          disableEnforceFocus: true, // フォーカスロック解除
+          disableAutoFocus: true, // 自動フォーカス抑止
+          disableRestoreFocus: true, // フォーカス復元抑止
           disableScrollLock: true,
         }}
         PaperProps={{
@@ -1912,7 +1883,7 @@ function MapPage() {
           tabIndex={-1}
           data-autofocus="cart"
         >
-          {/* ★ isOpen を渡しておくと在庫チェックの依存が素直になる */}
+          {/* isOpen を渡しておくと在庫チェックの依存が素直になる */}
           <SimpleCartPanel
             isOpen={cartOpen}
             onClose={() => setCartOpen(false)}
@@ -1933,9 +1904,9 @@ function MapPage() {
         ModalProps={{
           ...drawerModalProps,
           keepMounted: true,
-          disableEnforceFocus: true, // ★ フォーカスロック解除
-          disableAutoFocus: true, // ★ 自動フォーカスを抑止
-          disableRestoreFocus: true, // ★ 閉じた後のフォーカス復元も抑止
+          disableEnforceFocus: true, // フォーカスロック解除
+          disableAutoFocus: true, // 自動フォーカスを抑止
+          disableRestoreFocus: true, // 閉じた後のフォーカス復元も抑止
           disableScrollLock: true,
         }}
         PaperProps={{
@@ -2101,7 +2072,7 @@ function MapPage() {
       {(() => {
         try {
           const token = localStorage.getItem("app.access_token");
-          if (!token) return null; // ★ ログアウト → 非表示
+          if (!token) return null; // ログアウト → 非表示
 
           if (!userDisplayName) return null;
 
