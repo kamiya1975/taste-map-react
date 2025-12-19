@@ -63,7 +63,7 @@ const makePinSVG = ({
 // クリック時に最近傍を許可する半径（px）
 const CLICK_NEAR_PX = 24; // お好みで 14〜24 あたり
 
-// ✅ パンのクランプ切替
+// パンのクランプ切替
 const PAN_CLAMP = true;
 
 // デフォルト余白（px）
@@ -206,6 +206,7 @@ const MapCanvas = forwardRef(function MapCanvas(
 
     const allowMode = allowedJansSet !== null;   // null=無効(全件), Set=有効(0件含む)
     const ecMode    = ecOnlyJansSet !== null;    // null=不明/無効, Set=有効
+    const activeStoreKey = activeStoreId == null ? null : String(activeStoreId);
 
     // フィルタ無し（完全フォールバック）
     if (!allowMode && !ecMode) return data;
@@ -236,10 +237,14 @@ const MapCanvas = forwardRef(function MapCanvas(
 
       // 店舗JANとして許可されている場合だけ、activeStoreId フィルタを掛ける
       if (allowStore && activeStoreId != null && janStoreMap) {
-        const stores = janStoreMap[jan] || [];
-        if (!stores.includes(activeStoreId)) {
+        const rawStores = janStoreMap[jan];
+        // janStoreMap が欠損/空なら「allowed_jans を正」として落とさない
+        if (Array.isArray(rawStores) && rawStores.length > 0) {
+          const stores = rawStores.map(String);
+          if (activeStoreKey != null && !stores.includes(activeStoreKey)) {
           // 「その店舗では扱っていないが ECJAN でもある」なら EC として残す
           if (!allowEc) return false;
+          }          
         }
       }
 
@@ -254,6 +259,7 @@ const MapCanvas = forwardRef(function MapCanvas(
   const { storePoints, ecPoints } = useMemo(() => {
     const store = [];
     const ec = [];
+    const activeStoreKey = activeStoreId == null ? null : String(activeStoreId);
 
     (filteredData || []).forEach((d) => {
       const jan = janOf(d);
@@ -268,11 +274,15 @@ const MapCanvas = forwardRef(function MapCanvas(
 
       // 店舗扱いのときだけ activeStoreId で絞る
       if (isStoreHere && activeStoreId != null && janStoreMap) {
-        const stores = janStoreMap[jan] || [];
-        if (!stores.includes(activeStoreId)) {
+        const rawStores = janStoreMap[jan];
+        // janStoreMap が欠損/空なら落とさない（allowed_jans を正）
+        if (Array.isArray(rawStores) && rawStores.length > 0) {
+          const stores = rawStores.map(String);
+          if (activeStoreKey != null && !stores.includes(activeStoreKey)) {
           isStoreHere = false;
           // その店舗では扱っていないが EC専用ならECとして残す（通常はec_onlyがdisjointなので基本ここは起きない）
           if (isEcBySet) isEcHere = true;
+          }          
         }
       }
 
@@ -904,7 +914,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         // 店舗扱い商品の★
         ecStarLayer,
 
-        // ★ 選択中のみ dot.svg を重ねる
+        // 選択中のみ dot.svg を重ねる
         ...selectedDotLayers,
 
         // 評価リング
