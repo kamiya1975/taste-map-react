@@ -255,7 +255,7 @@ const MapCanvas = forwardRef(function MapCanvas(
   // --- EC専用 / 店舗商品 の振り分け ---
   //  憲法：表示判定は “集合（allowed / ec_only）” を唯一の根拠にする
   //  表示：店舗=● / EC専用=★
-  //  事故で重複が混入した場合は店舗（allowed）優先
+  //  EC★ = ecOnly　　店舗● = allowed かつ not ecOnly
   const { storePoints, ecPoints } = useMemo(() => {
     const store = [];
     const ec = [];
@@ -265,24 +265,15 @@ const MapCanvas = forwardRef(function MapCanvas(
       const jan = janOf(d);
       if (!jan) return;
 
-      const isStoreBySet = !!(allowedJansSet && allowedJansSet.has(jan));
-      const isEcBySet    = !!(ecOnlyJansSet && ecOnlyJansSet.has(jan));
+      const isEcHere = !!(ecOnlyJansSet && ecOnlyJansSet.has(jan));
+      const isStoreHere = !!(allowedJansSet && allowedJansSet.has(jan)) && !isEcHere;
 
-      // 事故で両方trueなら店舗優先（ECは落とす）
-      let isStoreHere = isStoreBySet;
-      let isEcHere    = isEcBySet && !isStoreHere;
-
-      // 店舗扱いのときだけ activeStoreId で絞る
+      // 店舗扱いのときだけ activeStoreId で絞る（ここはそのまま）
       if (isStoreHere && activeStoreId != null && janStoreMap) {
-        const rawStores = janStoreMap[jan];
-        // janStoreMap が欠損/空なら落とさない（allowed_jans を正）
-        if (Array.isArray(rawStores) && rawStores.length > 0) {
-          const stores = rawStores.map(String);
-          if (activeStoreKey != null && !stores.includes(activeStoreKey)) {
-          isStoreHere = false;
-          // その店舗では扱っていないが EC専用ならECとして残す（通常はec_onlyがdisjointなので基本ここは起きない）
-          if (isEcBySet) isEcHere = true;
-          }          
+        const stores = janStoreMap[jan] || [];
+        if (!stores.includes(activeStoreId)) {
+         // 店舗に無いなら落とす（EC専用なら isEcHere が true のままなのでECで残る）
+         return; // ここは既存ロジックに合わせて調整してもOK
         }
       }
 
