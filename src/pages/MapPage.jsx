@@ -31,10 +31,58 @@ import { getLotId } from "../utils/lot";
 import { fetchLatestRatings } from "../lib/appRatings";
 import { OFFICIAL_STORE_ID } from "../ui/constants";  //2025.12.18.追加
 
+// =========================
+// points 正規化（入口で吸収） 2025.12.20.追加
+// =========================
+function normalizePointRow(row) {
+  const toNumOrNull = (v) => {
+    if (v === null || v === undefined) return null;
+    if (typeof v === "string" && v.trim() === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  // JAN: points.csv 由来の揺れを吸収
+  const jan =
+    row?.jan_code ??
+    row?.jan ??
+    row?.JAN ??
+    row?.barcode ??
+    row?.BARCODE ??
+    null;
+
+  // 座標: umap_x/y or UMAP1/2 or x/y を吸収（float化）
+  const xRaw = row?.umap_x ?? row?.UMAP1 ?? row?.x ?? row?.X ?? null;
+  const yRaw = row?.umap_y ?? row?.UMAP2 ?? row?.y ?? row?.Y ?? null;
+
+  const umap_x = toNumOrNull(xRaw);
+  const umap_y = toNumOrNull(yRaw);
+
+  // cluster: 数値化（なければ null）
+  const cRaw = row?.cluster ?? row?.CLUSTER ?? null;
+  const cluster = toNumOrNull(cRaw);
+
+  return {
+    ...row, // 既存項目は保持（他ロジックを壊さない）
+    jan_code: jan === null || jan === undefined ? "" : String(jan).trim(),
+    umap_x,
+    umap_y,
+    cluster,
+  };
+}
+
+function normalizePoints(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows
+    .map(normalizePointRow)
+    // JANが空 or 座標が数値でない行は落とす（描画事故を防ぐ）
+    .filter((d) => d.jan_code && Number.isFinite(d.umap_x) && Number.isFinite(d.umap_y));
+}
+// ここまで 正規化ユーティリティ 2025.12.20.追加
+
 // 任意のオブジェクトから JAN を安全に取り出す共通ヘルパー
 const getJanFromItem = (item) => {
   if (!item) return "";
-  const jan = item.JAN ?? item.jan_code ?? item.jan ?? null;
+  const jan = item.jan_code ?? item.JAN ?? item.jan ?? null;
   return jan ? String(jan) : "";
 };
 
@@ -118,9 +166,8 @@ const showAllowedJansErrorOnce = () => {
   }
 };
 
-// 共通のパース小ユーティリティ（先に定義しておく！）
+// 共通のパース小ユーティリティ（先に定義しておく）
 function parseAllowedJansResponse(json) {
-  // allowed_jans が無い実装に備えて候補を増やす
   const storeArr =
     Array.isArray(json?.store_jans) ? json.store_jans :
     Array.isArray(json?.allowed_store_jans) ? json.allowed_store_jans :
@@ -130,40 +177,28 @@ function parseAllowedJansResponse(json) {
   const allowedArrRaw =
     Array.isArray(json?.allowed_jans) ? json.allowed_jans :
     Array.isArray(json?.jans) ? json.jans :
-    storeArr; // ← ここが重要（store_jans を拾う）
+    storeArr;
 
-  // 「EC専用」を優先して拾う（allowed_jans の有無に関係なく採用）
   let ecOnlyArr = [];
-  if (Array.isArray(json?.ec_only_jans)) {
-    ecOnlyArr = json.ec_only_jans;
-  } else if (Array.isArray(json?.ec_jans)) {
-    ecOnlyArr = json.ec_jans;
-  }
+  if (Array.isArray(json?.ec_only_jans)) ecOnlyArr = json.ec_only_jans;
+  else if (Array.isArray(json?.ec_jans)) ecOnlyArr = json.ec_jans;
 
-  // 追加：バックエンドが返すなら拾う
   const mainStoreEcActive =
     typeof json?.main_store_ec_active === "boolean"
       ? json.main_store_ec_active
       : null;
 
-  // allowed は「表示許可集合」なので union にして安全側に倒す
   const allowedArr = Array.from(new Set([
     ...(allowedArrRaw || []),
     ...ecOnlyArr,
   ].map(String)));
 
-  const storeJans =
-    Array.isArray(json?.store_jans)
-      ? json.store_jans.map(String)
-      : [];
+  // ★ここを storeArr ベースにする（最重要）
+  const storeJans = Array.isArray(storeArr) ? storeArr.map(String) : [];
 
-  return {
-    allowedJans: allowedArr,
-    ecOnlyJans: ecOnlyArr.map(String),
-    storeJans,    // 追加2025.12.20.
-    mainStoreEcActive,
-  };
+  return { allowedJans: allowedArr, ecOnlyJans: ecOnlyArr.map(String), storeJans, mainStoreEcActive };
 }
+
 
 // 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
 async function fetchAllowedJansForStore(storeId) {
@@ -222,7 +257,7 @@ async function fetchAllowedJansAuto() {
           e
         );
         showAllowedJansErrorOnce();
-        return { allowedJans: null, ecOnlyJans: null, mainStoreEcActive: null };
+        return { allowedJans: null, ecOnlyJans: [], storeJans: [], mainStoreEcActive: null };
       }
     }
 
@@ -256,12 +291,12 @@ async function fetchAllowedJansAuto() {
         `allowed-jans/auto HTTP ${res.status} → フィルタ無しで続行`
       );
       showAllowedJansErrorOnce();
-      return { allowedJans: null, ecOnlyJans: null, mainStoreEcActive: null };
+      return { allowedJans: null, ecOnlyJans: [], storeJans: [], mainStoreEcActive: null };
     }
   } catch (e) {
     console.warn("allowed-jans/auto の取得に失敗 → フィルタ無しで続行", e);
     showAllowedJansErrorOnce();
-     return { allowedJans: null, ecOnlyJans: null, mainStoreEcActive: null };
+     return { allowedJans: null, ecOnlyJans: [], storeJans: [], mainStoreEcActive: null };
   }
 }
 
@@ -423,6 +458,22 @@ function MapPage() {
   const [storeList, setStoreList] = useState([]); // 店舗の詳細リスト（今は未使用）
   const [cartEnabled, setCartEnabled] = useState(true);
 
+  // ------------------------------
+  // フェイルセーフ：store_jans が取れない/空のとき
+  // data が入った後に「全打点を店舗扱い」に倒す（1回だけ）
+  // ※ normalizePoints 済みなので jan_code を直接使う
+  // ------------------------------
+  useEffect(() => {
+    if (!Array.isArray(data) || data.length === 0) return;
+    if (storeJansSet && storeJansSet.size > 0) return;
+
+    const all = new Set(data.map((d) => String(d.jan_code || "")));
+    if (all.size > 0) {
+      console.warn("[MapPage] storeJansSet empty → fallback(all points) size=", all.size);
+      setStoreJansSet(all);
+    }
+  }, [data, storeJansSet]);  
+
   // ====== allowed-jans を読み直す共通関数 ======
   const reloadAllowedJans = useCallback(async () => {
     const mainStoreId = getCurrentMainStoreId();
@@ -448,11 +499,6 @@ function MapPage() {
       setAllowedJansSet(new Set(allowedJans || []));
       setEcOnlyJansSet(new Set(ecOnlyJans || []));
       setStoreJansSet(new Set(storeJans || []));
-        // フェイルセーフ：store_jans が取れなかった場合は全件表示に倒す
-        if (!storeJans || storeJans.length === 0) {
-          console.warn("[MapPage] store_jans empty → fallback to all data");
-          setStoreJansSet(new Set(data.map(d => String(getJanFromItem(d)))));
-        }
       setStoreList([]);
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
@@ -761,10 +807,15 @@ function MapPage() {
 
         // 配列ならそのまま / {points:[...]} 形式なら中身を使う
         const list = Array.isArray(json) ? json : json.points || [];
-        console.log("[MapPage] points length =", list.length);
+        const normalized = normalizePoints(list);
+        console.log(
+          "[MapPage] points length raw/normalized =",
+          list.length,
+          normalized.length
+        );
 
         if (!cancelled) {
-          setData(list);
+          setData(normalized);
         }
       } catch (e) {
         console.error("[MapPage] points fetch error", e);

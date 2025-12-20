@@ -26,9 +26,36 @@ const STAR_ORANGE = [247, 147, 30, 255]; // #F7931E くらいのオレンジ（�
 const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
-const janOf = (d) => String(d?.jan_code ?? d?.JAN ?? "");
-const xOf   = (d) => Number.isFinite(d?.umap_x) ? d.umap_x : d?.UMAP1;
-const yOf   = (d) => Number.isFinite(d?.umap_y) ? d.umap_y : d?.UMAP2;
+// ===== 正規化ユーティリティ（MapPageと整合）2025.12.20.追加=====
+const toNumOrNull = (v) => {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "string" && v.trim() === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const janOf = (d) => {
+  const v =
+    d?.jan_code ??
+    d?.jan ??
+    d?.JAN ??
+    d?.barcode ??
+    d?.BARCODE ??
+    null;
+  return v === null || v === undefined ? "" : String(v).trim();
+};
+
+const xOf = (d) => {
+  const raw = d?.umap_x ?? d?.UMAP1 ?? d?.x ?? d?.X ?? null;
+  return toNumOrNull(raw);
+};
+const yOf = (d) => {
+  const raw = d?.umap_y ?? d?.UMAP2 ?? d?.y ?? d?.Y ?? null;
+  return toNumOrNull(raw);
+};
+
+const clusterOf = (d) => toNumOrNull(d?.cluster ?? d?.CLUSTER ?? null);
+// ここまで 正規化ユーティリティ 2025.12.20.追加
 
 const ANCHOR_JAN = "4964044046324";
 
@@ -211,6 +238,10 @@ const MapCanvas = forwardRef(function MapCanvas(
       const jan = janOf(d);
       if (!jan) return false;
 
+      // 座標が壊れてる行はここで落とす（事故防止）
+      const x = xOf(d), y = yOf(d);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+
       const allowStore = allowMode && allowedJansSet.has(jan);
       const allowEc    = ecMode && ecOnlyJansSet.has(jan);
 
@@ -272,11 +303,16 @@ const MapCanvas = forwardRef(function MapCanvas(
         if (!Number.isFinite(v)) return null;
         let t = (v - lo) / ((vHi - lo) || 1e-9);
         t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA))); // ガンマ補正
+
+        const x = xOf(d);
+        const y = yOf(d);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+
         return {
           jan: janOf(d),
-          position: [xOf(d), -yOf(d), 0],
+          position: [x, -y, 0],
           t,
-          cluster: Number(d.cluster),
+          cluster: clusterOf(d),
         };
       })
     .filter(Boolean);
@@ -389,8 +425,12 @@ const MapCanvas = forwardRef(function MapCanvas(
   const cells = useMemo(() => {
     const map = new Map();
     filteredData.forEach((d) => {
-      const ix = toIndex(xOf(d));
-      const iy = toIndex(-yOf(d));
+      const x = xOf(d);
+      const y = yOf(d);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+
+      const ix = toIndex(x);
+      const iy = toIndex(-y);
       const key = keyOf(ix, iy);
       if (!map.has(key)) {
         map.set(key, {
@@ -406,8 +446,9 @@ const MapCanvas = forwardRef(function MapCanvas(
           hasRating: false,
         });
       }
-      if ((userRatings[janOf(d)]?.rating ?? 0) > 0) 
-      map.get(key).hasRating = true;
+      if ((userRatings[janOf(d)]?.rating ?? 0) > 0) {
+        map.get(key).hasRating = true;
+      }
       map.get(key).count += 1;
     });
     return Array.from(map.values());
@@ -455,13 +496,17 @@ const MapCanvas = forwardRef(function MapCanvas(
       new ScatterplotLayer({
         id: "scatter",
         data: storePoints,  // ← 店舗商品を●で表示（憲法）
-        getPosition: (d) => [xOf(d), -yOf(d), 0],
+        getPosition: (d) => {
+          const x = xOf(d), y = yOf(d);
+          return [x, -y, 0];
+        },
         getFillColor: (d) => {
           const janStr = janOf(d);
           if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;
           if (favorites && favorites[janStr]) return FAVORITE_RED;
-          if (clusterColorMode && Number.isFinite(d.cluster)) {
-            return getClusterRGBA(d.cluster);
+          const c = clusterOf(d);
+          if (clusterColorMode && Number.isFinite(c)) {
+            return getClusterRGBA(c);
           }
           return MAP_POINT_COLOR;
         },
@@ -500,6 +545,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         jan: janOf(d),
         x: xOf(d),
         y: yOf(d),
+        cluster: clusterOf(d), // ★ これが無いと getColor の cluster 分岐が常に死ぬ
       })),
       getPosition: (d) => [d.x, -d.y, 0],
       getText: () => "★",
@@ -659,7 +705,10 @@ const MapCanvas = forwardRef(function MapCanvas(
       let best = null,
         bestD2 = Infinity;
       for (const d of filteredData) {
-        const x = xOf(d), y = -yOf(d);
+        const x0 = xOf(d);
+        const y0 = yOf(d);
+        if (!Number.isFinite(x0) || !Number.isFinite(y0)) continue;
+        const x = x0, y = -y0;
         const dx = x - cx,
           dy = y - cy;
         const d2 = dx * dx + dy * dy;
@@ -755,6 +804,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         const world =
           info?.coordinate ??
           (info?.pixel ? deck?.unproject?.(info.pixel) : null);
+        if (!world) return;
 
         // 最近傍（world座標で）
         const nearest = findNearestWine(world);
