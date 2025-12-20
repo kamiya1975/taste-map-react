@@ -193,12 +193,11 @@ function parseAllowedJansResponse(json) {
     ...ecOnlyArr,
   ].map(String)));
 
-  // ★ここを storeArr ベースにする（最重要）
+  // ここを storeArr ベースにする（最重要）
   const storeJans = Array.isArray(storeArr) ? storeArr.map(String) : [];
 
   return { allowedJans: allowedArr, ecOnlyJans: ecOnlyArr.map(String), storeJans, mainStoreEcActive };
 }
-
 
 // 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
 async function fetchAllowedJansForStore(storeId) {
@@ -452,8 +451,8 @@ function MapPage() {
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
   const [iframeNonce, setIframeNonce] = useState(0);
-  const [allowedJansSet, setAllowedJansSet] = useState(() => new Set());
-  const [ecOnlyJansSet, setEcOnlyJansSet] = useState(() => new Set());
+  const [allowedJansSet, setAllowedJansSet] = useState(null);
+  const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null);
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
   const [storeList, setStoreList] = useState([]); // 店舗の詳細リスト（今は未使用）
   const [cartEnabled, setCartEnabled] = useState(true);
@@ -496,14 +495,14 @@ function MapPage() {
 
       setCartEnabled(!!ecEnabled);
 
-      setAllowedJansSet(new Set(allowedJans || []));
-      setEcOnlyJansSet(new Set(ecOnlyJans || []));
+     setAllowedJansSet(allowedJans ? new Set(allowedJans) : null);
+     setEcOnlyJansSet(ecOnlyJans ? new Set(ecOnlyJans) : null);
       setStoreJansSet(new Set(storeJans || []));
       setStoreList([]);
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
-      setAllowedJansSet(new Set());
-      setEcOnlyJansSet(new Set());
+      setAllowedJansSet(null);
+      setEcOnlyJansSet(null);
       setStoreJansSet(new Set());
       setStoreList([]);
       setCartEnabled(false);
