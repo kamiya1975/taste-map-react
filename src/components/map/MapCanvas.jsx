@@ -161,8 +161,6 @@ const MapCanvas = forwardRef(function MapCanvas(
     data,
     allowedJansSet,
     ecOnlyJansSet,
-    janStoreMap,
-    activeStoreId,
     userRatings,
     selectedJAN,
     favorites,
@@ -200,45 +198,15 @@ const MapCanvas = forwardRef(function MapCanvas(
     return [cx - K * halfW, cy - K * halfH, cx + K * halfW, cy + K * halfH];
   }, [viewState.zoom, viewState.target]);
 
-  // ===== activeStoreId × janStoreMap 判定を1本化（再発防止）2025.12.20. =====
-  const storeIdsOf = useCallback((jan) => {
-    const raw = janStoreMap?.[jan];
-    // raw が配列でなければ「不明」として null
-    return Array.isArray(raw) ? raw.map(String) : null;
-  }, [janStoreMap]);
-
-  const isInActiveStore = useCallback((jan) => {
-    const key = activeStoreId == null ? null : String(activeStoreId);
-    if (key == null) return true;               // active 未指定なら通す
-    const ids = storeIdsOf(jan);
-    if (!ids || ids.length === 0) return true;  // 欠損/空は落とさない（allowed優先）
-    return ids.includes(key);
-  }, [activeStoreId, storeIdsOf]);
-
   // --- 店舗情報に基づいて打点をフィルタするデータ ---
   const filteredData = useMemo(() => {
     if (!Array.isArray(data) || data.length === 0) return [];
 
-    const allowMode = allowedJansSet !== null;   // null=無効(全件), Set=有効(0件含む)
-    const ecMode    = ecOnlyJansSet !== null;    // null=不明/無効, Set=有効
+    const allowMode = allowedJansSet != null; // null/undefined は無効
+    const ecMode    = ecOnlyJansSet != null;
 
-    // フィルタ無し（完全フォールバック）
     if (!allowMode && !ecMode) return data;
 
-    // 0件を正しく表現（両方とも Set で size=0 のときは空配列）
-    if (allowMode && allowedJansSet.size === 0 && (!ecMode || ecOnlyJansSet.size === 0)) {
-      return [];
-    }
-
-    // allowed が無く EC セットだけある → EC のみ表示（公式Shop想定）
-    if (!allowMode && ecMode && ecOnlyJansSet.size > 0) {
-      return data.filter((d) => {
-        const jan = janOf(d);
-        return jan && ecOnlyJansSet.has(jan);
-      });
-    }
-
-    // allowed あり（通常モード）→ 店舗JAN ∪ ECJAN を許可
     return data.filter((d) => {
       const jan = janOf(d);
       if (!jan) return false;
@@ -246,18 +214,9 @@ const MapCanvas = forwardRef(function MapCanvas(
       const allowStore = allowMode && allowedJansSet.has(jan);
       const allowEc    = ecMode && ecOnlyJansSet.has(jan);
 
-      // 店舗にもECにも属さないなら除外
-      if (!allowStore && !allowEc) return false;
-
-      // 店舗JANとして許可されている場合だけ、activeStoreId フィルタを掛ける  2025.12.20.
-      if (allowStore && activeStoreId != null) {
-        // その店舗で扱っていない場合は「ECで許可されているなら残す / そうでなければ落とす」
-        if (!isInActiveStore(jan) && !allowEc) return false;
-      }
-
-      return true;
+      return allowStore || allowEc;
     });
-    }, [data, allowedJansSet, ecOnlyJansSet, activeStoreId, isInActiveStore]);
+  }, [data, allowedJansSet, ecOnlyJansSet]);
 
   // --- EC専用 / 店舗商品 の振り分け ---
   //  憲法：表示判定の一次条件は “集合（allowed / ec_only）”
@@ -265,27 +224,29 @@ const MapCanvas = forwardRef(function MapCanvas(
   //  表示：店舗=● / EC専用=★
   //  EC★ = ecOnly　　
   const { storePoints, ecPoints } = useMemo(() => {
+    // 集合が無い = フィルタ無し → 全件を店舗●として表示
+    const allowMode = allowedJansSet != null;
+    const ecMode = ecOnlyJansSet != null;
+    if (!allowMode && !ecMode) {
+      return { storePoints: filteredData, ecPoints: [] };
+    }
+
     const store = [];
     const ec = [];
 
-    (filteredData || []).forEach((d) => {
+    filteredData.forEach((d) => {
       const jan = janOf(d);
       if (!jan) return;
 
-      const isEcHere = !!(ecOnlyJansSet && ecOnlyJansSet.has(jan));
-      const isStoreHere = !!(allowedJansSet && allowedJansSet.has(jan)) && !isEcHere;
+      const isEc = ecOnlyJansSet?.has(jan);
+      const isStore = allowedJansSet?.has(jan) && !isEc;
 
-      // 店舗扱いのときだけ activeStoreId で絞る（再発防止：関数を共通利用）2025.12.20.
-      if (isStoreHere && activeStoreId != null) {
-        if (!isInActiveStore(jan)) return;
-      }
-
-      if (isStoreHere) store.push(d);
-      else if (isEcHere) ec.push(d);
+      if (isStore) store.push(d);
+      else if (isEc) ec.push(d);
     });
 
     return { storePoints: store, ecPoints: ec };
-    }, [filteredData, activeStoreId, isInActiveStore, allowedJansSet, ecOnlyJansSet]);
+  }, [filteredData, allowedJansSet, ecOnlyJansSet]);
 
   // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
   const pointBubbles = useMemo(() => {
@@ -779,9 +740,10 @@ const MapCanvas = forwardRef(function MapCanvas(
         }
 
         // クリック座標（world）を取る
-        const world = info?.coordinate
-          ?? (info?.pixel ? deckRef.current?.deck?.unproject(info.pixel) : null);
-        if (!world) return;
+        const deck = deckRef.current?.deck || deckRef.current;
+        const world =
+          info?.coordinate ??
+          (info?.pixel ? deck?.unproject?.(info.pixel) : null);
 
         // 最近傍（world座標で）
         const nearest = findNearestWine(world);

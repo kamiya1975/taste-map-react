@@ -192,7 +192,6 @@ async function fetchAllowedJansForStore(storeId) {
 //                  メイン店舗IDが無ければ null（= フィルタ無し）
 //    - ログイン済み: /allowed-jans/auto を呼び、失敗時のみ null（= フィルタ無し）
 async function fetchAllowedJansAuto() {
-  const mainStoreId = getCurrentMainStoreId();
 
   let token = "";
   try {
@@ -412,16 +411,13 @@ function MapPage() {
   const [allowedJansSet, setAllowedJansSet] = useState(null);
   const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null); // EC対象JAN set
   const [storeList, setStoreList] = useState([]); // 店舗の詳細リスト（今は未使用）
-  const [janStoreMap, setJanStoreMap] = useState({});       // jan -> [store_id,...]（今は未使用）
-  const [activeStoreId, setActiveStoreId] = useState(null); // フィルタ用（任意）
   const [cartEnabled, setCartEnabled] = useState(true);
 
   // ====== allowed-jans を読み直す共通関数 ======
   const reloadAllowedJans = useCallback(async () => {
+    const mainStoreId = getCurrentMainStoreId();
     try {
       const { allowedJans, ecOnlyJans, mainStoreEcActive } = await fetchAllowedJansAuto();
-      const mainStoreId = getCurrentMainStoreId();
-      setActiveStoreId(mainStoreId);
 
       // --- cartEnabled 判定（優先順位つき） ---
       const fromLs = getCurrentMainStoreEcActiveFromStorage();
@@ -450,15 +446,12 @@ function MapPage() {
       if (ecOnlyJans === null) setEcOnlyJansSet(null);
       else setEcOnlyJansSet(new Set(ecOnlyJans));
       setStoreList([]);
-      setJanStoreMap({});
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
       setAllowedJansSet(null);
       setEcOnlyJansSet(null);
       setStoreList([]);
-      setJanStoreMap({});
       setCartEnabled(false);
-      setActiveStoreId(getCurrentMainStoreId());
     }
   }, []);
 
@@ -1294,8 +1287,6 @@ function MapPage() {
         data={data}
         allowedJansSet={allowedJansSet}
         ecOnlyJansSet={ecOnlyJansSet}
-        janStoreMap={janStoreMap}
-        activeStoreId={activeStoreId}
         userRatings={userRatings}
         selectedJAN={selectedJAN}
         favorites={favorites}
