@@ -120,10 +120,17 @@ const showAllowedJansErrorOnce = () => {
 
 // 共通のパース小ユーティリティ（先に定義しておく！）
 function parseAllowedJansResponse(json) {
-  const allowedArr =
+  // allowed_jans が無い実装に備えて候補を増やす
+  const storeArr =
+    Array.isArray(json?.store_jans) ? json.store_jans :
+    Array.isArray(json?.allowed_store_jans) ? json.allowed_store_jans :
+    Array.isArray(json?.storeJans) ? json.storeJans :
+    null;
+
+  const allowedArrRaw =
     Array.isArray(json?.allowed_jans) ? json.allowed_jans :
     Array.isArray(json?.jans) ? json.jans :
-    null; // ★ パースできない = フィルタ無しに倒す
+    storeArr; // ← ここが重要（store_jans を拾う）
 
   // 「EC専用」を優先して拾う（allowed_jans の有無に関係なく採用）
   let ecOnlyArr = [];
@@ -139,9 +146,17 @@ function parseAllowedJansResponse(json) {
       ? json.main_store_ec_active
       : null;
 
+  // allowed は「表示許可集合」なので union にして安全側に倒す
+  // （バックが allowed_jans を union で返していても二重化は Set で消える）
+  const allowedArr =
+    allowedArrRaw === null ? null : Array.from(new Set([
+      ...allowedArrRaw.map(String),
+      ...ecOnlyArr.map(String),
+    ]));
+
   return {
-    allowedJans: allowedArr === null ? null : allowedArr.map(String),
-    ecOnlyJans: ecOnlyArr.map(String),
+    allowedJans: allowedArr,           // ← すでに string 化済み
+    ecOnlyJans: ecOnlyArr.map(String), // ← EC専用は従来どおり
     mainStoreEcActive, // ★返す！
   };
 }
@@ -190,16 +205,8 @@ async function fetchAllowedJansAuto() {
         const { allowedJans, ecOnlyJans, mainStoreEcActive } =
           await fetchAllowedJansForStore(mainStoreId);
 
-          // allowed が空でも ecOnly がある場合は、ecOnly をフィルタに使う（ECのみ表示を許容）
-          const merged =
-            allowedJans && allowedJans.length > 0
-              ? allowedJans
-              : ecOnlyJans && ecOnlyJans.length > 0
-              ? ecOnlyJans
-              : [];
-
         return { 
-          allowedJans: merged,
+          allowedJans,    // parse側で union 済み
           ecOnlyJans: ecOnlyJans || [],
           mainStoreEcActive,
         };
