@@ -200,13 +200,27 @@ const MapCanvas = forwardRef(function MapCanvas(
     return [cx - K * halfW, cy - K * halfH, cx + K * halfW, cy + K * halfH];
   }, [viewState.zoom, viewState.target]);
 
+  // ===== activeStoreId × janStoreMap 判定を1本化（再発防止）2025.12.20. =====
+  const storeIdsOf = useCallback((jan) => {
+    const raw = janStoreMap?.[jan];
+    // raw が配列でなければ「不明」として null
+    return Array.isArray(raw) ? raw.map(String) : null;
+  }, [janStoreMap]);
+
+  const isInActiveStore = useCallback((jan) => {
+    const key = activeStoreId == null ? null : String(activeStoreId);
+    if (key == null) return true;               // active 未指定なら通す
+    const ids = storeIdsOf(jan);
+    if (!ids || ids.length === 0) return true;  // 欠損/空は落とさない（allowed優先）
+    return ids.includes(key);
+  }, [activeStoreId, storeIdsOf]);
+
   // --- 店舗情報に基づいて打点をフィルタするデータ ---
   const filteredData = useMemo(() => {
     if (!Array.isArray(data) || data.length === 0) return [];
 
     const allowMode = allowedJansSet !== null;   // null=無効(全件), Set=有効(0件含む)
     const ecMode    = ecOnlyJansSet !== null;    // null=不明/無効, Set=有効
-    const activeStoreKey = activeStoreId == null ? null : String(activeStoreId);
 
     // フィルタ無し（完全フォールバック）
     if (!allowMode && !ecMode) return data;
@@ -235,31 +249,24 @@ const MapCanvas = forwardRef(function MapCanvas(
       // 店舗にもECにも属さないなら除外
       if (!allowStore && !allowEc) return false;
 
-      // 店舗JANとして許可されている場合だけ、activeStoreId フィルタを掛ける
-      if (allowStore && activeStoreId != null && janStoreMap) {
-        const rawStores = janStoreMap[jan];
-        // janStoreMap が欠損/空なら「allowed_jans を正」として落とさない
-        if (Array.isArray(rawStores) && rawStores.length > 0) {
-          const stores = rawStores.map(String);
-          if (activeStoreKey != null && !stores.includes(activeStoreKey)) {
-          // 「その店舗では扱っていないが ECJAN でもある」なら EC として残す
-          if (!allowEc) return false;
-          }          
-        }
+      // 店舗JANとして許可されている場合だけ、activeStoreId フィルタを掛ける  2025.12.20.
+      if (allowStore && activeStoreId != null) {
+        // その店舗で扱っていない場合は「ECで許可されているなら残す / そうでなければ落とす」
+        if (!isInActiveStore(jan) && !allowEc) return false;
       }
 
       return true;
     });
-  }, [data, allowedJansSet, ecOnlyJansSet, janStoreMap, activeStoreId]);
+    }, [data, allowedJansSet, ecOnlyJansSet, activeStoreId, isInActiveStore]);
 
   // --- EC専用 / 店舗商品 の振り分け ---
-  //  憲法：表示判定は “集合（allowed / ec_only）” を唯一の根拠にする
+  //  憲法：表示判定の一次条件は “集合（allowed / ec_only）”
+  //       activeStoreId は「店舗JANの解釈条件」としてのみ後段適用
   //  表示：店舗=● / EC専用=★
   //  EC★ = ecOnly　　
   const { storePoints, ecPoints } = useMemo(() => {
     const store = [];
     const ec = [];
-    const activeStoreKey = activeStoreId == null ? null : String(activeStoreId);
 
     (filteredData || []).forEach((d) => {
       const jan = janOf(d);
@@ -268,16 +275,9 @@ const MapCanvas = forwardRef(function MapCanvas(
       const isEcHere = !!(ecOnlyJansSet && ecOnlyJansSet.has(jan));
       const isStoreHere = !!(allowedJansSet && allowedJansSet.has(jan)) && !isEcHere;
 
-      // 店舗扱いのときだけ activeStoreId で絞る（ここはそのまま）
-      if (isStoreHere && activeStoreKey != null && janStoreMap) {
-        const rawStores = janStoreMap[jan];
-        // janStoreMap が欠損/空なら「allowed_jans を正」として落とさない（filteredDataと同じ）
-        if (Array.isArray(rawStores) && rawStores.length > 0) {
-          const stores = rawStores.map(String);
-          if (!stores.includes(activeStoreKey)) {
-            return;
-          }
-        }
+      // 店舗扱いのときだけ activeStoreId で絞る（再発防止：関数を共通利用）2025.12.20.
+      if (isStoreHere && activeStoreId != null) {
+        if (!isInActiveStore(jan)) return;
       }
 
       if (isStoreHere) store.push(d);
@@ -285,7 +285,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     });
 
     return { storePoints: store, ecPoints: ec };
-  }, [filteredData, activeStoreId, janStoreMap, allowedJansSet, ecOnlyJansSet]);
+    }, [filteredData, activeStoreId, isInActiveStore, allowedJansSet, ecOnlyJansSet]);
 
   // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
   const pointBubbles = useMemo(() => {
@@ -902,10 +902,10 @@ const MapCanvas = forwardRef(function MapCanvas(
         compassLayer,
         anchorCompassLayer,
 
-        // 打点（EC/通常商品の●）
+        // 打点（店舗商品の●）
         mainLayer,
 
-        // 店舗扱い商品の★
+        // EC専用商品の★
         ecStarLayer,
 
         // 選択中のみ dot.svg を重ねる
