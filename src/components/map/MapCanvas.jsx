@@ -179,7 +179,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     clusterColorMode = false,
     basePoint,
   },
-  deckRef   // ★ ref を受け取る
+  deckRef   // ref を受け取る
 ) {
   // --- refs ---
   const sizeRef = useRef({ width: 1, height: 1 });
@@ -261,70 +261,28 @@ const MapCanvas = forwardRef(function MapCanvas(
     const ec = [];
     const activeStoreKey = activeStoreId == null ? null : String(activeStoreId);
 
-    // ログ--- DEBUG: 1回だけ出す（再レンダで無限に出さない） --- 2025.12.20.
-    // window に保持してしまうのが一番ラクで確実（本番は消す）
-    const debugKey = "__tm_debug_split_once__";
-    const canLogOnce = typeof window !== "undefined" && !window[debugKey];
-    if (typeof window !== "undefined") window[debugKey] = true;
-    //ログここまで
-
     (filteredData || []).forEach((d) => {
       const jan = janOf(d);
       if (!jan) return;
-
-      // ログ--- ANCHOR_JAN のときだけ、判定材料を全部出す（ログ量最小）---2025.12.20.
-      if (jan === ANCHOR_JAN && canLogOnce) {
-        const allow = !!(allowedJansSet && allowedJansSet.has(jan));
-        const ecOnly = !!(ecOnlyJansSet && ecOnlyJansSet.has(jan));
-        const x = xOf(d);
-        const y = yOf(d);
-        console.log("[JAN CHECK split]", {
-          jan,
-          allow,
-          ecOnly,
-          isFiniteXY: Number.isFinite(x) && Number.isFinite(y),
-          keys: Object.keys(d || {}).slice(0, 30), // 重いので先頭だけ
-          sample: {
-            jan_code: d?.jan_code,
-            JAN: d?.JAN,
-            jt_code: d?.jt_code,
-            umap_x: d?.umap_x,
-            umap_y: d?.umap_y,
-            UMAP1: d?.UMAP1,
-            UMAP2: d?.UMAP2,
-          },
-        });
-      }
-      //ログここまで
 
       const isEcHere = !!(ecOnlyJansSet && ecOnlyJansSet.has(jan));
       const isStoreHere = !!(allowedJansSet && allowedJansSet.has(jan)) && !isEcHere;
 
       // 店舗扱いのときだけ activeStoreId で絞る（ここはそのまま）
-      if (isStoreHere && activeStoreId != null && janStoreMap) {
-        const stores = janStoreMap[jan] || [];
-        if (!stores.includes(activeStoreId)) {
-         // 店舗に無いなら落とす（EC専用なら isEcHere が true のままなのでECで残る）
-         return; // ここは既存ロジックに合わせて調整してもOK
+      if (isStoreHere && activeStoreKey != null && janStoreMap) {
+        const rawStores = janStoreMap[jan];
+        // janStoreMap が欠損/空なら「allowed_jans を正」として落とさない（filteredDataと同じ）
+        if (Array.isArray(rawStores) && rawStores.length > 0) {
+          const stores = rawStores.map(String);
+          if (!stores.includes(activeStoreKey)) {
+            return;
+          }
         }
       }
 
       if (isStoreHere) store.push(d);
       else if (isEcHere) ec.push(d);
     });
-
-    // ログ---- 1回だけサマリ---2025.12.20.
-    if (canLogOnce) {
-      console.log("[MapCanvas split summary]", {
-        filteredDataLen: (filteredData || []).length,
-        allowedSize: allowedJansSet ? allowedJansSet.size : null,
-        ecOnlySize: ecOnlyJansSet ? ecOnlyJansSet.size : null,
-        storePoints: store.length,
-        ecPoints: ec.length,
-        activeStoreId,
-      });
-    }
-    //ログここまで 
 
     return { storePoints: store, ecPoints: ec };
   }, [filteredData, activeStoreId, janStoreMap, allowedJansSet, ecOnlyJansSet]);
