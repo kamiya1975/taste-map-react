@@ -30,7 +30,7 @@ const janOf = (d) => String(d?.jan_code ?? d?.JAN ?? "");
 const xOf   = (d) => Number.isFinite(d?.umap_x) ? d.umap_x : d?.UMAP1;
 const yOf   = (d) => Number.isFinite(d?.umap_y) ? d.umap_y : d?.UMAP2;
 
-const ANCHOR_JAN = "44935919045049";
+const ANCHOR_JAN = "4964044046324";
 
 // （嗜好重心ピン）
 const makePinSVG = ({
@@ -495,13 +495,18 @@ const MapCanvas = forwardRef(function MapCanvas(
     // ===== ズームに応じたフォントサイズ計算 =====
     return new TextLayer({
       id: "ec-stars",
-      data: ecPoints,   // ← EC専用商品を★で表示（憲法）
-      getPosition: (d) => [xOf(d), -yOf(d), 0],
+      data: ecPoints.map(d => ({
+        __raw: d,
+        jan: janOf(d),
+        x: xOf(d),
+        y: yOf(d),
+      })),
+      getPosition: (d) => [d.x, -d.y, 0],
       getText: () => "★",
       sizeUnits: "meters",
       getSize: () => 0.1,
       getColor: (d) => {
-        const janStr = janOf(d);
+        const janStr = d.jan;
         if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;          // 評価ありは黒
         if (favorites && favorites[janStr]) return FAVORITE_RED;              // お気に入りは赤
         if (clusterColorMode && Number.isFinite(d.cluster)) {                 // クラスタ色モード
@@ -733,9 +738,15 @@ const MapCanvas = forwardRef(function MapCanvas(
       onClick={(info) => {
         // まずは通常のGPUピッキング（点を直タップ）
         const picked = info?.object;
-        if (picked && janOf(picked)) {
-          // ★ もう基準ワインも含めて、単純に商品選択だけ行う
-          onPickWine?.(picked);
+        const pickedJan =
+          picked?.jan ??
+          janOf(picked?.__raw ?? picked);
+
+        if (pickedJan) {
+          const pickedData =
+            picked.__raw ??
+            picked;
+          onPickWine?.(pickedData);
           return;
         }
 
@@ -766,7 +777,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         }
       }}
 
-      pickingRadius={8}
+      pickingRadius={12}
       layers={[
         // 背景（紙テクスチャ）
         new BitmapLayer({

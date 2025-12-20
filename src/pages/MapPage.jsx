@@ -147,17 +147,21 @@ function parseAllowedJansResponse(json) {
       : null;
 
   // allowed は「表示許可集合」なので union にして安全側に倒す
-  // （バックが allowed_jans を union で返していても二重化は Set で消える）
-  const allowedArr =
-    allowedArrRaw === null ? null : Array.from(new Set([
-      ...allowedArrRaw.map(String),
-      ...ecOnlyArr.map(String),
-    ]));
+  const allowedArr = Array.from(new Set([
+    ...(allowedArrRaw || []),
+    ...ecOnlyArr,
+  ].map(String)));
+
+  const storeJans =
+    Array.isArray(json?.store_jans)
+      ? json.store_jans.map(String)
+      : [];
 
   return {
-    allowedJans: allowedArr,           // ← すでに string 化済み
-    ecOnlyJans: ecOnlyArr.map(String), // ← EC専用は従来どおり
-    mainStoreEcActive, // ★返す！
+    allowedJans: allowedArr,
+    ecOnlyJans: ecOnlyArr.map(String),
+    storeJans,    // 追加2025.12.20.
+    mainStoreEcActive,
   };
 }
 
@@ -183,8 +187,9 @@ async function fetchAllowedJansForStore(storeId) {
   }
 
   const json = await res.json();
-  const { allowedJans, ecOnlyJans, mainStoreEcActive } = parseAllowedJansResponse(json);
-  return { allowedJans, ecOnlyJans, mainStoreEcActive };
+  const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
+    parseAllowedJansResponse(json);
+  return { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive };
 }
 
 // メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
@@ -192,6 +197,7 @@ async function fetchAllowedJansForStore(storeId) {
 //                  メイン店舗IDが無ければ null（= フィルタ無し）
 //    - ログイン済み: /allowed-jans/auto を呼び、失敗時のみ null（= フィルタ無し）
 async function fetchAllowedJansAuto() {
+  const mainStoreId = getCurrentMainStoreId();
 
   let token = "";
   try {
@@ -201,12 +207,13 @@ async function fetchAllowedJansAuto() {
   // ① 未ログイン or トークンなし
   if (!token) {
       try {
-        const { allowedJans, ecOnlyJans, mainStoreEcActive } =
+        const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
           await fetchAllowedJansForStore(mainStoreId);
 
         return { 
-          allowedJans,    // parse側で union 済み
+          allowedJans,
           ecOnlyJans: ecOnlyJans || [],
+          storeJans: storeJans || [],
           mainStoreEcActive,
         };
       } catch (e) {
@@ -228,7 +235,8 @@ async function fetchAllowedJansAuto() {
 
     if (res.ok) {
       const json = await res.json();
-      const { allowedJans, ecOnlyJans, mainStoreEcActive } = parseAllowedJansResponse(json);
+      const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
+        parseAllowedJansResponse(json);
 
       const merged =
         allowedJans && allowedJans.length > 0
@@ -238,8 +246,9 @@ async function fetchAllowedJansAuto() {
           : [];
 
       return {
-        allowedJans: merged, 
+        allowedJans: merged,
         ecOnlyJans: ecOnlyJans || [],
+        storeJans: storeJans || [],
         mainStoreEcActive,
       };
     } else {
@@ -408,8 +417,9 @@ function MapPage() {
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
   const [iframeNonce, setIframeNonce] = useState(0);
-  const [allowedJansSet, setAllowedJansSet] = useState(null);
-  const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null); // EC対象JAN set
+  const [allowedJansSet, setAllowedJansSet] = useState(() => new Set());
+  const [ecOnlyJansSet, setEcOnlyJansSet] = useState(() => new Set());
+  const [storeJansSet, setStoreJansSet] = useState(() => new Set());
   const [storeList, setStoreList] = useState([]); // 店舗の詳細リスト（今は未使用）
   const [cartEnabled, setCartEnabled] = useState(true);
 
@@ -417,7 +427,8 @@ function MapPage() {
   const reloadAllowedJans = useCallback(async () => {
     const mainStoreId = getCurrentMainStoreId();
     try {
-      const { allowedJans, ecOnlyJans, mainStoreEcActive } = await fetchAllowedJansAuto();
+      const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
+        await fetchAllowedJansAuto();
 
       // --- cartEnabled 判定（優先順位つき） ---
       const fromLs = getCurrentMainStoreEcActiveFromStorage();
@@ -434,22 +445,20 @@ function MapPage() {
 
       setCartEnabled(!!ecEnabled);
 
-      // null = フィルタ無し（全件）
-      if (allowedJans === null) {
-        setAllowedJansSet(null);
-      } else {
-        // [] = 0件（何も表示しない）
-        setAllowedJansSet(new Set(allowedJans));
-      }
-
-      // ecOnly も同様（null=不明、[]=0件）
-      if (ecOnlyJans === null) setEcOnlyJansSet(null);
-      else setEcOnlyJansSet(new Set(ecOnlyJans));
+      setAllowedJansSet(new Set(allowedJans || []));
+      setEcOnlyJansSet(new Set(ecOnlyJans || []));
+      setStoreJansSet(new Set(storeJans || []));
+        // フェイルセーフ：store_jans が取れなかった場合は全件表示に倒す
+        if (!storeJans || storeJans.length === 0) {
+          console.warn("[MapPage] store_jans empty → fallback to all data");
+          setStoreJansSet(new Set(data.map(d => String(getJanFromItem(d)))));
+        }
       setStoreList([]);
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
-      setAllowedJansSet(null);
-      setEcOnlyJansSet(null);
+      setAllowedJansSet(new Set());
+      setEcOnlyJansSet(new Set());
+      setStoreJansSet(new Set());
       setStoreList([]);
       setCartEnabled(false);
     }
@@ -1053,6 +1062,9 @@ function MapPage() {
       let best = null,
         bestD2 = Infinity;
       for (const d of data) {
+        const jan = String(getJanFromItem(d));
+        if (!storeJansSet.has(jan)) continue;   // 店舗扱いのみ
+
         const x = d.umap_x,
           y = -d.umap_y;
         const dx = x - wx,
@@ -1065,7 +1077,7 @@ function MapPage() {
       }
       return best;
     },
-    [data]
+    [data, storeJansSet]
   );
 
   // スライダー直後：最寄り自動オープン
@@ -1285,8 +1297,16 @@ function MapPage() {
     <div id="map-root" className="map-root" tabIndex={-1}>
       <MapCanvas
         data={data}
-        allowedJansSet={allowedJansSet}
+
+        // 表示対象（店舗●を描く主集合）
+        storeJansSet={storeJansSet}
+
+        // EC専用JAN（星・色替え用）
         ecOnlyJansSet={ecOnlyJansSet}
+
+        // 表示許可集合（フェード/非表示制御）
+        allowedJansSet={allowedJansSet}
+
         userRatings={userRatings}
         selectedJAN={selectedJAN}
         favorites={favorites}
