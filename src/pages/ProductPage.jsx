@@ -949,7 +949,7 @@ export default function ProductPage() {
             }}
           >
             <img
-              src={`${PUBLIC_BASE}/img/icon cart2.png`}
+              src={`${PUBLIC_BASE}/img/icon-cart2.png`}
               alt="cart"
               style={{
                 width: 40,

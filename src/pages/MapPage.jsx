@@ -1471,7 +1471,7 @@ function MapPage() {
           title="クラスタ配色"
         >
           <img
-            src={`${process.env.PUBLIC_URL || ""}/img/icon colour.png`}
+            src={`${process.env.PUBLIC_URL || ""}/img/icon-colour.png`}
             alt=""
             style={{
               width: "95%",
@@ -1623,7 +1623,7 @@ function MapPage() {
         title="カートを開く"
       >
         <img
-          src={`${process.env.PUBLIC_URL || ""}/img/icon cart1.png`}
+          src={`${process.env.PUBLIC_URL || ""}/img/icon-cart1.png`}
           alt=""
           style={{
             width: "100%",

@@ -66,7 +66,7 @@ export default function ClusterPalettePanel({
       isOpen={isOpen}
       onClose={onClose}
       title="味わいグループ"
-      icon="icon colour.png"
+      icon="icon-colour.png"
       height={collapsed ? COLLAPSED_HEIGHT : height}
       onHeaderClick={() => setCollapsed((v) => !v)}
       motionPreset="mui"
