@@ -477,22 +477,26 @@ function MapPage() {
       // --- cartEnabled 判定（優先順位つき） ---
       const fromLs = getCurrentMainStoreEcActiveFromStorage();
 
+      const apiEc =
+        typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null;
+
       let ecEnabled = false;
 
       if (mainStoreId === OFFICIAL_STORE_ID) {
-        ecEnabled = true;
-      } else if (hasToken) {
-        // ログイン済み → APIを絶対優先
-        ecEnabled = !!mainStoreEcActive;
-      } else if (typeof fromLs === "boolean") {
-        // 未ログイン時のみ localStorage を使う
-       ecEnabled = fromLs;
+        ecEnabled = true; // 公式Shopは常にEC有効
+      } else if (apiEc !== null) {
+        // 未ログインでもAPIが返した値を優先
+        ecEnabled = apiEc;
+      } else if (!hasToken && typeof fromLs === "boolean") {
+        // APIが判断不能のときだけ、未ログインはlocalStorageを保険で使う
+        ecEnabled = fromLs;
+      } else {
+        ecEnabled = false;
       }
 
-      setCartEnabled(!!ecEnabled);
-
-     setAllowedJansSet(allowedJans ? new Set(allowedJans) : null);
-     setEcOnlyJansSet(ecOnlyJans ? new Set(ecOnlyJans) : null);
+      setCartEnabled(ecEnabled);
+      setAllowedJansSet(allowedJans ? new Set(allowedJans) : null);
+      setEcOnlyJansSet(ecOnlyJans ? new Set(ecOnlyJans) : null);
       setStoreJansSet(new Set(storeJans || []));
       setStoreList([]);
     } catch (e) {
@@ -504,6 +508,16 @@ function MapPage() {
       setCartEnabled(false);
     }
   }, []);
+
+  // ログ 2025.12.22.
+  console.log("[cartEnabled]", {
+    mainStoreId,
+    hasToken,
+    mainStoreEcActive,
+    fromLs,
+    ecEnabled,
+  });
+  // ここまでログ
 
   // ====== 初回マウント時に allowed-jans を取得 ======
   useEffect(() => {
