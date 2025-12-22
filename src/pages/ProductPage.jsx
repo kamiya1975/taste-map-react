@@ -10,6 +10,7 @@ import {
   toJapaneseWineType,
   TASTEMAP_POINTS_URL,
 } from "../ui/constants";
+import { getCurrentMainStoreIdSafe } from "../utils/store"; // 2025.12.22.追加
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 const PUBLIC_BASE = process.env.PUBLIC_URL || "";
@@ -502,32 +503,13 @@ export default function ProductPage() {
     let cancelled = false;
     const controller = new AbortController();
 
-    const getCurrentMainStoreId = () => {
-      try {
-        const fromApp = Number(localStorage.getItem("app.main_store_id") || "0");
-        if (fromApp > 0) return fromApp;
-
-        const fromLegacy = Number(localStorage.getItem("store.mainStoreId") || "0");
-        if (fromLegacy > 0) return fromLegacy;
-
-        const stored =
-          localStorage.getItem("selectedStore") || localStorage.getItem("main_store");
-        if (stored) {
-          const s = JSON.parse(stored);
-          const id = Number(s?.id ?? s?.store_id ?? 0);
-          if (id > 0) return id;
-        }
-      } catch {}
-      return 1; // デフォルト：公式Shop
-    };
-
     const fetchProduct = async () => {
       setLoading(true);
       setProduct(null);
 
-      const mainId = getCurrentMainStoreId();
+      const mainId = getCurrentMainStoreIdSafe();
 
-      // ★ sub_store_ids は送らない（未ログイン時は main だけ、ログイン時はトークンで sub を見る）
+      // sub_store_ids は送らない（未ログイン時は main だけ、ログイン時はトークンで sub を見る）
       const qsStr = mainId ? `?main_store_id=${encodeURIComponent(String(mainId))}` : "";
 
       try {

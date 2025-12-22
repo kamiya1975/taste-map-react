@@ -26,10 +26,11 @@ import {
   API_BASE,
   TASTEMAP_POINTS_URL,
   getReferenceLotById,
+  OFFICIAL_STORE_ID,
 } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 import { fetchLatestRatings } from "../lib/appRatings";
-import { OFFICIAL_STORE_ID } from "../ui/constants";  //2025.12.18.追加
+import { getCurrentMainStoreIdSafe } from "../utils/store"; //2025.12.22.追加
 
 // =========================
 // points 正規化（入口で吸収） 2025.12.20.追加
@@ -84,41 +85,6 @@ const getJanFromItem = (item) => {
   if (!item) return "";
   const jan = item.jan_code ?? item.JAN ?? item.jan ?? null;
   return jan ? String(jan) : "";
-};
-
-// 現在のメイン店舗IDを取得
-// ※ メイン店舗未選択 → 1（return OFFICIAL_STORE_ID）
-const getCurrentMainStoreId = () => {
-  try {
-    // 初回店舗設定を最優先（StorePage で選んだ店舗）
-    const raw =
-      localStorage.getItem("selectedStore") ||
-      localStorage.getItem("main_store");
-
-    if (raw) {
-      let s;
-      try {
-        s = JSON.parse(raw); // JSONならここで読める
-      } catch {
-        s = raw; // JSONじゃない（"1"等）なら文字列として扱う
-      }
-      const id = Number(s?.id ?? s?.store_id ?? s ?? 0);
-      if (id > 0) return id;
-    }
-
-    // ② 新方式（ログイン後）
-    const v1 = Number(localStorage.getItem("app.main_store_id") || "0");
-    if (v1 > 0) return v1;
-
-    // ③ 旧方式（互換）
-    const v2 = Number(localStorage.getItem("store.mainStoreId") || "0");
-    if (v2 > 0) return v2;
-  } catch (e) {
-    console.warn("getCurrentMainStoreId error:", e);
-  }
-
-  // ④ メイン店舗未選択 → 公式Shop（id=1）
-  return OFFICIAL_STORE_ID;
 };
 
 // メイン店舗の EC有効フラグをローカルから推定（JSONでも文字列でも耐える）
@@ -231,7 +197,7 @@ async function fetchAllowedJansForStore(storeId) {
 //                  メイン店舗IDが無ければ null（= フィルタ無し）
 //    - ログイン済み: /allowed-jans/auto を呼び、失敗時のみ null（= フィルタ無し）
 async function fetchAllowedJansAuto() {
-  const mainStoreId = getCurrentMainStoreId();
+  const mainStoreId = getCurrentMainStoreIdSafe();
 
   let token = "";
   try {
@@ -448,7 +414,7 @@ function MapPage() {
   const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null);
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
   const [storeList, setStoreList] = useState([]); // 店舗の詳細リスト（今は未使用）
-  const [cartEnabled, setCartEnabled] = useState(true);
+  const [cartEnabled, setCartEnabled] = useState(false);
 
   // ------------------------------
   // フェイルセーフ：store_jans が取れない/空のとき
@@ -468,33 +434,31 @@ function MapPage() {
 
   // ====== allowed-jans を読み直す共通関数 ======
   const reloadAllowedJans = useCallback(async () => {
-    const mainStoreId = getCurrentMainStoreId();
+    const mainStoreId = getCurrentMainStoreIdSafe();
     const hasToken = !!(localStorage.getItem("app.access_token") || "");
+
     try {
       const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
         await fetchAllowedJansAuto();
 
-      // --- cartEnabled 判定（優先順位つき） ---
-      const fromLs = getCurrentMainStoreEcActiveFromStorage();
-
-      const apiEc =
-        typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null;
+      const fromLS = getCurrentMainStoreEcActiveFromStorage();
+      const apiEc = typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null;
 
       let ecEnabled = false;
 
       if (mainStoreId === OFFICIAL_STORE_ID) {
-        ecEnabled = true; // 公式Shopは常にEC有効
+        ecEnabled = true;
       } else if (apiEc !== null) {
-        // 未ログインでもAPIが返した値を優先
         ecEnabled = apiEc;
-      } else if (!hasToken && typeof fromLs === "boolean") {
-        // APIが判断不能のときだけ、未ログインはlocalStorageを保険で使う
-        ecEnabled = fromLs;
+      } else if (!hasToken && typeof fromLS === "boolean") {
+        ecEnabled = fromLS;
       } else {
         ecEnabled = false;
       }
 
       setCartEnabled(ecEnabled);
+      console.log("[cartEnabled]", { mainStoreId, hasToken, mainStoreEcActive, fromLS, ecEnabled });
+
       setAllowedJansSet(allowedJans ? new Set(allowedJans) : null);
       setEcOnlyJansSet(ecOnlyJans ? new Set(ecOnlyJans) : null);
       setStoreJansSet(new Set(storeJans || []));
@@ -508,16 +472,6 @@ function MapPage() {
       setCartEnabled(false);
     }
   }, []);
-
-  // ログ 2025.12.22.
-  console.log("[cartEnabled]", {
-    mainStoreId,
-    hasToken,
-    mainStoreEcActive,
-    fromLs,
-    ecEnabled,
-  });
-  // ここまでログ
 
   // ====== 初回マウント時に allowed-jans を取得 ======
   useEffect(() => {

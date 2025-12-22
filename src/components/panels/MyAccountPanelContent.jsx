@@ -1,6 +1,7 @@
 // src/components/panels/MyAccountPanelContent.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { setUserId } from "../../utils/auth";
+import { getCurrentMainStoreIdSafe } from "../../utils/store"; // 2025.12.22.修正
 
 // APIベースURL（.env の REACT_APP_API_BASE_URL があればそれを使う）
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
@@ -34,33 +35,6 @@ const fromApiGender = (apiGender) => {
     default:
       return "その他";
   }
-};
-
-const getCurrentMainStoreId = () => {
-  try {
-    // 1. app.main_store_id（ログイン後サーバから返ってきたもの）
-    const fromApp = Number(localStorage.getItem("app.main_store_id") || "0");
-    if (fromApp > 0) return fromApp;
-
-    // 2. 旧キー（store.mainStoreId）
-    const fromLegacy = Number(localStorage.getItem("store.mainStoreId") || "0");
-    if (fromLegacy > 0) return fromLegacy;
-
-    // 3. 店舗選択ページが保存した selectedStore / main_store からも拾う
-    const stored =
-      localStorage.getItem("selectedStore") ||
-      localStorage.getItem("main_store");
-    if (stored) {
-      const s = JSON.parse(stored);
-      const id = Number(s?.id ?? s?.store_id ?? 0);
-      if (id > 0) return id;
-    }
-  } catch {
-    // 読み出しエラー時はそのまま下へ
-  }
-
-  // ★ デフォルト値は返さず、「見つからなかった」ことを示す
-  return 0;
 };
 
 const BorderlessInput = (props) => (
@@ -415,7 +389,8 @@ export default function MyAccountPanelContent() {
       return;
     }
 
-    const mainStoreId = getCurrentMainStoreId();
+    const mainStoreId = Number(getCurrentMainStoreIdSafe());
+
     if (!mainStoreId || Number.isNaN(mainStoreId)) {
       alert("メイン店舗情報が取得できませんでした。店舗選択後にお試しください。");
       return;
@@ -624,6 +599,7 @@ export default function MyAccountPanelContent() {
               localStorage.removeItem("app.refresh_token");
               localStorage.removeItem("app.user");
               localStorage.removeItem("app.user_login_id");
+              localStorage.removeItem("app.main_store_id");
               localStorage.removeItem("userRatings");
 
               setIsLoggedIn(false);
