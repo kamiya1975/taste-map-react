@@ -272,15 +272,8 @@ async function fetchAllowedJansAuto() {
       const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
         parseAllowedJansResponse(json);
 
-      const merged =
-        allowedJans && allowedJans.length > 0
-          ? allowedJans
-          : ecOnlyJans && ecOnlyJans.length > 0
-          ? ecOnlyJans
-          : [];
-
       return {
-        allowedJans: merged,
+        allowedJans,
         ecOnlyJans: ecOnlyJans || [],
         storeJans: storeJans || [],
         mainStoreEcActive,
@@ -476,6 +469,7 @@ function MapPage() {
   // ====== allowed-jans を読み直す共通関数 ======
   const reloadAllowedJans = useCallback(async () => {
     const mainStoreId = getCurrentMainStoreId();
+    const hasToken = !!(localStorage.getItem("app.access_token") || "");
     try {
       const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
         await fetchAllowedJansAuto();
@@ -483,15 +477,17 @@ function MapPage() {
       // --- cartEnabled 判定（優先順位つき） ---
       const fromLs = getCurrentMainStoreEcActiveFromStorage();
 
-      const ecEnabled =
-        // 公式Shopは常にEC扱い
-        mainStoreId === OFFICIAL_STORE_ID
-          ? true
-          : typeof fromLs === "boolean"
-          ? fromLs
-          : typeof mainStoreEcActive === "boolean"
-          ? mainStoreEcActive
-          : false; // 不明なら「非表示」に倒す（安全側）
+      let ecEnabled = false;
+
+      if (mainStoreId === OFFICIAL_STORE_ID) {
+        ecEnabled = true;
+      } else if (hasToken) {
+        // ログイン済み → APIを絶対優先
+        ecEnabled = !!mainStoreEcActive;
+      } else if (typeof fromLs === "boolean") {
+        // 未ログイン時のみ localStorage を使う
+       ecEnabled = fromLs;
+      }
 
       setCartEnabled(!!ecEnabled);
 
