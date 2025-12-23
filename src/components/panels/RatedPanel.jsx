@@ -39,13 +39,22 @@ export default function RatedPanel({
       setLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem("access_token") || "";
+        const token = localStorage.getItem("app.access_token") || "";
         const qs = new URLSearchParams({ sort: sortMode });
-        const url = `${process.env.REACT_APP_API_BASE || ""}/api/app/ratings?${qs.toString()}`;
+        const API_BASE = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || "";
+        const url = `${API_BASE}/api/app/ratings?${qs.toString()}`;
         const res = await fetch(url, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-        if (!res.ok) throw new Error(`ratings fetch failed: ${res.status}`);
+        const ct = res.headers.get("content-type") || "";
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`ratings fetch failed: ${res.status} ct=${ct} body=${body.slice(0,120)}`);
+        }
+        if (!ct.includes("application/json")) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`ratings not json: ct=${ct} body=${body.slice(0,120)}`);
+        }
         const json = await res.json();
         setItems(Array.isArray(json?.items) ? json.items : []);
       } catch (e) {

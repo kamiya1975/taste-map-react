@@ -1,5 +1,5 @@
 // src/lib/appRatings.js
-const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
+const API_BASE = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || "";
 
 // アプリ用トークン取得（MyAccountと同じキー）
 function getAppToken() {
