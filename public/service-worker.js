@@ -1,5 +1,5 @@
 // public/service-worker.js
-const STATIC_CACHE = "tm-static-v3"; // 必ず version を上げる
+const STATIC_CACHE = "tm-static-v4"; // 必ず version を上げる（SW更新を確実に）
 const STATIC_ASSETS = [
   "/index.html",
   "/manifest.json",
@@ -37,13 +37,10 @@ self.addEventListener("fetch", (event) => {
   // ★ 別オリジンは無視
   if (url.origin !== self.location.origin) return;
 
-  // ★ API / JSON 系は絶対に触らない
-  if (
-    url.pathname.startsWith("/api") ||
-    url.pathname.startsWith("/ratings") ||
-    url.pathname.startsWith("/points") ||
-    request.headers.get("accept")?.includes("application/json")
-  ) {
+  // ★最重要：API は SW でキャッシュしない（Network Only で明示的に返す）
+  // “return;” だと状況次第で事故が残るので、必ず respondWith で握る
+  if (url.pathname.startsWith("/api/")) {
+    event.respondWith(fetch(request));
     return;
   }
 
@@ -74,7 +71,8 @@ self.addEventListener("fetch", (event) => {
       if (cached) return cached;
 
       const networkResp = await fetch(request);
-      if (networkResp.ok) {
+      // 失敗レスポンスや opaque はキャッシュしない（HTML混入事故の予防）
+      if (networkResp && networkResp.ok && networkResp.type === "basic") {
         cache.put(request, networkResp.clone());
       }
       return networkResp;
