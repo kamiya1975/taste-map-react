@@ -1,4 +1,4 @@
-// src/UserTastePage.js
+// src/pages/UserTastePage.jsx
 import React, { useEffect, useMemo, useState } from "react";
 
 export default function UserTastePage() {

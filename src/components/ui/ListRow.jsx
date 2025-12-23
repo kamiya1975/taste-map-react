@@ -1,11 +1,21 @@
+// src/components/ui/ListRow.jsx
+// 一覧表の表示指定
 import React from "react";
-import { TYPE_COLOR_MAP } from "../../ui/constants";
 
 /** 配列RGB or 文字列を CSS color に正規化 */
 const toCssColor = (c, fallback) => {
   if (!c) return fallback;
   if (Array.isArray(c)) return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
   return String(c);
+};
+
+// wine_type → 色（クラスター色は廃止）
+// 値は DB の wine_type に合わせる（例: "Red","White","Sparkling","Rose"）
+const WINE_TYPE_COLOR_MAP = {
+  Red: "#D47A7A",        // 軽い・クリーン赤 と同色
+  White: "#D6D098",      // 穏やか・ミディアム白 と同色
+  Sparkling: "#CFE1A8",  // 若飲みフレッシュ白（スパークリング）と同色
+  Rose: "#D8B7A9",       // 甘口・フルーティー（ロゼ）と同色
 };
 
 export default function ListRow({
@@ -18,9 +28,6 @@ export default function ListRow({
   extraRight = null,   // ← ◎（CircleRatingDisplay など）
   hoverHighlight = true,
 }) {
-  const price = Number.isFinite(item?.希望小売価格)
-    ? `¥${Number(item.希望小売価格).toLocaleString()}`
-    : "—";
 
   const fmtDateTime = (v) => {
     if (!v) return "（日時不明）";
@@ -38,12 +45,12 @@ export default function ListRow({
   /** ==== TypeBadge（修正）====
    * 外枠とタイプ名をカットして「色ブロックのみ」を表示
    */
-  const TypeBadge = ({ type }) => {
-    const colorCSS = toCssColor(TYPE_COLOR_MAP?.[type], accentColor);
+  const TypeBadge = ({ wineType }) => {
+    const colorCSS = toCssColor(WINE_TYPE_COLOR_MAP?.[wineType], accentColor);
     return (
       <span
-        title={type || "Type不明"}
-        aria-label={type || "Unknown"}
+        title={wineType || "wine_type不明"}
+        aria-label={wineType || "Unknown"}
         style={{
           display: "inline-block",
           width: 14,
@@ -72,26 +79,11 @@ export default function ListRow({
       onMouseLeave={(e) => { if (hoverHighlight) e.currentTarget.style.background = "transparent"; }}
     >
       {/* ==== 上段：番号（左寄せ） + 日付（右） ==== */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          gap: 8,
-          marginBottom: 2,
-        }}
-      >
-        {/* ★番号を左寄せ（商品名と同じX位置） */}
-        <strong
-          style={{
-            color: "rgb(50,50,50)",
-            fontSize: 16,
-            fontWeight: 700,
-          }}
-        >
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
+        <strong style={{ color: "rgb(50,50,50)", fontSize: 16, fontWeight: 700 }}>
           {index}.
         </strong>
 
-        {/* ★ showDate=false の場合は非表示にする */}
         {showDate && (
           <span style={{ fontSize: 13, color: "#555" }}>
             {fmtDateTime(dateValue || item?.addedAt)}
@@ -101,21 +93,12 @@ export default function ListRow({
 
       {/* 商品名（番号と左端を揃える） */}
       <div style={{ fontSize: 15, color: "#333", lineHeight: 1.35 }}>
-        {item?.商品名 || "（名称不明）"}
+        {item?.name_kana || item?.商品名 || "（名称不明）"}
       </div>
 
-      {/* 下段：色ブロック / 価格 / Sweet / Body */}
-      <div
-        style={{
-          marginTop: 6,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
-        <TypeBadge type={item?.Type} />
-        <small style={{ color: "#444" }}>{price}</small>
+      {/* 下段：色ブロック（wine_type） */}
+      <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <TypeBadge wineType={item?.wine_type} />
       </div>
 
       {/* 右下に◎を固定 */}

@@ -1,26 +1,15 @@
+// src/components/panels/RatedPanel.jsx
+// 評価一覧パネル
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DRAWER_HEIGHT,
   PANEL_HEADER_H,
   PANEL_HEADER_BORDER,
-  TYPE_COLOR_MAP,
 } from "../../ui/constants";
 import PanelHeader from "../ui/PanelHeader";
 import CircleRatingDisplay from "../../components/CircleRatingDisplay";
 import ListRow from "../ui/ListRow"; // ← 共通コンポーネントを使用
-
-// ★星バッジだけ残す
-const StarBadge = ({ size = 22 }) => (
-  <img
-    src={`${process.env.PUBLIC_URL || ""}/img/star.png`}
-    alt="飲みたい"
-    width={size}
-    height={size}
-    style={{ display: "block" }}
-    draggable={false}
-  />
-);
 
 /* =========================
    評価一覧パネル本体
@@ -28,26 +17,8 @@ const StarBadge = ({ size = 22 }) => (
 export default function RatedPanel({
   isOpen,
   onClose,
-  userRatings,
-  data,
-  favorites = {},   // JAN → { addedAt }
   onSelectJAN,
 }) {
-  // ★の副作用で入ってしまった「source==='wish' && rating===1」を除去
-  React.useEffect(() => {
-    if (!isOpen) return;
-    try {
-      const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
-      let changed = false;
-      for (const [jan, meta] of Object.entries(ratings)) {
-        if (meta && meta.source === "wish" && Number(meta.rating) === 1) {
-          delete ratings[jan];
-          changed = true;
-        }
-      }
-      if (changed) localStorage.setItem("userRatings", JSON.stringify(ratings));
-    } catch {}
-  }, [isOpen]);
 
   const [sortMode, setSortMode] = React.useState("date");
   React.useEffect(() => { if (isOpen) setSortMode("date"); }, [isOpen]);
@@ -55,86 +26,39 @@ export default function RatedPanel({
   const scrollRef = React.useRef(null);
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [sortMode]);
 
-  // 採点した順の通し番号（1始まり）
-  const rankMap = React.useMemo(() => {
-    const items = Object.entries(userRatings || {})
-      .map(([jan, meta]) => ({
-        jan: String(jan),
-        rating: Number(meta?.rating) || 0,
-        t: meta?.date ? new Date(meta.date).getTime() : 0,
-      }))
-      .filter((x) => x.rating > 0)
-      .sort((a, b) => (a.t - b.t) || a.jan.localeCompare(b.jan));
-    const m = new Map();
-    items.forEach((x, idx) => m.set(x.jan, idx + 1));
-    return m;
-  }, [userRatings]);
+  // ----------------------------
+  // バックから一覧を取得
+  // ----------------------------
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState(null);
 
-  // 表示リスト（評価あり + 飲みたいのみ を統合）
-  const list = React.useMemo(() => {
-    const wishMap = favorites || {};
-    const wishSet = new Set(Object.keys(wishMap).map(String));
-
-    // 1) 評価あり（rating>0）
-    const bucket = new Map();
-    Object.entries(userRatings || {}).forEach(([jan, meta]) => {
-      const rating = Number(meta?.rating) || 0;
-      if (rating <= 0) return;
-      bucket.set(String(jan), {
-        jan: String(jan),
-        rating,
-        ratedAt: meta?.date ?? null,
-        isWish: wishSet.has(String(jan)),
-      });
-    });
-
-    // 2) 未評価の「飲みたい」
-    wishSet.forEach((jan) => {
-      if (!bucket.has(jan)) {
-        bucket.set(jan, {
-          jan,
-          rating: 0,
-          ratedAt: wishMap[jan]?.addedAt ?? null,
-          isWish: true,
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem("access_token") || "";
+        const qs = new URLSearchParams({ sort: sortMode });
+        const url = `${process.env.REACT_APP_API_BASE || ""}/api/app/ratings?${qs.toString()}`;
+        const res = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
+        if (!res.ok) throw new Error(`ratings fetch failed: ${res.status}`);
+        const json = await res.json();
+        setItems(Array.isArray(json?.items) ? json.items : []);
+      } catch (e) {
+        console.error(e);
+        setItems([]);
+        setError(String(e?.message || e));
+      } finally {
+        setLoading(false);
       }
-    });
+    };
+    run();
+  }, [isOpen, sortMode]);
 
-    // 3) data 突合
-    const arr = Array.from(bucket.values())
-      .map((entry) => {
-        const it = (data || []).find((d) => String(d.JAN) === entry.jan);
-        if (!it) return null;
-        const rankedIndex = rankMap.get(entry.jan) ?? null;
-        return {
-          ...it,
-          ratedAt: entry.ratedAt,
-          rating: entry.rating,
-          isWish: entry.isWish,
-          displayIndex: rankedIndex,
-        };
-      })
-      .filter(Boolean);
-
-    // 並び順：タブで切替（常に「飲みたい優先」は維持）
-    const byWish = (a, b) => (b.isWish === a.isWish ? 0 : (b.isWish ? 1 : -1));
-    if (sortMode === "rating") {
-      arr.sort((a, b) => {
-        const w = byWish(a, b); if (w !== 0) return w;
-        if (b.rating !== a.rating) return b.rating - a.rating;       // 評価高い順
-        return (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0)); // 同点は新しい順
-      });
-    } else {
-      arr.sort((a, b) => {
-        const w = byWish(a, b); if (w !== 0) return w;
-        return (new Date(b.ratedAt || 0) - new Date(a.ratedAt || 0)); // 新しい順
-      });
-    }
-
-    // 表示番号：rankMap優先、無ければ上から N, N-1, ...
-    const N = arr.length;
-    return arr.map((x, i) => ({ ...x, displayIndex: x.displayIndex ?? (N - i) }));
-  }, [data, userRatings, favorites, rankMap, sortMode]);
 
   // 右上：並び替えカプセル
   const SortCapsule = (
@@ -223,26 +147,23 @@ export default function RatedPanel({
             }}
           >
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {list.map((item, idx) => {
-                const typeColor = TYPE_COLOR_MAP?.[item?.Type] ?? "rgb(180,180,180)";
-                const right = item.rating > 0
-                  ? <CircleRatingDisplay rating={item.rating} size={35} />
-                  : <StarBadge />;
-                return (
-                  <ListRow
-                    key={`${item.JAN}-${idx}`}
-                    index={item.displayIndex ?? idx + 1}
-                    item={item}
-                    onPick={() => onSelectJAN?.(item.JAN, { fromRated: true })}
-                    showDate
-                    dateValue={item.ratedAt}
-                    accentColor={typeColor}
-                    extraRight={right}
-                  />
-                );
-              })}
-              {list.length === 0 && (
-                <li style={{ color: "#666" }}>まだ「お気に入り」の商品がありません。</li>
+              {loading && <li style={{ color: "#666" }}>読み込み中…</li>}
+              {!loading && error && <li style={{ color: "#c00" }}>{error}</li>}
+              {!loading && !error && items.map((it) => (
+                <ListRow
+                  key={`${it.jan_code}-${it.created_at}`}
+                  index={it.display_rank ?? 0}
+                  item={it}
+                  onPick={() => onSelectJAN?.(it.jan_code, { fromRated: true })}
+                  showDate
+                  dateValue={it.created_at}
+                  // ListRow 側が wine_type を見るので accentColor は fallback のみでOK
+                  accentColor={"#b4b4b4"}
+                  extraRight={<CircleRatingDisplay rating={it.rating} size={35} />}
+                />
+              ))}
+              {!loading && !error && items.length === 0 && (
+                <li style={{ color: "#666" }}>まだ評価がありません。</li>
               )}
             </ul>
           </div>
