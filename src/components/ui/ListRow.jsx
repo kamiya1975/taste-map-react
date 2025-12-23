@@ -12,10 +12,10 @@ const toCssColor = (c, fallback) => {
 // wine_type → 色（クラスター色は廃止）
 // 値は DB の wine_type に合わせる（例: "Red","White","Sparkling","Rose"）
 const WINE_TYPE_COLOR_MAP = {
-  Red: "#D47A7A",        // 軽い・クリーン赤 と同色
-  White: "#D6D098",      // 穏やか・ミディアム白 と同色
-  Sparkling: "#CFE1A8",  // 若飲みフレッシュ白（スパークリング）と同色
-  Rose: "#D8B7A9",       // 甘口・フルーティー（ロゼ）と同色
+  red: "#D47A7A",        // 軽い・クリーン赤 と同色
+  white: "#D6D098",      // 穏やか・ミディアム白 と同色
+  sparkling: "#CFE1A8",  // 若飲みフレッシュ白（スパークリング）と同色
+  rose: "#D8B7A9",       // 甘口・フルーティー（ロゼ）と同色
 };
 
 export default function ListRow({
