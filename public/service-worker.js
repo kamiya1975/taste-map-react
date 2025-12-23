@@ -16,7 +16,13 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.map((key) => (key !== STATIC_CACHE ? caches.delete(key) : null)))
+      Promise.all(
+        keys.map((key) => {
+          if (key.startsWith("tm-") && key !== STATIC_CACHE) {
+            return caches.delete(key);
+          }
+        })
+      )
     )
   );
   self.clients.claim();
