@@ -1,6 +1,5 @@
 // public/service-worker.js
-
-const STATIC_CACHE = "tm-static-v2"; // version上げる（重要）
+const STATIC_CACHE = "tm-static-v3"; // 必ず version を上げる
 const STATIC_ASSETS = [
   "/index.html",
   "/manifest.json",
@@ -9,7 +8,9 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)));
+  event.waitUntil(
+    caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
+  );
   self.skipWaiting();
 });
 
@@ -17,11 +18,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
-        keys.map((key) => {
-          if (key.startsWith("tm-") && key !== STATIC_CACHE) {
-            return caches.delete(key);
-          }
-        })
+        keys.map((key) =>
+          key !== STATIC_CACHE ? caches.delete(key) : null
+        )
       )
     )
   );
@@ -32,20 +31,32 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // GET以外は触らない
+  // GET以外は無視
   if (request.method !== "GET") return;
 
-  // 重要：別オリジンはSWで一切触らない（tdb-backend等）
+  // ★ 別オリジンは無視
   if (url.origin !== self.location.origin) return;
 
-  // ナビゲーションは Network First
+  // ★ API / JSON 系は絶対に触らない
+  if (
+    url.pathname.startsWith("/api") ||
+    url.pathname.startsWith("/ratings") ||
+    url.pathname.startsWith("/points") ||
+    request.headers.get("accept")?.includes("application/json")
+  ) {
+    return;
+  }
+
+  // ナビゲーション（SPA遷移）は Network First
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
         const cache = await caches.open(STATIC_CACHE);
         try {
           const networkResp = await fetch(request);
-          cache.put("/index.html", networkResp.clone());
+          if (networkResp.ok) {
+            cache.put("/index.html", networkResp.clone());
+          }
           return networkResp;
         } catch {
           return (await cache.match("/index.html")) || Response.error();
@@ -55,7 +66,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 静的ファイルは Cache First
+  // 静的ファイルのみ Cache First
   event.respondWith(
     (async () => {
       const cache = await caches.open(STATIC_CACHE);
@@ -63,7 +74,9 @@ self.addEventListener("fetch", (event) => {
       if (cached) return cached;
 
       const networkResp = await fetch(request);
-      cache.put(request, networkResp.clone());
+      if (networkResp.ok) {
+        cache.put(request, networkResp.clone());
+      }
       return networkResp;
     })()
   );
