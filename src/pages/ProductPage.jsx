@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import "../index.css";
 import { useSimpleCart } from "../cart/simpleCart";
-import { postRating } from "../lib/appRatings";
+import { postRating, fetchWishlistStatus, postWishlist, deleteWishlist } from "../lib/appRatings";
 import { fetchWishlistStatus, addWishlist, removeWishlist } from "../lib/appWishlist";
 import {
   getClusterRGBA,
@@ -89,75 +89,34 @@ const notifyParentClosed = (jan_code) => {
 /** =========================
  *  お気に入りスター（☆/★ → 「飲みたい」）
  * ========================= */
-function HeartButton({ jan_code, size = 28, hidden = false }) {
-  const [fav, setFav] = React.useState(false);
+function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
+  const fav = !!value;
+  const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
-    const readFav = () => {
-      try {
-        const obj = JSON.parse(localStorage.getItem("favorites") || "{}");
-        setFav(!!obj[jan_code]);
-      } catch {
-        setFav(false);
-      }
-    };
-    // ログイン済みならDBを正とする（DBが落ちた時だけ local にフォールバック）
-    (async () => {
-      if (isAppLoggedIn()) {
-        try {
-          const st = await fetchWishlistStatus(jan_code);
-          // 返却形が { is_wish: true } や { wished: true } 等でも吸収
-          const v =
-            !!st?.is_wish || !!st?.wished || !!st?.exists || !!st?.is_in_wishlist;
-          setFav(v);
-          return;
-        } catch (e) {
-          console.warn("wishlist status fetch failed, fallback to local:", e);
-        }
-      }
-      readFav();
-    })();
-
-    const onStorage = (e) => {
-      if (e.key === "favorites") readFav();
-    };
+    // 親からの反映（一覧⇄詳細の即時同期用）
     const onMsg = (e) => {
       const { type, jan: targetJan, value } = e.data || {};
       if (String(targetJan) !== String(jan_code)) return;
-      if (type === "SET_FAVORITE") setFav(!!value);
+      if (type === "SET_WISHLIST") onChange?.(!!value);
     };
-    window.addEventListener("storage", onStorage);
     window.addEventListener("message", onMsg);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("message", onMsg);
-    };
-  }, [jan_code]);
+    return () => window.removeEventListener("message", onMsg);
+  }, [jan_code, onChange]);
 
   const toggle = async () => {
-    // 未ログインは評価と同じ扱い（DB運用に寄せる）
+    if (busy) return;
+
     if (!isAppLoggedIn()) {
       alert("飲みたい機能はログインしてからご利用いただけます。");
-      try {
-        window.parent?.postMessage({ type: "OPEN_MYACCOUNT" }, "*");
-      } catch {}
+      try { window.parent?.postMessage({ type: "OPEN_MYACCOUNT" }, "*"); } catch {}
       return;
     }
 
     const willAdd = !fav;
-
-    // 1) UI を先に即時反映（失敗時は戻す）
-    setFav(willAdd);
-
-    try {
-      if (willAdd) await addWishlist(jan_code);
-      else await removeWishlist(jan_code);
-    } catch (e) {
-      console.error(e);
-      setFav(!willAdd);
-      alert(`飲みたい更新に失敗: ${e?.message || e}`);
-      return;
-    }
+    setBusy(true);
+    // 先にUI更新（楽観）
+    onChange?.(willAdd);
 
     // 2) ★ON のときは「評価(◎)を即座に消す」→ 排他を保証
     if (willAdd) {
@@ -199,18 +158,22 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
       } catch {}
     }
 
-    // 3) 既存互換の通知（★トグル）
+    // 3) DBへ反映（失敗したら戻す）
     try {
-      window.parent?.postMessage({ type: "TOGGLE_FAVORITE", jan_code }, "*");
-    } catch {}
+      if (willAdd) await postWishlist({ jan_code });
+      else await deleteWishlist({ jan_code });
+    } catch (e) {
+      console.error(e);
+      onChange?.(!willAdd);
+    } finally {
+      setBusy(false);
+    }
+
+    // 4) 親へ通知（一覧/Map側の即時同期）
+    try { window.parent?.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: willAdd }, "*"); } catch {}
     try {
       const bc = new BroadcastChannel("product_bridge");
-      bc.postMessage({
-        type: "SET_FAVORITE",
-        jan: jan_code,
-        value: willAdd,
-        at: Date.now(),
-      });
+      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: willAdd, at: Date.now() });
       bc.close();
     } catch {}
   };
@@ -477,6 +440,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(0);
+  const [wish, setWish] = useState(false);
   const [clusterId, setClusterId] = useState(null);
 
   // ★ CartContext（ローカル積み → カートで同期）
@@ -570,6 +534,19 @@ export default function ProductPage() {
           console.error("商品API読込エラー:", e);
           setLoading(false);
         }
+      }
+
+      // ★ wishlist 初期点灯（DB 正）
+      try {
+        if (isAppLoggedIn()) {
+          const st = await fetchWishlistStatus(jan_code);
+          if (!cancelled) setWish(!!st?.is_wished);
+        } else {
+          if (!cancelled) setWish(false);
+        }
+      } catch (e) {
+        // 失敗しても詳細は表示したいので握りつぶす（点灯しないだけ）
+        if (!cancelled) setWish(false);
       }
 
       // ローカルの userRatings 読込（従来通り）
@@ -761,7 +738,7 @@ export default function ProductPage() {
   const displayPrice =
     price != null ? `¥${Number(price).toLocaleString()}` : "価格未定";
 
-  // ★ どの店舗の価格か（バックエンドのフィールド候補を順に見る）
+  // どの店舗の価格か（バックエンドのフィールド候補を順に見る）
   const priceStoreName =
     product?.price_store_name || // 推奨：価格算出元の店舗名
     product?.store_name ||       // 一般的な店舗名フィールド
@@ -769,10 +746,10 @@ export default function ProductPage() {
     product?.ec_store_name ||    // EC用の表示名（もしあれば）
     "";
 
-  // ★ 選択中店舗にアクティブ取扱があるか（※EC判定には使わない。availabilityLineの「評価履歴」表示用）
+  // 選択中店舗にアクティブ取扱があるか（※EC判定には使わない。availabilityLineの「評価履歴」表示用）
   const availableInSelected = product?.available_in_selected_stores;
 
-  // ★ クラスタ色
+  // クラスタ色
   const clusterRgba = getClusterRGBA(
     clusterId != null ? clusterId : product?.cluster_id
   );
@@ -784,11 +761,11 @@ export default function ProductPage() {
     product?.jan_code ||
     "（名称不明）";
 
-  // ★ EC商品かどうか　 is_ec_product で 1本化（これだけを真実にする）
+  // EC商品かどうか　 is_ec_product で 1本化（これだけを真実にする）
   const isEcContext = !!product?.is_ec_product;
   const canShowCartButton = isEcContext;
 
-  // ★ 価格下の文言（EC / 店舗 / どちらも無し）
+  // 価格下の文言（EC / 店舗 / どちらも無し）
   const hasStoreName = !!priceStoreName;
 
   let availabilityLine = "";
@@ -817,7 +794,7 @@ export default function ProductPage() {
   }
 
   const handleAddToCart = async () => {
-    // ★ 未ログインなら MyAccount へ誘導（評価ボタンと同じ挙動）
+    // 未ログインなら MyAccount へ誘導（評価ボタンと同じ挙動）
     if (!isAppLoggedIn()) {
       alert("購入機能はログインしてからご利用いただけます。");
       try {
@@ -1042,7 +1019,7 @@ export default function ProductPage() {
             >
               {"飲みたい"}
             </div>
-            <HeartButton jan_code={jan_code} size={28} />
+            <HeartButton jan_code={jan_code} value={wish} onChange={setWish} size={28} />
           </div>
           <div
             style={{

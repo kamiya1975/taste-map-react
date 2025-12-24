@@ -9,6 +9,57 @@ function getAppToken() {
     return "";
   }
 }
+// -----------------------------
+// WISHLIST（飲みたい）
+// -----------------------------
+export async function fetchWishlistStatus(jan_code) {
+  const token = getAppToken();
+  if (!token) throw new Error("アプリ用トークンがありません（未ログイン）");
+
+  const res = await fetch(
+    `${API_BASE}/api/app/wishlist/${encodeURIComponent(String(jan_code))}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`飲みたい状態取得に失敗しました (${res.status}) ${txt || ""}`.trim());
+  }
+  return await res.json(); // { jan_code, is_wished, created_at }
+}
+
+export async function postWishlist({ jan_code }) {
+  const token = getAppToken();
+  if (!token) throw new Error("アプリ用トークンがありません（未ログイン）");
+
+  const res = await fetch(`${API_BASE}/api/app/wishlist`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ jan_code }),
+  });
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`飲みたい登録に失敗しました (${res.status}) ${txt || ""}`.trim());
+  }
+  return await res.json();
+}
+
+export async function deleteWishlist({ jan_code }) {
+  const token = getAppToken();
+  if (!token) throw new Error("アプリ用トークンがありません（未ログイン）");
+
+  const res = await fetch(
+    `${API_BASE}/api/app/wishlist/${encodeURIComponent(String(jan_code))}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(`飲みたい解除に失敗しました (${res.status}) ${txt || ""}`.trim());
+  }
+  return await res.json(); // { ok:true, deleted:n }
+}
 
 // 位置情報を localStorage から拾う場合はここでまとめて取得
 // いまはダミー（あとで ProductPage 側の仕様に合わせて書き換えでOK）
