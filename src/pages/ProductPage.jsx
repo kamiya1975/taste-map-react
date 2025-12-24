@@ -3,8 +3,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import "../index.css";
 import { useSimpleCart } from "../cart/simpleCart";
-import { postRating, fetchWishlistStatus, postWishlist, deleteWishlist } from "../lib/appRatings";
-import { fetchWishlistStatus, addWishlist, removeWishlist } from "../lib/appWishlist";
+import { postRating } from "../lib/appRatings";
+import {
+  fetchWishlistStatus,
+  addWishlist,
+  removeWishlist,
+} from "../lib/appWishlist";
 import {
   getClusterRGBA,
   clusterRGBAtoCSS,
@@ -160,8 +164,8 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
 
     // 3) DBへ反映（失敗したら戻す）
     try {
-      if (willAdd) await postWishlist({ jan_code });
-      else await deleteWishlist({ jan_code });
+      if (willAdd) await addWishlist(jan_code);
+      else await removeWishlist(jan_code);
     } catch (e) {
       console.error(e);
       onChange?.(!willAdd);
@@ -182,7 +186,7 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
     <button
       aria-label={fav ? "お気に入り解除" : "お気に入りに追加"}
       onClick={toggle}
-      disabled={hidden}
+      disabled={hidden || busy}
       style={{
         border: "none",
         background: "transparent",
@@ -700,14 +704,14 @@ export default function ProductPage() {
         // UI上の★も落とす
         try {
           window.parent?.postMessage(
-            { type: "SET_FAVORITE", jan: jan_code, value: false },
+            { type: "SET_WISHLIST", jan: jan_code, value: false },
             "*"
           );
         } catch {}
         try {
           const bc = new BroadcastChannel("product_bridge");
           bc.postMessage({
-            type: "SET_FAVORITE",
+            type: "SET_WISHLIST",
             jan: jan_code,
             value: false,
             at: Date.now(),
