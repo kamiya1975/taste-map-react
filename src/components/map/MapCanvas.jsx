@@ -206,6 +206,24 @@ const MapCanvas = forwardRef(function MapCanvas(
   },
   deckRef   // ref を受け取る
 ) {
+  // --- DeckGL ref（親refがnullでも落ちないように内部refへ集約） ---
+  const localDeckRef = useRef(null);
+  const setDeckRef = useCallback(
+    (node) => {
+      // DeckGL instance（@deck.gl/react）の参照
+      localDeckRef.current = node;
+
+      // 親から forwardRef が渡っていれば同期（関数ref/オブジェクトref両対応）
+      if (!deckRef) return;
+      if (typeof deckRef === "function") {
+        deckRef(node);
+      } else {
+        deckRef.current = node;
+      }
+    },
+    [deckRef]
+  );
+
   // --- refs ---
   const sizeRef = useRef({ width: 1, height: 1 });
   const interactingRef = useRef(false);
@@ -745,7 +763,7 @@ const MapCanvas = forwardRef(function MapCanvas(
 
   return (
     <DeckGL
-      ref={deckRef}   // ★ DeckGL に ref を渡す
+      ref={setDeckRef}   // ★ 親refがnullでも落ちない安全なref
       views={new OrthographicView({ near: -1, far: 1 })}
       viewState={viewState}
       style={{ position: "absolute", inset: 0 }}
@@ -786,6 +804,11 @@ const MapCanvas = forwardRef(function MapCanvas(
       }}
       onClick={(info) => {
         // まずは通常のGPUピッキング（点を直タップ）
+        // （アンマウント直後などで ref が無いタイミングの防御）
+        const deckHost = localDeckRef.current;
+        // deckHost が無いなら何もしない（"reading current" 系クラッシュ回避）
+        // ※ info.coordinate があるケースもあるが、ここは安全優先
+
         const picked = info?.object;
         const pickedJan =
           picked?.jan ??
@@ -800,7 +823,9 @@ const MapCanvas = forwardRef(function MapCanvas(
         }
 
         // クリック座標（world）を取る
-        const deck = deckRef.current?.deck || deckRef.current;
+        // 1) deck.gl が渡してくれる world 座標があればそれを最優先
+        // 2) 無ければ pixel → unproject（DeckGLインスタンスが必要）
+        const deck = deckHost?.deck || deckHost || null;       
         const world =
           info?.coordinate ??
           (info?.pixel ? deck?.unproject?.(info.pixel) : null);
