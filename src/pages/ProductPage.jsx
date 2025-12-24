@@ -476,6 +476,7 @@ export default function ProductPage() {
         }
       },
       (err) => {
+        if (err?.code === 1) return; // deny は黙る
         console.warn("geolocation 取得失敗:", err);
       },
       {
