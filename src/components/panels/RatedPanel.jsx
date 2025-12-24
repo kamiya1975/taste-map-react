@@ -27,6 +27,18 @@ export default function RatedPanel({
   React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [sortMode]);
 
   // ----------------------------
+  // ログイン判定（トークン有無）
+  // ※ localStorage はレンダー中に触ってもOKだが、try/catchで安全側に倒す
+  // ----------------------------
+  const token = React.useMemo(() => {
+    try {
+      return localStorage.getItem("app.access_token") || "";
+    } catch {
+      return "";
+    }
+  }, [isOpen]); // パネルを開くたびに拾い直す
+
+  // ----------------------------
   // バックから一覧を取得
   // ----------------------------
   const [items, setItems] = React.useState([]);
@@ -35,11 +47,17 @@ export default function RatedPanel({
 
   React.useEffect(() => {
     if (!isOpen) return;
+    // ログイン外：文字表示のみ（fetch しない・エラーにもならない）
+    if (!token) {
+      setLoading(false);
+      setError(null);
+      setItems([]);
+      return;
+    }
     const run = async () => {
       setLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem("app.access_token") || "";
         const qs = new URLSearchParams({ sort: sortMode });
         const API_BASE = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || "";
         const url = `${API_BASE}/api/app/ratings?${qs.toString()}`;
@@ -58,7 +76,8 @@ export default function RatedPanel({
         const json = await res.json();
         setItems(Array.isArray(json?.items) ? json.items : []);
       } catch (e) {
-        console.error(e);
+        // ここはログイン済みの前提なので、通常の取得失敗として表示する
+        console.error(e);      
         setItems([]);
         setError(String(e?.message || e));
       } finally {
@@ -66,8 +85,7 @@ export default function RatedPanel({
       }
     };
     run();
-  }, [isOpen, sortMode]);
-
+  }, [isOpen, sortMode, token]);
 
   // 右上：並び替えカプセル
   const SortCapsule = (
@@ -156,9 +174,10 @@ export default function RatedPanel({
             }}
           >
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {!token && <li style={{ color: "#666" }}>評価履歴はログイン後に表示されます。</li>}
               {loading && <li style={{ color: "#666" }}>読み込み中…</li>}
               {!loading && error && <li style={{ color: "#c00" }}>{error}</li>}
-              {!loading && !error && items.map((it) => (
+              {!!token && !loading && !error && items.map((it) => (
                 <ListRow
                   key={`${it.jan_code}-${it.created_at}`}
                   index={it.display_rank ?? 0}
@@ -171,7 +190,7 @@ export default function RatedPanel({
                   extraRight={<CircleRatingDisplay rating={it.rating} size={35} />}
                 />
               ))}
-              {!loading && !error && items.length === 0 && (
+              {!!token && !loading && !error && items.length === 0 && (
                 <li style={{ color: "#666" }}>まだ評価がありません。</li>
               )}
             </ul>
