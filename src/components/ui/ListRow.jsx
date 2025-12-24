@@ -112,7 +112,10 @@ export default function ListRow({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            pointerEvents: "none",
+            pointerEvents: "auto",
+          }}
+          onClick={(e) => {
+            e.stopPropagation(); // ← 行遷移を止める
           }}
         >
           {extraRight}
