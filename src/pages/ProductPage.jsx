@@ -4,6 +4,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import "../index.css";
 import { useSimpleCart } from "../cart/simpleCart";
 import { postRating } from "../lib/appRatings";
+import { fetchWishlistStatus, addWishlist, removeWishlist } from "../lib/appWishlist";
 import {
   getClusterRGBA,
   clusterRGBAtoCSS,
@@ -100,7 +101,23 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
         setFav(false);
       }
     };
-    readFav();
+    // ログイン済みならDBを正とする（DBが落ちた時だけ local にフォールバック）
+    (async () => {
+      if (isAppLoggedIn()) {
+        try {
+          const st = await fetchWishlistStatus(jan_code);
+          // 返却形が { is_wish: true } や { wished: true } 等でも吸収
+          const v =
+            !!st?.is_wish || !!st?.wished || !!st?.exists || !!st?.is_in_wishlist;
+          setFav(v);
+          return;
+        } catch (e) {
+          console.warn("wishlist status fetch failed, fallback to local:", e);
+        }
+      }
+      readFav();
+    })();
+
     const onStorage = (e) => {
       if (e.key === "favorites") readFav();
     };
@@ -117,17 +134,30 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
     };
   }, [jan_code]);
 
-  const toggle = () => {
-    // 1) favorites をトグル
-    const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
-    const willAdd = !favs[jan_code];
-    if (willAdd) {
-      favs[jan_code] = { addedAt: new Date().toISOString() };
-    } else {
-      delete favs[jan_code];
+  const toggle = async () => {
+    // 未ログインは評価と同じ扱い（DB運用に寄せる）
+    if (!isAppLoggedIn()) {
+      alert("飲みたい機能はログインしてからご利用いただけます。");
+      try {
+        window.parent?.postMessage({ type: "OPEN_MYACCOUNT" }, "*");
+      } catch {}
+      return;
     }
-    localStorage.setItem("favorites", JSON.stringify(favs));
-    setFav(!!favs[jan_code]);
+
+    const willAdd = !fav;
+
+    // 1) UI を先に即時反映（失敗時は戻す）
+    setFav(willAdd);
+
+    try {
+      if (willAdd) await addWishlist(jan_code);
+      else await removeWishlist(jan_code);
+    } catch (e) {
+      console.error(e);
+      setFav(!willAdd);
+      alert(`飲みたい更新に失敗: ${e?.message || e}`);
+      return;
+    }
 
     // 2) ★ON のときは「評価(◎)を即座に消す」→ 排他を保証
     if (willAdd) {
@@ -138,6 +168,14 @@ function HeartButton({ jan_code, size = 28, hidden = false }) {
           localStorage.setItem("userRatings", JSON.stringify(ratings));
         }
       } catch {}
+      // バック側の評価も 0 に倒す（排他）
+      try {
+        await postRating({ jan_code, rating: 0 });
+      } catch (e) {
+        // wishlist は成功しているので致命にはしない
+        console.warn("postRating(0) failed while wish ON:", e);
+      }
+
       // ProductPage 自身の表示を即更新（◎を0に）
       try {
         window.parent?.postMessage(
@@ -679,22 +717,29 @@ export default function ProductPage() {
       };
       ratings[jan_code] = payload;
 
-      // ★が付いていたら外す（排他）
+      // ★が付いていたら外す（排他：DBを正）
       try {
-        const favs = JSON.parse(
-          localStorage.getItem("favorites") || "{}"
-        );
-        if (favs[jan_code]) {
-          delete favs[jan_code];
-          localStorage.setItem("favorites", JSON.stringify(favs));
-          try {
-            window.parent?.postMessage(
-              { type: "SET_FAVORITE", jan: jan_code, value: false },
-              "*"
-            );
-          } catch {}
-        }
-      } catch {}
+        await removeWishlist(jan_code);
+        // UI上の★も落とす
+        try {
+          window.parent?.postMessage(
+            { type: "SET_FAVORITE", jan: jan_code, value: false },
+            "*"
+          );
+        } catch {}
+        try {
+          const bc = new BroadcastChannel("product_bridge");
+          bc.postMessage({
+            type: "SET_FAVORITE",
+            jan: jan_code,
+            value: false,
+            at: Date.now(),
+          });
+          bc.close();
+        } catch {}
+      } catch (e) {
+        console.warn("removeWishlist failed while rating ON:", e);
+      }
     }
     localStorage.setItem("userRatings", JSON.stringify(ratings));
     postToParent({
