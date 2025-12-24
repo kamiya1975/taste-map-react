@@ -39,7 +39,7 @@ export default function ListRow({
     //  const hh = String(d.getHours()).padStart(2, "0");
     //  const mm = String(d.getMinutes()).padStart(2, "0");
     //  return `${y}/${m}/${day} ,${hh}:${mm}`;
-      return `${y}.${m}.${day}`;
+      return `${y}.${m}.${day}.`;
     } catch { return "（日時不明）"; }
   };
 
