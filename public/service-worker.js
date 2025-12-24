@@ -1,5 +1,5 @@
 // public/service-worker.js
-const STATIC_CACHE = "tm-static-v4"; // 必ず version を上げる（SW更新を確実に）
+const STATIC_CACHE = "tm-static-v5"; // 必ず version を上げる（SW更新を確実に）
 const STATIC_ASSETS = [
   "/index.html",
   "/manifest.json",
