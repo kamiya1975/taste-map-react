@@ -10,7 +10,7 @@ const toCssColor = (c, fallback) => {
 };
 
 // wine_type → 色（クラスター色は廃止）
-// 値は DB の wine_type に合わせる（例: "Red","White","Sparkling","Rose"）
+// 値は DB の wine_type に合わせる（例: "eed","white","sparkling","rose"）
 const WINE_TYPE_COLOR_MAP = {
   red: "#D47A7A",        // 軽い・クリーン赤 と同色
   white: "#D6D098",      // 穏やか・ミディアム白 と同色
@@ -47,7 +47,8 @@ export default function ListRow({
    * 外枠とタイプ名をカットして「色ブロックのみ」を表示
    */
   const TypeBadge = ({ wineType }) => {
-    const colorCSS = toCssColor(WINE_TYPE_COLOR_MAP?.[wineType], accentColor);
+    const key = String(wineType || "").trim().toLowerCase();
+    const colorCSS = toCssColor(WINE_TYPE_COLOR_MAP?.[key], accentColor);
     return (
       <span
         title={wineType || "wine_type不明"}

@@ -89,11 +89,13 @@ export default function UserTastePage() {
 
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
+    link.href = url;
     link.download = "user_taste_log.csv";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const columns = useMemo(

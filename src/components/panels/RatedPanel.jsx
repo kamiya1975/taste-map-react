@@ -249,7 +249,7 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
                 !error &&
                 items.map((it) => (
                   <ListRow
-                    key={`${it.jan_code}-${it.kind}`}
+                    key={`${it.kind}-${it.id ?? ""}-${it.jan_code}-${pickDate(it) || ""}`}
                     index={it.display_rank ?? 0}
                     item={it}
                     onPick={() =>
