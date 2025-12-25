@@ -6,7 +6,6 @@ import { DRAWER_HEIGHT, PANEL_HEADER_H, PANEL_HEADER_BORDER } from "../../ui/con
 import PanelHeader from "../ui/PanelHeader";
 import CircleRatingDisplay from "../../components/CircleRatingDisplay";
 import ListRow from "../ui/ListRow";
-import { fetchWishlist } from "../../lib/appWishlist"; // ★追加
 
 const API_BASE =
   process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || "";
@@ -101,114 +100,33 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
       setError(null);
 
       try {
-        // ------- ratings -------
+        // ------- rated-panel（統合API）-------
         const qs = new URLSearchParams({ sort: sortMode });
-        const ratingsUrl = `${API_BASE}/api/app/ratings?${qs.toString()}`;
-        const ratingsRes = await fetch(ratingsUrl, {
+        const url = `${API_BASE}/api/app/rated-panel?${qs.toString()}`;
+        const res = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const ratingsCt = ratingsRes.headers.get("content-type") || "";
-        if (!ratingsRes.ok) {
-          const body = await ratingsRes.text().catch(() => "");
+        const ct = res.headers.get("content-type") || "";
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
           throw new Error(
-            `ratings fetch failed: ${ratingsRes.status} ct=${ratingsCt} body=${body.slice(
-              0,
-              120
-            )}`
+            `rated-panel fetch failed: ${res.status} ct=${ct} body=${body.slice(0, 120)}`
           );
         }
-        if (!ratingsCt.includes("application/json")) {
-          const body = await ratingsRes.text().catch(() => "");
-          throw new Error(
-            `ratings not json: ct=${ratingsCt} body=${body.slice(0, 120)}`
-          );
+        if (!ct.includes("application/json")) {
+          const body = await res.text().catch(() => "");
+          throw new Error(`rated-panel not json: ct=${ct} body=${body.slice(0, 120)}`);
         }
-        const ratingsJson = await ratingsRes.json();
-        const ratingItemsRaw = Array.isArray(ratingsJson?.items)
-          ? ratingsJson.items
-          : [];
-
-        // ------- wishlist -------
-        // appWishlist.js が token を読むので、そのまま呼ぶ
-        let wishItemsRaw = [];
-        try {
-          const wishJson = await fetchWishlist();
-          // 返却が {items:[...]} or [...] どっちでも拾う
-          if (Array.isArray(wishJson)) wishItemsRaw = wishJson;
-          else if (Array.isArray(wishJson?.items)) wishItemsRaw = wishJson.items;
-          else wishItemsRaw = [];
-        } catch (e) {
-          // wishlist 側だけ落ちても、ratings を表示できるようにする
-          console.warn("wishlist fetch failed:", e);
-          wishItemsRaw = [];
-        }
-
-        // ------- 正規化（kind を付ける） -------
-        const ratingItems = ratingItemsRaw.map((r) => ({
-          ...r,
-          kind: "rating",
-          created_at: pickDate(r) || r?.created_at || null,
-        }));
-
-        const wishItems = wishItemsRaw.map((w) => ({
-          ...w,
-          kind: "wish",
-          // wishlist は rating=0 扱いで統一
-          rating: 0,
-          // どの日時が来ても created_at に寄せる
-          created_at: pickDate(w) || null,
-          // ListRow が jan_code/name_kana/wine_type を見る想定
-        }));
-
-        // ------- 合成（万一重複しても rating を優先） -------
-        const map = new Map();
-        for (const r of ratingItems) map.set(String(r.jan_code), r);
-        for (const w of wishItems) {
-          const key = String(w.jan_code);
-          if (!map.has(key)) map.set(key, w);
-        }
-        const merged = Array.from(map.values());
-
-        // ------- display_rank を“日時の古い順”で採番（評価＋飲みたいで共通番号） -------
-        const byOldest = [...merged].sort((a, b) => {
-          const ta = toTimeMs(pickDate(a));
-          const tb = toTimeMs(pickDate(b));
-          if (ta !== tb) return ta - tb;
-          return String(a.jan_code).localeCompare(String(b.jan_code));
-        });
-        const rankMap = new Map(
-          byOldest.map((x, idx) => [String(x.jan_code), idx + 1])
-        );
-
-        // ------- 表示の並び替え -------
-        let ordered = merged;
-        if (sortMode === "date") {
-          ordered = [...merged].sort((a, b) => {
-            const ta = toTimeMs(pickDate(a));
-            const tb = toTimeMs(pickDate(b));
-            if (ta !== tb) return tb - ta; // 新しい→古い
-            return String(a.jan_code).localeCompare(String(b.jan_code));
-          });
-        } else {
-          // 評価順：rating(高) → (同点は新しい) → wish は末尾（rating=0なので自然に下がる）
-          ordered = [...merged].sort((a, b) => {
-            const ra = Number(a.rating || 0);
-            const rb = Number(b.rating || 0);
-            if (ra !== rb) return rb - ra;
-            const ta = toTimeMs(pickDate(a));
-            const tb = toTimeMs(pickDate(b));
-            if (ta !== tb) return tb - ta;
-            return String(a.jan_code).localeCompare(String(b.jan_code));
-          });
-        }
-
-        // ------- display_rank 付与 -------
-        const finalItems = ordered.map((it) => ({
+        const json = await res.json();
+        const arr = Array.isArray(json?.items) ? json.items : [];
+        // kind/display_rank は基本バックが返す。念のため最低限だけ補正。
+        const normalized = arr.map((it) => ({
           ...it,
-          display_rank: it.display_rank ?? rankMap.get(String(it.jan_code)) ?? 0,
+          kind: it?.kind || (Number(it?.rating || 0) > 0 ? "rating" : "wish"),
+          created_at: pickDate(it) || it?.created_at || null,
+          display_rank: Number(it?.display_rank || 0),
         }));
-
-        setItems(finalItems);
+        setItems(normalized);
       } catch (e) {
         console.error(e);
         setItems([]);
@@ -302,7 +220,7 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
         >
           <PanelHeader
             icon="rate.svg"
-            title="評価・お気に入り"
+            title="評価・飲みたい一覧"
             onClose={onClose}
             rightExtra={SortCapsule}
           />
@@ -320,7 +238,7 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {!token && (
                 <li style={{ color: "#666" }}>
-                  評価・お気に入りはログイン後に表示されます。
+                  評価や飲みたいはログイン後に表示されます。
                 </li>
               )}
               {loading && <li style={{ color: "#666" }}>読み込み中…</li>}
@@ -331,7 +249,7 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
                 !error &&
                 items.map((it) => (
                   <ListRow
-                    key={`${it.jan_code}-${it.kind}-${pickDate(it) || ""}`}
+                    key={`${it.jan_code}-${it.kind}`}
                     index={it.display_rank ?? 0}
                     item={it}
                     onPick={() =>
@@ -346,7 +264,7 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
 
               {!!token && !loading && !error && items.length === 0 && (
                 <li style={{ color: "#666" }}>
-                  まだ評価・お気に入りがありません。
+                  まだ評価や飲みたいがありません。
                 </li>
               )}
             </ul>
