@@ -122,42 +122,7 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
     // 先にUI更新（楽観）
     onChange?.(willAdd);
 
-    // 2) ★ON のときは「評価(◎)を即座に消す」→ 排他を保証
-    if (willAdd) {
-      try {
-        const ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
-        if (ratings[jan_code]) {
-          delete ratings[jan_code];
-          localStorage.setItem("userRatings", JSON.stringify(ratings));
-        }
-      } catch {}
-      // バック側の評価も 0 に倒す（排他）
-      // ※「評価削除」と同義なので失敗しても wish 自体は進める
-      try { await postRating({ jan_code, rating: 0 }); }
-      catch (e) { console.warn("postRating(0) failed while wish ON:", e); }
-
-      // ProductPage 自身の表示を即更新（◎を0に）
-      try {
-        window.parent?.postMessage(
-          {
-            type: "SET_RATING",
-            jan: jan_code,
-            rating: { rating: 0, date: new Date().toISOString() },
-          },
-          "*"
-        );
-      } catch {}
-      try {
-        const bc = new BroadcastChannel("product_bridge");
-        bc.postMessage({
-          type: "SET_RATING",
-          jan: jan_code,
-          rating: { rating: 0, date: new Date().toISOString() },
-          at: Date.now(),
-        });
-        bc.close();
-      } catch {}
-    }
+    // 2) wishlist ON で rating を触らない（排他しない）
 
     // 3) DBへ反映（失敗したら戻す）
     let finalWish = willAdd;
@@ -745,8 +710,11 @@ export default function ProductPage() {
 
     // 3) バックエンドへも送信
     try {
+    if (newRating > 0) {
       await postRating({ jan_code, rating: newRating });
-    } catch (e) {
+    } else {
+      // 0 は送らない（削除APIが無い前提）
+    }    } catch (e) {
       console.error(e);
     }
   };
