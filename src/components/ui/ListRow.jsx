@@ -76,9 +76,10 @@ export default function ListRow({
         background: "transparent",
         position: "relative",
         paddingRight: 76, // ◎ぶん右余白
+        WebkitTapHighlightColor: "transparent",
       }}
-      onMouseEnter={(e) => { if (hoverHighlight) e.currentTarget.style.background = "#f6f9ff"; }}
-      onMouseLeave={(e) => { if (hoverHighlight) e.currentTarget.style.background = "transparent"; }}
+//      onMouseEnter={(e) => { if (hoverHighlight) e.currentTarget.style.background = "#f6f9ff"; }}
+//      onMouseLeave={(e) => { if (hoverHighlight) e.currentTarget.style.background = "transparent"; }}
     >
       {/* ==== 上段：番号（左寄せ） + 日付（右） ==== */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 2 }}>
@@ -95,7 +96,7 @@ export default function ListRow({
 
       {/* 商品名（番号と左端を揃える） */}
       <div style={{ fontSize: 15, color: "#333", lineHeight: 1.35 }}>
-        {item?.name_kana || item?.商品名 || "（名称不明）"}
+        {item?.name_kana || item?.name || item?.商品名 || "（名称不明）"}
       </div>
 
       {/* 下段：色ブロック（wine_type） */}

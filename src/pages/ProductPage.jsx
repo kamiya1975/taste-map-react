@@ -17,7 +17,7 @@ import {
 } from "../ui/constants";
 import { getCurrentMainStoreIdSafe } from "../utils/store"; // 2025.12.22.追加
 
-const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
+const API_BASE = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || "";
 const PUBLIC_BASE = process.env.PUBLIC_URL || "";
 
 /** =========================
@@ -132,12 +132,9 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
         }
       } catch {}
       // バック側の評価も 0 に倒す（排他）
-      try {
-        await postRating({ jan_code, rating: 0 });
-      } catch (e) {
-        // wishlist は成功しているので致命にはしない
-        console.warn("postRating(0) failed while wish ON:", e);
-      }
+      // ※「評価削除」と同義なので失敗しても wish 自体は進める
+      try { await postRating({ jan_code, rating: 0 }); }
+      catch (e) { console.warn("postRating(0) failed while wish ON:", e); }
 
       // ProductPage 自身の表示を即更新（◎を0に）
       try {
@@ -163,21 +160,30 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
     }
 
     // 3) DBへ反映（失敗したら戻す）
+    let finalWish = willAdd;
     try {
       if (willAdd) await addWishlist(jan_code);
       else await removeWishlist(jan_code);
+      // DB確定値で最終状態を同期（ズレ防止）
+      try {
+        const st = await fetchWishlistStatus(jan_code);
+        finalWish = !!st?.is_wished;
+        onChange?.(finalWish);
+      } catch {}
     } catch (e) {
       console.error(e);
       onChange?.(!willAdd);
+      setBusy(false);
+      return;
     } finally {
       setBusy(false);
     }
 
     // 4) 親へ通知（一覧/Map側の即時同期）
-    try { window.parent?.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: willAdd }, "*"); } catch {}
+    try { window.parent?.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish }, "*"); } catch {}
     try {
       const bc = new BroadcastChannel("product_bridge");
-      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: willAdd, at: Date.now() });
+      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, at: Date.now() });
       bc.close();
     } catch {}
   };
@@ -524,15 +530,19 @@ export default function ProductPage() {
           `${API_BASE}/api/app/map-products/${encodeURIComponent(jan_code)}${qsStr}`,
           { signal: controller.signal }
         );
+        // 重要：res.ok で早期 return しない（後続の wish/rating 初期化が飛ぶため）
         if (!res.ok) {
           console.warn("商品APIエラー", res.status);
-          if (!cancelled) setLoading(false);
-          return;
-        }
-        const data = await res.json();
-        if (!cancelled) {
-          setProduct(data);
-          setLoading(false);
+          if (!cancelled) {
+            setProduct({ jan_code }); // 最低限
+            setLoading(false);
+          }  
+        } else {
+          const data = await res.json();
+          if (!cancelled) {
+            setProduct(data);
+            setLoading(false);
+          }
         }
       } catch (e) {
         if (!cancelled && e.name !== "AbortError") {
@@ -541,16 +551,18 @@ export default function ProductPage() {
         }
       }
 
-      // ★ wishlist 初期点灯（DB 正）
+      // wishlist 初期点灯（DB 正）
+      // ※ 商品取得とは独立に、ログイン状態に応じて確定
       try {
-        if (isAppLoggedIn()) {
-          const st = await fetchWishlistStatus(jan_code);
-          if (!cancelled) setWish(!!st?.is_wished);
-        } else {
-          if (!cancelled) setWish(false);
+        if (!cancelled) {
+          if (isAppLoggedIn()) {
+            const st = await fetchWishlistStatus(jan_code);
+            if (!cancelled) setWish(!!st?.is_wished);
+          } else {
+            setWish(false);
+          }
         }
-      } catch (e) {
-        // 失敗しても詳細は表示したいので握りつぶす（点灯しないだけ）
+      } catch {
         if (!cancelled) setWish(false);
       }
 
@@ -686,9 +698,15 @@ export default function ProductPage() {
     // 2) UI と localStorage を即時更新
     setRating(newRating);
 
-    const ratings = JSON.parse(
-      localStorage.getItem("userRatings") || "{}"
-    );
+    // 重要：壊れたJSONで落ちないようにする
+    let ratings = {};
+    try {
+      ratings = JSON.parse(localStorage.getItem("userRatings") || "{}");
+      if (!ratings || typeof ratings !== "object") ratings = {};
+    } catch {
+      ratings = {};
+    }
+
     let payload = null;
     if (newRating === 0) {
       delete ratings[jan_code];
@@ -700,34 +718,29 @@ export default function ProductPage() {
       ratings[jan_code] = payload;
 
       // ★が付いていたら外す（排他：DBを正）
-      try {
-        await removeWishlist(jan_code);
-        // UI上の★も落とす
+      // ※ 失敗したら wish 表示は落とさない（嘘をつかない）
+      if (wish) {
         try {
-          window.parent?.postMessage(
-            { type: "SET_WISHLIST", jan: jan_code, value: false },
-            "*"
-          );
-        } catch {}
-        try {
-          const bc = new BroadcastChannel("product_bridge");
-          bc.postMessage({
-            type: "SET_WISHLIST",
-            jan: jan_code,
-            value: false,
-            at: Date.now(),
-          });
-          bc.close();
-        } catch {}
-      } catch (e) {
-        console.warn("removeWishlist failed while rating ON:", e);
+          await removeWishlist(jan_code);
+          setWish(false);
+          try { window.parent?.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: false }, "*"); } catch {}
+          try {
+            const bc = new BroadcastChannel("product_bridge");
+            bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: false, at: Date.now() });
+            bc.close();
+          } catch {}
+        } catch (e) {
+          console.warn("removeWishlist failed while rating ON:", e);
+        }
       }
     }
-    localStorage.setItem("userRatings", JSON.stringify(ratings));
+    try {
+      localStorage.setItem("userRatings", JSON.stringify(ratings));
+    } catch {}
     postToParent({
-      type: "RATING_UPDATED",
+      type: "SET_RATING",
       jan: jan_code,
-      payload,
+      rating: payload ? { rating: newRating, date: payload.date } : { rating: 0, date: new Date().toISOString() },
     });
 
     // 3) バックエンドへも送信
@@ -740,8 +753,10 @@ export default function ProductPage() {
 
   // 価格・タイプ色などの表示用
   const price = product?.price_inc_tax ?? null;
+  // 重要：NaN 対策（"" や "---" で "¥NaN" にならない）
+  const priceNum = Number(price);
   const displayPrice =
-    price != null ? `¥${Number(price).toLocaleString()}` : "価格未定";
+    Number.isFinite(priceNum) ? `¥${priceNum.toLocaleString()}` : "価格未定";
 
   // どの店舗の価格か（バックエンドのフィールド候補を順に見る）
   const priceStoreName =

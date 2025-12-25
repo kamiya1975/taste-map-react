@@ -17,7 +17,6 @@ import {
   HEAT_CLIP_PCT,
   MAP_POINT_COLOR,
   getClusterRGBA,
-  OFFICIAL_STORE_ID,
 } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
@@ -191,6 +190,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     userRatings,
     selectedJAN,
     favorites,
+    favoritesVersion,
     highlight2D,
     userPin,
     compassPoint,
@@ -472,7 +472,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     return Array.from(map.values());
   }, [filteredData, userRatings]);
 
-  // ベクタで描く選択ドット（外黒→内白→中心黒）
+  // ベクタで描く選択ドット
   const selectedDotLayers = useMemo(() => {
     if (!selectedJAN) return [];
     const hit = filteredData.find(d => janOf(d) === String(selectedJAN));
@@ -529,17 +529,13 @@ const MapCanvas = forwardRef(function MapCanvas(
           return MAP_POINT_COLOR;
         },
         updateTriggers: {
-          getFillColor: [
-            JSON.stringify(favorites || {}),
-            JSON.stringify(userRatings || {}),
-            clusterColorMode,
-          ],
+          getFillColor: [favoritesVersion, clusterColorMode],
         },
         radiusUnits: "meters",
         getRadius: 0.03,
         pickable: true,
       }),
-     [storePoints, favorites, userRatings, clusterColorMode]
+     [storePoints, favorites, favoritesVersion, userRatings, clusterColorMode]
   );
 
   // --- デバッグ（集合ベース） ---
@@ -588,14 +584,10 @@ const MapCanvas = forwardRef(function MapCanvas(
       pickable: true,
       parameters: { depthTest: false },
       updateTriggers: {
-        getColor: [
-          JSON.stringify(favorites || {}),
-          JSON.stringify(userRatings || {}),
-          clusterColorMode,
-        ],
+        getColor: [favoritesVersion, clusterColorMode],
       },
     });
-  }, [ecPoints, favorites, userRatings, clusterColorMode]);
+  }, [ecPoints, favorites, favoritesVersion, userRatings, clusterColorMode]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
@@ -803,12 +795,13 @@ const MapCanvas = forwardRef(function MapCanvas(
         scrollZoom: true,
       }}
       onClick={(info) => {
-        // まずは通常のGPUピッキング（点を直タップ）
-        // （アンマウント直後などで ref が無いタイミングの防御）
-        const deckHost = localDeckRef.current;
-        // deckHost が無いなら何もしない（"reading current" 系クラッシュ回避）
-        // ※ info.coordinate があるケースもあるが、ここは安全優先
+        // コンパス画像タップは最優先で処理して終わる（二重処理防止）
+        if (info?.layer?.id === "anchor-compass") {
+          onOpenSlider?.();
+          return;
+        }
 
+        const deckHost = localDeckRef.current;
         const picked = info?.object;
         const pickedJan =
           picked?.jan ??
@@ -835,7 +828,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         const nearest = findNearestWine(world);
         if (!nearest) return;
 
-        // ★ ピクセルしきい値でフィルタ（px→worldへ換算して距離比較）
+        // ピクセルしきい値でフィルタ（px→worldへ換算して距離比較）
         const worldThresh = pxToWorld(viewState.zoom, CLICK_NEAR_PX);
         const dx = xOf(nearest) - world[0];
         const dy = (-yOf(nearest)) - world[1];

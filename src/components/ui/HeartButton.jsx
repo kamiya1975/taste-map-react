@@ -1,43 +1,43 @@
 // src/components/HeartButton.jsx
+// 現在使っていない（必要ない）
 import React, { useEffect, useState } from "react";
 
 export default function HeartButton({ jan, size = 24 }) {
   const [fav, setFav] = useState(false);
 
-  // 初期読み込み & storage同期
+  // 親からの同期（STATE_SNAPSHOT / SET_WISHLIST）
   useEffect(() => {
-    const readFav = () => {
-      try {
-        const obj = JSON.parse(localStorage.getItem("favorites") || "{}");
-        setFav(!!obj[jan]);
-      } catch {
-        setFav(false);
+    const onMsg = (e) => {
+      const msg = e?.data || {};
+      if (!msg?.type) return;
+
+      // 親が送るスナップショット
+      if (msg.type === "STATE_SNAPSHOT" && String(msg.jan) === String(jan)) {
+        setFav(!!(msg.wished ?? msg.favorite));
+      }
+
+      // 親が「このJANは wished=true/false になった」を明示する場合
+      if (msg.type === "SET_WISHLIST" && String(msg.jan) === String(jan)) {
+        setFav(!!msg.value);
       }
     };
-    readFav();
-    const onStorage = (e) => {
-      if (e.key === "favorites") readFav();
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+
+    window.addEventListener("message", onMsg);
+
+    // 立ち上がりに状態要求
+    window.parent?.postMessage({ type: "REQUEST_STATE", jan }, "*");
+
+    return () => window.removeEventListener("message", onMsg);
   }, [jan]);
 
   const toggle = () => {
-    // 1) localStorage 更新（※iframe側で更新 → 親にも storage イベントが飛びます）
-    const favs = JSON.parse(localStorage.getItem("favorites") || "{}");
-    if (favs[jan]) {
-      delete favs[jan];
-    } else {
-      favs[jan] = { addedAt: new Date().toISOString() };
-    }
-    localStorage.setItem("favorites", JSON.stringify(favs));
-    setFav(!!favs[jan]);
-
-    // 2) 念のため postMessage でも親へ通知（親は受け口を実装済み）
-    window.parent?.postMessage({ type: "TOGGLE_FAVORITE", jan }, "*");
+    // 親に「切替して」と依頼するだけ（DB/API 正）
+    window.parent?.postMessage(
+      { type: "REQUEST_TOGGLE_WISHLIST", jan, value: !fav },
+      "*"
+    );
   };
 
-  // シンプルなテキストハート（必要ならMUIアイコン等に差し替えOK）
   return (
     <button
       aria-label={fav ? "お気に入り解除" : "お気に入りに追加"}

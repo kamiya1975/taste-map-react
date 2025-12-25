@@ -1,4 +1,12 @@
 // src/pages/MapPage.jsx
+// Map（DeckGL）＋ 下から出る各パネル/Drawerの統括画面
+// 主な責務：
+//  - data（打点：points）を読み込み → normalizePoints() で JAN/座標/cluster を正規化して MapCanvas に渡す
+//  - allowedJansSet / storeJansSet / ecOnlyJansSet を API から取得し、表示・EC判定を制御
+//  - isSearchOpen / isRatedOpen / isMyPageOpen / cartOpen ... など 全パネルの開閉状態を一元管理
+//  - 商品詳細は Drawer + iframe(ProductPage) で開き、postMessage で ♡/評価/カート の反映をしている
+//  - isRatedOpen が true になった時に fetchLatestRatings("date") を叩いて 評価一覧の同期をする（DB→ローカルへ）
+
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
@@ -30,7 +38,7 @@ import {
 } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 import { fetchLatestRatings } from "../lib/appRatings";
-import { getCurrentMainStoreIdSafe } from "../utils/store"; //2025.12.22.追加
+import { getCurrentMainStoreIdSafe } from "../utils/store";
 
 // =========================
 // points 正規化（入口で吸収） 2025.12.20.追加
@@ -168,7 +176,7 @@ function parseAllowedJansResponse(json) {
 // 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
 async function fetchAllowedJansForStore(storeId) {
   if (storeId === null || storeId === undefined) {
-    return { allowedJans: null, ecOnlyJans: null, mainStoreEcActive: null };
+    return { allowedJans: null, ecOnlyJans: null, storeJans: null, mainStoreEcActive: null };
   }
 
   // 互換：古い0運用が残っていたら公式Shop(1)へ丸める
@@ -403,7 +411,9 @@ function MapPage() {
   // データ & 状態
   const [data, setData] = useState([]);
   const [userRatings, setUserRatings] = useState({});
-  const [favorites, setFavorites] = useState({});
+  const [favoriteCache, setFavoriteCache] = useState({});
+  const [favoritesVersion, setFavoritesVersion] = useState(0);
+  const bumpFavoritesVersion = () => setFavoritesVersion((v) => v + 1);
   const [userPin, setUserPin] = useState(null);
   const [highlight2D, setHighlight2D] = useState("");
   const [selectedJAN, setSelectedJAN] = useState(null);
@@ -549,10 +559,14 @@ function MapPage() {
     (xUMAP, yUMAP, opts = {}) => {
       if (!Number.isFinite(xUMAP) || !Number.isFinite(yUMAP)) return;
       const yCanvas = -yUMAP;
-      // 既定は最小ズーム。維持したい時だけ opts.keepZoom=true を明示
-      const baseZoom = opts.keepZoom
-        ? opts.zoom ?? viewState.zoom ?? INITIAL_ZOOM
-        : ZOOM_LIMITS.min;
+      // opts.zoom が来ていればそれを最優先。
+      // それ以外は keepZoom のとき現在ズーム維持、通常は最小ズームへ。
+      const baseZoom =
+        opts.zoom != null
+          ? opts.zoom
+          : opts.keepZoom
+            ? (viewState.zoom ?? INITIAL_ZOOM)
+            : ZOOM_LIMITS.min;
       const zoomTarget = Math.max(
         ZOOM_LIMITS.min,
         Math.min(ZOOM_LIMITS.max, baseZoom)
@@ -817,35 +831,10 @@ function MapPage() {
   }, []);
 
   useEffect(() => {
-    const syncFavorites = () => {
-      const stored = localStorage.getItem("favorites");
-      if (stored) {
-        try {
-          setFavorites(JSON.parse(stored));
-        } catch (e) {
-          console.error("Failed to parse favorites:", e);
-        }
-      }
-    };
-    syncFavorites();
-    window.addEventListener("focus", syncFavorites);
-    window.addEventListener("storage", syncFavorites);
-    return () => {
-      window.removeEventListener("focus", syncFavorites);
-      window.removeEventListener("storage", syncFavorites);
-    };
-  }, []);
-
-  useEffect(() => {
     try {
       localStorage.setItem("userRatings", JSON.stringify(userRatings));
     } catch {}
   }, [userRatings]);
-  useEffect(() => {
-    try {
-      localStorage.setItem("favorites", JSON.stringify(favorites));
-    } catch {}
-  }, [favorites]);
 
   // ====== UMAP 重心
   const umapCentroid = useMemo(() => {
@@ -1126,29 +1115,13 @@ function MapPage() {
     }
   }, [location.key, userPin, data, findNearestWineWorld, focusOnWine]);
 
-  // ====== 子iframeへ♡状態を送る
-  const sendFavoriteToChild = (jan, value) => {
+  // ====== 子iframeへ（wishlist反映など）状態スナップショットを送る
+  // ※ favoriteCache（= 表示用wishlistキャッシュ）を唯一のソースにする
+  const postToChild = (payload) => {
     try {
-      iframeRef.current?.contentWindow?.postMessage(
-        { type: "SET_FAVORITE", jan: String(jan), value: !!value },
-        "*"
-      );
+      iframeRef.current?.contentWindow?.postMessage(payload, "*");
     } catch {}
   };
-
-  const toggleFavorite = useCallback((jan) => {
-    setFavorites((prev) => {
-      const next = { ...prev };
-      if (next[jan]) {
-        delete next[jan];
-        sendFavoriteToChild(jan, false);
-      } else {
-        next[jan] = { addedAt: new Date().toISOString() };
-        sendFavoriteToChild(jan, true);
-      }
-      return next;
-    });
-  }, []);
 
   // 商品ページ（iframe）からの postMessage
   useEffect(() => {
@@ -1177,12 +1150,13 @@ function MapPage() {
 
       const sendSnapshotToChild = (janStr, nextRatingObj) => {
         try {
-          const isFav = !!favorites[janStr];
+          const isWished = !!favoriteCache[janStr];
           iframeRef.current?.contentWindow?.postMessage(
             {
               type: "STATE_SNAPSHOT",
               jan: janStr,
-              favorite: isFav,
+              wished: isWished,
+              favorite: isWished, // 後方互換
               rating: nextRatingObj || userRatings[janStr] || null,
               // 後方互換のため送る場合は rating>0 を反映
               hideHeart:
@@ -1220,9 +1194,17 @@ function MapPage() {
       const janStr = String(msg.jan ?? msg.jan_code ?? "");
       if (!janStr) return;
 
-      if (type === "TOGGLE_FAVORITE") {
-        toggleFavorite(janStr);
-        sendSnapshotToChild(janStr);
+      // ProductPage の wishlist（DB正）→ MapPage（表示用キャッシュ）へ即反映
+      // ProductPage は API を叩いた後にこれを投げる（単一ソース維持）
+      if (type === "SET_WISHLIST") {
+        const isWished = !!msg.value;
+        setFavoriteCache((prev) => {
+          const next = { ...prev };
+          if (isWished) next[janStr] = { addedAt: new Date().toISOString() };
+          else delete next[janStr];
+          return next;
+        });
+        bumpFavoritesVersion();
         return;
       }
 
@@ -1249,22 +1231,6 @@ function MapPage() {
         return;
       }
 
-      if (type === "tm:fav-updated") {
-        const isFavorite = !!msg.isFavorite;
-        setFavorites((prev) => {
-          const next = { ...prev };
-          if (isFavorite)
-            next[janStr] = { addedAt: new Date().toISOString() };
-          else delete next[janStr];
-          try {
-            localStorage.setItem("favorites", JSON.stringify(next));
-          } catch {}
-          return next;
-        });
-        sendSnapshotToChild(janStr);
-        return;
-      }
-
       if (type === "tm:rating-updated") {
         const rating = Number(msg.rating) || 0;
         const date = msg.date || new Date().toISOString();
@@ -1287,8 +1253,25 @@ function MapPage() {
         return;
       }
 
+      // 子が再描画直後に状態を取りに来た時
       if (type === "REQUEST_STATE") {
-        sendSnapshotToChild(janStr);
+        const sendSnapshotToChild = (nextRatingObj) => {
+          const isWished = !!favoriteCache[janStr];
+          postToChild({
+            type: "STATE_SNAPSHOT",
+            jan: janStr,
+            // UI上の「飲みたい」状態（★）
+            wished: isWished,
+            // 後方互換（古い子が favorite を見ている場合）
+            favorite: isWished,
+            rating: nextRatingObj || userRatings[janStr] || null,
+            hideHeart:
+              (nextRatingObj?.rating ||
+                userRatings[janStr]?.rating ||
+                0) > 0,
+          });
+        };
+        sendSnapshotToChild(null);       
         return;
       }
     };
@@ -1296,10 +1279,8 @@ function MapPage() {
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [
-    toggleFavorite,
-    favorites,
+    favoriteCache,
     userRatings,
-    hideHeartForJAN,
     closeUIsThen,
     navigate,
     addLocal,
@@ -1323,7 +1304,8 @@ function MapPage() {
 
         userRatings={userRatings}
         selectedJAN={selectedJAN}
-        favorites={favorites}
+        favorites={favoriteCache}
+        favoritesVersion={favoritesVersion}
         highlight2D={highlight2D}
         userPin={userPin}
         panBounds={panBounds}
@@ -1755,7 +1737,7 @@ function MapPage() {
         }}
         userRatings={userRatings}
         data={data}
-        favorites={favorites}
+        favorites={favoriteCache}
         onSelectJAN={async (jan) => {
           await closeUIsThen({
             preserveMyPage: true,

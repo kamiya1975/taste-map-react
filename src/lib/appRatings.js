@@ -1,4 +1,7 @@
 // src/lib/appRatings.js
+// 評価
+// 評価＋飲みたいの統合一覧は /api/app/rated-panel を正とする
+
 const API_BASE = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || "";
 
 // アプリ用トークン取得（MyAccountと同じキー）
@@ -31,6 +34,9 @@ function getLatLonFromStorage() {
 // POST /api/app/ratings   ← ここだけ /api/app に
 // -----------------------------
 export async function postRating({ jan_code, rating }) {
+  if (!API_BASE) {
+    throw new Error("API_BASE が未設定です");
+  }
   const token = getAppToken();
   if (!token) {
     throw new Error("アプリ用トークンがありません（未ログイン）");
@@ -64,15 +70,20 @@ export async function postRating({ jan_code, rating }) {
 }
 
 // -----------------------------
-// GET /api/app/ratings?sort=...
+// GET /api/app/rated-panel?sort=...
+// 評価＋飲みたいの統合一覧は rated-panel を正にする
 // -----------------------------
-export async function fetchLatestRatings(sort = "date") {
+export async function fetchRatedPanel(sort = "date") {
+  if (!API_BASE) {
+    throw new Error("API_BASE が未設定です");
+  }
   const token = getAppToken();
   if (!token) {
     throw new Error("アプリ用トークンがありません（未ログイン）");
   }
 
-  const res = await fetch(`${API_BASE}/api/app/ratings?sort=${sort}`, {
+  const qs = new URLSearchParams({ sort: String(sort || "date") });
+  const res = await fetch(`${API_BASE}/api/app/rated-panel?${qs.toString()}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -81,10 +92,17 @@ export async function fetchLatestRatings(sort = "date") {
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
     throw new Error(
-      `評価一覧の取得に失敗しました (${res.status}) ${txt || ""}`.trim()
+      `評価・飲みたい一覧の取得に失敗しました (${res.status}) ${txt || ""}`.trim()
     );
   }
 
-  return await res.json(); // RatingListOut { items: [...] }
+  return await res.json(); // RatedPanelOut { items:[...] }
 }
 
+// -----------------------------
+// 互換：既存呼び出しが残っていても壊れないようにエイリアス
+// （置き換えが完了したら削除OK）
+// -----------------------------
+export async function fetchLatestRatings(sort = "date") {
+  return await fetchRatedPanel(sort);
+}

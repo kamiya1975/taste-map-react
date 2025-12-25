@@ -1,4 +1,6 @@
 // src/components/panels/PanelShell.jsx
+// パネル共通化コンポーネント（開閉アニメーション、ヘッダー表示、スクロール領域、高さ関連）
+// ただし、使っていないパネルもあり
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {

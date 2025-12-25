@@ -1,4 +1,6 @@
 // src/pages/UserTastePage.jsx
+// 現在使っていない（必要ない）
+// ローカル保存ベースの「ユーザー評価ログ閲覧・CSV出力」ページ として想定
 import React, { useEffect, useMemo, useState } from "react";
 
 export default function UserTastePage() {

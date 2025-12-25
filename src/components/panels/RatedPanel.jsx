@@ -10,6 +10,9 @@ import ListRow from "../ui/ListRow";
 const API_BASE =
   process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || "";
 
+// 評価一覧は /api/app/rated-panel を正とする
+// ここでは「補正しすぎない」(kind/display_rank はバックを信頼) 方針
+
 // created_at / added_at / located_at など、どれが来ても拾う
 function pickDate(it) {
   return (
@@ -17,6 +20,7 @@ function pickDate(it) {
     it?.added_at ||
     it?.wish_created_at ||
     it?.located_at ||
+    it?.wish?.created_at || // ネスト構造になっても拾えるように保険
     null
   );
 }
@@ -29,7 +33,9 @@ function toTimeMs(v) {
 
 // 右側の表示（評価=◎ / 飲みたい=★）
 function RightMark({ it }) {
-  if (it?.kind === "wish") {
+  // kind はバックを基本信頼。念のため rating=0 で wish 扱いも許容
+  const kind = it?.kind || (Number(it?.rating || 0) > 0 ? "rating" : "wish");
+  if (kind === "wish") {
     // 既存のSVG（store.svg/store2.svg）を使うならここで差し替え可能
     return (
       <span
@@ -64,7 +70,7 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
   const scrollRef = React.useRef(null);
   React.useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [sortMode]);
+  }, [sortMode, isOpen]);
 
   // ----------------------------
   // ログイン判定（トークン有無）
@@ -95,16 +101,19 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
       return;
     }
 
+    const ac = new AbortController();
+
     const run = async () => {
       setLoading(true);
       setError(null);
 
       try {
         // ------- rated-panel（統合API）-------
-        const qs = new URLSearchParams({ sort: sortMode });
+        const qs = new URLSearchParams({ sort: sortMode || "date" });
         const url = `${API_BASE}/api/app/rated-panel?${qs.toString()}`;
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
+          signal: ac.signal,
         });
         const ct = res.headers.get("content-type") || "";
         if (!res.ok) {
@@ -119,15 +128,43 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
         }
         const json = await res.json();
         const arr = Array.isArray(json?.items) ? json.items : [];
-        // kind/display_rank は基本バックが返す。念のため最低限だけ補正。
-        const normalized = arr.map((it) => ({
-          ...it,
-          kind: it?.kind || (Number(it?.rating || 0) > 0 ? "rating" : "wish"),
-          created_at: pickDate(it) || it?.created_at || null,
-          display_rank: Number(it?.display_rank || 0),
-        }));
-        setItems(normalized);
+
+        // kind/display_rank はバックを信頼しつつ、最低限の欠損だけ埋める
+        const normalized = arr.map((it) => {
+          const kind = it?.kind || (Number(it?.rating || 0) > 0 ? "rating" : "wish");
+          return {
+            ...it,
+            kind,
+            created_at: pickDate(it) || it?.created_at || null,
+            display_rank: Number(it?.display_rank ?? 0),
+            // jan_code は常に string 化（Mapのkey/URL用に事故を防ぐ）
+            jan_code: String(it?.jan_code ?? ""),
+          };
+        });
+        
+
+        // バックが sort を正しく返す前提だが、万一順が崩れてもフロントで整列（安全弁）
+        const ordered =
+          sortMode === "rating"
+            ? [...normalized].sort((a, b) => {
+                const ra = Number(a.rating || 0);
+                const rb = Number(b.rating || 0);
+                if (ra !== rb) return rb - ra;
+                const ta = toTimeMs(pickDate(a));
+                const tb = toTimeMs(pickDate(b));
+                if (ta !== tb) return tb - ta;
+                return String(a.jan_code).localeCompare(String(b.jan_code));
+              })
+            : [...normalized].sort((a, b) => {
+                const ta = toTimeMs(pickDate(a));
+                const tb = toTimeMs(pickDate(b));
+                if (ta !== tb) return tb - ta;
+                return String(a.jan_code).localeCompare(String(b.jan_code));
+              });
+
+        setItems(ordered);
       } catch (e) {
+        if (e?.name === "AbortError") return;
         console.error(e);
         setItems([]);
         setError(String(e?.message || e));
@@ -137,6 +174,7 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
     };
 
     run();
+    return () => ac.abort();
   }, [isOpen, sortMode, token]);
 
   // 右上：並び替えカプセル
@@ -249,6 +287,8 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
                 !error &&
                 items.map((it) => (
                   <ListRow
+                    // key は「kind + (id) + jan + created」で安定させる
+                    // wish は id が無い場合もあるので jan+created で十分
                     key={`${it.kind}-${it.id ?? ""}-${it.jan_code}-${pickDate(it) || ""}`}
                     index={it.display_rank ?? 0}
                     item={it}
