@@ -5,9 +5,6 @@ import { HashRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-// 互換シム（SimpleCartベース）
-import { CartProvider } from "./components/panels/CartContextShim";
-
 // ----- root 要素の用意（なければ作成） -----
 const container =
   document.getElementById("root") ||
@@ -20,13 +17,11 @@ const container =
 
 const root = createRoot(container);
 
-// ----- アプリ起動（HashRouter + CartProvider で全体をラップ） -----
+// ----- アプリ起動（HashRouter で全体をラップ） -----
 root.render(
   <React.StrictMode>
     <HashRouter>
-      <CartProvider>
-        <App />
-      </CartProvider>
+      <App />
     </HashRouter>
   </React.StrictMode>
 );
@@ -41,7 +36,7 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // =========================
-// ★ PWA Service Worker 登録
+//  PWA Service Worker 登録
 // =========================
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
