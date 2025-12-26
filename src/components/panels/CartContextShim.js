@@ -1,7 +1,8 @@
+// src/components/panels/CartContextShim.js
 // 旧 CartContext / useCart の最小互換レイヤ（SimpleCartベース）
 // - LocalStorage "tm_simple_cart_v1" だけで動く
 // - /cart パーマリンク生成に ecLinks を使用（JAN→VariantID 変換）
-
+// 削除対象かも
 import React, { createContext, useContext, useMemo, useCallback, useEffect, useState } from "react";
 import { getVariantGidByJan } from "../../lib/ecLinks";
 

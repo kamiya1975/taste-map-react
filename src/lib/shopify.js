@@ -1,3 +1,5 @@
+// src/lib/shopify.js
+// 現状の構成だと不要（削除候補）
 const SHOP = (process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN || "").replace(/^https?:\/\//, "");
 const TOKEN = process.env.REACT_APP_SHOPIFY_STOREFRONT_TOKEN;
 const EP = `https://${SHOP}/api/2025-01/graphql.json`;

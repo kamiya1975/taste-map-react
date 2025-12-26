@@ -1,3 +1,4 @@
+// src/api/stores.js
 // Haversine（km）
 const distKm = (a, b) => {
   const R = 6371;

@@ -1,3 +1,4 @@
+// src/cart/buildCartUrl.js
 // Shopify の /cart パーマリンクを生成する（JAN → Variant 解決つき）
 // 使い方: const url = await buildCartUrl(items, { shopDomain, returnTo, extraQuery });
 
