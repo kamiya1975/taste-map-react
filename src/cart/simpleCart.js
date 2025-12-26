@@ -1,5 +1,6 @@
 // src/cart/simpleCart.js
-// ローカルだけで完結する簡易カート（JAN/qty中心）
+// 状態（カートの中身）　　　　　　　ローカルだけで完結する簡易カート（JAN/qty中心）
+
 // - localStorage: tm_simple_cart_v1
 // - API不要、決済時にだけ JAN→Variant を解決して /cart パーマリンクを作る
 // - 変更通知は postMessage / BroadcastChannel / storage の三経路で即時同期

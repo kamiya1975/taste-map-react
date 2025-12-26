@@ -1,4 +1,6 @@
-// src/lib/shopifyCart.js  ← 全文差し替え
+// src/lib/shopifyCart.js
+// 決済（checkoutUrl生成）
+
 import { getVariantGidByJan } from "./ecLinks";
 
 const SHOP_DOMAIN = process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN;

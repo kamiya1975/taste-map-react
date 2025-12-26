@@ -1,5 +1,6 @@
 // src/lib/ecLinks.js
-// ec_links API を読む
+// JAN → Variant　（ec_links API を読む）
+
 let _cache = null;
 let _etag = null;
 

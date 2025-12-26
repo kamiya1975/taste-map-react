@@ -1,5 +1,6 @@
 // src/lib/shopifyInventory.js
-// 
+// 在庫確認
+
 import { getVariantGidByJan } from "./ecLinks";
 
 const SHOP_DOMAIN = process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN;

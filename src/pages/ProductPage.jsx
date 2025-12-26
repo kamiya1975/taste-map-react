@@ -756,26 +756,20 @@ export default function ProductPage() {
   // 価格下の文言（EC / 店舗 / どちらも無し）
   const hasStoreName = !!priceStoreName;
 
-  let availabilityLine = "";
+  let availabilityLine = null;
   if (isEcContext) {
-    // ① EC商品（最優先）
-    availabilityLine = "この商品はネット購入できます。";
+    availabilityLine = <>この商品はネット購入できます。</>;
   } else if (hasStoreName) {
-    // ② バックエンドが店舗名（price_store_name）を返している → 店舗取扱あり
-    const name = priceStoreName;
     availabilityLine = (
       <>
-        この商品は、近くの{name}でお買い求めいただけます。
-        <br />
+        この商品は、近くの{priceStoreName}でお買い求めいただけます。<br />
         在庫・価格は店舗でご確認ください。
       </>
     );
   } else if (availableInSelected === false) {
-    // ③ 本当にどこにも無い（評価履歴として表示）
     availabilityLine = (
       <>
-        現在、お選びの店舗ではお取り扱いがありません。
-        <br />
+        現在、お選びの店舗ではお取り扱いがありません。<br />
         過去の評価履歴として表示しています。
       </>
     );
