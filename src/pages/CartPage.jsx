@@ -1,6 +1,6 @@
 // src/pages/CartPage.jsx
-// -----------削除対象-------------
-
+// 現在使っていない（必要ない）　（App.js にimportあり 削除するなら整理必要）
+// （ローカル保存ベースの「カート内」ページ として想定）
 import React, { useEffect, useMemo, useState } from "react";
 import { useSimpleCart } from "../cart/simpleCart";
 import { checkAvailabilityByJan } from "../lib/shopifyInventory";
