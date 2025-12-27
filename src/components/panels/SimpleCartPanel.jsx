@@ -306,14 +306,7 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
           </div>
 
           <div style={{ height: 12 }} />
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button
-              onClick={onClose}
-              style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #999", background: "#fff", cursor: "pointer" }}
-            >
-              閉じる
-            </button>
-          </div>
+            <div>合計6本以上で送料無料となります</div>
         </>
       )}
     </div>
