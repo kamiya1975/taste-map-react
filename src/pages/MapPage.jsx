@@ -1888,7 +1888,7 @@ function MapPage() {
       >
         <PanelHeader
           title="カート"
-          icon="cart.svg"
+          icon="icon-cart2.png"
           onClose={() => setCartOpen(false)}
         />
         <div

@@ -254,8 +254,23 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
                   <button
                     onClick={() => remove(jan)}
                     aria-label="削除"
-                    style={{ marginLeft: 6, width: 28, height: 28, border: "1px solid #c00", color: "#c00", borderRadius: 6, background: "#fff", cursor: "pointer", flexShrink: 0 }}
-                  >×</button>
+                    title="削除"
+                    style={{ marginLeft: 6, width: 28, height: 28, border: "1px solid #c00", color: "#c00", borderRadius: 6,
+                      background: "#fff", cursor: "pointer", flexShrink: 0, display: "grid", placeItems: "center", padding: 0 }}
+                  >
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                      style={{ display: "block" }}
+                    >
+                      <path
+                        d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2zm-5 2h16v2H4V6z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </button>
                 </li>
               );
             })}
