@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSimpleCart } from "../cart/simpleCart";
 import { checkAvailabilityByJan } from "../lib/shopifyInventory";
 import { createCartWithMeta } from "../lib/shopifyCart";
+import { buildShopifyCartMeta } from "../../lib/shopifyMeta";
 
 const SHOP_DOMAIN =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_SHOPIFY_SHOP_DOMAIN) ||
@@ -84,17 +85,6 @@ export default function CartPage() {
     return () => { alive = false; };
   }, [itemsKey, items]);
 
-  function buildMeta() {
-    const userId      = localStorage.getItem("tm_user_id") || "";
-    const mainStoreId = localStorage.getItem("tm_main_store_id") || "";
-    const appVer      = process.env.REACT_APP_TM_VERSION || "";
-    return {
-      cartAttributes: { user_id: userId, main_store_id: mainStoreId, app_ver: appVer },
-      note: `TasteMap order\nuser=${userId}\nstore=${mainStoreId}\nclient=${navigator.userAgent}`,
-      discountCodes: [],
-    };
-  }
-
   async function handleCheckout() {
     if (busy) return;
     setBusy(true);
@@ -129,7 +119,7 @@ export default function CartPage() {
         }))
         .filter(x => x.jan && x.qty > 0);
 
-      const { checkoutUrl, unresolved: u } = await createCartWithMeta(uiItemsForCreate, buildMeta());
+      const { checkoutUrl, unresolved: u } = await createCartWithMeta(uiItemsForCreate, buildShopifyCartMeta());
 
       if (Array.isArray(u) && u.length) alert("一部JANが未解決です: " + u.join(", "));
       if (!checkoutUrl) {

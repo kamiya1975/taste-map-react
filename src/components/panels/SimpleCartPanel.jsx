@@ -5,6 +5,7 @@ import React, { useMemo, useEffect, useState } from "react";
 import { useSimpleCart } from "../../cart/simpleCart";
 import { createCartWithMeta } from "../../lib/shopifyCart";
 import { checkAvailabilityByJan } from "../../lib/shopifyInventory";
+import { buildShopifyCartMeta } from "../../lib/shopifyMeta";
 
 // 決済後の遅延クリア用キー
 const LS_CLEAR_KEY = "tm_cart_clear_at";   // 例: 1700000000000 (ms)
@@ -90,18 +91,6 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
     return () => { alive = false; };
   }, [isOpen, itemsKey, items]);
 
-  // TasteMap → Shopify へ付与するメタ
-  function buildMeta() {
-    const userId      = localStorage.getItem("tm_user_id") || "";
-    const mainStoreId = localStorage.getItem("tm_main_store_id") || "";
-    const appVer      = process.env.REACT_APP_TM_VERSION || "";
-    return {
-      cartAttributes: { user_id: userId, main_store_id: mainStoreId, app_ver: appVer },
-      note: `TasteMap order\nuser=${userId}\nstore=${mainStoreId}\nclient=${navigator.userAgent}`,
-      discountCodes: [],
-    };
-  }
-
   // 決済開始
   async function handleCheckout() {
     if (busy) return;
@@ -135,7 +124,7 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
         properties: { source: "TasteMap" },
       })).filter(x => x.jan && x.qty > 0);
 
-      const { checkoutUrl, unresolved: u } = await createCartWithMeta(uiItemsForCreate, buildMeta());
+      const { checkoutUrl, unresolved: u } = await createCartWithMeta(uiItemsForCreate, buildShopifyCartMeta());
 
       if (Array.isArray(u) && u.length) {
         alert("一部JANが未解決です: " + u.join(", "));
