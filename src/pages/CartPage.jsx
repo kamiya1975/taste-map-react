@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSimpleCart } from "../cart/simpleCart";
 import { checkAvailabilityByJan } from "../lib/shopifyInventory";
 import { createCartWithMeta } from "../lib/shopifyCart";
-import { buildShopifyCartMeta } from "../../lib/shopifyMeta";
+import { buildShopifyCartMeta } from "../lib/shopifyMeta";
 
 const SHOP_DOMAIN =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_SHOPIFY_SHOP_DOMAIN) ||
