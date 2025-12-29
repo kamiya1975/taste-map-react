@@ -11,8 +11,8 @@ const SF_ENDPOINT = SHOP_DOMAIN ? `https://${SHOP_DOMAIN}/api/2025-01/graphql.js
 function normalizeVariantGid(input) {
   let s = String(input ?? "").trim();
 
-  // 角カッコや全角スペースを含む余計な空白・< > を除去
-  s = s.replace(/[<>\u3000\s]/g, "");
+  // 角カッコや全角スペースを含む余計なものを除去
+  s = s.replace(/[\u3000\s]/g, "");
 
   // 純数字なら GID を組み立て
   if (/^\d+$/.test(s)) {
@@ -86,11 +86,21 @@ export async function createCartWithMeta(items = [], meta = {}) {
 
   // --- カート属性の構築 ---
   const cartAttributes = [];
+  const seen = new Set();
+  const pushAttr = (k, v) => {
+    const key = String(k);
+    const val = v == null ? "" : String(v);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    cartAttributes.push({ key, value: val });
+  };
+
   for (const [k, v] of Object.entries(meta?.cartAttributes || {})) {
-    if (v != null) cartAttributes.push({ key: String(k), value: String(v) });
+    // 空文字でも Shopify には入るが、バックは "" を無視する設計なのでOK
+    pushAttr(k, v);
   }
-  cartAttributes.push({ key: "channel", value: "TasteMap" });
-  cartAttributes.push({ key: "tm_version", value: process.env.REACT_APP_TM_VERSION || "unknown" });
+  pushAttr("channel", "TasteMap");
+  // tm_version は meta 側に正があるので、ここでは追加しない（重複排除）
 
   const input = { lines, attributes: cartAttributes, note: meta?.note || "" };
 
