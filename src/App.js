@@ -10,6 +10,7 @@ import { initLotIdFromUrl } from "./utils/lot";
 import IntroPage from "./pages/IntroPage";
 import MapPage from "./pages/MapPage";
 import ProductPage from "./pages/ProductPage";
+import EcReturnPage from "./pages/EcReturnPage";
 import SliderPage from "./pages/SliderPage";
 import StorePage from "./pages/StorePage";
 import UserTastePage from "./pages/UserTastePage";
@@ -48,6 +49,7 @@ export default function App() {
       <Route path="/slider" element={<SliderPage />} />
       <Route path="/map" element={<MapPage />} />
       <Route path="/products/:jan" element={<ProductPage />} />
+      <Route path="/ec/return" element={<EcReturnPage />} />
       <Route path="/taste-log" element={<UserTastePage />} />
       <Route path="/scan-flow" element={<ScanAndProductFlow />} />
       <Route path="/cart" element={<CartPage />} />

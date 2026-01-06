@@ -1,11 +1,28 @@
 // src/lib/shopifyCart.js
 // 決済（checkoutUrl生成）
+// 決済完了後 アプリへ戻す動線（checkoutUrlに return_to を付与）
 
 import { getVariantGidByJan } from "./ecLinks";
 
 const SHOP_DOMAIN = process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN;
 const SF_TOKEN    = process.env.REACT_APP_SHOPIFY_STOREFRONT_TOKEN;
 const SF_ENDPOINT = SHOP_DOMAIN ? `https://${SHOP_DOMAIN}/api/2025-01/graphql.json` : "";
+
+// ------------------------------------------------------------
+// 決済完了後の復帰先（HashRouter想定で `/#/ec/return` に戻す）
+// - PUBLIC_URL がある環境でも壊れにくい形にする
+// ------------------------------------------------------------
+function buildDefaultReturnTo() {
+  try {
+    const origin = window.location.origin;
+    const publicBase = process.env.PUBLIC_URL || "";
+    // HashRouter 前提：/#/ec/return
+    return `${origin}${publicBase}/#/ec/return`;
+  } catch {
+    // window が無い環境（SSR等）では空にしておく
+    return "";
+  }
+}
 
 // --- GIDの正規化（数字のみ/余計な記号/空白を許容して整える） ---
 function normalizeVariantGid(input) {
@@ -136,5 +153,17 @@ export async function createCartWithMeta(items = [], meta = {}) {
     checkoutUrl = u.toString();
   }
 
+  // --- 決済完了後の復帰先（F） ---
+  // Shopify checkoutUrl に `return_to` を付ける。
+  // meta.returnTo が渡されていればそれを優先、なければデフォルト `/#/ec/return`
+  if (checkoutUrl) {
+    const returnTo = String(meta?.returnTo || meta?.return_to || buildDefaultReturnTo() || "").trim();
+    if (returnTo) {
+      const u = new URL(checkoutUrl);
+      u.searchParams.set("return_to", returnTo);
+      checkoutUrl = u.toString();
+    }
+  }
+  
   return { checkoutUrl, unresolved };
 }
