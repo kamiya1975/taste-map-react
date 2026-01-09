@@ -1,8 +1,19 @@
 // src/components/panels/StorePanelContent.jsx
+// お気に入り店舗（サブ店舗）登録パネル
 import React, { useEffect, useState } from "react";
 import { OFFICIAL_STORE_ID } from "../../ui/constants";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
+
+function AuthRequiredMessage({ label = "お気に入り店舗登録" }) {
+  return (
+    <div style={{ padding: "16px 18px" }}>
+      <div style={{ fontSize: 16, lineHeight: 1.8 }}>
+        {label}の表示にはログインが必要です。マイアカウントからログインして再度お試しください。
+      </div>
+    </div>
+  );
+}
 
 /* ============ 位置情報ユーティリティ ============ */
 // 成功: { lat, lon } / 失敗・拒否: null
@@ -71,6 +82,7 @@ export default function StorePanelContent() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [savingId, setSavingId] = useState(null);
+  const [authRequired, setAuthRequired] = useState(false);
 
   const formatKm = (d /* , id */) => {
     if (Number.isFinite(d) && d !== Infinity) {
@@ -85,6 +97,7 @@ export default function StorePanelContent() {
     const fetchStores = async () => {
       setLoading(true);
       setErr("");
+      setAuthRequired(false);
 
       const token = localStorage.getItem("app.access_token");
 
@@ -92,9 +105,8 @@ export default function StorePanelContent() {
       if (!token) {
         if (alive) {
           setStores([]);
-          setErr(
-            "お気に入り店舗登録の更新にはログインが必要です。マイアカウントからログインしてから再度お試しください。"
-          );
+          setAuthRequired(true);
+          setErr("");
           setLoading(false);
         }
         return;
@@ -122,6 +134,16 @@ export default function StorePanelContent() {
           },
         });
 
+        // 401 → ログインが必要（Miles と同じ見た目に寄せる）
+        if (res.status === 401) {
+          if (alive) {
+            setStores([]);
+            setAuthRequired(true);
+            setErr("");
+          }
+          return;
+        }
+
         if (!res.ok) {
           console.error("[StorePanel] selector error", res.status);
           throw new Error("FETCH_FAILED");
@@ -145,13 +167,13 @@ export default function StorePanelContent() {
             distance_km: numD, // 生の値（参考）
             is_main: !!s.is_main,
             is_sub: !!s.is_sub,
-            ec_active: !!s.ec_active, // ★追加（レスポンスにあれば）
+            ec_active: !!s.ec_active, // 追加（レスポンスにあれば）
             updated_at: s.updated_at,
             _key: `${s.store_id}@@${idx}`,
           };
         });
 
-        // ★ 仕様：メイン店舗は別枠で固定表示
+        // 仕様：メイン店舗は別枠で固定表示
         // それ以外は距離昇順にソートして、そのまま下に並べる
         mapped.sort((a, b) => a.distance - b.distance);
 
@@ -182,6 +204,9 @@ export default function StorePanelContent() {
       window.removeEventListener("tm_auth_changed", handleAuthChanged);
     };
   }, []);
+
+  // ログイン前は「表示だけ」Miles と統一（黒文字・下線なし）
+  if (authRequired) return <AuthRequiredMessage label="お気に入り店舗登録" />;
 
   // ログイン中: is_main=true を最優先
   let mainStore = stores.find((s) => s.is_main) || null;
@@ -265,6 +290,7 @@ export default function StorePanelContent() {
   return (
     <div style={{ padding: 16 }}>
       {loading && <div style={{ padding: 8 }}>読み込み中…</div>}
+      {/* ここは「通信失敗」など本当のエラーだけ赤で出す（ログイン未実施は上で return 済み） */}
       {err && <div style={{ padding: 8, color: "crimson" }}>{err}</div>}
 
       <div
