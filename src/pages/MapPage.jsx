@@ -21,6 +21,7 @@ import PanelHeader from "../components/ui/PanelHeader";
 import StorePanelContent from "../components/panels/StorePanelContent";
 import FaqPanelContent from "../components/panels/FaqPanelContent";
 import MyPagePanelContent from "../components/panels/MyPagePanelContent";
+import MilesPanelContent from "../components/panels/MilesPanelContent";
 import ClusterPalettePanel from "../components/panels/ClusterPalettePanel";
 import SimpleCartPanel from "../components/panels/SimpleCartPanel";
 import { useSimpleCart } from "../cart/simpleCart";
@@ -380,6 +381,7 @@ function MapPage() {
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false); // マップガイド（オーバーレイ）
   const [isStoreOpen, setIsStoreOpen] = useState(false); // お気に入り店舗登録（オーバーレイ）
   const [isAccountOpen, setIsAccountOpen] = useState(false); // マイアカウント（メニュー）
+  const [isMilesOpen, setIsMilesOpen] = useState(false); // 獲得マイル（メニュー）
   const [isFaqOpen, setIsFaqOpen] = useState(false); // よくある質問（メニュー）
   const [isClusterOpen, setIsClusterOpen] = useState(false); // クラスタ配色パネル
   const [cartOpen, setCartOpen] = useState(false); // カート
@@ -649,6 +651,10 @@ function MapPage() {
         setIsAccountOpen(false);
         willClose = true;
       }
+      if (isMilesOpen) {
+        setIsMilesOpen(false);
+        willClose = true;
+      }
       if (isFaqOpen) {
         setIsFaqOpen(false);
         willClose = true;
@@ -680,6 +686,7 @@ function MapPage() {
       isRatedOpen,
       isMyPageOpen,
       isAccountOpen,
+      isMilesOpen,
       isFaqOpen,
       isClusterOpen,
       cartOpen,
@@ -719,6 +726,7 @@ function MapPage() {
       else if (kind === "store") setIsStoreOpen(true);
       else if (kind === "guide") setIsMapGuideOpen(true);
       else if (kind === "account") setIsAccountOpen(true);
+      else if (kind === "miles") setIsMilesOpen(true);
       else if (kind === "faq") setIsFaqOpen(true);
       else if (kind === "cart") {
         if (!cartEnabled) return;
@@ -1944,6 +1952,7 @@ function MapPage() {
           onOpenMapGuide={() => openOverlayAboveMenu("mapguide")}
           onOpenStore={() => openOverlayAboveMenu("store")}
           onOpenAccount={() => openOverlayAboveMenu("account")}
+          onOpenMiles={() => openOverlayAboveMenu("miles")}
           onOpenFaq={() => openOverlayAboveMenu("faq")}
           onOpenSlider={() => {
             setIsMyPageOpen(false);
@@ -2048,6 +2057,34 @@ function MapPage() {
           style={{ flex: 1, overflowY: "auto" }}
         >
           <StorePanelContent />
+        </div>
+      </Drawer>
+
+      {/* 獲得マイル */}
+      <Drawer
+        anchor="bottom"
+        open={isMilesOpen}
+        onClose={() => setIsMilesOpen(false)}
+        sx={{ zIndex: 1500 }}
+        BackdropProps={{ style: { background: "transparent" } }}
+        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            height: DRAWER_HEIGHT,
+            display: "flex",
+            flexDirection: "column",
+          },
+        }}
+      >
+        <PanelHeader
+          title="獲得マイル"
+          icon="account.svg" // 後で mile.svg に差替え可
+          onClose={() => setIsMilesOpen(false)}
+        />
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
+          <MilesPanelContent />
         </div>
       </Drawer>
 

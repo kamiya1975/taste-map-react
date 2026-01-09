@@ -1,5 +1,5 @@
 // src/pages/EcReturnPage.jsx
-// Shopify 決済完了後の復帰受け口
+// Shopify 決済完了後の復帰受け口（サンクスページ）
 
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -22,10 +22,10 @@ export default function EcReturnPage() {
       <h2 style={{ margin: "8px 0 12px" }}>
         購入ありがとうございます。
         <br />
-        TasteMap マイルはまもなく反映されます
+        TasteMap マイルはまもなく反映されます。
       </h2>
 
-      <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+      <div style={{ display: "flex", gap: 10, marginTop: 26 }}>
         <button
           onClick={() => nav("/map")}
           style={{

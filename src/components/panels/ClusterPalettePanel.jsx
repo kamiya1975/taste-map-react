@@ -1,4 +1,5 @@
 // src/components/panels/ClusterPalettePanel.jsx
+// クラスターパレット（味わいグループ）パネル
 import React, { useMemo, useState } from "react";
 import PanelShell from "./PanelShell";
 import {

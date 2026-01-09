@@ -1,4 +1,5 @@
 // src/pages/IntroPage.jsx
+// イントロ（最初 横スライド アプリ解説）画面
 import React, { useState, useLayoutEffect, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { setGuest } from "../utils/auth";

@@ -1,4 +1,5 @@
 // src/pages/SliderPage.jsx
+// スライダー画面
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import PanelHeader from "../components/ui/PanelHeader";

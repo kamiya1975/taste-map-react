@@ -1,6 +1,5 @@
 // src/components/panels/SimpleCartPanel.jsx
-// カートUI（パネル）
-
+// カートUI（パネル）　　カートパネル
 import React, { useMemo, useEffect, useState } from "react";
 import { useSimpleCart } from "../../cart/simpleCart";
 import { createCartWithMeta } from "../../lib/shopifyCart";

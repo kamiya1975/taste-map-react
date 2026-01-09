@@ -1,4 +1,5 @@
 // src/components/panels/MyPagePanelContent.jsx
+// アプリガイド（メニュー一覧）パネル
 import React from "react";
 
 const ICONS = {
@@ -6,6 +7,7 @@ const ICONS = {
   mapGuide: "/img/tizu.svg",
   account: "/img/account.svg",
   store:   "/img/store.svg",
+  miles:   "/img/account.svg", // いったん既存アイコンでOK（後で mile.svg に差替え）
   faq:     "/img/faq.svg",
 };
 
@@ -42,6 +44,7 @@ export default function MyPagePanelContent({
   onOpenMapGuide,
   onOpenStore,
   onOpenAccount,
+  onOpenMiles,
   onOpenFaq,
 }) {
   return (
@@ -60,6 +63,11 @@ export default function MyPagePanelContent({
         icon={ICONS.store}
         label="お気に入り店舗登録"
         onClick={() => onOpenStore?.()}
+      />
+      <Row
+        icon={ICONS.miles}
+        label="獲得マイル"
+        onClick={() => onOpenMiles?.()}
       />
       <Row
         icon={ICONS.faq}

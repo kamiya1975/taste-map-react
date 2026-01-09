@@ -1,4 +1,5 @@
 // src/components/panels/MyAccountPanelContent.jsx
+// マイアカウントパネル
 import React, { useEffect, useState, useRef } from "react";
 import { setUserId } from "../../utils/auth";
 import { getCurrentMainStoreIdSafe } from "../../utils/store"; // 2025.12.22.修正

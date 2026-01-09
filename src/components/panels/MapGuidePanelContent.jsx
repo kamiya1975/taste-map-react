@@ -1,4 +1,5 @@
 // src/components/panels/MapGuidePanelContent.jsx
+// マップガイド（マップの説明）パネル
 import React from "react";
 
 /* --- 小さなアイコン群（SVG/CSSで再現） --- */
@@ -57,7 +58,7 @@ export default function MapGuidePanelContent() {
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
         <Row icon={<IconDot color="#b35367" />}>
-          「あとで飲む」（★）に登録したワインです。
+          「飲みたい」（★）に登録したワインです。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
         <Row icon={<IconSwirl />}>
