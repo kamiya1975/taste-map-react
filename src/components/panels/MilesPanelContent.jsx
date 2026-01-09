@@ -208,7 +208,7 @@ export default function MilesPanelContent() {
                 const rank = totalCount ? Math.max(totalCount - idx, 1) : idx + 1;
                 const date = toDottedYmd(t?.created_at);
                 const orderNo = pickOrderNo(t);
-                const dateText = orderNo ? `${date}  ${orderNo}` : date;
+                const dateText = orderNo ? `${date}  注文番号 ${orderNo}` : date;
                 return (
                   <ListRow
                     key={`${t?.id ?? ""}-${t?.created_at ?? ""}-${idx}`}
