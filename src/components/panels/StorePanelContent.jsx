@@ -200,7 +200,7 @@ export default function StorePanelContent() {
     }
   }
 
-  // ★ メイン店舗以外 ＋ 公式Shop(id=1) は除外 → サブ候補一覧
+  // メイン店舗以外 ＋ 公式Shop(id=1) は除外 → サブ候補一覧
   const otherStores = stores.filter(
     (s) => !s.is_main && s.id !== OFFICIAL_STORE_ID
   );
@@ -214,7 +214,7 @@ export default function StorePanelContent() {
     const token = localStorage.getItem("app.access_token");
     if (!token) {
       alert(
-        "お気に入り店舗登録の更新にはログインが必要です。マイアカウントからログインしてから再度お試しください。"
+        "お気に入り店舗登録の更新にはログインが必要です。マイアカウントからログインして再度お試しください。"
       );
       return;
     }
@@ -247,7 +247,7 @@ export default function StorePanelContent() {
         )
       );
 
-      // ★ 先に通知（その後に全リロード）
+      // 先に通知（その後に全リロード）
       window.dispatchEvent(new Event("tm_store_changed"));
 
       // サブ店舗更新 → allowed-jans 取り直しのためアプリ全体リロード

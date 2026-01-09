@@ -17,9 +17,8 @@ function AuthRequiredMessage({ label = "獲得マイル" }) {
   return (
     <div style={{ padding: "16px 18px" }}>
       <div style={{fontSize: 16, lineHeight: 1.8 }}>
-        {label}の表示にはログインが必要です。マイアカウントからログインをして再度お試しください。
+        {label}の表示にはログインが必要です。マイアカウントからログインして再度お試しください。
       </div>
-      <div style={{ height: 1, background: "rgba(0,0,0,0.12)", marginTop: 12 }} />
     </div>
   );
 }
