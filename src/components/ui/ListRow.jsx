@@ -24,6 +24,9 @@ export default function ListRow({
   onPick,
   showDate = false,
   dateValue = null,
+  dateText = "",        // 追加：日付表示の上書き（例 "2026.01.09.  #1007"）
+  hideName = false,     // 追加：商品名を出さない（Miles用）
+  hideBadge = false,    // 追加：色ブロック行を出さない（Miles用）
   accentColor = "#b4b4b4",
   extraRight = null,   // ← ◎（CircleRatingDisplay など）
   hoverHighlight = true,
@@ -75,7 +78,7 @@ export default function ListRow({
         borderRadius: 6,
         background: "transparent",
         position: "relative",
-        paddingRight: 76, // ◎ぶん右余白
+        paddingRight: extraRight ? 76 : 8, // 右要素がある時だけ余白
         WebkitTapHighlightColor: "transparent",
       }}
 //      onMouseEnter={(e) => { if (hoverHighlight) e.currentTarget.style.background = "#f6f9ff"; }}
@@ -89,21 +92,25 @@ export default function ListRow({
 
         {showDate && (
           <span style={{ fontSize: 13, color: "#555" }}>
-            {fmtDateTime(dateValue || item?.addedAt)}
+            {dateText ? String(dateText) : fmtDateTime(dateValue || item?.addedAt)}
           </span>
         )}
       </div>
 
       {/* 商品名（番号と左端を揃える） */}
-      <div style={{ fontSize: 15, color: "#333", lineHeight: 1.35 }}>
-        {item?.name_kana || item?.name || item?.商品名 || "（名称不明）"}
-      </div>
+      {!hideName && (
+        <div style={{ fontSize: 15, color: "#333", lineHeight: 1.35 }}>
+          {item?.name_kana || item?.name || item?.商品名 || "（名称不明）"}
+        </div>
+      )}
 
       {/* 下段：色ブロック（wine_type） */}
-      <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <TypeBadge wineType={item?.wine_type} />
-      </div>
-
+      {!hideBadge && (
+        <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <TypeBadge wineType={item?.wine_type} />
+        </div>
+      )}
+      
       {/* 右下に◎を固定 */}
       {extraRight && (
         <div

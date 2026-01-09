@@ -10,6 +10,24 @@ function toTimeMs(v) {
   return Number.isFinite(t) ? t : 0;
 }
 
+function toDottedYmd(dateLike) {
+  if (!dateLike) return "";
+  const d = new Date(dateLike);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}.${m}.${dd}.`;
+}
+
+function pickOrderNo(t) {
+  // shopify_order_name が "#1007" の想定（無ければ空）
+  const s = String(t?.shopify_order_name || "").trim();
+  if (s) return s;
+  // 予備：idしか無い場合は "#<id>" にはしない（勝手に番号を捏造しない）
+  return "";
+}
+
 function AuthRequiredMessage({ label = "獲得マイル" }) {
   return (
     <div style={{ padding: "16px 18px" }}>
@@ -188,21 +206,23 @@ export default function MilesPanelContent() {
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {ordered.map((t, idx) => {
                 const rank = totalCount ? Math.max(totalCount - idx, 1) : idx + 1;
-                const reason = String(t?.reason || "獲得");
-                const orderName = t?.shopify_order_name ? String(t.shopify_order_name) : "";
-                const title = orderName ? `${reason}（${orderName}）` : reason;
+                const date = toDottedYmd(t?.created_at);
+                const orderNo = pickOrderNo(t);
+                const dateText = orderNo ? `${date}  ${orderNo}` : date;
                 return (
                   <ListRow
                     key={`${t?.id ?? ""}-${t?.created_at ?? ""}-${idx}`}
                     index={rank}
-                    item={{ name: title }}
+                    item={{}}                 // 表示に使わない（ListRow側でhideName/hideBadge）
                     onPick={() => {}}
                     showDate
                     dateValue={t?.created_at}
+                    dateText={dateText}       // 日付行に注文番号を合体
+                    hideName                  // 「その日の獲得数」等の2行目を出さない
+                    hideBadge                 // wine_type色ブロックを出さない
                     // Miles は色チップいらないので薄いグレー固定
                     accentColor={"#b4b4b4"}
                     extraRight={<RightDelta delta={t?.delta} />}
-                    // ListRow 側の表示が YYYY/MM/DD の場合もあるので、必要なら ListRow を軽修正して dateValue を表示
                   />
                 );
               })}
