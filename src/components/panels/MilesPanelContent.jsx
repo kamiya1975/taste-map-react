@@ -2,21 +2,12 @@
 // 獲得マイル パネル
 import React, { useEffect, useMemo, useState } from "react";
 import { API_BASE } from "../../ui/constants";
+import ListRow from "../ui/ListRow";
 
-function toYmd(dateLike) {
-  if (!dateLike) return "";
-  const d = new Date(dateLike);
-  if (Number.isNaN(d.getTime())) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}/${m}/${dd}`;
-}
-
-function ymdToDotted(ymd) {
-  // "2026/01/09" -> "2026.01.09."
-  if (!ymd) return "";
-  return String(ymd).replaceAll("/", ".") + ".";
+function toTimeMs(v) {
+  if (!v) return 0;
+  const t = Date.parse(v);
+  return Number.isFinite(t) ? t : 0;
 }
 
 function AuthRequiredMessage({ label = "獲得マイル" }) {
@@ -29,12 +20,34 @@ function AuthRequiredMessage({ label = "獲得マイル" }) {
   );
 }
 
+// 右側：+49 の表示
+function RightDelta({ delta }) {
+  const n = Number(delta || 0);
+  const sign = n >= 0 ? "+" : "";
+  return (
+    <div
+      style={{
+        width: 70,
+        textAlign: "right",
+        fontWeight: 700,
+        fontSize: 16,
+        lineHeight: 1,
+      }}
+      aria-label="獲得マイル"
+      title="獲得マイル"
+    >
+      {sign}{n.toLocaleString()}
+    </div>
+  );
+}
+
 export default function MilesPanelContent() {
   const [loading, setLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
   const [error, setError] = useState("");
-  const [totalMiles, setTotalMiles] = useState(null);
-  const [rows, setRows] = useState([]); // raw list
+  const [totalMiles, setTotalMiles] = useState(null); // balance
+  const [rows, setRows] = useState([]); // transactions
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,23 +89,28 @@ export default function MilesPanelContent() {
 
         const json = await res.json();
 
-        // 互換吸収：total/balance 系
+        // 新API（summary）：balance / transactions / count
         const total =
+          (typeof json?.balance === "number" ? json.balance : null) ??
           (typeof json?.total_miles === "number" ? json.total_miles : null) ??
           (typeof json?.total === "number" ? json.total : null) ??
-          (typeof json?.balance === "number" ? json.balance : null) ??
           null;
 
-        // 互換吸収：items/history/transactions 系
         const list =
+          (Array.isArray(json?.transactions) ? json.transactions : null) ??
           (Array.isArray(json?.items) ? json.items : null) ??
           (Array.isArray(json?.history) ? json.history : null) ??
-          (Array.isArray(json?.transactions) ? json.transactions : null) ??
           [];
+
+        const cnt =
+          (typeof json?.count === "number" ? json.count : null) ??
+          list.length ??
+          0;
 
         if (!cancelled) {
           setTotalMiles(total);
           setRows(list);
+          setTotalCount(Number(cnt || 0));
           setLoading(false);
         }
       } catch (e) {
@@ -109,34 +127,15 @@ export default function MilesPanelContent() {
     };
   }, []);
 
-  // 日別集計（購入日/作成日が何で来ても吸収）
-  const daily = useMemo(() => {
-    const map = new Map(); // ymd -> miles
-    for (const r of rows || []) {
-      const dt =
-        r?.purchased_at ??
-        r?.order_date ??
-        r?.created_at ??
-        r?.date ??
-        r?.at ??
-        null;
-
-      const ymd = toYmd(dt) || "日付不明";
-
-      // 付与数の候補を吸収
-      const miles =
-        (typeof r?.miles === "number" ? r.miles : null) ??
-        (typeof r?.earned_miles === "number" ? r.earned_miles : null) ??
-        (typeof r?.delta === "number" ? r.delta : null) ??
-        (typeof r?.amount === "number" ? r.amount : null) ??
-        0;
-
-      map.set(ymd, (map.get(ymd) || 0) + Number(miles || 0));
-    }
-
-    // 直近が上（YYYY/MM/DD想定）
-    const arr = Array.from(map.entries()).map(([date, miles]) => ({ date, miles }));
-    arr.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  // 念のため created_at desc に整列（バックを信頼しつつ安全弁）
+  const ordered = useMemo(() => {
+    const arr = Array.isArray(rows) ? [...rows] : [];
+    arr.sort((a, b) => {
+      const ta = toTimeMs(a?.created_at);
+      const tb = toTimeMs(b?.created_at);
+      if (ta !== tb) return tb - ta;
+      return Number(b?.id || 0) - Number(a?.id || 0);
+    });
     return arr;
   }, [rows]);
 
@@ -180,80 +179,35 @@ export default function MilesPanelContent() {
       {!loading && !error && (
         <>
           <div style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: "#555" }}>
-            マイル獲得履歴（購入日 / その日の獲得数）
+            マイル獲得履歴
           </div>
 
-          {daily.length === 0 ? (
+          {ordered.length === 0 ? (
             <div style={{ color: "#666" }}>獲得履歴はまだありません。</div>
           ) : (
             <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {daily.map((r, idx) => {
-                const displayRank = daily.length - idx; // 新しい順で上に来るので番号は降順
+              {ordered.map((t, idx) => {
+                const rank = totalCount ? Math.max(totalCount - idx, 1) : idx + 1;
+                const reason = String(t?.reason || "獲得");
+                const orderName = t?.shopify_order_name ? String(t.shopify_order_name) : "";
+                const title = orderName ? `${reason}（${orderName}）` : reason;
                 return (
-                  <li
-                    key={`${r.date}-${idx}`}
-                    style={{
-                      background: "#fff",
-                      borderRadius: 12,
-                      boxShadow: "0 1px 0 rgba(0,0,0,0.05)",
-                      border: "1px solid rgba(0,0,0,0.06)",
-                      padding: "14px 14px",
-                      marginBottom: 12,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                    }}
-                  >
-                    {/* 左：番号 */}
-                    <div
-                      style={{
-                        minWidth: 34,
-                        fontSize: 26,
-                        fontWeight: 700,
-                        lineHeight: 1,
-                        color: "#111",
-                      }}
-                    >
-                      {displayRank}.
-                    </div>
-
-                    {/* 中：日付 */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: 16,
-                          color: "#111",
-                          lineHeight: 1.3,
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {r.date === "日付不明" ? "日付不明" : ymdToDotted(r.date)}
-                      </div>
-                      <div style={{ marginTop: 6, fontSize: 12, color: "#6e6e73" }}>
-                        その日の獲得数
-                      </div>
-                    </div>
-
-                    {/* 右：+マイル */}
-                    <div
-                      style={{
-                        minWidth: 88,
-                        textAlign: "right",
-                        fontSize: 18,
-                        fontWeight: 800,
-                        color: "#111",
-                        lineHeight: 1,
-                      }}
-                      aria-label="獲得マイル"
-                      title="獲得マイル"
-                    >
-                      +{Number(r.miles || 0).toLocaleString()}
-                    </div>
-                  </li>
+                  <ListRow
+                    key={`${t?.id ?? ""}-${t?.created_at ?? ""}-${idx}`}
+                    index={rank}
+                    item={{ name: title }}
+                    onPick={() => {}}
+                    showDate
+                    dateValue={t?.created_at}
+                    // Miles は色チップいらないので薄いグレー固定
+                    accentColor={"#b4b4b4"}
+                    extraRight={<RightDelta delta={t?.delta} />}
+                    // ListRow 側の表示が YYYY/MM/DD の場合もあるので、必要なら ListRow を軽修正して dateValue を表示
+                  />
                 );
               })}
             </ul>
-            )}
+          )}
         </>
       )}
     </div>
