@@ -13,6 +13,12 @@ function toYmd(dateLike) {
   return `${y}/${m}/${dd}`;
 }
 
+function ymdToDotted(ymd) {
+  // "2026/01/09" -> "2026.01.09."
+  if (!ymd) return "";
+  return String(ymd).replaceAll("/", ".") + ".";
+}
+
 function AuthRequiredMessage({ label = "獲得マイル" }) {
   return (
     <div style={{ padding: "16px 18px" }}>
@@ -180,40 +186,74 @@ export default function MilesPanelContent() {
           {daily.length === 0 ? (
             <div style={{ color: "#666" }}>獲得履歴はまだありません。</div>
           ) : (
-            <div style={{ border: "1px solid rgba(0,0,0,0.12)", borderRadius: 10, overflow: "hidden" }}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 120px",
-                  background: "rgba(0,0,0,0.04)",
-                  fontSize: 12,
-                  color: "#333",
-                  padding: "10px 12px",
-                }}
-              >
-                <div>購入日</div>
-                <div style={{ textAlign: "right" }}>獲得マイル</div>
-              </div>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {daily.map((r, idx) => {
+                const displayRank = daily.length - idx; // 新しい順で上に来るので番号は降順
+                return (
+                  <li
+                    key={`${r.date}-${idx}`}
+                    style={{
+                      background: "#fff",
+                      borderRadius: 12,
+                      boxShadow: "0 1px 0 rgba(0,0,0,0.05)",
+                      border: "1px solid rgba(0,0,0,0.06)",
+                      padding: "14px 14px",
+                      marginBottom: 12,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                    }}
+                  >
+                    {/* 左：番号 */}
+                    <div
+                      style={{
+                        minWidth: 34,
+                        fontSize: 26,
+                        fontWeight: 700,
+                        lineHeight: 1,
+                        color: "#111",
+                      }}
+                    >
+                      {displayRank}.
+                    </div>
 
-              {daily.map((r, idx) => (
-                <div
-                  key={`${r.date}-${idx}`}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 120px",
-                    padding: "10px 12px",
-                    borderTop: idx === 0 ? "none" : "1px solid rgba(0,0,0,0.08)",
-                    fontSize: 13,
-                  }}
-                >
-                  <div style={{ color: "#111" }}>{r.date}</div>
-                  <div style={{ textAlign: "right", color: "#111", fontWeight: 600 }}>
-                    +{Number(r.miles || 0).toLocaleString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                    {/* 中：日付 */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 16,
+                          color: "#111",
+                          lineHeight: 1.3,
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {r.date === "日付不明" ? "日付不明" : ymdToDotted(r.date)}
+                      </div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "#6e6e73" }}>
+                        その日の獲得数
+                      </div>
+                    </div>
+
+                    {/* 右：+マイル */}
+                    <div
+                      style={{
+                        minWidth: 88,
+                        textAlign: "right",
+                        fontSize: 18,
+                        fontWeight: 800,
+                        color: "#111",
+                        lineHeight: 1,
+                      }}
+                      aria-label="獲得マイル"
+                      title="獲得マイル"
+                    >
+                      +{Number(r.miles || 0).toLocaleString()}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            )}
         </>
       )}
     </div>
