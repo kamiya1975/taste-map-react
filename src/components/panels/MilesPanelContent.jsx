@@ -66,6 +66,9 @@ export default function MilesPanelContent() {
   const [totalMiles, setTotalMiles] = useState(null); // balance
   const [rows, setRows] = useState([]); // transactions
   const [totalCount, setTotalCount] = useState(0);
+  // 行タップで展開（注文items簡易表示）
+  const [openKey, setOpenKey] = useState(""); // 展開中のキー（1行だけ開く）
+  const [orderCache, setOrderCache] = useState({}); // { [key]: { loading, error, data } }
 
   useEffect(() => {
     let cancelled = false;
@@ -157,6 +160,91 @@ export default function MilesPanelContent() {
     return arr;
   }, [rows]);
 
+  function getTokenSafe() {
+    try {
+      return localStorage.getItem("app.access_token") || "";
+    } catch {
+      return "";
+    }
+  }
+
+  function getShopifyOrderIdFromTx(t) {
+    // transactions の形が揺れても拾えるように
+    // 期待：t.shopify_order_id（Shopifyの注文ID文字列）
+    const v =
+      t?.shopify_order_id ??
+      t?.shopifyOrderId ??
+      t?.order_id ??
+      t?.shopify_order?.shopify_order_id ??
+      "";
+    return v ? String(v) : "";
+  }
+
+  async function ensureOrderDetail(key, shopifyOrderId) {
+    if (!shopifyOrderId) return;
+    if (orderCache[key]?.data || orderCache[key]?.loading) return;
+
+    const token = getTokenSafe();
+    if (!token) return;
+
+    setOrderCache((m) => ({ ...m, [key]: { loading: true, error: "", data: null } }));
+    try {
+      const res = await fetch(`${API_BASE}/api/app/orders/${encodeURIComponent(shopifyOrderId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setOrderCache((m) => ({ ...m, [key]: { loading: false, error: "", data: json } }));
+    } catch (e) {
+      console.error("order detail fetch failed:", e);
+      setOrderCache((m) => ({ ...m, [key]: { loading: false, error: "注文詳細の取得に失敗しました。", data: null } }));
+    }
+  }
+
+  function OrderItemsPreview({ state }) {
+    if (!state) return null;
+    if (state.loading) {
+      return <div style={{ fontSize: 13, color: "#666" }}>注文内容を読み込み中…</div>;
+    }
+    if (state.error) {
+      return <div style={{ fontSize: 13, color: "red" }}>{state.error}</div>;
+    }
+    const items = Array.isArray(state?.data?.items) ? state.data.items : [];
+    if (items.length === 0) {
+      return <div style={{ fontSize: 13, color: "#666" }}>注文内容がありません。</div>;
+    }
+
+    const head = items.slice(0, 3);
+    const rest = items.length - head.length;
+    return (
+      <div
+        onClick={(e) => e.stopPropagation()} // 展開内タップで行の開閉が暴れないように
+        style={{
+          padding: "10px 12px",
+          borderRadius: 10,
+          background: "#f7f7f7",
+          border: "1px solid rgba(0,0,0,0.06)",
+        }}
+      >
+        <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>注文内容</div>
+        <div style={{ display: "grid", gap: 4 }}>
+          {head.map((it, i) => {
+            const jan = it?.jan_code ? String(it.jan_code) : "JAN不明";
+            const qty = Number(it?.quantity || 0);
+            return (
+              <div key={`${jan}-${i}`} style={{ fontSize: 13, color: "#222", lineHeight: 1.5 }}>
+                {jan} × {qty}
+              </div>
+            );
+          })}
+          {rest > 0 && (
+            <div style={{ fontSize: 13, color: "#666" }}>他 {rest} 点</div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (authRequired) return <AuthRequiredMessage label="獲得マイル" />;
 
   return (
@@ -209,12 +297,25 @@ export default function MilesPanelContent() {
                 const date = toDottedYmd(t?.created_at);
                 const orderNo = pickOrderNo(t);
                 const dateText = orderNo ? `${date}  注文番号 ${orderNo}` : date;
+
+                const shopifyOrderId = getShopifyOrderIdFromTx(t);
+                const rowKey = `${t?.id ?? ""}-${t?.created_at ?? ""}-${idx}`;
+                const isOpen = openKey === rowKey;
+                const detailState = orderCache[rowKey];
+
                 return (
                   <ListRow
-                    key={`${t?.id ?? ""}-${t?.created_at ?? ""}-${idx}`}
+                    key={rowKey}
                     index={rank}
                     item={{}}                 // 表示に使わない（ListRow側でhideName/hideBadge）
-                    onPick={() => {}}
+                    onPick={() => {
+                      // トグル　　注文詳細表示
+                      const next = isOpen ? "" : rowKey;
+                      setOpenKey(next);
+                      if (!isOpen && shopifyOrderId) {
+                        ensureOrderDetail(rowKey, shopifyOrderId);
+                      }
+                    }}
                     showDate
                     dateValue={t?.created_at}
                     dateText={dateText}       // 日付行に注文番号を合体
@@ -223,6 +324,9 @@ export default function MilesPanelContent() {
                     // Miles は色チップいらないので薄いグレー固定
                     accentColor={"#b4b4b4"}
                     extraRight={<RightDelta delta={t?.delta} />}
+                    extraBottom={
+                      isOpen ? <OrderItemsPreview state={detailState} /> : null
+                    }
                   />
                 );
               })}

@@ -29,6 +29,7 @@ export default function ListRow({
   hideBadge = false,    // 追加：色ブロック行を出さない（Miles用）
   accentColor = "#b4b4b4",
   extraRight = null,   // ← ◎（CircleRatingDisplay など）
+  extraBottom = null,  // 追加：行の下に表示する任意UI（展開パネルなど）
   hoverHighlight = true,
 }) {
 
@@ -108,6 +109,13 @@ export default function ListRow({
       {!hideBadge && (
         <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <TypeBadge wineType={item?.wine_type} />
+        </div>
+      )}
+
+      {/* 追加：下側スロット（展開エリアなど） */}
+      {extraBottom && (
+        <div style={{ marginTop: 10 }}>
+          {extraBottom}
         </div>
       )}
       
