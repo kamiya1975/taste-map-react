@@ -1,4 +1,5 @@
 // src/components/panels/AboutTasteMapPanel.jsx
+// 現在使っていない（必要ない）可能性あり
 import React from "react";
 import PanelShell from "./PanelShell";
 
