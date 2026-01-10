@@ -236,14 +236,14 @@ export default function MilesPanelContent() {
             return (
               <div
                   key={`${it?.variant_gid || it?.variant_id || it?.jan_code || "x"}-${i}`}
-                  style={{ fontSize: 13, color: "#222", lineHeight: 1.5 }}
+                  style={{ fontSize: 15, color: "#222", lineHeight: 1.35 }}
               >
                 {label} × {qty}
               </div>
             );
           })}
           {rest > 0 && (
-            <div style={{ fontSize: 13, color: "#666" }}>他 {rest} 点</div>
+            <div style={{ fontSize: 15, color: "#666", lineHeight: 1.35 }}>他 {rest} 点</div>
           )}
         </div>
       </div>
