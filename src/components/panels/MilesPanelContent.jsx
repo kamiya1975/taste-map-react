@@ -229,11 +229,16 @@ export default function MilesPanelContent() {
         <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>注文内容</div>
         <div style={{ display: "grid", gap: 4 }}>
           {head.map((it, i) => {
-            const jan = it?.jan_code ? String(it.jan_code) : "JAN不明";
+            const name = it?.name_kana ? String(it.name_kana).trim() : "";
+            const jan = it?.jan_code ? String(it.jan_code) : "";
+            const label = name || jan || "商品不明";
             const qty = Number(it?.quantity || 0);
             return (
-              <div key={`${jan}-${i}`} style={{ fontSize: 13, color: "#222", lineHeight: 1.5 }}>
-                {jan} × {qty}
+              <div
+                  key={`${it?.variant_gid || it?.variant_id || it?.jan_code || "x"}-${i}`}
+                  style={{ fontSize: 13, color: "#222", lineHeight: 1.5 }}
+              >
+                {label} × {qty}
               </div>
             );
           })}
