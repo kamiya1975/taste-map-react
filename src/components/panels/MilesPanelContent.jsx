@@ -220,10 +220,10 @@ export default function MilesPanelContent() {
       <div
         onClick={(e) => e.stopPropagation()} // 展開内タップで行の開閉が暴れないように
         style={{
-          padding: "10px 12px",
-          borderRadius: 10,
-          background: "#f7f7f7",
-          border: "1px solid rgba(0,0,0,0.06)",
+          padding: "0px",
+          borderRadius: 0,
+          background: "transparent",
+          border: "none",
         }}
       >
         <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>注文内容</div>
