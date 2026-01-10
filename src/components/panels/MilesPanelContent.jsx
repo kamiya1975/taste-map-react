@@ -226,7 +226,6 @@ export default function MilesPanelContent() {
           border: "none",
         }}
       >
-        <div style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>注文内容</div>
         <div style={{ display: "grid", gap: 4 }}>
           {head.map((it, i) => {
             const name = it?.name_kana ? String(it.name_kana).trim() : "";
@@ -289,10 +288,6 @@ export default function MilesPanelContent() {
       {/* 履歴 */}
       {!loading && !error && (
         <>
-          <div style={{ marginTop: 8, marginBottom: 8, fontSize: 13, color: "#555" }}>
-            マイル獲得履歴
-          </div>
-
           {ordered.length === 0 ? (
             <div style={{ color: "#666" }}>獲得履歴はまだありません。</div>
           ) : (
