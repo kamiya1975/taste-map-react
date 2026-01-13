@@ -40,7 +40,6 @@ export default function SearchPanel({
 }) {
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
-  const [apiItems, setApiItems] = useState([]); // /app/search/products の結果
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -52,7 +51,6 @@ export default function SearchPanel({
     if (!open) {
       setQ("");
       setQDebounced("");
-      setApiItems([]);
       setLoading(false);
       setErrorMsg("");
       setMiniByJan(new Map());
@@ -151,6 +149,60 @@ export default function SearchPanel({
     const t = (v === null || v === undefined) ? "" : String(v).trim().toLowerCase();
     // DBの wine_type 以外は落とす（色の暴発防止）
     return ["red", "white", "sparkling", "rose"].includes(t) ? t : "";
+  };
+
+  // ==========================
+  // ローカル検索（初期一覧の中から検索）
+  // ==========================
+  const buildSearchText = (item) => {
+    // mini拡張で増えたカラムを確実に拾う
+    // （古い別名も一応残して取りこぼしを防ぐ）
+    const parts = [
+      // IDs
+      item?.jan_code,
+      item?.JAN,
+
+      // names
+      item?.name_kana,
+      item?.name,
+      item?.name_eng,
+
+      // producer
+      item?.producer_name,
+      item?.producer_name_eng,
+      item?.producer, // 旧別名
+
+      // origin / variety
+      item?.country,
+      item?.region,
+      item?.appellation,     // 旧別名
+      item?.grape_variety,
+      item?.variety,         // 旧別名
+
+      // notes
+      item?.comment,
+      item?.importer,        // もし今後入るなら
+
+      // other
+      item?.vintage,
+      item?.color,
+      item?.wine_type,
+      item?.Type,            // 旧互換
+    ];
+
+    return normalizeJP(
+      parts
+        .filter((v) => v !== null && v !== undefined)
+        .map((v) => String(v).trim())
+        .filter(Boolean)
+        .join(" ")
+    );
+  };
+
+  const localFilter = (items, query) => {
+    const nq = normalizeJP(query || "");
+    if (!nq) return items;
+    return items.filter((it) => buildSearchText(it).includes(nq));
   };
 
   // 初期一覧JAN一覧（ユニーク）
@@ -287,107 +339,18 @@ export default function SearchPanel({
     return all;
   }, [janToLocal]);
 
-  // バックエンド検索呼び出し
-  useEffect(() => {
-    if (!open) return;
-
-    const trimmed = (qDebounced || "").trim();
-    // 空欄のときは API を叩かない（初期一覧のみローカルで表示）
-    if (!trimmed) {
-      setApiItems([]);
-      setLoading(false);
-      setErrorMsg("");
-      return;
-    }
-
-    let cancelled = false;
-    const controller = new AbortController();
-
-    (async () => {
-      setLoading(true);
-      setErrorMsg("");
-      try {
-        const token =
-          (typeof window !== "undefined" &&
-            (localStorage.getItem("app.access_token") || "")) ||
-          "";
-
-        const params = new URLSearchParams({
-          q: trimmed,
-          limit: "50",
-        });
-
-        const res = await fetch(
-          `${API_BASE}/api/app/search/products?${params.toString()}`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            signal: controller.signal,
-          }
-        );
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const json = await res.json();
-        if (cancelled) return;
-        const items = Array.isArray(json?.items) ? json.items : [];
-        // 検索対象は「初期一覧（=打点あり）に含まれるJANだけ」（協議 3）
-        const filtered = items.filter((p) => {
-          const jan = String(p?.jan_code || "").trim();
-          return janToLocal.has(jan);
-        });
-        setApiItems(filtered);
-      } catch (e) {
-        if (cancelled || e.name === "AbortError") return;
-        console.error("[SearchPanel] search error:", e);
-        setErrorMsg("検索に失敗しました。時間をおいて再度お試しください。");
-        setApiItems([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [qDebounced, open]);
-
   // 検索結果を UMAP データとマージ
   const results = useMemo(() => {
-    const nq = normalizeJP(qDebounced || "");
-    // 検索語があるとき：API の結果を基準
-    if (nq) {
-      if (!apiItems.length) return [];
-      return apiItems.map((p, idx) => {
-        const jan = String(p.jan_code || "").trim();
-        const local = janToLocal.get(jan);
-
-        // 表示用（ListRowが拾うキーに合わせる）
-        const name = (String(p.name_kana || p.name || "").trim() || jan);
-        const wineType = (String(p.wine_type || "").trim().toLowerCase());
-
-        return {
-          // まずローカルの情報を敷き（UMAP座標など）
-          ...(local || {}),
-          // その上に API 情報をマージ
-          JAN: jan,
-          jan_code: jan,
-          wine_type: wineType,
-          name_kana: name,
-          商品名: name, // ListRow互換
-          Type: wineType, // 旧互換（ListRowは item.wine_type を主に見る）
-        };
-      });
-    }
+    const trimmed = (qDebounced || "").trim();
+    const nq = normalizeJP(trimmed);
 
     // 検索語がないとき：初期一覧をそのまま
-    return initialFromMap;
-  }, [qDebounced, apiItems, janToLocal, initialFromMap]);
+    if (!nq) return initialFromMap;
+
+    // 検索語があるとき：
+    // 初期一覧（Mapに表示されている商品）からローカル検索
+    return localFilter(initialFromMap, trimmed);
+  }, [qDebounced, initialFromMap]);
 
   const pick = (i) => {
    const cand = results[i] ?? results[0];
@@ -463,6 +426,7 @@ export default function SearchPanel({
 
   const HEADER_H = 42;
   const hasQuery = !!(qDebounced && qDebounced.trim());
+  const localSearching = hasQuery && q !== qDebounced; // デバウンス中だけ「検索中…」
 
   return (
     <Drawer
@@ -497,7 +461,6 @@ export default function SearchPanel({
         onClose={() => {
           setQ("");
           setQDebounced("");
-          setApiItems([]);
           setErrorMsg("");
           onClose?.();
         }}
@@ -571,7 +534,7 @@ export default function SearchPanel({
             </div>
           </button>
         </div>
-        {loading && (
+        {localSearching && (
           <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>検索中…</div>
         )}
         {!loading && errorMsg && (
