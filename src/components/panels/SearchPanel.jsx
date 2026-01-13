@@ -1,7 +1,7 @@
 // src/components/panels/SearchPanel.jsx
 // 検索パネル
-// 初期一覧は 打点されている商品一覧
-// 検索対象は 打点されている商品の中から
+// 初期一覧は 選択した店舗（EC連携有無含む）商品一覧
+// 検索対象は 上記初期一覧の商品の中から
 // バーコードカメラ検索 の検索対象は tdb_product（DB全商品）の中から　※バーコードカメラについては別ファイル
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import Drawer from "@mui/material/Drawer";
@@ -40,27 +40,76 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
   const scrollRef = useRef(null);
   const SCROLL_KEY = "searchPanel.scrollTop";
 
-  // UMAP データを JAN → item のマップにしておく
+  // ===== points.csv(UMAP) 側の揺れを吸収して「表示/遷移に必要なキー」に正規化 =====
+  const getJan = (d) => {
+    const v =
+      d?.jan_code ??
+      d?.JAN ??
+      d?.jan ??
+      d?.barcode ??
+      d?.BARCODE ??
+      d?.code ??
+      null;
+    return v === null || v === undefined ? "" : String(v).trim();
+  };
+
+  const getName = (d) => {
+    // points.csv は temp_name のことが多いので拾う
+    const v =
+      d?.name_kana ??
+      d?.name ??
+      d?.商品名 ??
+      d?.["商品名"] ??
+      d?.temp_name ??
+      null;
+    return v === null || v === undefined ? "" : String(v).trim();
+  };
+
+  const getWineType = (d) => {
+    const v =
+      d?.wine_type ??
+      d?.Type ??
+      d?.type ??
+      d?.wineType ??
+      null;
+    return v === null || v === undefined ? "" : String(v).trim().toLowerCase();
+  };
+
+  const normalizeLocalItem = (d) => {
+    const jan = getJan(d);
+    const name = getName(d) || jan;
+    const wineType = getWineType(d);
+    return {
+      ...d,
+      JAN: jan,
+      jan_code: jan,
+      name_kana: name,
+      商品名: name,     // ListRow互換
+      wine_type: wineType,
+      Type: wineType,   // 旧互換
+    };
+  };
+  
+  // UMAP データを JAN → item のマップにしておく（必ず正規化して格納）
   const janToLocal = useMemo(() => {
     const m = new Map();
     (Array.isArray(data) ? data : []).forEach((d) => {
-      const key = String(d.jan_code ?? d.JAN ?? "").trim();
+      const nd = normalizeLocalItem(d);
+      const key = nd.jan_code;
       if (!key) return;
-      if (!m.has(key)) m.set(key, d);
+      if (!m.has(key)) m.set(key, nd);
     });
     return m;
   }, [data]);
 
-  // 初期一覧（検索語なし）の並び：商品名（かな）昇順
+  // 初期一覧（検索語なし）：正規化した上で商品名昇順
   const initialSorted = useMemo(() => {
-    const arr = Array.isArray(data) ? [...data] : [];
+    const arr = (Array.isArray(data) ? data : [])
+      .map(normalizeLocalItem)
+      .filter((x) => !!x.jan_code); // JAN無しは落とす（事故防止）
     arr.sort((a, b) => {
-      const na =
-        String(a?.name_kana ?? a?.["商品名"] ?? a?.temp_name ?? "").trim() ||
-        String(a?.JAN ?? a?.jan_code ?? "").trim();
-      const nb =
-        String(b?.name_kana ?? b?.["商品名"] ?? b?.temp_name ?? "").trim() ||
-        String(b?.JAN ?? b?.jan_code ?? "").trim();
+      const na = String(a?.name_kana || "").trim() || String(a?.jan_code || "");
+      const nb = String(b?.name_kana || "").trim() || String(b?.jan_code || "");
       return na.localeCompare(nb, "ja");
     });
     return arr;
@@ -147,8 +196,8 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
         const local = janToLocal.get(jan);
 
         // 表示用（ListRowが拾うキーに合わせる）
-        const name = (p.name_kana || "").trim() || jan;
-        const wineType = (p.wine_type || "").trim();
+        const name = (String(p.name_kana || p.name || "").trim() || jan);
+        const wineType = (String(p.wine_type || "").trim().toLowerCase());
 
         return {
           // まずローカルの情報を敷き（UMAP座標など）
@@ -164,7 +213,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
       });
     }
 
-    // 検索語がないときは、従来通り「全件・価格昇順」
+    // 検索語がないとき：初期一覧をそのまま
     return initialSorted;
   }, [qDebounced, apiItems, janToLocal, initialSorted]);
 

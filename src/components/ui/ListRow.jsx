@@ -101,7 +101,7 @@ export default function ListRow({
       {/* 商品名（番号と左端を揃える） */}
       {!hideName && (
         <div style={{ fontSize: 15, color: "#333", lineHeight: 1.35 }}>
-          {item?.name_kana || item?.name || item?.商品名 || "（名称不明）"}
+          {item?.name_kana || item?.name || item?.商品名 || item?.temp_name || "（名称不明）"}
         </div>
       )}
 
