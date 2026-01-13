@@ -19,6 +19,9 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // 初期一覧（選択店舗の対象JAN）の “DB正” 情報を保持
+  const [miniByJan, setMiniByJan] = useState(() => new Map());
+
   // パネルが閉じられたら状態をリセット
   useEffect(() => {
     if (!open) {
@@ -27,6 +30,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
       setApiItems([]);
       setLoading(false);
       setErrorMsg("");
+      setMiniByJan(new Map());
     }
   }, [open]);
 
@@ -53,34 +57,122 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
     return v === null || v === undefined ? "" : String(v).trim();
   };
 
-  const getName = (d) => {
-    // points.csv は temp_name のことが多いので拾う
+  // temp_name は絶対に拾わない（仮名なので）
+  const getNameFromLocal = (d) => {
     const v =
       d?.name_kana ??
       d?.name ??
       d?.商品名 ??
       d?.["商品名"] ??
-      d?.temp_name ??
       null;
     return v === null || v === undefined ? "" : String(v).trim();
   };
 
-  const getWineType = (d) => {
-    const v =
-      d?.wine_type ??
-      d?.Type ??
-      d?.type ??
-      d?.wineType ??
-      null;
-    return v === null || v === undefined ? "" : String(v).trim().toLowerCase();
+  const normalizeWineType = (v) => {
+    const t = (v === null || v === undefined) ? "" : String(v).trim().toLowerCase();
+    // DBの wine_type 以外は落とす（色の暴発防止）
+    return ["red", "white", "sparkling", "rose"].includes(t) ? t : "";
   };
+
+  // 初期一覧JAN一覧（ユニーク）
+  const initialJans = useMemo(() => {
+    const s = new Set();
+    (Array.isArray(data) ? data : []).forEach((d) => {
+      const jan = getJan(d);
+      if (jan) s.add(jan);
+    });
+    return Array.from(s);
+  }, [data]);
+
+  // 初期一覧のために DB(mini) を一括取得（open時＆検索語なしのとき中心に使う）
+  useEffect(() => {
+    if (!open) return;
+    // data が無いなら何もしない
+    if (!initialJans.length) {
+      setMiniByJan(new Map());
+      return;
+    }
+
+    const controller = new AbortController();
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const token =
+          (typeof window !== "undefined" &&
+            (localStorage.getItem("app.access_token") || "")) ||
+          "";
+
+        // 量が多い場合は分割（URL長制限対策）
+        const CHUNK = 200;
+        const merged = new Map();
+
+        for (let i = 0; i < initialJans.length; i += CHUNK) {
+          const chunk = initialJans.slice(i, i + CHUNK);
+          const params = new URLSearchParams();
+          params.set("jan_codes", chunk.join(","));
+
+          const res = await fetch(
+            `${API_BASE}/api/app/map-products/mini?${params.toString()}`,
+            {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              signal: controller.signal,
+            }
+          );
+
+          if (!res.ok) throw new Error(`mini HTTP ${res.status}`);
+          const json = await res.json();
+          const items = Array.isArray(json?.items) ? json.items : (Array.isArray(json) ? json : []);
+
+          items.forEach((p) => {
+            const jan = String(p?.jan_code || "").trim();
+            if (!jan) return;
+            merged.set(jan, {
+              ...p,
+              jan_code: jan,
+              JAN: jan,
+              name_kana: String(p?.name_kana || p?.name || "").trim(),
+              wine_type: normalizeWineType(p?.wine_type),
+            });
+          });
+        }
+
+        if (cancelled) return;
+        setMiniByJan(merged);
+      } catch (e) {
+        if (cancelled || e?.name === "AbortError") return;
+        console.error("[SearchPanel] mini fetch error:", e);
+        // mini が取れなくてもアプリは動かしたいので、空Mapにするだけ
+        setMiniByJan(new Map());
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [open, initialJans.join("|")]);
 
   const normalizeLocalItem = (d) => {
     const jan = getJan(d);
-    const name = getName(d) || jan;
-    const wineType = getWineType(d);
+    const mini = jan ? miniByJan.get(jan) : null;
+    // 表示名は DB(mini) を最優先（temp_name禁止）
+    const name =
+      (mini?.name_kana || "").trim() ||
+      (mini?.name || "").trim() ||
+      getNameFromLocal(d) ||
+      jan;
+    // wine_type も DB(mini) を最優先（points側の Type は信用しない）
+    const wineType = normalizeWineType(mini?.wine_type);
     return {
+      // UMAP/points（座標など）を残しつつ
       ...d,
+      // DB(mini) を上書き（初期一覧→詳細でも情報が揃う）
+      ...(mini || {}),
       JAN: jan,
       jan_code: jan,
       name_kana: name,
@@ -100,7 +192,7 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
       if (!m.has(key)) m.set(key, nd);
     });
     return m;
-  }, [data]);
+  }, [data, miniByJan]);
 
   // 初期一覧（検索語なし）：正規化した上で商品名昇順
   const initialSorted = useMemo(() => {
