@@ -442,6 +442,18 @@ function MapPage() {
     return new Set(data.map((d) => String(d.jan_code || "")));
   }, [allowedJansSet, data]);
 
+  // ------------------------------
+  // 検索パネルに渡すデータ（Plan A: Mapに出てるものだけ検索）
+  // - visibleJansSet がある → その集合に含まれる点だけ
+  // - visibleJansSet が null → フォールバックで全点
+  // ------------------------------
+  const searchPanelData = useMemo(() => {
+    const list = Array.isArray(data) ? data : [];
+    const set = visibleJansSet instanceof Set ? visibleJansSet : null;
+    if (!set) return list;
+    return list.filter((d) => set.has(String(getJanFromItem(d))));
+  }, [data, visibleJansSet]);
+
   // ====== allowed-jans を読み直す共通関数 ======
   const reloadAllowedJans = useCallback(async () => {
     const mainStoreId = getCurrentMainStoreIdSafe();
@@ -1625,7 +1637,7 @@ function MapPage() {
       <SearchPanel
         open={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        data={data}
+        data={searchPanelData}
         onPick={async (item) => {
           if (!item) return;
 
