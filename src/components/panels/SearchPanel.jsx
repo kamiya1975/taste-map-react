@@ -274,84 +274,19 @@ export default function SearchPanel({
   }, [data, miniByJan]);
 
   // ==========================
-  // 初期一覧（検索語なし）を “あなた向け” にする
-  // - 最近見た
-  // - 最近評価した（≒評価が付いているもの）
-  // - 飲みたい（wishlist）
-  // ※すべて “data(=Mapに出せる候補)” の janToLocal を上限としてフィルタする
+  // 初期一覧（検索語なし）
+  // Mapに描画されている集合（data）と同等（= janToLocal の全件）
   // ==========================
-  const initialPersonalized = useMemo(() => {
-    const MAX_PER_SECTION = 20;
-    const out = [];
+  const initialFromMap = useMemo(() => {
+    const all = Array.from(janToLocal.values()).filter((x) => !!x?.jan_code);
+    all.sort((a, b) => {
+      const na = String(a?.name_kana || "").trim() || String(a?.jan_code || "");
+      const nb = String(b?.name_kana || "").trim() || String(b?.jan_code || "");
+      return na.localeCompare(nb, "ja");
+    });
+    return all;
+  }, [janToLocal]);
 
-    const pushHeader = (title) => {
-      out.push({ __type: "header", title });
-    };
-    const pushItems = (jans) => {
-      const seen = new Set(out.filter(x => x?.jan_code).map(x => x.jan_code));
-      let n = 0;
-      for (const j of jans) {
-        const jan = String(j || "").trim();
-        if (!jan) continue;
-        if (seen.has(jan)) continue;
-        const item = janToLocal.get(jan);
-        if (!item) continue; // Mapに無い=出さない（憲法）
-        out.push(item);
-        seen.add(jan);
-        n += 1;
-        if (n >= MAX_PER_SECTION) break;
-      }
-      return n;
-    };
-
-    // 1) 最近見た（props/localStorage）
-    const recent = (recentJans || []).slice(0, 200);
-    if (recent.length) {
-      pushHeader("最近見た");
-      const n = pushItems(recent);
-      if (n === 0) out.pop(); // headerだけ残るの防止
-    }
-
-    // 2) 最近評価（いまは ratingMap から “評価ありJAN” を作る）
-    //    ※updated_at が無いので、まずは rating 降順（同率は名前）
-    const ratedJans = Array.from(ratingMap.entries())
-      .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
-      .map(([jan]) => jan);
-    if (ratedJans.length) {
-      pushHeader("最近評価した");
-      const n = pushItems(ratedJans);
-      if (n === 0) out.pop();
-    }
-
-    // 3) 飲みたい（wishlist）
-    const wishJans = wishlistObj && typeof wishlistObj === "object"
-      ? Object.keys(wishlistObj).filter((jan) => !!wishlistObj[jan])
-      : [];
-    if (wishJans.length) {
-      // 表示順：名前順（安定）
-      wishJans.sort((a, b) => a.localeCompare(b));
-      pushHeader("飲みたい");
-      const n = pushItems(wishJans);
-      if (n === 0) out.pop();
-    }
-
-    // 何も無い場合：従来の “名前順上位” を保険で少しだけ出す（暴走防止で少量）
-    if (out.length === 0) {
-      const fallback = (Array.isArray(data) ? data : [])
-        .map(normalizeLocalItem)
-        .filter((x) => !!x.jan_code);
-      fallback.sort((a, b) => {
-        const na = String(a?.name_kana || "").trim() || String(a?.jan_code || "");
-        const nb = String(b?.name_kana || "").trim() || String(b?.jan_code || "");
-        return na.localeCompare(nb, "ja");
-      });
-      pushHeader("おすすめ");
-      out.push(...fallback.slice(0, 30));
-    }
-
-    return out;
-  }, [data, miniByJan, janToLocal, recentJans, ratingMap, wishlistObj]);
- 
   // バックエンド検索呼び出し
   useEffect(() => {
     if (!open) return;
@@ -451,8 +386,8 @@ export default function SearchPanel({
     }
 
     // 検索語がないとき：初期一覧をそのまま
-    return initialPersonalized;
-  }, [qDebounced, apiItems, janToLocal, initialPersonalized]);
+    return initialFromMap;
+  }, [qDebounced, apiItems, janToLocal, initialFromMap]);
 
   const pick = (i) => {
    const cand = results[i] ?? results[0];
