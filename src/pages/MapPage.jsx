@@ -429,20 +429,18 @@ function MapPage() {
   const [cartEnabled, setCartEnabled] = useState(false);
 
   // ------------------------------
-  // フェイルセーフ：store_jans が取れない/空のとき
-  // data が入った後に「全打点を店舗扱い」に倒す（1回だけ）
-  // ※ normalizePoints 済みなので jan_code を直接使う
+  // 描画用の主集合（visible）
+  // - allowedJansSet があるならそれを優先
+  // - 無いなら「全打点OK」（表示フォールバック）
+  // ※ storeJansSet（店舗集合）とは混ぜない
   // ------------------------------
-  useEffect(() => {
-    if (!Array.isArray(data) || data.length === 0) return;
-    if (storeJansSet && storeJansSet.size > 0) return;
-
-    const all = new Set(data.map((d) => String(d.jan_code || "")));
-    if (all.size > 0) {
-      console.warn("[MapPage] storeJansSet empty → fallback(all points) size=", all.size);
-      setStoreJansSet(all);
-    }
-  }, [data, storeJansSet]);  
+  const visibleJansSet = useMemo(() => {
+    // allowedJansSet が null のときは「全件表示」扱い（MapCanvas側で全通過にしてもOK）
+    // ただ、MapCanvasが Set を前提にしている場合に備えて Set を作る
+    if (allowedJansSet && allowedJansSet instanceof Set) return allowedJansSet;
+    if (!Array.isArray(data) || data.length === 0) return null;
+    return new Set(data.map((d) => String(d.jan_code || "")));
+  }, [allowedJansSet, data]);
 
   // ====== allowed-jans を読み直す共通関数 ======
   const reloadAllowedJans = useCallback(async () => {
@@ -1072,9 +1070,12 @@ function MapPage() {
       if (!Array.isArray(data) || data.length === 0) return null;
       let best = null,
         bestD2 = Infinity;
+      const storeSetValid = storeJansSet && storeJansSet.size > 0;        
       for (const d of data) {
         const jan = String(getJanFromItem(d));
-        if (!storeJansSet.has(jan)) continue;   // 店舗扱いのみ
+        // 店舗集合が信頼できるときだけ「店舗のみ」に絞る
+        // 不明なときは絞らない（= 店舗集合を捏造しない）
+        if (storeSetValid && !storeJansSet.has(jan)) continue;
 
         const x = d.umap_x,
           y = -d.umap_y;
@@ -1301,8 +1302,11 @@ function MapPage() {
       <MapCanvas
         data={data}
 
-        // 表示対象（店舗●を描く主集合）
+        // 店舗集合（意味の集合）：信頼できる時だけ意味を持つ
         storeJansSet={storeJansSet}
+
+        // 描画用の主集合（表示フォールバックはこっちで吸収）
+        visibleJansSet={visibleJansSet}
 
         // EC専用JAN（星・色替え用）
         ecOnlyJansSet={ecOnlyJansSet}

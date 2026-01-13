@@ -185,6 +185,7 @@ function clampViewState(nextVS, panBounds, sizePx, margins = {}) {
 const MapCanvas = forwardRef(function MapCanvas(
   {
     data,
+    visibleJansSet,
     allowedJansSet,
     ecOnlyJansSet,
     userRatings,
@@ -247,12 +248,28 @@ const MapCanvas = forwardRef(function MapCanvas(
   const filteredData = useMemo(() => {
     if (!Array.isArray(data) || data.length === 0) return [];
 
+    // 描画用の主集合（visible）：
+    // - MapPage が「allowedが取れないときは全打点Set」を渡してくる前提
+    // - ここでは“表示”の入口としてだけ使う（意味集合とは混ぜない）
+    const hasVisible = visibleJansSet instanceof Set;
+
     const allowMode = allowedJansSet != null; // null/undefined は無効
     const ecMode    = ecOnlyJansSet != null;
 
-    if (!allowMode && !ecMode) return data;
+    // ① まず visibleJansSet があれば、それに含まれるものだけを候補にする
+    //    （visible が無い場合は従来通り data 全体を候補）
+    const base = hasVisible
+      ? data.filter((d) => {
+          const jan = janOf(d);
+          return !!jan && visibleJansSet.has(jan);
+        })
+      : data;
 
-    return data.filter((d) => {
+    // ② allowed/ecOnly が両方無いなら「表示フォールバック」として base をそのまま返す
+    if (!allowMode && !ecMode) return base;
+
+    // ③ allowed/ecOnly がある場合は、従来通り集合でフィルタ
+    return base.filter((d) => {
       const jan = janOf(d);
       if (!jan) return false;
 
@@ -265,7 +282,7 @@ const MapCanvas = forwardRef(function MapCanvas(
 
       return allowStore || allowEc;
     });
-  }, [data, allowedJansSet, ecOnlyJansSet]);
+  }, [data, visibleJansSet, allowedJansSet, ecOnlyJansSet]);
 
   // --- EC専用 / 店舗商品 の振り分け ---
   //  憲法：表示判定の一次条件は “集合（allowed / ec_only）”
