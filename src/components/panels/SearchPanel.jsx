@@ -1,4 +1,8 @@
 // src/components/panels/SearchPanel.jsx
+// 検索パネル
+// 初期一覧は 打点されている商品一覧
+// 検索対象は 打点されている商品の中から
+// バーコードカメラ検索 の検索対象は tdb_product（DB全商品）の中から　※バーコードカメラについては別ファイル
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import Drawer from "@mui/material/Drawer";
 import { normalizeJP } from "../../utils/search";
@@ -7,9 +11,6 @@ import ListRow from "../ui/ListRow";
 import PanelHeader from "../ui/PanelHeader";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
-
-// number or NaN に統一
-const toNum = (v) => (v === "" || v == null ? NaN : Number(v));
 
 export default function SearchPanel({ open, onClose, data = [], onPick, onScanClick }) {
   const [q, setQ] = useState("");
@@ -50,15 +51,16 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
     return m;
   }, [data]);
 
-  // 初期一覧（検索語なし）の並び：希望小売価格 昇順、未登録は最後 → これはローカルのみ
+  // 初期一覧（検索語なし）の並び：商品名（かな）昇順
   const initialSorted = useMemo(() => {
     const arr = Array.isArray(data) ? [...data] : [];
     arr.sort((a, b) => {
-      const pa = Number.isFinite(a?.["希望小売価格"]) ? a["希望小売価格"] : Infinity;
-      const pb = Number.isFinite(b?.["希望小売価格"]) ? b["希望小売価格"] : Infinity;
-      if (pa !== pb) return pa - pb;
-      const na = String(a?.["商品名"] ?? a?.JAN ?? "");
-      const nb = String(b?.["商品名"] ?? b?.JAN ?? "");
+      const na =
+        String(a?.name_kana ?? a?.["商品名"] ?? a?.temp_name ?? "").trim() ||
+        String(a?.JAN ?? a?.jan_code ?? "").trim();
+      const nb =
+        String(b?.name_kana ?? b?.["商品名"] ?? b?.temp_name ?? "").trim() ||
+        String(b?.JAN ?? b?.jan_code ?? "").trim();
       return na.localeCompare(nb, "ja");
     });
     return arr;
@@ -112,7 +114,12 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
         const json = await res.json();
         if (cancelled) return;
         const items = Array.isArray(json?.items) ? json.items : [];
-        setApiItems(items);
+        // 検索対象は「初期一覧（=打点あり）に含まれるJANだけ」（協議 3）
+        const filtered = items.filter((p) => {
+          const jan = String(p?.jan_code || "").trim();
+          return janToLocal.has(jan);
+        });
+        setApiItems(filtered);
       } catch (e) {
         if (cancelled || e.name === "AbortError") return;
         console.error("[SearchPanel] search error:", e);
@@ -139,30 +146,9 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
         const jan = String(p.jan_code || "").trim();
         const local = janToLocal.get(jan);
 
-        // 表示用名前
-        const name =
-          (local && (local["商品名"] || local.temp_name)) ||
-          p.name_kana ||
-          jan;
-
-        // Type
-        const type =
-          (local && (local.Type || local.wine_type)) ||
-          p.wine_type ||
-          "";
-
-        // 価格：まず API の price_inc_tax、なければローカルの 希望小売価格
-        const price = Number.isFinite(p.price_inc_tax)
-          ? p.price_inc_tax
-          : local?.["希望小売価格"];
-
-        // 甘味/ボディ：API sweet/body → 無ければローカル PC 軸など
-        const sweet =
-          (p.sweet != null ? p.sweet : local?.SweetAxis) ??
-          (Number.isFinite(local?.PC2) ? local.PC2 : undefined);
-        const body =
-          (p.body != null ? p.body : local?.BodyAxis) ??
-          (Number.isFinite(local?.PC1) ? local.PC1 : undefined);
+        // 表示用（ListRowが拾うキーに合わせる）
+        const name = (p.name_kana || "").trim() || jan;
+        const wineType = (p.wine_type || "").trim();
 
         return {
           // まずローカルの情報を敷き（UMAP座標など）
@@ -170,18 +156,10 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
           // その上に API 情報をマージ
           JAN: jan,
           jan_code: jan,
-          wine_type: p.wine_type,
-          name_kana: p.name_kana,
-          api_price_inc_tax: p.price_inc_tax,
-          api_sweet: p.sweet,
-          api_body: p.body,
-
-          // ListRow / MapPage 側でよく使うキーを改めて整える
-          商品名: name,
-          Type: type,
-          希望小売価格: price != null ? price : NaN,
-          BodyAxis: Number.isFinite(body) ? body : undefined,
-          SweetAxis: Number.isFinite(sweet) ? sweet : undefined,
+          wine_type: wineType,
+          name_kana: name,
+          商品名: name, // ListRow互換
+          Type: wineType, // 旧互換（ListRowは item.wine_type を主に見る）
         };
       });
     }

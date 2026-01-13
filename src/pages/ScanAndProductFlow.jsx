@@ -1,3 +1,5 @@
+// src/pages/ScanAndProductFlow.jsx
+// 現在使っていない（必要ない）　（App.js にimportあり 削除するなら整理必要）
 import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { DRAWER_HEIGHT } from "../ui/constants";

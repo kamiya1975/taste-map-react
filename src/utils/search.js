@@ -1,3 +1,5 @@
+// src/utils/search.js
+// ローカル検索の品質を上げるための土台 っぽい
 export const normalizeJP = (s = "") =>
   String(s)
     .toLowerCase()

@@ -1,3 +1,5 @@
+// src/components/CircleRatingDisplay.jsx
+// 評価(◎)の見た目を小さく表示するUI部品
 import React from "react";
 
 /**

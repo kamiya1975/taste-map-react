@@ -1,4 +1,5 @@
 // src/pages/StorePage.jsx
+// 多分 メイン店舗選択画面
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { OFFICIAL_STORE_ID } from "../ui/constants";
