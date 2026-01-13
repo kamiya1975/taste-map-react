@@ -12,7 +12,32 @@ import PanelHeader from "../ui/PanelHeader";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
-export default function SearchPanel({ open, onClose, data = [], onPick, onScanClick }) {
+// ==== 初期一覧(A: あなた向け)のためのローカルキー候補 ====
+const RECENT_KEYS = [
+  "searchPanel.recentViewedJans",
+  "recentViewedJans",
+  "app.recentViewedJans",
+  "tastemap.recentViewedJans",
+];
+const WISHLIST_KEYS = [
+  "app.wishlistCache",
+  "wishlistCache",
+  "favoriteCache",
+  "favorites",
+  "tastemap.wishlistCache",
+];
+
+export default function SearchPanel({
+  open,
+  onClose,
+  data = [],
+  onPick,
+  onScanClick,
+  // 任意：MapPage から渡せるなら渡す（無くてもOK）
+  userRatings,         // 例: { [jan]: { rating, updated_at? } } / { [jan]: number } でもOK扱い
+  wishlistCache,       // 例: { [jan]: true }（DB正の表示キャッシュ）
+  recentViewedJans,    // 例: ["4964...", ...]
+}) {
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
   const [apiItems, setApiItems] = useState([]); // /app/search/products の結果
@@ -43,6 +68,60 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
 
   const scrollRef = useRef(null);
   const SCROLL_KEY = "searchPanel.scrollTop";
+
+  // ===== ローカル保存の読み出し（安全）=====
+  const safeParse = (s) => {
+    try { return JSON.parse(s); } catch { return null; }
+  };
+
+  const loadRecentFromStorage = () => {
+    for (const k of RECENT_KEYS) {
+      const raw = (typeof window !== "undefined" && localStorage.getItem(k)) || "";
+      if (!raw) continue;
+      const v = safeParse(raw);
+      if (Array.isArray(v)) return v.map((x) => String(x || "").trim()).filter(Boolean);
+      // 文字列 "a,b,c" も許容
+      if (typeof v === "string") return v.split(",").map((x) => x.trim()).filter(Boolean);
+    }
+    return [];
+  };
+
+  const loadWishlistFromStorage = () => {
+    for (const k of WISHLIST_KEYS) {
+      const raw = (typeof window !== "undefined" && localStorage.getItem(k)) || "";
+      if (!raw) continue;
+      const v = safeParse(raw);
+      if (v && typeof v === "object") return v; // { jan: true } 想定
+    }
+    return null;
+  };
+
+  // “あなた向け”の素材（props優先→localStorage）
+  const recentJans = useMemo(() => {
+    if (Array.isArray(recentViewedJans) && recentViewedJans.length) {
+      return recentViewedJans.map((x) => String(x || "").trim()).filter(Boolean);
+    }
+    return loadRecentFromStorage();
+  }, [open, Array.isArray(recentViewedJans) ? recentViewedJans.join("|") : ""]);
+
+  const wishlistObj = useMemo(() => {
+    if (wishlistCache && typeof wishlistCache === "object") return wishlistCache;
+    return loadWishlistFromStorage();
+  }, [open, wishlistCache]);
+
+  // rating: {jan: {rating}} / {jan: number} 両対応に寄せる
+  const ratingMap = useMemo(() => {
+    const src = userRatings && typeof userRatings === "object" ? userRatings : null;
+    if (!src) return new Map();
+    const m = new Map();
+    Object.entries(src).forEach(([jan, v]) => {
+      const key = String(jan || "").trim();
+      if (!key) return;
+      const r = (typeof v === "number") ? v : Number(v?.rating ?? 0);
+      if (Number.isFinite(r) && r > 0) m.set(key, r);
+    });
+    return m;
+  }, [userRatings]);
 
   // ===== points.csv(UMAP) 側の揺れを吸収して「表示/遷移に必要なキー」に正規化 =====
   const getJan = (d) => {
@@ -194,19 +273,85 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
     return m;
   }, [data, miniByJan]);
 
-  // 初期一覧（検索語なし）：正規化した上で商品名昇順
-  const initialSorted = useMemo(() => {
-    const arr = (Array.isArray(data) ? data : [])
-      .map(normalizeLocalItem)
-      .filter((x) => !!x.jan_code); // JAN無しは落とす（事故防止）
-    arr.sort((a, b) => {
-      const na = String(a?.name_kana || "").trim() || String(a?.jan_code || "");
-      const nb = String(b?.name_kana || "").trim() || String(b?.jan_code || "");
-      return na.localeCompare(nb, "ja");
-    });
-    return arr;
-  }, [data]);
+  // ==========================
+  // 初期一覧（検索語なし）を “あなた向け” にする
+  // - 最近見た
+  // - 最近評価した（≒評価が付いているもの）
+  // - 飲みたい（wishlist）
+  // ※すべて “data(=Mapに出せる候補)” の janToLocal を上限としてフィルタする
+  // ==========================
+  const initialPersonalized = useMemo(() => {
+    const MAX_PER_SECTION = 20;
+    const out = [];
 
+    const pushHeader = (title) => {
+      out.push({ __type: "header", title });
+    };
+    const pushItems = (jans) => {
+      const seen = new Set(out.filter(x => x?.jan_code).map(x => x.jan_code));
+      let n = 0;
+      for (const j of jans) {
+        const jan = String(j || "").trim();
+        if (!jan) continue;
+        if (seen.has(jan)) continue;
+        const item = janToLocal.get(jan);
+        if (!item) continue; // Mapに無い=出さない（憲法）
+        out.push(item);
+        seen.add(jan);
+        n += 1;
+        if (n >= MAX_PER_SECTION) break;
+      }
+      return n;
+    };
+
+    // 1) 最近見た（props/localStorage）
+    const recent = (recentJans || []).slice(0, 200);
+    if (recent.length) {
+      pushHeader("最近見た");
+      const n = pushItems(recent);
+      if (n === 0) out.pop(); // headerだけ残るの防止
+    }
+
+    // 2) 最近評価（いまは ratingMap から “評価ありJAN” を作る）
+    //    ※updated_at が無いので、まずは rating 降順（同率は名前）
+    const ratedJans = Array.from(ratingMap.entries())
+      .sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0]))
+      .map(([jan]) => jan);
+    if (ratedJans.length) {
+      pushHeader("最近評価した");
+      const n = pushItems(ratedJans);
+      if (n === 0) out.pop();
+    }
+
+    // 3) 飲みたい（wishlist）
+    const wishJans = wishlistObj && typeof wishlistObj === "object"
+      ? Object.keys(wishlistObj).filter((jan) => !!wishlistObj[jan])
+      : [];
+    if (wishJans.length) {
+      // 表示順：名前順（安定）
+      wishJans.sort((a, b) => a.localeCompare(b));
+      pushHeader("飲みたい");
+      const n = pushItems(wishJans);
+      if (n === 0) out.pop();
+    }
+
+    // 何も無い場合：従来の “名前順上位” を保険で少しだけ出す（暴走防止で少量）
+    if (out.length === 0) {
+      const fallback = (Array.isArray(data) ? data : [])
+        .map(normalizeLocalItem)
+        .filter((x) => !!x.jan_code);
+      fallback.sort((a, b) => {
+        const na = String(a?.name_kana || "").trim() || String(a?.jan_code || "");
+        const nb = String(b?.name_kana || "").trim() || String(b?.jan_code || "");
+        return na.localeCompare(nb, "ja");
+      });
+      pushHeader("おすすめ");
+      out.push(...fallback.slice(0, 30));
+    }
+
+    return out;
+  }, [data, miniByJan, janToLocal, recentJans, ratingMap, wishlistObj]);
+ 
   // バックエンド検索呼び出し
   useEffect(() => {
     if (!open) return;
@@ -306,24 +451,41 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
     }
 
     // 検索語がないとき：初期一覧をそのまま
-    return initialSorted;
-  }, [qDebounced, apiItems, janToLocal, initialSorted]);
+    return initialPersonalized;
+  }, [qDebounced, apiItems, janToLocal, initialPersonalized]);
 
   const pick = (i) => {
-    const it = results[i] ?? results[0];
-    if (it) onPick?.(it);
+   const cand = results[i] ?? results[0];
+   if (!cand) return;
+   // headerはスキップして次の実データを拾う
+   if (cand?.__type === "header") {
+     const next = results.find((x) => x && x.__type !== "header");
+     if (next) onPick?.(next);
+     return;
+   }
+   onPick?.(cand);
   };
 
   // 重複JAN/コードを除外してから表示用配列を作る
   const listed = useMemo(() => {
-    const rows = results.map((x, i) => ({
-      ...x,
-      addedAt: x.addedAt || null,
-      displayIndex: i + 1,
-    }));
+    // header行は index を振らない / 重複除外もしない
+    let idx = 0;
+    const rows = results.map((x) => {
+      if (x?.__type === "header") return x;
+      idx += 1;
+      return {
+        ...x,
+        addedAt: x.addedAt || null,
+        displayIndex: idx,
+      };
+    });
     const seen = new Map(); // key => true
     const out = [];
     for (const r of rows) {
+      if (r?.__type === "header") {
+        out.push(r);
+        continue;
+      }
       const k = String(
         r?.JAN ?? r?.jan_code ?? r?.code ?? r?.id ?? r?.jt_code ?? ""
       );
@@ -503,21 +665,38 @@ export default function SearchPanel({ open, onClose, data = [], onPick, onScanCl
             商品データが読み込まれていません。
           </div>
         )}
-
         <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {listed.map((item, idx) => (
-            <ListRow
-              key={`${String(
-                item?.JAN ?? item?.jan_code ?? item?.code ?? item?.id ?? "row"
-              )}-${idx}`}
-              index={item.displayIndex}
-              item={item}
-              onPick={() => pick(idx)}
-              showDate={false}
-              accentColor="#6b2e2e"
-              hoverHighlight={true}
-            />
-          ))}
+          {listed.map((item, idx) => {
+            if (item?.__type === "header") {
+              return (
+                <li
+                  key={`hdr-${item.title}-${idx}`}
+                  style={{
+                    padding: "10px 6px 6px",
+                    fontSize: 13,
+                    color: "#666",
+                    fontWeight: 700,
+                  }}
+                >
+                  {item.title}
+                </li>
+              );
+            }
+
+            return (
+              <ListRow
+                key={`${String(
+                  item?.JAN ?? item?.jan_code ?? item?.code ?? item?.id ?? "row"
+                )}-${idx}`}
+                index={item.displayIndex}
+                item={item}
+                onPick={() => pick(idx)}
+                showDate={false}
+                accentColor="#6b2e2e"
+                hoverHighlight={true}
+              />
+            );
+          })}
         </ul>
       </div>
     </Drawer>
