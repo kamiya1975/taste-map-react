@@ -56,7 +56,7 @@ export default function MapGuidePanelContent() {
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconDot color="#9aa0a6" />}>
-          周辺で購入できる選んだ店舗のワインを示します。風味が近いワインは点が集まって見えます。タップで詳細を表示できます。
+          周辺で購入できる（選んだ店舗の）ワインを示します。風味が近いワインは点が集まって見えます。タップで詳細を表示できます。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
@@ -70,13 +70,13 @@ export default function MapGuidePanelContent() {
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
-        <Row icon={<IconCurrent />}>
+        <Row icon={<IconSwirl />}>
           飲んで評価（◎）すると表示され、評価に応じて記号のサイズが変わります。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconCurrent />}>
-          味わいグループを色分けで示します。もう一度タップすると色分けがもとに戻ります。
+          味わいグループを色分けで示します。もう一度タップすると色分けが元に戻ります。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
