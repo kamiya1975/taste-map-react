@@ -13,7 +13,7 @@ const IconCurrent = ({ size = 18 }) => (
 
 const IconGuide = ({ size = 18 }) => (
   <img
-    src={`${process.env.PUBLIC_URL || ""}/img/app-guide.svg`}
+    src={`${process.env.PUBLIC_URL || ""}/icons/icon-192.png`}
     alt=""
     width={size}
     height={size}
