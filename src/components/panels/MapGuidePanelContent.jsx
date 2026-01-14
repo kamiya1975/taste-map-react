@@ -1,5 +1,6 @@
 // src/components/panels/MapGuidePanelContent.jsx
 // マップガイド（マップの説明）パネル
+// - 説明文 と 表示アイコン
 import React from "react";
 
 /* --- 小さなアイコン群（SVG/CSSで再現） --- */
@@ -9,11 +10,23 @@ const IconCurrent = ({ size = 18 }) => (
     <circle cx="12" cy="12" r="3" fill="#222" />
   </svg>
 );
+
+const IconGuide = ({ size = 18 }) => (
+  <img
+    src={`${process.env.PUBLIC_URL || ""}/img/app-guide.svg`}
+    alt=""
+    width={size}
+    height={size}
+    style={{ display: "block" }}
+  />
+);
+
 const IconDot = ({ color = "#9aa0a6", size = 12 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="8" fill={color} />
   </svg>
 );
+
 const IconSwirl = ({ size = 18 }) => (
   <img src={`${process.env.PUBLIC_URL || ""}/img/map-guide.svg`} alt="" width={size} height={size} />
 );
@@ -34,6 +47,16 @@ const Row = ({ icon, children }) => (
   </div>
 );
 
+const IconColour = ({ size = 18 }) => (
+  <img
+    src={`${process.env.PUBLIC_URL || ""}/img/icon-colour.png`}
+    alt=""
+    width={size}
+    height={size}
+    style={{ display: "block" }}
+  />
+);
+
 export default function MapGuidePanelContent() {
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", padding: 16 }}>
@@ -50,7 +73,7 @@ export default function MapGuidePanelContent() {
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
-        <Row icon={<IconCurrent />}>
+        <Row icon={<IconGuide />}>
           基準のワインの風味位置を示します。タップで印象評価スライダーが現れ、現在の嗜好位置の再生成ができます。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
@@ -75,7 +98,7 @@ export default function MapGuidePanelContent() {
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
-        <Row icon={<IconCurrent />}>
+        <Row icon={<IconColour />}>
           味わいグループを色分けで示します。もう一度タップすると色分けが元に戻ります。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
