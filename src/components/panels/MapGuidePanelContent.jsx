@@ -123,7 +123,7 @@ export default function MapGuidePanelContent() {
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconSwirl />}>
-          飲んで評価（◎）すると表示され、評価に応じて記号のサイズが変わります。
+          飲んで評価（◎）すると表示され、評価に応じて記号のサイズが変わります。評価によってあなたの現在の嗜好位置が変化していきます。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
