@@ -133,7 +133,7 @@ export default function MapGuidePanelContent() {
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconBubbleTriangle />}>
-          各項目をタップすると、その要素が強い位置をバブルで示します。
+          各項目をタップすると、その要素が強い位置をバブルで示します。バブルが大きいほどその要素の特徴が出ています。
         </Row>
       </div>
     </div>
