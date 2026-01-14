@@ -57,7 +57,7 @@ export const PANEL_HEADER_BG      = "rgb(221, 211, 198)";
 export const PANEL_HEADER_BORDER  = "1px solid rgb(201, 201, 176)";
 export const PANEL_HEADER_PADDING = "0 8px 0 12px";
 
-// ===== タイプ別カラー（CSS / Array）=====
+// ===== タイプ別カラー（CSS / Array）===== //多分使われていない
 export const TYPE_COLOR_CSS = {
   Spa: "rgb(111,151,173)", Sparkling: "rgb(111,151,173)",
   White: "rgb(213,213,102)", Red: "rgb(131,39,72)",

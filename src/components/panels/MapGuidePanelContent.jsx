@@ -46,29 +46,42 @@ export default function MapGuidePanelContent() {
       {/* ライトカード */}
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e6ded2", overflow: "hidden" }}>
         <Row icon={<IconCurrent />}>
-          あなたの現在の嗜好位置を示し、飲んだワインの評価によって変化します。
+          あなたの現在の嗜好位置を示し、飲んだワインの評価によって変化していきます。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconCurrent />}>
-          新規追加：あなたの現在の嗜好位置を示し、飲んだワインの評価によって変化します。
+          基準のワインの風味位置を示します。タップで印象評価スライダーが現れ、現在の嗜好位置の再生成ができます。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconDot color="#9aa0a6" />}>
-          周辺で購入できるワインを示します。風味が近いワインは点が集まって見えます。タップで詳細を表示できます。
+          周辺で購入できる選んだ店舗のワインを示します。風味が近いワインは点が集まって見えます。タップで詳細を表示できます。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
+
+        <Row icon={<IconDot color="#9aa0a6" />}>
+          ECで購入できるワインを示します。タップで詳細を表示できます。
+        </Row>
+        <div style={{ height: 1, background: "#e6ded2" }} />
+
         <Row icon={<IconArea />}>
           ワインが配置されているおおよその範囲（目安）を示します。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
-        <Row icon={<IconDot color="#b35367" />}>
-          「飲みたい」（★）に登録したワインです。
+
+        <Row icon={<IconCurrent />}>
+          飲んで評価（◎）すると表示され、評価に応じて記号のサイズが変わります。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
-        <Row icon={<IconSwirl />}>
-          飲んで評価（◎）すると表示され、評価に応じて記号のサイズが変わります。
+
+        <Row icon={<IconCurrent />}>
+          味わいグループを色分けで示します。もう一度タップすると色分けがもとに戻ります。
+        </Row>
+        <div style={{ height: 1, background: "#e6ded2" }} />
+
+        <Row icon={<IconCurrent />}>
+          各項目をタップすると、その要素が強い位置をバブルで示します。
         </Row>
       </div>
     </div>
