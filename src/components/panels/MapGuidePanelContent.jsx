@@ -12,7 +12,7 @@ const IconCurrent = ({ size = 18 }) => (
   </svg>
 );
 // 嗜好位置（しずく型）
-const IconPin = ({ size = 20, fill = "#2A6CF7", stroke = "#FFFFFF", strokeWidth = 2, innerFill = "#FFFFFF" }) => (
+const IconPin = ({ size = 20, fill = "#F7931E", stroke = "#FFFFFF", strokeWidth = 2, innerFill = "#FFFFFF" }) => (
   <svg width={size} height={size} viewBox="0 0 64 96" style={{ display: "block" }}>
     <path
       d="M32 4 C19 4 9 14 9 28 C9 47 32 79 32 79 C32 79 55 47 55 28 C55 14 45 4 32 4 Z"
@@ -40,7 +40,7 @@ const IconDot = ({ color = "#9aa0a6", size = 12 }) => (
   </svg>
 );
 // EC商品（オレンジ星形）
-const IconStarOrange = ({ size = 18, color = "#F7931E" }) => (
+const IconStarOrange = ({ size = 12, color = "#F7931E" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "block" }}>
     <path
       d="M12 2.5l2.9 6.1 6.7.9-4.9 4.7 1.2 6.7-5.9-3.2-5.9 3.2 1.2-6.7-4.9-4.7 6.7-.9L12 2.5z"
@@ -80,7 +80,11 @@ const IconColour = ({ size = 18 }) => (
   />
 );
 // バブル（グレイ下三角）
-
+const IconBubbleTriangle = ({ size = 14, color = "#9aa0a6" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "block" }}>
+    <path d="M12 18L5 8h14l-7 10z" fill={color} />
+  </svg>
+);
 
 export default function MapGuidePanelContent() {
   return (
@@ -128,7 +132,7 @@ export default function MapGuidePanelContent() {
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
-        <Row icon={<IconCurrent />}>
+        <Row icon={<IconBubbleTriangle />}>
           各項目をタップすると、その要素が強い位置をバブルで示します。
         </Row>
       </div>
