@@ -549,8 +549,6 @@ export default function SearchPanel({
             onClick={() => {
               setBarcodeErr("");
               setScannerOpen(true);
-              // 互換：親が何かしたいなら呼ぶ
-              onScanClick?.();
             }}
             title="バーコード読み取り"
             aria-label="バーコード読み取り"
