@@ -1138,15 +1138,20 @@ function MapPage() {
 
   // ====== 子iframeへ（wishlist反映など）状態スナップショットを送る
   // ※ favoriteCache（= 表示用wishlistキャッシュ）を唯一のソースにする
+  const CHILD_ORIGIN =
+    typeof window !== "undefined" ? window.location.origin : "*";
+
   const postToChild = (payload) => {
     try {
-      iframeRef.current?.contentWindow?.postMessage(payload, "*");
+      iframeRef.current?.contentWindow?.postMessage(payload, CHILD_ORIGIN);
     } catch {}
   };
 
   // 商品ページ（iframe）からの postMessage
   useEffect(() => {
     const onMsg = async (e) => {
+      // 同一オリジン以外は無視（混入対策）
+      if (!e || e.origin !== CHILD_ORIGIN) return;
       const msg = e?.data || {};
       const { type } = msg || {};
       if (!type) return;
@@ -1276,23 +1281,7 @@ function MapPage() {
 
       // 子が再描画直後に状態を取りに来た時
       if (type === "REQUEST_STATE") {
-        const sendSnapshotToChild = (nextRatingObj) => {
-          const isWished = !!favoriteCache[janStr];
-          postToChild({
-            type: "STATE_SNAPSHOT",
-            jan: janStr,
-            // UI上の「飲みたい」状態（★）
-            wished: isWished,
-            // 後方互換（古い子が favorite を見ている場合）
-            favorite: isWished,
-            rating: nextRatingObj || userRatings[janStr] || null,
-            hideHeart:
-              (nextRatingObj?.rating ||
-                userRatings[janStr]?.rating ||
-                0) > 0,
-          });
-        };
-        sendSnapshotToChild(null);       
+        sendSnapshotToChild(janStr, null);
         return;
       }
     };

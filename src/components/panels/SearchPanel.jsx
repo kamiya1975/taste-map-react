@@ -1,14 +1,17 @@
 // src/components/panels/SearchPanel.jsx
-// 検索パネル
-// 初期一覧は 選択した店舗（EC連携有無含む）商品一覧
-// 検索対象は 上記初期一覧の商品の中から
-// バーコードカメラ検索 の検索対象は tdb_product（DB全商品）の中から　※バーコードカメラについては別ファイル
+// 検索パネル　（バーコードカメラ検索も一部含む）
+// - 初期一覧は 選択した店舗（EC連携有無含む）商品一覧
+// - 検索対象は 上記初期一覧の商品の中から
+// - バーコードカメラ検索 の検索対象は tdb_product（DB全商品）の中から
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import Drawer from "@mui/material/Drawer";
 import { normalizeJP } from "../../utils/search";
 import { drawerModalProps, paperBaseStyle, DRAWER_HEIGHT } from "../../ui/constants";
 import ListRow from "../ui/ListRow";
 import PanelHeader from "../ui/PanelHeader";
+import BarcodeScanner from "../BarcodeScanner";
+import { fetchProductByJan } from "../../api/appSearch";
+
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
@@ -32,7 +35,7 @@ export default function SearchPanel({
   onClose,
   data = [],
   onPick,
-  onScanClick,
+  onScanClick,         // 互換のため残す（未使用でもOK）
   // 任意：MapPage から渡せるなら渡す（無くてもOK）
   userRatings,         // 例: { [jan]: { rating, updated_at? } } / { [jan]: number } でもOK扱い
   wishlistCache,       // 例: { [jan]: true }（DB正の表示キャッシュ）
@@ -42,6 +45,11 @@ export default function SearchPanel({
   const [qDebounced, setQDebounced] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // バーコードスキャナ
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [barcodeItem, setBarcodeItem] = useState(null); // DBから取れた1件（表示用）
+  const [barcodeErr, setBarcodeErr] = useState("");
 
   // 初期一覧（選択店舗の対象JAN）の “DB正” 情報を保持
   const [miniByJan, setMiniByJan] = useState(() => new Map());
@@ -54,6 +62,9 @@ export default function SearchPanel({
       setLoading(false);
       setErrorMsg("");
       setMiniByJan(new Map());
+      setScannerOpen(false);
+      setBarcodeItem(null);
+      setBarcodeErr("");      
     }
   }, [open]);
 
@@ -325,6 +336,24 @@ export default function SearchPanel({
     return m;
   }, [data, miniByJan]);
 
+  // バーコードスキャン結果を SearchPanel の item 形式に寄せる（ListRow互換）
+  const normalizeBarcodeItem = (p) => {
+    if (!p) return null;
+    const jan = String(p?.jan_code || "").trim();
+    const wineType = normalizeWineType(p?.wine_type);
+    const name = String(p?.name_kana || "").trim() || jan;
+    return {
+      ...p,
+      JAN: jan,
+      jan_code: jan,
+      name_kana: name,
+      商品名: name,
+      wine_type: wineType,
+      Type: wineType,
+      // UMAP座標は無い前提（中心移動しない）
+    };
+  };
+
   // ==========================
   // 初期一覧（検索語なし）
   // Mapに描画されている集合（data）と同等（= janToLocal の全件）
@@ -344,20 +373,27 @@ export default function SearchPanel({
     const trimmed = (qDebounced || "").trim();
     const nq = normalizeJP(trimmed);
 
+    // バーコードスキャン結果がある & 検索語が空なら、バーコード結果を優先表示
+    if (!nq && barcodeItem) {
+      return [
+        { __type: "header", title: "バーコード結果" },
+        barcodeItem,
+      ];
+    }
+
     // 検索語がないとき：初期一覧をそのまま
     if (!nq) return initialFromMap;
 
     // 検索語があるとき：
     // 初期一覧（Mapに表示されている商品）からローカル検索
     return localFilter(initialFromMap, trimmed);
-  }, [qDebounced, initialFromMap]);
+  }, [qDebounced, initialFromMap, barcodeItem]);
 
-  const pick = (i) => {
-   const cand = results[i] ?? results[0];
-   if (!cand) return;
+ const pickItem = (cand) => {
+  if (!cand) return;
    // headerはスキップして次の実データを拾う
    if (cand?.__type === "header") {
-     const next = results.find((x) => x && x.__type !== "header");
+    const next = results.find((x) => x && x.__type !== "header");
      if (next) onPick?.(next);
      return;
    }
@@ -462,6 +498,8 @@ export default function SearchPanel({
           setQ("");
           setQDebounced("");
           setErrorMsg("");
+          setBarcodeItem(null);
+          setBarcodeErr("");
           onClose?.();
         }}
       />
@@ -490,11 +528,14 @@ export default function SearchPanel({
             onChange={(e) => {
               setQ(e.target.value);
               sessionStorage.setItem(SCROLL_KEY, "0");
+              // 手入力を始めたらバーコード結果は消す（混線防止）
+              if (barcodeItem) setBarcodeItem(null);
+              if (barcodeErr) setBarcodeErr("");              
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") pick(0);
+              if (e.key === "Enter") pickItem(results.find(x => x?.__type !== "header"));
             }}
-            placeholder="商品名 / 産地 / 品種 / JAN で検索"
+            placeholder="商品名 / タイプ / 産地 / 品種 / JAN で検索"
             style={{
               border: "none",
               outline: "none",
@@ -505,7 +546,12 @@ export default function SearchPanel({
             }}
           />
           <button
-            onClick={onScanClick}
+            onClick={() => {
+              setBarcodeErr("");
+              setScannerOpen(true);
+              // 互換：親が何かしたいなら呼ぶ
+              onScanClick?.();
+            }}
             title="バーコード読み取り"
             aria-label="バーコード読み取り"
             style={{
@@ -534,13 +580,51 @@ export default function SearchPanel({
             </div>
           </button>
         </div>
+
         {localSearching && (
           <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>検索中…</div>
         )}
         {!loading && errorMsg && (
           <div style={{ marginTop: 4, fontSize: 12, color: "#c00" }}>{errorMsg}</div>
         )}
+        {!loading && !errorMsg && barcodeErr && (
+          <div style={{ marginTop: 4, fontSize: 12, color: "#c00" }}>{barcodeErr}</div>
+        )}
       </div>
+
+      {/* バーコードスキャナ（オーバーレイ） */}
+      <BarcodeScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onDetected={async (jan13) => {
+          try {
+            const token =
+              (typeof window !== "undefined" &&
+                (localStorage.getItem("app.access_token") || "")) ||
+              "";
+
+            const p = await fetchProductByJan({ jan: jan13, accessToken: token || undefined });
+            if (!p) {
+              setBarcodeItem(null);
+              setBarcodeErr("該当商品がDBにありません。");
+              return { ok: false };
+            }
+
+            setBarcodeItem(normalizeBarcodeItem(p));
+            setBarcodeErr("");
+            setQ("");
+            setQDebounced("");
+            return { ok: true };
+          } catch (e) {
+            console.error("[barcode jan search error]", e);
+            setBarcodeItem(null);
+            setBarcodeErr("バーコード検索に失敗しました。通信状況を確認してください。");
+            return { ok: false };
+          } finally {
+            setScannerOpen(false);
+          }
+        }}
+      />
 
       {/* リスト */}
       <div
@@ -588,7 +672,7 @@ export default function SearchPanel({
                 )}-${idx}`}
                 index={item.displayIndex}
                 item={item}
-                onPick={() => pick(idx)}
+                onPick={() => pickItem(item)}
                 showDate={false}
                 accentColor="#6b2e2e"
                 hoverHighlight={true}

@@ -1,4 +1,5 @@
 // src/components/BarcodeScanner.jsx
+// バーコードカメラ検索 で使用
 // 目的：PWA には安定ルートのみ、Safari(ブラウザ)にだけ穏やかな追加解放を適用
 // - PWA 判定: display-mode: standalone / navigator.standalone
 // - Safari(ブラウザ)のみ stop→srcObject=null→load の簡潔な解放 + 120ms 待機
