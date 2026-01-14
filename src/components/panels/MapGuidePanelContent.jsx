@@ -49,6 +49,12 @@ export default function MapGuidePanelContent() {
           あなたの現在の嗜好位置を示し、飲んだワインの評価によって変化します。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
+
+        <Row icon={<IconCurrent />}>
+          新規追加：あなたの現在の嗜好位置を示し、飲んだワインの評価によって変化します。
+        </Row>
+        <div style={{ height: 1, background: "#e6ded2" }} />
+
         <Row icon={<IconDot color="#9aa0a6" />}>
           周辺で購入できるワインを示します。風味が近いワインは点が集まって見えます。タップで詳細を表示できます。
         </Row>
