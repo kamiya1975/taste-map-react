@@ -3,14 +3,27 @@
 // - 説明文 と 表示アイコン
 import React from "react";
 
-/* --- 小さなアイコン群（SVG/CSSで再現） --- */
+/* --- 説明文左の 小さなアイコン群（SVG/CSSで再現） --- */
+// 二重丸（使われていない）
 const IconCurrent = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="8" fill="none" stroke="#222" strokeWidth="1.6" />
     <circle cx="12" cy="12" r="3" fill="#222" />
   </svg>
 );
-
+// 嗜好位置（しずく型）
+const IconPin = ({ size = 20, fill = "#2A6CF7", stroke = "#FFFFFF", strokeWidth = 2, innerFill = "#FFFFFF" }) => (
+  <svg width={size} height={size} viewBox="0 0 64 96" style={{ display: "block" }}>
+    <path
+      d="M32 4 C19 4 9 14 9 28 C9 47 32 79 32 79 C32 79 55 47 55 28 C55 14 45 4 32 4 Z"
+      fill={fill}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+    />
+    <circle cx="32" cy="28" r="9" fill={innerFill} />
+  </svg>
+);
+// 基準のワイン（コンパス）
 const IconGuide = ({ size = 18 }) => (
   <img
     src={`${process.env.PUBLIC_URL || ""}/icons/icon-192.png`}
@@ -20,16 +33,22 @@ const IconGuide = ({ size = 18 }) => (
     style={{ display: "block" }}
   />
 );
-
+// 店舗商品（グレイドット）
 const IconDot = ({ color = "#9aa0a6", size = 12 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="8" fill={color} />
   </svg>
 );
-
-const IconSwirl = ({ size = 18 }) => (
-  <img src={`${process.env.PUBLIC_URL || ""}/img/map-guide.svg`} alt="" width={size} height={size} />
+// EC商品（オレンジ星形）
+const IconStarOrange = ({ size = 18, color = "#F7931E" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "block" }}>
+    <path
+      d="M12 2.5l2.9 6.1 6.7.9-4.9 4.7 1.2 6.7-5.9-3.2-5.9 3.2 1.2-6.7-4.9-4.7 6.7-.9L12 2.5z"
+      fill={color}
+    />
+  </svg>
 );
+// 配置範囲（四角斜線）
 const IconArea = ({ size = 16 }) => (
   <div
     style={{
@@ -39,14 +58,18 @@ const IconArea = ({ size = 16 }) => (
     }}
   />
 );
-
+// 評価（評価丸印と背景）
+const IconSwirl = ({ size = 18 }) => (
+  <img src={`${process.env.PUBLIC_URL || ""}/img/map-guide.svg`} alt="" width={size} height={size} />
+);
+// （使われていない）
 const Row = ({ icon, children }) => (
   <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 14px" }}>
     <div style={{ width: 22, display: "flex", justifyContent: "center" }}>{icon}</div>
     <div style={{ fontSize: 14.5, lineHeight: 1.85, color: "#222" }}>{children}</div>
   </div>
 );
-
+// 味わいグループ（カラーパレット）
 const IconColour = ({ size = 18 }) => (
   <img
     src={`${process.env.PUBLIC_URL || ""}/img/icon-colour.png`}
@@ -56,6 +79,8 @@ const IconColour = ({ size = 18 }) => (
     style={{ display: "block" }}
   />
 );
+// バブル（グレイ下三角）
+
 
 export default function MapGuidePanelContent() {
   return (
@@ -68,7 +93,7 @@ export default function MapGuidePanelContent() {
 
       {/* ライトカード */}
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e6ded2", overflow: "hidden" }}>
-        <Row icon={<IconCurrent />}>
+        <Row icon={<IconPin />}>
           あなたの現在の嗜好位置を示し、飲んだワインの評価によって変化していきます。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
@@ -83,7 +108,7 @@ export default function MapGuidePanelContent() {
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
-        <Row icon={<IconDot color="#9aa0a6" />}>
+        <Row icon={<IconStarOrange />}>
           ECで購入できるワインを示します。タップで詳細を表示できます。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
