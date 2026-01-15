@@ -1,5 +1,5 @@
 // src/cart/simpleCart.js
-// 状態（カートの中身）　　　　　　　ローカルだけで完結する簡易カート（JAN/qty中心）
+// 状態（カートの中身）　　　　ローカルだけで完結する簡易カート（JAN/qty中心）
 
 // - localStorage: tm_simple_cart_v1
 // - API不要、決済時にだけ JAN→Variant を解決して /cart パーマリンクを作る
@@ -7,9 +7,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getVariantGidByJan } from "../lib/ecLinks";
+import { getUserId, getGuestId } from "../utils/auth";
 
-const LS_KEY = "tm_simple_cart_v1";
+const LS_KEY_BASE = "tm_simple_cart_v1";
 const CART_CHANNEL = "cart_bus"; // 同一オリジン内の全ドキュメントで使う通知チャネル名
+
+function getCartStorageKey() {
+  // user優先。無ければguestId（無ければ発行される）
+  const uid = (getUserId && getUserId()) ? String(getUserId()) : "";
+  if (uid) return `${LS_KEY_BASE}:u:${uid}`;
+  const gid = (getGuestId && getGuestId()) ? String(getGuestId()) : "g";
+  return `${LS_KEY_BASE}:g:${gid}`;
+}
 
 function readJSON(key, defVal) {
   try {
@@ -21,6 +30,23 @@ function readJSON(key, defVal) {
 }
 function writeJSON(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+function removeKey(key) {
+  try { localStorage.removeItem(key); } catch {}
+}
+
+function migrateLegacyCartIfNeeded(scopedKey) {
+  // 旧キー（LS_KEY_BASE） → scopedKey へ一度だけ移行
+  try {
+    const legacy = readJSON(LS_KEY_BASE, null);
+    if (!legacy || !Array.isArray(legacy) || legacy.length === 0) return;
+    const scoped = readJSON(scopedKey, null);
+    if (Array.isArray(scoped) && scoped.length > 0) return;
+    writeJSON(scopedKey, legacy);
+    // 旧キーは消してOK（残すと「別IDログインで復活」しうる）
+    removeKey(LS_KEY_BASE);
+  } catch {}
 }
 
 // gid://shopify/ProductVariant/1234567890 → "1234567890"
@@ -42,20 +68,50 @@ function buildCartPermalink(shopHost, pairs /* [{variantId, qty}] */) {
 }
 
 export function useSimpleCart() {
+  const [storageKey, setStorageKey] = useState(() => {
+    const k = getCartStorageKey();
+    migrateLegacyCartIfNeeded(k);
+    return k;
+  });
+
   // [{jan, title?, price?, imageUrl?, qty}]
-  const [items, setItems] = useState(() => readJSON(LS_KEY, []));
+  const [items, setItems] = useState(() => readJSON(storageKey, []));
 
   // --- ① localStorageへ常に同期保存 ---
   useEffect(() => {
-    writeJSON(LS_KEY, Array.isArray(items) ? items : []);
-  }, [items]);
+    writeJSON(storageKey, Array.isArray(items) ? items : []);
+  }, [items, storageKey]);
 
   // --- ② rehydrate: localStorage→state を即時反映 ---
   const hydrateFromStorage = useCallback(() => {
-    const next = readJSON(LS_KEY, []);
+    const next = readJSON(storageKey, []);
     const same = JSON.stringify(next) === JSON.stringify(items);
     if (!same) setItems(next);
-  }, [items]);
+  }, [items, storageKey]);
+
+  // --- ★ auth変化でストレージキーを切替（別IDログイン対策の本丸） ---
+  useEffect(() => {
+    const onAuthChanged = () => {
+      const nextKey = getCartStorageKey();
+      migrateLegacyCartIfNeeded(nextKey);
+      setStorageKey((prev) => {
+        if (prev === nextKey) return prev;
+        return nextKey;
+      });
+    };
+    window.addEventListener("tm_auth_changed", onAuthChanged);
+    return () => window.removeEventListener("tm_auth_changed", onAuthChanged);
+  }, []);
+
+  // storageKey が切り替わったら、そのスコープの内容に即追従
+  useEffect(() => {
+    try {
+      const next = readJSON(storageKey, []);
+      setItems(Array.isArray(next) ? next : []);
+    } catch {
+      setItems([]);
+    }
+  }, [storageKey]);
 
   const totalQty = useMemo(
     () => (Array.isArray(items) ? items.reduce((s, it) => s + Number(it.qty || 0), 0) : 0),
@@ -144,7 +200,7 @@ export function useSimpleCart() {
       bc.close();
     } catch {}
     // storage は writeJSON で既に setItem 済み
-  }, [items]);
+  }, [items, storageKey]);
 
   // --- ④ 他フレーム/別タブ/子iframe → 自分を最新化 ---
   useEffect(() => {
@@ -156,7 +212,7 @@ export function useSimpleCart() {
     const onStorage = (e) => {
       try {
         if (!e) return;
-        if (!e.key || e.key === LS_KEY) rehydrate();
+        if (!e.key || e.key === storageKey) rehydrate();
       } catch {}
     };
 
@@ -182,7 +238,7 @@ export function useSimpleCart() {
       window.removeEventListener("message", onMessage);
       try { bc && bc.close(); } catch {}
     };
-  }, [hydrateFromStorage]);
+  }, [hydrateFromStorage, storageKey]);
 
   return {
     items,
