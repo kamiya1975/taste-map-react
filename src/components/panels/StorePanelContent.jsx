@@ -225,10 +225,17 @@ export default function StorePanelContent() {
     }
   }
 
-  // メイン店舗以外 ＋ 公式Shop(id=1) は除外 → サブ候補一覧
-  const otherStores = stores.filter(
-    (s) => !s.is_main && s.id !== OFFICIAL_STORE_ID
-  );
+  // - 通常：公式Shop(OFFICIAL_STORE_ID) はサブ候補に出さない
+  // - ただしメイン店舗が EC連携なし（ec_active=false）の場合だけ、公式Shopをサブ候補に出す
+  const mainEcActive = !!mainStore?.ec_active;
+  const otherStores = stores.filter((s) => {
+    if (s.is_main) return false;
+    if (s.id === OFFICIAL_STORE_ID) {
+      // main が公式Shopの場合は is_main で弾かれるのでここには来ない想定だが保険
+      return !mainEcActive;
+    }
+    return true;
+  });
 
   const favoritesCount = stores.filter((s) => s.is_sub).length;
 
