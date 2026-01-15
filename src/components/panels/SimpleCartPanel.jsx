@@ -297,9 +297,8 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
           <div
             style={{
               maxWidth: 560,
-              margin: "10px auto 0",
+              margin: "20px auto 0",
               padding: "0 8px",
-              textAlign: "center",
               fontSize: 12.5,
               lineHeight: 1.6,
               color: "#666",
