@@ -77,8 +77,16 @@ export function useSimpleCart() {
   // [{jan, title?, price?, imageUrl?, qty}]
   const [items, setItems] = useState(() => readJSON(storageKey, []));
 
+  // ★ storageKey 切替直後は「前スコープ items を新キーへ書く」事故を防ぐ
+  const skipNextPersistRef = useRef(false);
+
   // --- ① localStorageへ常に同期保存 ---
+  // storageKey 切替直後の1回は保存をスキップ（コピー事故防止）
   useEffect(() => {
+    if (skipNextPersistRef.current) {
+      skipNextPersistRef.current = false;
+      return;
+    }
     writeJSON(storageKey, Array.isArray(items) ? items : []);
   }, [items, storageKey]);
 
@@ -106,9 +114,12 @@ export function useSimpleCart() {
   // storageKey が切り替わったら、そのスコープの内容に即追従
   useEffect(() => {
     try {
+      // ★ 先に読み込み → その直後の persist を1回スキップ
+      skipNextPersistRef.current = true;
       const next = readJSON(storageKey, []);
       setItems(Array.isArray(next) ? next : []);
     } catch {
+      skipNextPersistRef.current = true;      
       setItems([]);
     }
   }, [storageKey]);
