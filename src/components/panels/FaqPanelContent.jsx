@@ -27,8 +27,6 @@ export default function FaqPanelContent() {
           minHeight: "100%",
         }}
       >
-        <H>よくある質問</H>
-
         <Q>位置情報を許可しないと使えない？</Q>
         <A>許可しなくても使えます。許可しない場合は東京駅を基準に進めます。</A>
         <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "18px 0 8px" }} />
@@ -50,7 +48,7 @@ export default function FaqPanelContent() {
         <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "18px 0 8px" }} />
 
         <Q>商品詳細にある「飲みたい」の星形を押すとどうなるの？</Q>
-        <A>評価・飲みたい一覧パネルに追加され、あとから探しやすくなります。評価すると飲みたいフラグが外れ、評価アイコンへと変わります。</A>
+        <A>評価・飲みたい一覧パネルに追加され、あとから探しやすくなります。評価すると飲みたいフラグが外れて評価アイコンへと変わります。</A>
         <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "18px 0 8px" }} />
 
         <Q>打点が小さくて見たい詳細が見れないけどどうすればいい？</Q>
