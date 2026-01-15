@@ -912,6 +912,21 @@ export default function MyAccountPanelContent() {
             </label>
           </div>
 
+          {/* 追加文（ID注意） */}
+          <div
+            style={{
+              maxWidth: 560,
+              margin: "10px auto 0",
+              padding: "0 8px",
+              textAlign: "center",
+              fontSize: 12.5,
+              lineHeight: 1.6,
+              color: "#666",
+            }}
+          >
+            ID（メール）はEC購入決済時の連絡先メールアドレスとなります。
+          </div>
+
           {/* 新規登録 保存ボタン */}
           <div style={{ maxWidth: 560, margin: "12px auto 0 auto" }}>
             <button
