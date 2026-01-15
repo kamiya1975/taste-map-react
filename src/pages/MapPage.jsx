@@ -315,6 +315,13 @@ function CartProbe() {
 }
 
 function MapPage() {
+  // Drawer を “背面（Map）に操作を通す” 共通設定
+  const passThroughDrawerSx = useMemo(() => ({ pointerEvents: "none" }), []);
+  const passThroughBackdropProps = useMemo(
+    () => ({ style: { background: "transparent", pointerEvents: "none" } }),
+    []
+  );
+  const passThroughPaperSx = useMemo(() => ({ pointerEvents: "auto" }), []);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -1971,11 +1978,16 @@ function MapPage() {
         anchor="bottom"
         open={isMapGuideOpen}
         onClose={() => setIsMapGuideOpen(false)}
-        sx={{ zIndex: 1800 }}
-        BackdropProps={{ style: { background: "transparent" } }}
+        sx={{ zIndex: 1800, ...passThroughDrawerSx }}
+        hideBackdrop
+        BackdropProps={passThroughBackdropProps}
         ModalProps={{
           ...drawerModalProps,
           keepMounted: true,
+          disableEnforceFocus: true,
+          disableAutoFocus: true,
+          disableRestoreFocus: true,
+          disableScrollLock: true,
         }}
         PaperProps={{
           style: {
@@ -1985,6 +1997,7 @@ function MapPage() {
             display: "flex",
             flexDirection: "column",
           },
+          sx: passThroughPaperSx,          
         }}
       >
         <PanelHeader
@@ -2005,9 +2018,17 @@ function MapPage() {
         anchor="bottom"
         open={isAccountOpen}
         onClose={() => setIsAccountOpen(false)}
-        sx={{ zIndex: 1500 }}
-        BackdropProps={{ style: { background: "transparent" } }}
-        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        sx={{ zIndex: 1500, ...passThroughDrawerSx }}
+        hideBackdrop
+        BackdropProps={passThroughBackdropProps}
+        ModalProps={{
+          ...drawerModalProps,
+          keepMounted: true,
+          disableEnforceFocus: true,
+          disableAutoFocus: true,
+          disableRestoreFocus: true,
+          disableScrollLock: true,
+        }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
@@ -2016,6 +2037,7 @@ function MapPage() {
             display: "flex",
             flexDirection: "column",
           },
+          sx: passThroughPaperSx,
         }}
       >
         <PanelHeader
@@ -2036,11 +2058,16 @@ function MapPage() {
         anchor="bottom"
         open={isStoreOpen}
         onClose={() => setIsStoreOpen(false)}
-        sx={{ zIndex: 1500 }}
-        BackdropProps={{ style: { background: "transparent" } }}
+        sx={{ zIndex: 1500, ...passThroughDrawerSx }}
+        hideBackdrop
+        BackdropProps={passThroughBackdropProps}
         ModalProps={{
           ...drawerModalProps,
           keepMounted: true,
+          disableEnforceFocus: true,
+          disableAutoFocus: true,
+          disableRestoreFocus: true,
+          disableScrollLock: true,
         }}
         PaperProps={{
           style: {
@@ -2050,6 +2077,7 @@ function MapPage() {
             display: "flex",
             flexDirection: "column",
           },
+          sx: passThroughPaperSx,          
         }}
       >
         <PanelHeader
@@ -2070,9 +2098,17 @@ function MapPage() {
         anchor="bottom"
         open={isMilesOpen}
         onClose={() => setIsMilesOpen(false)}
-        sx={{ zIndex: 1500 }}
-        BackdropProps={{ style: { background: "transparent" } }}
-        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        sx={{ zIndex: 1500, ...passThroughDrawerSx }}
+        hideBackdrop
+        BackdropProps={passThroughBackdropProps}
+        ModalProps={{
+          ...drawerModalProps,
+          keepMounted: true,
+          disableEnforceFocus: true,
+          disableAutoFocus: true,
+          disableRestoreFocus: true,
+          disableScrollLock: true,
+        }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
@@ -2081,6 +2117,7 @@ function MapPage() {
             display: "flex",
             flexDirection: "column",
           },
+          sx: passThroughPaperSx,          
         }}
       >
         <PanelHeader
@@ -2098,9 +2135,17 @@ function MapPage() {
         anchor="bottom"
         open={isFaqOpen}
         onClose={() => setIsFaqOpen(false)}
-        sx={{ zIndex: 1500 }}
-        BackdropProps={{ style: { background: "transparent" } }}
-        ModalProps={{ ...drawerModalProps, keepMounted: true }}
+        sx={{ zIndex: 1500, ...passThroughDrawerSx }}
+        hideBackdrop
+        BackdropProps={passThroughBackdropProps}
+        ModalProps={{
+          ...drawerModalProps,
+          keepMounted: true,
+          disableEnforceFocus: true,
+          disableAutoFocus: true,
+          disableRestoreFocus: true,
+          disableScrollLock: true,
+        }}
         PaperProps={{
           style: {
             ...paperBaseStyle,
@@ -2109,6 +2154,7 @@ function MapPage() {
             display: "flex",
             flexDirection: "column",
           },
+          sx: passThroughPaperSx,          
         }}
       >
         <PanelHeader
