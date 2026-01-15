@@ -59,6 +59,14 @@ function RightDelta({ delta }) {
   );
 }
 
+function getTokenSafe() {
+  try {
+    return localStorage.getItem("app.access_token") || "";
+  } catch {
+    return "";
+  }
+}
+
 export default function MilesPanelContent() {
   const [loading, setLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
@@ -71,46 +79,47 @@ export default function MilesPanelContent() {
   const [orderCache, setOrderCache] = useState({}); // { [key]: { loading, error, data } }
 
   useEffect(() => {
-    let cancelled = false;
+    let alive = true;
 
-    (async () => {
+    const resetToLoggedOut = () => {
+      setAuthRequired(true);
+      setLoading(false);
+      setError("");
+      setTotalMiles(null);
+      setRows([]);
+      setTotalCount(0);
+      setOpenKey("");
+      setOrderCache({});
+    };
+
+    const fetchMiles = async () => {
       setLoading(true);
       setError("");
       setAuthRequired(false);
 
-      let token = "";
-      try {
-        token = localStorage.getItem("app.access_token") || "";
-      } catch {}
-
+      const token = getTokenSafe();
       if (!token) {
-        if (!cancelled) {
-          setAuthRequired(true);
-          setLoading(false);
-        }
+        if (alive) resetToLoggedOut();
         return;
       }
 
       try {
         const res = await fetch(`${API_BASE}/api/app/miles`, {
-          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
         });
 
         if (res.status === 401) {
-          if (!cancelled) {
-            setAuthRequired(true);
-            setLoading(false);
-          }
+          if (alive) resetToLoggedOut();
           return;
         }
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
 
-        // 新API（summary）：balance / transactions / count
         const total =
           (typeof json?.balance === "number" ? json.balance : null) ??
           (typeof json?.total_miles === "number" ? json.total_miles : null) ??
@@ -128,23 +137,35 @@ export default function MilesPanelContent() {
           list.length ??
           0;
 
-        if (!cancelled) {
-          setTotalMiles(total);
-          setRows(list);
-          setTotalCount(Number(cnt || 0));
-          setLoading(false);
-        }
+        if (!alive) return;
+        setTotalMiles(total);
+        setRows(list);
+        setTotalCount(Number(cnt || 0));
       } catch (e) {
         console.error("miles fetch failed:", e);
-        if (!cancelled) {
-          setError("獲得マイルの取得に失敗しました。");
-          setLoading(false);
-        }
+        if (!alive) return;
+        setError("獲得マイルの取得に失敗しました。");
+      } finally {
+        if (alive) setLoading(false);
       }
-    })();
+    };
+
+    fetchMiles();
+
+    const handleAuthChanged = () => {
+      // ログアウト直後に即「未ログイン表示」に落とす（keepMounted対策）
+      const token = getTokenSafe();
+      if (!token) {
+        resetToLoggedOut();
+        return;
+      }
+      fetchMiles();
+    };
+    window.addEventListener("tm_auth_changed", handleAuthChanged);
 
     return () => {
-      cancelled = true;
+      alive = false;
+      window.removeEventListener("tm_auth_changed", handleAuthChanged);
     };
   }, []);
 
@@ -159,14 +180,6 @@ export default function MilesPanelContent() {
     });
     return arr;
   }, [rows]);
-
-  function getTokenSafe() {
-    try {
-      return localStorage.getItem("app.access_token") || "";
-    } catch {
-      return "";
-    }
-  }
 
   function getShopifyOrderIdFromTx(t) {
     // transactions の形が揺れても拾えるように
@@ -190,6 +203,7 @@ export default function MilesPanelContent() {
     setOrderCache((m) => ({ ...m, [key]: { loading: true, error: "", data: null } }));
     try {
       const res = await fetch(`${API_BASE}/api/app/orders/${encodeURIComponent(shopifyOrderId)}`, {
+        cache: "no-store",        
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
