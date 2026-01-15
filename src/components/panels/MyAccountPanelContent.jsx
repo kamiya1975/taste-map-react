@@ -1,7 +1,7 @@
 // src/components/panels/MyAccountPanelContent.jsx
 // マイアカウントパネル
 import React, { useEffect, useState, useRef } from "react";
-import { setUserId } from "../../utils/auth";
+import { setUserId, clearUserId } from "../../utils/auth";
 import { getCurrentMainStoreIdSafe } from "../../utils/store"; // 2025.12.22.修正
 
 // APIベースURL（.env の REACT_APP_API_BASE_URL があればそれを使う）
@@ -603,9 +603,14 @@ export default function MyAccountPanelContent() {
               localStorage.removeItem("app.main_store_id");
               localStorage.removeItem("userRatings");
 
+              // identity を確実に消す（別IDでカートが残る原因）
+              clearUserId();
+              // 旧キーも消す（bootstrapIdentity が拾って復活しうる）
+              try { localStorage.removeItem("user.id"); } catch {}
+
               setIsLoggedIn(false);
 
-              // ★ ログアウトしたことを通知
+              // ログアウトしたことを通知
               fireAuthChanged();
               alert("ログアウトしました。");
             }}

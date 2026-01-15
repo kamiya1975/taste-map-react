@@ -21,6 +21,14 @@ const delCookie = (name) => {
 };
 
 /* ======================
+   追加：ユーザーIDの完全クリア
+   ====================== */
+export const clearUserId = () => {
+  try { localStorage.removeItem(USER_ID_KEY); } catch {}
+  try { delCookie(USER_ID_KEY); } catch {}
+};
+
+/* ======================
    保存系
    ====================== */
 export const setGuest = () => {
@@ -30,8 +38,7 @@ export const setGuest = () => {
     return getGuestId();
   }
   localStorage.setItem(GUEST_KEY, "1");
-  localStorage.removeItem(USER_ID_KEY);
-  delCookie(USER_ID_KEY);
+  clearUserId();
   // ついでにゲストIDを確保（無ければ発行）
   return getGuestId();
 };
