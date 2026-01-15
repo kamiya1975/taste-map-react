@@ -5,7 +5,7 @@
 // - API不要、決済時にだけ JAN→Variant を解決して /cart パーマリンクを作る
 // - 変更通知は postMessage / BroadcastChannel / storage の三経路で即時同期
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getVariantGidByJan } from "../lib/ecLinks";
 import { getUserId, getGuestId } from "../utils/auth";
 
@@ -78,17 +78,41 @@ export function useSimpleCart() {
   const [items, setItems] = useState(() => readJSON(storageKey, []));
 
   // ★ storageKey 切替直後は「前スコープ items を新キーへ書く」事故を防ぐ
-  const skipNextPersistRef = useRef(false);
+  // 1回スキップだと弱いケースがあるので、同期完了まで“複数回”スキップできる形にする
+  const skipPersistCountRef = useRef(0);
+
+  // storageKey の変化検知用（保険）
+  const storageKeyRef = useRef(storageKey);
+
+  const markSkipPersist = useCallback((n = 2) => {
+    // 2回程度で十分（setItems→effect→通知/rehydrate等の連鎖を吸収）
+    skipPersistCountRef.current = Math.max(skipPersistCountRef.current, Number(n) || 0);
+  }, []);
 
   // --- ① localStorageへ常に同期保存 ---
   // storageKey 切替直後の1回は保存をスキップ（コピー事故防止）
   useEffect(() => {
-    if (skipNextPersistRef.current) {
-      skipNextPersistRef.current = false;
+    if (skipPersistCountRef.current > 0) {
+      skipPersistCountRef.current -= 1;
       return;
     }
     writeJSON(storageKey, Array.isArray(items) ? items : []);
   }, [items, storageKey]);
+
+  // --- ★ 保険：storageKey が変わった瞬間に確実に “新キーの中身” に追従させる ---
+  // setStorageKey → 別effectで読む だけでも足りるが、ref検知で二重に押さえると事故が減る
+  useEffect(() => {
+    if (storageKeyRef.current === storageKey) return;
+    storageKeyRef.current = storageKey;
+    try {
+      markSkipPersist(2);
+      const next = readJSON(storageKey, []);
+      setItems(Array.isArray(next) ? next : []);
+    } catch {
+      markSkipPersist(2);
+      setItems([]);
+    }
+  }, [storageKey, markSkipPersist]);
 
   // --- ② rehydrate: localStorage→state を即時反映 ---
   const hydrateFromStorage = useCallback(() => {
@@ -102,28 +126,27 @@ export function useSimpleCart() {
     const onAuthChanged = () => {
       const nextKey = getCartStorageKey();
       migrateLegacyCartIfNeeded(nextKey);
+
+      // ここで明示的に読み込んでおく（イベント駆動でも二重に押さえる保険）
+      // ※ storageKey 切替直後の “旧items→新keyへ書き戻し” を防ぐため、先に skip を立てる
       setStorageKey((prev) => {
         if (prev === nextKey) return prev;
+        try {
+          markSkipPersist(2);
+          const next = readJSON(nextKey, []);
+          setItems(Array.isArray(next) ? next : []);
+        } catch {
+          markSkipPersist(2);
+          setItems([]);
+        }
         return nextKey;
       });
     };
     window.addEventListener("tm_auth_changed", onAuthChanged);
     return () => window.removeEventListener("tm_auth_changed", onAuthChanged);
-  }, []);
+  }, [markSkipPersist]);
 
-  // storageKey が切り替わったら、そのスコープの内容に即追従
-  useEffect(() => {
-    try {
-      // ★ 先に読み込み → その直後の persist を1回スキップ
-      skipNextPersistRef.current = true;
-      const next = readJSON(storageKey, []);
-      setItems(Array.isArray(next) ? next : []);
-    } catch {
-      skipNextPersistRef.current = true;      
-      setItems([]);
-    }
-  }, [storageKey]);
-
+  // （削除）storageKey 追従は storageKeyRef の検知 effect に集約
   const totalQty = useMemo(
     () => (Array.isArray(items) ? items.reduce((s, it) => s + Number(it.qty || 0), 0) : 0),
     [items]
