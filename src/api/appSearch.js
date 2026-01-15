@@ -1,6 +1,6 @@
 // src/api/appSearch.js
 // バーコードカメラ検索 で使用
-// アプリ用検索API: /api/app/search/products を叩くラッパー
+// - アプリ用検索API: /api/app/search/products を叩くラッパー
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
 export async function fetchSearchProducts({

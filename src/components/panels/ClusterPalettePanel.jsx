@@ -1,5 +1,6 @@
 // src/components/panels/ClusterPalettePanel.jsx
 // クラスターパレット（味わいグループ）パネル
+// - 文言は src/ui/constants.js にある
 import React, { useMemo, useState } from "react";
 import PanelShell from "./PanelShell";
 import {
@@ -82,7 +83,7 @@ export default function ClusterPalettePanel({
             グループ名をタッチすると、その味の場所にマップが移動します。
             </p>
         
-          {/* ★ カードを2カラムで並べるエリア */}
+          {/* カードを2カラムで並べるエリア */}
           <div
             style={{
               display: "grid",
