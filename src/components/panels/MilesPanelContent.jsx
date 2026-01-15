@@ -214,8 +214,6 @@ export default function MilesPanelContent() {
       return <div style={{ fontSize: 13, color: "#666" }}>注文内容がありません。</div>;
     }
 
-    const head = items.slice(0, 3);
-    const rest = items.length - head.length;
     return (
       <div
         onClick={(e) => e.stopPropagation()} // 展開内タップで行の開閉が暴れないように
@@ -227,7 +225,7 @@ export default function MilesPanelContent() {
         }}
       >
         <div style={{ display: "grid", gap: 4 }}>
-          {head.map((it, i) => {
+          {items.map((it, i) => {
             const name = it?.name_kana ? String(it.name_kana).trim() : "";
             const jan = it?.jan_code ? String(it.jan_code) : "";
             const label = name || jan || "商品不明";
@@ -241,9 +239,6 @@ export default function MilesPanelContent() {
               </div>
             );
           })}
-          {rest > 0 && (
-            <div style={{ fontSize: 15, color: "#666", lineHeight: 1.35 }}>他 {rest} 点</div>
-          )}
         </div>
       </div>
     );
