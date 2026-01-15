@@ -293,7 +293,7 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
             </button>
           </div>
 
-          <div style={{ height: 12, fontSize: 12.5 }} />
+          <div style={{ height: 12, fontSize: 10, color: "#666" }} />
             <div><br></br>合計6本以上で送料無料となります。<br></br><br></br>
             決済画面で入力するメールアドレスは、アプリのログインIDと同じでないと購入できません。事前に確認して間違いのないようご注意ください。
             </div>    
