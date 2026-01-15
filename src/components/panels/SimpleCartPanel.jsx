@@ -23,6 +23,25 @@ function consumeIfDueClear(cb) {
   return false;
 }
 
+// 未ログイン表示
+function getTokenSafe() {
+  try {
+    return localStorage.getItem("app.access_token") || "";
+  } catch {
+    return "";
+  }
+}
+
+function AuthRequiredMessage({ label = "カート" }) {
+  return (
+    <div style={{ padding: "16px 18px" }}>
+      <div style={{ fontSize: 16, lineHeight: 1.8 }}>
+        {label}の表示にはログインが必要です。マイアカウントからログインして再度お試しください。
+      </div>
+    </div>
+  );
+}
+
 const SHOP_DOMAIN =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_SHOPIFY_SHOP_DOMAIN) ||
   process.env.REACT_APP_SHOPIFY_SHOP_DOMAIN ||
@@ -32,6 +51,7 @@ const SHOP_DOMAIN =
 export default function SimpleCartPanel({ onClose, isOpen = false }) {
   const { items, totalQty, updateQty, remove, clear } = useSimpleCart();
   const [busy, setBusy] = useState(false);
+  const [authRequired, setAuthRequired] = useState(false);
 
   // --- 在庫結果を保持 ---
   // stockMap["JAN"] = { availableForSale, quantityAvailable|null, currentlyNotInStock }
@@ -54,6 +74,24 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
     };
   }, [clear]);
 
+  // --- auth 監視（keepMounted対策） ---
+  useEffect(() => {
+    const syncAuth = () => {
+      const token = getTokenSafe();
+     const req = !token;
+     setAuthRequired(req);
+     if (req) {
+       // ログアウト直後の残骸を消す
+       setStockMap({});
+       setStockMsg("");
+       setUnresolved([]);
+     }
+    };
+    syncAuth(); // 初期判定
+    window.addEventListener("tm_auth_changed", syncAuth);
+    return () => window.removeEventListener("tm_auth_changed", syncAuth);
+  }, []);  
+
   // items の変更を安定キーに変換
   const itemsKey = useMemo(
     () =>
@@ -65,6 +103,9 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
 
   // カートOPEN時＋中身変化で在庫チェック
   useEffect(() => {
+   if (authRequired) return;        // 未ログインなら在庫チェック自体しない
+   if (!isOpen) return;             // （任意）開いてないなら無駄に叩かない
+
     let alive = true;
     (async () => {
       try {
@@ -88,10 +129,19 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
       }
     })();
     return () => { alive = false; };
-  }, [isOpen, itemsKey, items]);
+ }, [authRequired, isOpen, itemsKey, items]);
 
   // 決済開始
   async function handleCheckout() {
+   if (authRequired) return;
+
+   const token = getTokenSafe();
+   if (!token) {
+     setAuthRequired(true);
+     alert("決済に進むにはログインが必要です。");
+     return;
+   }
+
     if (busy) return;
     setBusy(true);
     try {
@@ -155,6 +205,10 @@ export default function SimpleCartPanel({ onClose, isOpen = false }) {
   }, [items]);
 
   const empty = !Array.isArray(items) || items.length === 0;
+
+  if (authRequired) {
+    return <AuthRequiredMessage label="カート" />;
+  }
 
   return (
     <div style={{ padding: 12 }}>
