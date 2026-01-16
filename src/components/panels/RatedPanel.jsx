@@ -36,7 +36,6 @@ function RightMark({ it }) {
   // kind はバックを基本信頼。念のため rating=0 で wish 扱いも許容
   const kind = it?.kind || (Number(it?.rating || 0) > 0 ? "rating" : "wish");
   if (kind === "wish") {
-    // 既存のSVG（store.svg/store2.svg）を使うならここで差し替え可能
     return (
       <span
         aria-label="飲みたい"
@@ -47,11 +46,19 @@ function RightMark({ it }) {
           justifyContent: "center",
           width: 35,
           height: 35,
-          fontSize: 20,
-          lineHeight: 1,
         }}
       >
-        ★
+        <img
+          src={`${process.env.PUBLIC_URL}/img/store.svg`}
+          alt=""
+          aria-hidden="true"
+          style={{
+            width: 35,
+            height: 35,
+            display: "block",
+            objectFit: "contain",
+          }}
+        />
       </span>
     );
   }
