@@ -75,11 +75,16 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
   // ----------------------------
   // ログイン判定（トークン有無）
   // ----------------------------
-  const token = React.useMemo(() => {
+  const [token, setToken] = React.useState("");
+  React.useEffect(() => {
+    if (!isOpen) {
+      setToken("");
+      return;
+    }
     try {
-      return localStorage.getItem("app.access_token") || "";
+      setToken(localStorage.getItem("app.access_token") || "");
     } catch {
-      return "";
+      setToken("");
     }
   }, [isOpen]); // パネルを開くたびに拾い直す
 

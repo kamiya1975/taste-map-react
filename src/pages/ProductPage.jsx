@@ -1,8 +1,7 @@
 // src/pages/ProductPage.jsx
 // 商品詳細画面
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
-import "../index.css";
+import { useParams, useLocation } from "react-router-dom";
 import { useSimpleCart } from "../cart/simpleCart";
 import { postRating } from "../lib/appRatings";
 import {
@@ -411,7 +410,6 @@ function ProductInfoSection({ product, jan_code }) {
  *  ProductPage（default export）
  * ========================= */
 export default function ProductPage() {
-  const navigate = useNavigate();
   const jan_code = useJanParam();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -916,7 +914,6 @@ export default function ProductPage() {
               marginTop: 16,
               width: "100%",
               padding: "8px 20px",
-              lineHeight: 1.2,
               background: "rgb(230,227,219)", // SliderPage と統一
               color: "#000",
               border: "none",

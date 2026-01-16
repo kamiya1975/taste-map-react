@@ -1,3 +1,6 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable no-unused-vars */
+
 // src/components/panels/SearchPanel.jsx
 // 検索パネル　（バーコードカメラ検索も一部含む）
 // - 初期一覧は 選択した店舗（EC連携有無含む）商品一覧

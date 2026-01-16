@@ -13,10 +13,6 @@ export default function EcReturnPage() {
   const q = useQuery();
   const nav = useNavigate();
 
-  // Shopify 側から何か付与される可能性があるので一応拾う（無くてもOK）
-  const orderId = q.get("order_id") || q.get("order") || "";
-  const checkout = q.get("checkout") || "";
-
   return (
     <div style={{ padding: 16, maxWidth: 720, margin: "0 auto" }}>
       <h2 style={{ margin: "8px 0 12px" }}>

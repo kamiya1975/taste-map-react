@@ -376,7 +376,6 @@ function MapPage() {
 
   // ---- Refs ----
   const didInitialCenterRef = useRef(false);
-  const deckRef = useRef(null);
   const iframeRef = useRef(null);
   const autoOpenOnceRef = useRef(false);
   const lastCommittedRef = useRef({ code: "", at: 0 });
@@ -428,12 +427,10 @@ function MapPage() {
   const [highlight2D, setHighlight2D] = useState("");
   const [selectedJAN, setSelectedJAN] = useState(null);
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
-  const [hideHeartForJAN, setHideHeartForJAN] = useState(null);
   const [iframeNonce, setIframeNonce] = useState(0);
   const [allowedJansSet, setAllowedJansSet] = useState(null);
   const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null);
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
-  const [storeList, setStoreList] = useState([]); // 店舗の詳細リスト（今は未使用）
   const [cartEnabled, setCartEnabled] = useState(false);
 
   // ------------------------------
@@ -492,13 +489,11 @@ function MapPage() {
       setAllowedJansSet(allowedJans ? new Set(allowedJans) : null);
       setEcOnlyJansSet(ecOnlyJans ? new Set(ecOnlyJans) : null);
       setStoreJansSet(new Set(storeJans || []));
-      setStoreList([]);
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
       setAllowedJansSet(null);
       setEcOnlyJansSet(null);
       setStoreJansSet(new Set());
-      setStoreList([]);
       setCartEnabled(false);
     }
   }, []);
@@ -769,7 +764,7 @@ function MapPage() {
       })();
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search]);
+  }, [location.search, openPanel, navigate, location.pathname, location.state]);
 
   // ====== パン境界
   const panBounds = useMemo(() => {
@@ -1010,7 +1005,7 @@ function MapPage() {
       navigate(location.pathname, { replace: true, state: {} });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state, location.key, userPin, centerToUMAP]);
+  }, [location.state, location.key, userPin, centerToUMAP, readUserPinFromStorage, navigate, location.pathname]);
 
   // 初回センタリング（userPin 指定時）
   useEffect(() => {
@@ -1133,7 +1128,6 @@ function MapPage() {
       const nearest = findNearestWineWorld(wx, wy);
       const janStr = getJanFromItem(nearest);
       if (janStr) {
-        setHideHeartForJAN(null);
         setSelectedJAN(janStr);
         setIframeNonce(Date.now());
         setProductDrawerOpen(true);
@@ -1148,12 +1142,6 @@ function MapPage() {
   // ※ favoriteCache（= 表示用wishlistキャッシュ）を唯一のソースにする
   const CHILD_ORIGIN =
     typeof window !== "undefined" ? window.location.origin : "*";
-
-  const postToChild = (payload) => {
-    try {
-      iframeRef.current?.contentWindow?.postMessage(payload, CHILD_ORIGIN);
-    } catch {}
-  };
 
   // 商品ページ（iframe）からの postMessage
   useEffect(() => {
@@ -1656,7 +1644,6 @@ function MapPage() {
           // クラスターパネルを畳む
           setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
 
-          setHideHeartForJAN(null);
           setSelectedJAN(janStr);
 
           setIframeNonce(Date.now());
@@ -1726,7 +1713,6 @@ function MapPage() {
               preserveMyPage: true,
               preserveCluster: true,
             });
-            setHideHeartForJAN(null);
 
             setSelectedJAN(janStr);
 
@@ -1756,9 +1742,6 @@ function MapPage() {
         onClose={async () => {
           await closeUIsThen({ preserveCluster: true });
         }}
-        userRatings={userRatings}
-        data={data}
-        favorites={favoriteCache}
         onSelectJAN={async (jan) => {
           await closeUIsThen({
             preserveMyPage: true,
@@ -1772,7 +1755,6 @@ function MapPage() {
           try {
             sessionStorage.setItem("tm_from_rated_jan", String(jan));
           } catch {}
-          setHideHeartForJAN(String(jan));
           setSelectedJAN(jan);
           setIframeNonce(Date.now());
           const item = data.find(
@@ -1808,7 +1790,6 @@ function MapPage() {
         onClose={() => {
           setProductDrawerOpen(false);
           setSelectedJAN(null);
-          setHideHeartForJAN(null);
         }}
         sx={{ zIndex: 1700, pointerEvents: "none" }}
         hideBackdrop
@@ -1836,7 +1817,6 @@ function MapPage() {
           onClose={() => {
             setProductDrawerOpen(false);
             setSelectedJAN(null);
-            setHideHeartForJAN(null);
           }}
         />
         <div
@@ -2082,7 +2062,7 @@ function MapPage() {
         }}
       >
         <PanelHeader
-          title="お気に入り店舗登録 [BUILD-20260116-1500]"
+          title="お気に入り店舗登録"
           icon="store.svg"
           onClose={() => setIsStoreOpen(false)} // ← 子だけ閉じる
         />

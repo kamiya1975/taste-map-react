@@ -3,14 +3,6 @@
 import React from "react";
 
 export default function FaqPanelContent() {
-  const P = (props) => (
-    <p style={{ margin: "8px 0", lineHeight: 1.9, fontSize: 15, color: "#222" }} {...props} />
-  );
-  const H = ({ children }) => (
-    <h3 style={{ margin: "18px 0 10px", fontSize: 16, fontWeight: 700, color: "#111" }}>
-      {children}
-    </h3>
-  );
   const Q = ({ children }) => (
     <div style={{ fontWeight: 700, marginTop: 12, color: "#111" }}>Q. {children}</div>
   );

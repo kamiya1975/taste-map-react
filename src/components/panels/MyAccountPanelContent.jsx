@@ -197,18 +197,6 @@ export default function MyAccountPanelContent() {
     } catch {}
   }, []);
 
-  // ② API 保存時に使う token（消さない）
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const token = localStorage.getItem("app.access_token") || "";
-
-      // ここで token を使って API に送る
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // 初期表示：ローカルキャッシュから復元
   useEffect(() => {
     try {
