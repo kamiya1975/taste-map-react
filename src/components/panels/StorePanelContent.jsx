@@ -203,8 +203,9 @@ export default function StorePanelContent() {
 
   // ログイン中: is_main=true を最優先
   let mainStore = stores.find((s) => s.is_main) || null;
-  // このパネルでは公式Shopを出さない（固定枠も含む）
-  if (mainStore?.id === OFFICIAL_STORE_ID) mainStore = null;
+  // 決定事項：
+  // - メイン店舗が公式Shopの場合：固定枠として表示はOK（= null にしない）
+  // - メイン店舗がEC連携ありの場合：公式Shopは候補に出さない（後段の filter で制御）
 
   const storeDisplayName = (s) => {
     if (!s) return "";
@@ -219,18 +220,28 @@ export default function StorePanelContent() {
     }
   }
 
-  // - 通常：公式Shop(OFFICIAL_STORE_ID) はサブ候補に出さない
+  // 決定事項：
+  // 1) メイン店舗がEC連携あり -> 公式Shopは表示しない
+  // 2) メイン店舗が公式Shop -> 公式Shopは候補に出さない（固定枠に出るだけ）
+  // 3) メイン店舗がEC連携なし -> 公式Shopを候補に出す（★でサブ登録できる）
+  const mainEcActive = !!mainStore?.ec_active;
+  const mainIsOfficial = mainStore?.id === OFFICIAL_STORE_ID;
+  const allowOfficialAsSubCandidate = !mainIsOfficial && !mainEcActive;
+
   const otherStores = stores.filter((s) => {
     if (s.is_main) return false;
-    if (s.id === OFFICIAL_STORE_ID) return false; // ★ 常に除外    
+    if (s.id === OFFICIAL_STORE_ID) return allowOfficialAsSubCandidate; // 条件付き
     return true;
   });
 
-  const favoritesCount = stores.filter((s) => s.is_sub && !s.is_main && s.id !== OFFICIAL_STORE_ID).length;
+  // 決定事項：公式Shopをサブ登録できる場合はカウントにも含める
+  const favoritesCount = stores.filter((s) => s.is_sub && !s.is_main).length;
 
   const toggleFavorite = async (store) => {
     if (store.is_main) return; // メイン店舗はトグル不可
-    if (store.id === OFFICIAL_STORE_ID) return;    
+    // メイン店舗がEC連携あり -> 公式Shopは★登録させない
+    // メイン店舗が公式Shop -> そもそも候補に出さない想定だが保険で弾く
+    if (store.id === OFFICIAL_STORE_ID && !allowOfficialAsSubCandidate) return;
     if (savingId !== null) return;
 
     const token = localStorage.getItem("app.access_token");
@@ -388,7 +399,7 @@ export default function StorePanelContent() {
 
       {!loading && !err && favoritesCount > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: "#555" }}>
-          登録済みサブ店舗: {favoritesCount} 店舗
+          登録済み店舗: {favoritesCount} 店舗
         </div>
       )}
 
