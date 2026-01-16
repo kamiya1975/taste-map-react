@@ -203,6 +203,8 @@ export default function StorePanelContent() {
 
   // ログイン中: is_main=true を最優先
   let mainStore = stores.find((s) => s.is_main) || null;
+  // このパネルでは公式Shopを出さない（固定枠も含む）
+  if (mainStore?.id === OFFICIAL_STORE_ID) mainStore = null;
 
   const storeDisplayName = (s) => {
     if (!s) return "";
@@ -210,10 +212,9 @@ export default function StorePanelContent() {
     return s.name;
   };
 
-  // 非ログイン時: ローカルキャッシュのメイン店舗IDを使用
   if (!mainStore) {
     const localMainStoreId = Number(localStorage.getItem("app.main_store_id") || "0");
-    if (localMainStoreId) {
+    if (localMainStoreId && localMainStoreId !== OFFICIAL_STORE_ID) {
       mainStore = stores.find((s) => s.id === localMainStoreId) || null;
     }
   }
@@ -225,10 +226,11 @@ export default function StorePanelContent() {
     return true;
   });
 
-  const favoritesCount = stores.filter((s) => s.is_sub).length;
+  const favoritesCount = stores.filter((s) => s.is_sub && !s.is_main && s.id !== OFFICIAL_STORE_ID).length;
 
   const toggleFavorite = async (store) => {
     if (store.is_main) return; // メイン店舗はトグル不可
+    if (store.id === OFFICIAL_STORE_ID) return;    
     if (savingId !== null) return;
 
     const token = localStorage.getItem("app.access_token");
