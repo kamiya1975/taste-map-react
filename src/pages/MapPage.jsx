@@ -190,7 +190,7 @@ async function fetchAllowedJansForStore(storeId) {
   // 実在店舗（id > 0）のときだけ main_store_id を付ける
   params.set("main_store_id", String(sid)); // ★ 常に付けてOK（sidは必ず>0）
 
-  const res = await fetch(`${API_BASE}/api/app/allowed-jans?${params.toString()}`);
+  const res = await fetch(`${API_BASE}/api/app/allowed-jans?${params.toString()}`, { cache: "no-store" });  
   if (!res.ok) {
     throw new Error(`allowed-jans(stores=${storeId}) HTTP ${res.status}`);
   }
@@ -239,6 +239,7 @@ async function fetchAllowedJansAuto() {
   try {
     const url = `${API_BASE}/api/app/allowed-jans/auto`;
     const res = await fetch(url, {
+      cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
     });
 

@@ -29,14 +29,7 @@ async function resolveLocation() {
   return geo; // 失敗時は null
 }
 
-// ★ ページ全体をリロードする共通処理
-const reloadApp = () => {
-  try {
-    window.location.replace(window.location.href);
-  } catch {
-    window.location.reload();
-  }
-};
+// ※サブ店舗更新の反映は MapPage 側の再取得で行う（全リロードはしない）
 
 /* ============ 小物：★ボタン ============ */
 function StarButton({ active, onClick, disabled = false, size = 20, title }) {
@@ -279,11 +272,9 @@ export default function StorePanelContent() {
         )
       );
 
-      // 先に通知（その後に全リロード）
+      // サブ店舗更新 → MapPage に allowed-jans を取り直させる
       window.dispatchEvent(new Event("tm_store_changed"));
-
-      // サブ店舗更新 → allowed-jans 取り直しのためアプリ全体リロード
-      reloadApp();
+      // （同一イベント名でOK。用途が増えたが問題なし）
     } catch (e) {
       console.error(e);
       alert(
