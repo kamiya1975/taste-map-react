@@ -2082,7 +2082,7 @@ function MapPage() {
         }}
       >
         <PanelHeader
-          title="お気に入り店舗登録"
+          title="お気に入り店舗登録 [BUILD-20260116-1500]"
           icon="store.svg"
           onClose={() => setIsStoreOpen(false)} // ← 子だけ閉じる
         />
