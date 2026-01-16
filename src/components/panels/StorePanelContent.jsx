@@ -71,6 +71,9 @@ function StarButton({ active, onClick, disabled = false, size = 20, title }) {
 
 /* ============ 本体 ============ */
 export default function StorePanelContent() {
+  // 一時的ログ
+  console.log("[StorePanel] BUILD CHECK 2026-01-16 14:40");
+  // ログここまで
   const [stores, setStores] = useState([]); // {id, name, distance, is_main, is_sub}
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
