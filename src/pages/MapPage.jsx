@@ -1291,6 +1291,7 @@ function MapPage() {
     navigate,
     addLocal,
     cartEnabled,
+    CHILD_ORIGIN,
   ]);
 
   // ====== レンダリング

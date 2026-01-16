@@ -12,6 +12,9 @@ function useQuery() {
 export default function EcReturnPage() {
   const q = useQuery();
   const nav = useNavigate();
+  // Shopify 側から付く可能性があるもの（無くてもOK）
+  const orderId = q.get("order_id") || q.get("order") || "";
+  const checkout = q.get("checkout") || "";
 
   return (
     <div style={{ padding: 16, maxWidth: 720, margin: "0 auto" }}>
@@ -41,6 +44,14 @@ export default function EcReturnPage() {
       <div style={{ marginTop: 14, fontSize: 12, color: "#666" }}>
         ※ マイル反映に時間が掛かる場合がございます。
       </div>
+
+      {(orderId || checkout) && (
+        <div style={{ marginTop: 8, fontSize: 12, color: "#999" }}>
+          {orderId ? <>order: {orderId}</> : null}
+          {orderId && checkout ? " / " : null}
+          {checkout ? <>checkout: {checkout}</> : null}
+        </div>
+      )}
     </div>
   );
 }
