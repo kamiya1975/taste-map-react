@@ -219,14 +219,9 @@ export default function StorePanelContent() {
   }
 
   // - 通常：公式Shop(OFFICIAL_STORE_ID) はサブ候補に出さない
-  // - ただしメイン店舗が EC連携なし（ec_active=false）の場合だけ、公式Shopをサブ候補に出す
-  const mainEcActive = !!mainStore?.ec_active;
   const otherStores = stores.filter((s) => {
     if (s.is_main) return false;
-    if (s.id === OFFICIAL_STORE_ID) {
-      // main が公式Shopの場合は is_main で弾かれるのでここには来ない想定だが保険
-      return !mainEcActive;
-    }
+    if (s.id === OFFICIAL_STORE_ID) return false; // ★ 常に除外    
     return true;
   });
 
