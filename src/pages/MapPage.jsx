@@ -128,6 +128,72 @@ const getCurrentMainStoreEcActiveFromStorage = () => {
   return null;
 };
 
+// =========================
+// rated-panel（DB正）スナップショット取得
+// - wishlist（飲みたい）を favoriteCache に復元する目的
+// - rating も同時に取れれば userRatings も同期
+// =========================
+async function fetchRatedPanelSnapshot({ apiBase, token }) {
+  if (!token) return null;
+  const url = `${apiBase}/api/app/rated-panel`;
+  const res = await fetch(url, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`rated-panel HTTP ${res.status}`);
+  const json = await res.json();
+  return json;
+}
+
+function parseRatedPanelItems(json) {
+  // 返却形式の揺れに強くする（items / data / results など）
+  const items =
+    Array.isArray(json?.items) ? json.items :
+    Array.isArray(json?.data) ? json.data :
+    Array.isArray(json?.results) ? json.results :
+    [];
+
+  const nextRatings = {};
+  const nextFav = {};
+
+  for (const it of items) {
+    const jan = String(it?.jan_code ?? it?.jan ?? it?.JAN ?? "");
+    if (!jan) continue;
+
+    // rating（あれば同期）
+    const r = Number(it?.rating ?? it?.score ?? 0) || 0;
+    const dt =
+      it?.created_at ??
+      it?.rated_at ??
+      it?.date ??
+      null;
+    if (r > 0) {
+      nextRatings[jan] = { rating: r, date: dt || new Date().toISOString() };
+    }
+
+    // wishlist（飲みたい）
+    // wished / is_wished / wishlist / wanted など揺れ吸収
+    const wishedRaw =
+      it?.wished ??
+      it?.is_wished ??
+      it?.wishlist ??
+      it?.wanted ??
+      it?.wish ??
+      false;
+    const wished =
+      wishedRaw === true ||
+      wishedRaw === 1 ||
+      wishedRaw === "1" ||
+      wishedRaw === "true";
+
+    if (wished) {
+      nextFav[jan] = { addedAt: it?.wished_at ?? it?.created_at ?? new Date().toISOString() };
+    }
+  }
+
+  return { nextRatings, nextFav };
+}
+
 // allowed-jans 取得エラー時に表示
 let allowedJansErrorShown = false;
 
@@ -503,6 +569,59 @@ function MapPage() {
     reloadAllowedJans();
   }, [reloadAllowedJans]);
 
+  // ====== rated-panel（DB正）から wishlist を同期 ======
+  const syncRatedPanel = useCallback(async () => {
+    let token = "";
+    try {
+      token = localStorage.getItem("app.access_token") || "";
+    } catch {}
+    if (!token) {
+      // 未ログインなら DB正が無いので、表示用キャッシュは一旦空に（ローカル運用を残したいならここは削除）
+      setFavoriteCache({});
+      bumpFavoritesVersion();
+      return;
+    }
+
+    try {
+      const json = await fetchRatedPanelSnapshot({ apiBase: API_BASE, token });
+      const { nextRatings, nextFav } = parseRatedPanelItems(json);
+
+      // wishlist（飲みたい）を DB正で上書き復元
+      setFavoriteCache(nextFav);
+      bumpFavoritesVersion();
+
+      // rating も一緒に取れているなら同期（空なら触らない）
+      if (nextRatings && Object.keys(nextRatings).length > 0) {
+        setUserRatings(nextRatings);
+        try {
+          localStorage.setItem("userRatings", JSON.stringify(nextRatings));
+        } catch {}
+      }
+    } catch (e) {
+      console.warn("rated-panel sync failed:", e);
+      // rated-panel が無い/失敗しても動作は継続（wishlist星が出ないだけ）
+    }
+  }, []);
+
+  // 初回・ログイン/ログアウト・店舗変更などで同期
+  useEffect(() => {
+    syncRatedPanel();
+  }, [syncRatedPanel]);
+
+  useEffect(() => {
+    const handler = () => {
+      syncRatedPanel();
+    };
+    window.addEventListener("tm_auth_changed", handler);
+    window.addEventListener("storage", handler);
+    window.addEventListener("tm_store_changed", handler);
+    return () => {
+      window.removeEventListener("tm_auth_changed", handler);
+      window.removeEventListener("storage", handler);
+      window.removeEventListener("tm_store_changed", handler);
+    };
+  }, [syncRatedPanel]);
+
   // ====== ログイン状態や店舗選択の変更を拾って再取得 ======
   useEffect(() => {
     const handler = () => {
@@ -522,48 +641,12 @@ function MapPage() {
     };
   }, [reloadAllowedJans]);
 
+  // RatedPanel を開いたタイミングでも、DB正スナップショットを再同期
+  // （wishlist星の即時反映＆別端末変更の取り込み）
   useEffect(() => {
     if (!isRatedOpen) return;
-
-    // 未ログインなら同期しない
-    const token = (() => {
-      try {
-        return localStorage.getItem("app.access_token") || "";
-      } catch {
-        return "";
-      }
-    })();
-    if (!token) return;
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const res = await fetchLatestRatings("date");
-        if (cancelled) return;
-
-        const nextMap = {};
-        for (const item of res.items || []) {
-          if (item.rating > 0) {
-            nextMap[item.jan_code] = {
-              rating: item.rating,
-              date: item.created_at,
-            };
-          }
-        }
-        setUserRatings(nextMap);
-        try {
-          localStorage.setItem("userRatings", JSON.stringify(nextMap));
-        } catch {}
-      } catch (e) {
-        console.error("評価一覧の同期に失敗しました", e);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isRatedOpen]);
+    syncRatedPanel();
+  }, [isRatedOpen, syncRatedPanel]);
 
   // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
@@ -1314,7 +1397,7 @@ function MapPage() {
 
         userRatings={userRatings}
         selectedJAN={selectedJAN}
-        favorites={favoriteCache}
+        favorites={favoriteCache}          // wishlist（飲みたい）表示用キャッシュ（DB正で復元済み）
         favoritesVersion={favoritesVersion}
         highlight2D={highlight2D}
         userPin={userPin}

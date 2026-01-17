@@ -1,4 +1,5 @@
 // src/components/map/MapCanvas.jsx
+// マップ描画
 import React, { forwardRef, useMemo, useRef, useCallback, useEffect } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrthographicView } from "@deck.gl/core";
@@ -16,6 +17,8 @@ import {
   HEAT_CLIP_PCT,
   MAP_POINT_COLOR,
   getClusterRGBA,
+  WISH_STAR_COLOR,
+  WISH_STAR_SIZE,
 } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
@@ -82,6 +85,33 @@ const makePinSVG = ({
     height: h,
     anchorX: w / 2,   // 先端が座標に刺さるよう、Xは中央
     anchorY: h - 1,   // Yは最下点付近（微調整は -1/-2 で）
+  };
+};
+
+// （飲みたい星）IconLayer 用
+const makeStarSVG = ({ color = "#9aa0a6" } = {}) => {
+  const w = 64, h = 64;
+  const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 64 64">
+    <path d="M32 6
+             L39.6 22.4
+             L57.6 24.8
+             L44.2 37.6
+             L47.6 55.6
+             L32 47
+             L16.4 55.6
+             L19.8 37.6
+             L6.4 24.8
+             L24.4 22.4
+             Z"
+          fill="${color}" />
+  </svg>`;
+  return {
+    url: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`,
+    width: w,
+    height: h,
+    anchorX: w / 2,
+    anchorY: h / 2,
   };
 };
 
@@ -188,6 +218,8 @@ const MapCanvas = forwardRef(function MapCanvas(
     allowedJansSet,
     ecOnlyJansSet,
     userRatings,
+    wishJansSet,
+    wishVersion,
     selectedJAN,
     favorites,
     favoritesVersion,
@@ -596,6 +628,54 @@ const MapCanvas = forwardRef(function MapCanvas(
     });
   }, [ecPoints, favorites, favoritesVersion, userRatings, clusterColorMode]);
 
+  // --- レイヤ：飲みたい（★）---
+  // 優先順位：rating > wish > store/ec
+  const wishStarLayer = useMemo(() => {
+    if (!(wishJansSet instanceof Set) || wishJansSet.size === 0) return null;
+
+    const icon = makeStarSVG({ color: "#9aa0a6" });
+
+    // filteredData から「飲みたい」だけ抜く（ratingがあるものは除外）
+    const wishPoints = filteredData
+      .map((d) => {
+        const jan = janOf(d);
+        if (!jan) return null;
+        if (!wishJansSet.has(jan)) return null;
+        if ((Number(userRatings?.[jan]?.rating) || 0) > 0) return null; // rating優先
+        const x = xOf(d), y = yOf(d);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        return { jan, position: [x, -y, 0] };
+      })
+      .filter(Boolean);
+
+    if (wishPoints.length === 0) return null;
+
+    return new IconLayer({
+      id: "wish-stars",
+      data: wishPoints,
+      getPosition: (d) => d.position,
+      getIcon: () => icon,
+      sizeUnits: "meters",
+      // ここがサイズ調整ポイント（constants を使わないなら 0.32 など直書きでOK）
+      getSize: () => (typeof WISH_STAR_SIZE === "number" ? WISH_STAR_SIZE : 0.32),
+      billboard: true,
+      pickable: true, // タップで商品詳細を開けるように
+      onClick: (info) => {
+        const jan = info?.object?.jan;
+        if (!jan) return;
+        // filteredData から拾って詳細へ
+        const hit = filteredData.find((d) => janOf(d) === String(jan));
+        if (hit) onPickWine?.(hit);
+      },
+      parameters: { depthTest: false },
+      updateTriggers: {
+        // wishVersion で確実に再描画
+        getSize: [wishVersion],
+        getIcon: [wishVersion],
+      },
+    });
+  }, [filteredData, wishJansSet, wishVersion, userRatings, onPickWine]);  
+
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
     const lineColor = [255, 0, 0, 255];
@@ -955,6 +1035,9 @@ const MapCanvas = forwardRef(function MapCanvas(
 
         // EC専用商品の●（オレンジ）
         ecPointLayer,
+
+        // 飲みたい（★）store/ec の上に重ねる
+        wishStarLayer,
 
         // 選択中のみ dot.svg を重ねる
         ...selectedDotLayers,
