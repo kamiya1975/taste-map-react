@@ -633,7 +633,12 @@ const MapCanvas = forwardRef(function MapCanvas(
   const wishStarLayer = useMemo(() => {
     if (!(wishJansSet instanceof Set) || wishJansSet.size === 0) return null;
 
-    const icon = makeStarSVG({ color: "#9aa0a6" });
+    // constants の RGBA → CSS rgb() に変換して SVG に渡す
+    // （SVGは alpha を使わないのでRGBだけ使う）
+    const wishColorCss = Array.isArray(WISH_STAR_COLOR)
+      ? `rgb(${WISH_STAR_COLOR[0]}, ${WISH_STAR_COLOR[1]}, ${WISH_STAR_COLOR[2]})`
+      : "#9aa0a6";
+    const icon = makeStarSVG({ color: wishColorCss });
 
     // filteredData から「飲みたい」だけ抜く（ratingがあるものは除外）
     const wishPoints = filteredData
@@ -671,10 +676,11 @@ const MapCanvas = forwardRef(function MapCanvas(
       updateTriggers: {
         // wishVersion で確実に再描画
         getSize: [wishVersion],
-        getIcon: [wishVersion],
+        // 色を constants 側で変えたときも SVG を差し替える
+        getIcon: [wishVersion, wishColorCss],
       },
     });
-  }, [filteredData, wishJansSet, wishVersion, userRatings, onPickWine]);  
+  }, [filteredData, wishJansSet, wishVersion, userRatings, onPickWine]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {

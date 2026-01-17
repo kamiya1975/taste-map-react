@@ -38,7 +38,6 @@ import {
   OFFICIAL_STORE_ID,
 } from "../ui/constants";
 import { getLotId } from "../utils/lot";
-import { fetchLatestRatings } from "../lib/appRatings";
 import { getCurrentMainStoreIdSafe } from "../utils/store";
 
 // =========================
