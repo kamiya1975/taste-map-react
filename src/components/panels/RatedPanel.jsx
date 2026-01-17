@@ -39,7 +39,7 @@ function RightMark({ it }) {
   const rating = it?.rating;
   const isWishlist = rating == null || Number(rating) <= 0;
   if (isWishlist) {
-    const STAR_SIZE = 24; // 星アイコンだけ小さく（22〜26で調整）    
+    const STAR_SIZE = 20; // 星アイコンだけ小さく   
     return (
       <span
         aria-label="飲みたい"
