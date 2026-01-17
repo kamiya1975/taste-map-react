@@ -32,14 +32,9 @@ const IconDot = ({ color = "#9aa0a6", size = 12 }) => (
     <circle cx="12" cy="12" r="8" fill={color} />
   </svg>
 );
-// EC商品（オレンジ星形）
-const IconStarOrange = ({ size = 12, color = "#F7931E" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "block" }}>
-    <path
-      d="M12 2.5l2.9 6.1 6.7.9-4.9 4.7 1.2 6.7-5.9-3.2-5.9 3.2 1.2-6.7-4.9-4.7 6.7-.9L12 2.5z"
-      fill={color}
-    />
-  </svg>
+// EC商品（オレンジドット）
+const IconDotOrange = ({ size = 12, color = "#F7931E" }) => (
+  <IconDot size={size} color={color} />
 );
 // 配置範囲（四角斜線）
 const IconArea = ({ size = 12 }) => (
@@ -105,7 +100,7 @@ export default function MapGuidePanelContent() {
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
-        <Row icon={<IconStarOrange />}>
+        <Row icon={<IconDotOrange size={12} />}>
           ECで購入できるワインを示します。タップで詳細を表示できます。
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
