@@ -39,6 +39,7 @@ function RightMark({ it }) {
   const rating = it?.rating;
   const isWishlist = rating == null || Number(rating) <= 0;
   if (isWishlist) {
+    const STAR_SIZE = 24; // 星アイコンだけ小さく（22〜26で調整）    
     return (
       <span
         aria-label="飲みたい"
@@ -47,8 +48,8 @@ function RightMark({ it }) {
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          width: 35,
-          height: 35,
+          width: STAR_SIZE,
+          height: STAR_SIZE,
         }}
       >
         <img
@@ -56,8 +57,8 @@ function RightMark({ it }) {
           alt=""
           aria-hidden="true"
           style={{
-            width: 35,
-            height: 35,
+            width: STAR_SIZE,
+            height: STAR_SIZE,
             display: "block",
             objectFit: "contain",
           }}
