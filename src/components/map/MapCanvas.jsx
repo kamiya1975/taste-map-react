@@ -21,7 +21,7 @@ import {
 
 const BLACK = [0, 0, 0, 255];
 const FAVORITE_RED = [178, 53, 103, 255];
-const STAR_ORANGE = [247, 147, 30, 255]; // #F7931E くらいのオレンジ（★）
+const STAR_ORANGE = [247, 147, 30, 255]; // #F7931E くらいのオレンジ（★）  // 使わなくなったかも
 const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
@@ -564,45 +564,36 @@ const MapCanvas = forwardRef(function MapCanvas(
     console.log("[MapCanvas] storePoints =", storePoints.length, "ecPoints =", ecPoints.length);
   }, [allowedJansSet, ecOnlyJansSet, storePoints.length, ecPoints.length]);
 
-  // --- レイヤ：EC商品の★マーカー ---
-  const ecStarLayer = useMemo(() => {
+  // --- レイヤ：EC商品の●マーカー（オレンジ） ---
+  const ecPointLayer = useMemo(() => {
     if (!ecPoints || ecPoints.length === 0) return null;
 
-    // ===== ズームに応じたフォントサイズ計算 =====
-    return new TextLayer({
-      id: "ec-stars",
-      data: ecPoints.map(d => ({
+    return new ScatterplotLayer({
+      id: "ec-points",
+      data: ecPoints.map((d) => ({
         __raw: d,
         jan: janOf(d),
         x: xOf(d),
         y: yOf(d),
-        cluster: clusterOf(d), // ★ これが無いと getColor の cluster 分岐が常に死ぬ
+        cluster: clusterOf(d),
       })),
       getPosition: (d) => [d.x, -d.y, 0],
-      getText: () => "★",
-      sizeUnits: "meters",
-      getSize: () => 0.1,
-      getColor: (d) => {
+      getFillColor: (d) => {
         const janStr = d.jan;
-        if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;          // 評価ありは黒
-        if (favorites && favorites[janStr]) return FAVORITE_RED;              // お気に入りは赤
-        if (clusterColorMode && Number.isFinite(d.cluster)) {                 // クラスタ色モード
+        if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;     // 評価ありは黒（上書き）
+        if (favorites && favorites[janStr]) return FAVORITE_RED;         // お気に入りは赤（上書き）
+        if (clusterColorMode && Number.isFinite(d.cluster)) {
           return getClusterRGBA(d.cluster);
         }
-        //return MAP_POINT_COLOR;                                             // それ以外は●と同じグレー
-        return STAR_ORANGE;
-     },
-      getTextAnchor: () => "middle",
-      getAlignmentBaseline: () => "center",
-      characterSet: ["★"],
-      fontFamily:
-        'system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif',
-      billboard: true,
+        return STAR_ORANGE; // ← EC扱いはオレンジ●
+      },
+      updateTriggers: {
+        getFillColor: [favoritesVersion, clusterColorMode],
+      },
+      radiusUnits: "meters",
+      getRadius: 0.03, // mainLayer と同じ（必要なら 0.035 などに微調整）
       pickable: true,
       parameters: { depthTest: false },
-      updateTriggers: {
-        getColor: [favoritesVersion, clusterColorMode],
-      },
     });
   }, [ecPoints, favorites, favoritesVersion, userRatings, clusterColorMode]);
 
@@ -963,8 +954,8 @@ const MapCanvas = forwardRef(function MapCanvas(
         // 打点（店舗商品の●）
         mainLayer,
 
-        // EC専用商品の★
-        ecStarLayer,
+        // EC専用商品の●（オレンジ）
+        ecPointLayer,
 
         // 選択中のみ dot.svg を重ねる
         ...selectedDotLayers,
