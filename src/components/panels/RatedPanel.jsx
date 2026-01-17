@@ -17,6 +17,8 @@ const API_BASE =
 function pickDate(it) {
   return (
     it?.created_at ||
+    it?.wished_at ||
+    it?.rating_created_at ||
     it?.added_at ||
     it?.wish_created_at ||
     it?.located_at ||
@@ -33,9 +35,10 @@ function toTimeMs(v) {
 
 // 右側の表示（評価=◎ / 飲みたい=★）
 function RightMark({ it }) {
-  // kind はバックを基本信頼。念のため rating=0 で wish 扱いも許容
-  const kind = it?.kind || (Number(it?.rating || 0) > 0 ? "rating" : "wish");
-  if (kind === "wish") {
+  // kind はバックを基本信頼（事故防止のため、rating があれば「評価、rating が無ければ「飲みたい（wishlist）」でUI判定）
+  const rating = it?.rating;
+  const isWishlist = rating == null || Number(rating) <= 0;
+  if (isWishlist) {
     return (
       <span
         aria-label="飲みたい"
@@ -49,7 +52,7 @@ function RightMark({ it }) {
         }}
       >
         <img
-          src={`${process.env.PUBLIC_URL}/img/store.svg`}
+          src="/img/store.svg"
           alt=""
           aria-hidden="true"
           style={{
@@ -62,7 +65,7 @@ function RightMark({ it }) {
       </span>
     );
   }
-  return <CircleRatingDisplay rating={Number(it?.rating || 0)} size={35} />;
+  return <CircleRatingDisplay rating={Number(rating)} size={35} />;
 }
 
 /* =========================
@@ -140,20 +143,22 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
         }
         const json = await res.json();
         const arr = Array.isArray(json?.items) ? json.items : [];
-
-        // kind/display_rank はバックを信頼しつつ、最低限の欠損だけ埋める
+        
+        // kind/display_rank はバックを基本信頼し、表示用の共通フィールドだけ揃える
         const normalized = arr.map((it) => {
-          const kind = it?.kind || (Number(it?.rating || 0) > 0 ? "rating" : "wish");
+          const rating = it?.rating == null ? null : Number(it.rating); // null or number
           return {
             ...it,
-            kind,
-            created_at: pickDate(it) || it?.created_at || null,
+            // kind は rated-panel の仕様（"rating" | "wishlist"）を優先
+            kind: it?.kind,
+            // rated-panel は created_at を必ず持つ想定。保険で pickDate も噛ませる
+            created_at: it?.created_at || pickDate(it) || null,
             display_rank: Number(it?.display_rank ?? 0),
             // jan_code は常に string 化（Mapのkey/URL用に事故を防ぐ）
             jan_code: String(it?.jan_code ?? ""),
+            rating,
           };
         });
-        
 
         // バックが sort を正しく返す前提だが、万一順が崩れてもフロントで整列（安全弁）
         const ordered =
