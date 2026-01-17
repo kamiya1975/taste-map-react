@@ -1,5 +1,6 @@
 // src/components/map/MapCanvas.jsx
 // マップ描画
+// - 打点表示（ MapPage から渡された扱いを どう表現するか）が責務
 import React, { forwardRef, useMemo, useRef, useCallback, useEffect } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrthographicView } from "@deck.gl/core";
@@ -17,12 +18,13 @@ import {
   HEAT_CLIP_PCT,
   MAP_POINT_COLOR,
   getClusterRGBA,
-  WISH_STAR_COLOR,
-  WISH_STAR_SIZE,
+  // WISH_STAR_COLOR / WISH_STAR_SIZE は（旧: wishJansSetルート）で使用していたが
+  // 今回「wishlist=DB正（favorites）」に一本化するため MapCanvas では使わない
 } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
-const FAVORITE_RED = [178, 53, 103, 255];
+// wishlist（飲みたい）ON の★色（添付の色に合わせる。必要ならここだけ調整）
+const WISH_STAR_RGBA = [178, 53, 103, 255]; // = 旧 FAVORITE_RED
 const STAR_ORANGE = [247, 147, 30, 255]; // #F7931E くらいのオレンジ
 const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
@@ -218,8 +220,6 @@ const MapCanvas = forwardRef(function MapCanvas(
     allowedJansSet,
     ecOnlyJansSet,
     userRatings,
-    wishJansSet,
-    wishVersion,
     selectedJAN,
     favorites,
     favoritesVersion,
@@ -569,7 +569,6 @@ const MapCanvas = forwardRef(function MapCanvas(
         getFillColor: (d) => {
           const janStr = janOf(d);
           if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;
-          if (favorites && favorites[janStr]) return FAVORITE_RED;
           const c = clusterOf(d);
           if (clusterColorMode && Number.isFinite(c)) {
             return getClusterRGBA(c);
@@ -577,14 +576,15 @@ const MapCanvas = forwardRef(function MapCanvas(
           return MAP_POINT_COLOR;
         },
         updateTriggers: {
-          getFillColor: [favoritesVersion, clusterColorMode],
+          // favoritesVersion は色上書きでは使わなくなったので外す（不要な再生成を減らす）
+          getFillColor: [clusterColorMode],
         },
         radiusUnits: "meters",
         getRadius: 0.03,
         pickable: true,
       }),
-     [storePoints, favorites, favoritesVersion, userRatings, clusterColorMode]
-  );
+     [storePoints, userRatings, clusterColorMode]
+    );
 
   // --- デバッグ（集合ベース） ---
   useEffect(() => {
@@ -612,40 +612,37 @@ const MapCanvas = forwardRef(function MapCanvas(
       getFillColor: (d) => {
         const janStr = d.jan;
         if (Number(userRatings?.[janStr]?.rating) > 0) return BLACK;     // 評価ありは黒（上書き）
-        if (favorites && favorites[janStr]) return FAVORITE_RED;         // お気に入りは赤（上書き）
         if (clusterColorMode && Number.isFinite(d.cluster)) {
           return getClusterRGBA(d.cluster);
         }
         return STAR_ORANGE; // ← EC扱いはオレンジ●
       },
       updateTriggers: {
-        getFillColor: [favoritesVersion, clusterColorMode],
+        getFillColor: [clusterColorMode],
       },
       radiusUnits: "meters",
       getRadius: 0.03, // mainLayer と同じ（必要なら 0.035 などに微調整）
       pickable: true,
       parameters: { depthTest: false },
     });
-  }, [ecPoints, favorites, favoritesVersion, userRatings, clusterColorMode]);
+  }, [ecPoints, userRatings, clusterColorMode]);
 
   // --- レイヤ：飲みたい（★）---
-  // 優先順位：rating > wish > store/ec
+  // 優先順位：rating > wished(★) > store/ec
+  // 「wished」は DB正（rated-panel/SET_WISHLIST）で復元された favorites を唯一ソースにする
   const wishStarLayer = useMemo(() => {
-    if (!(wishJansSet instanceof Set) || wishJansSet.size === 0) return null;
+    const fav = favorites && typeof favorites === "object" ? favorites : null;
+    if (!fav || Object.keys(fav).length === 0) return null;
 
-    // constants の RGBA → CSS rgb() に変換して SVG に渡す
-    // （SVGは alpha を使わないのでRGBだけ使う）
-    const wishColorCss = Array.isArray(WISH_STAR_COLOR)
-      ? `rgb(${WISH_STAR_COLOR[0]}, ${WISH_STAR_COLOR[1]}, ${WISH_STAR_COLOR[2]})`
-      : "#9aa0a6";
+    // ★色（SVGはalphaを使わないのでRGBだけ）
+    const wishColorCss = `rgb(${WISH_STAR_RGBA[0]}, ${WISH_STAR_RGBA[1]}, ${WISH_STAR_RGBA[2]})`;
     const icon = makeStarSVG({ color: wishColorCss });
 
-    // filteredData から「飲みたい」だけ抜く（ratingがあるものは除外）
     const wishPoints = filteredData
       .map((d) => {
         const jan = janOf(d);
         if (!jan) return null;
-        if (!wishJansSet.has(jan)) return null;
+        if (!fav[jan]) return null; // wished=true
         if ((Number(userRatings?.[jan]?.rating) || 0) > 0) return null; // rating優先
         const x = xOf(d), y = yOf(d);
         if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
@@ -661,26 +658,24 @@ const MapCanvas = forwardRef(function MapCanvas(
       getPosition: (d) => d.position,
       getIcon: () => icon,
       sizeUnits: "meters",
-      // ここがサイズ調整ポイント（constants を使わないなら 0.32 など直書きでOK）
-      getSize: () => (typeof WISH_STAR_SIZE === "number" ? WISH_STAR_SIZE : 0.32),
+      // サイズは constants に依存せず固定（必要ならここだけ調整）
+      getSize: () => 0.32,
       billboard: true,
-      pickable: true, // タップで商品詳細を開けるように
+      pickable: true,
       onClick: (info) => {
         const jan = info?.object?.jan;
         if (!jan) return;
-        // filteredData から拾って詳細へ
         const hit = filteredData.find((d) => janOf(d) === String(jan));
         if (hit) onPickWine?.(hit);
       },
       parameters: { depthTest: false },
       updateTriggers: {
-        // wishVersion で確実に再描画
-        getSize: [wishVersion],
-        // 色を constants 側で変えたときも SVG を差し替える
-        getIcon: [wishVersion, wishColorCss],
+        // favoritesVersion で確実に再描画
+        getSize: [favoritesVersion],
+        getIcon: [favoritesVersion, wishColorCss],
       },
     });
-  }, [filteredData, wishJansSet, wishVersion, userRatings, onPickWine]);
+  }, [filteredData, favorites, favoritesVersion, userRatings, onPickWine]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
@@ -1036,13 +1031,13 @@ const MapCanvas = forwardRef(function MapCanvas(
         compassLayer,
         anchorCompassLayer,
 
-        // 打点（店舗商品の●）
+        // 打点（店舗商品の●グレイ）
         mainLayer,
 
-        // EC専用商品の●（オレンジ）
+        // EC専用商品の●オレンジ
         ecPointLayer,
 
-        // 飲みたい（★）store/ec の上に重ねる
+        // 飲みたい★赤（store/ec の上に重ねる）
         wishStarLayer,
 
         // 選択中のみ dot.svg を重ねる
