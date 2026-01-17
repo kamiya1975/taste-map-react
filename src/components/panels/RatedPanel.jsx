@@ -40,7 +40,7 @@ function RightMark({ it }) {
   const isWishlist = rating == null || Number(rating) <= 0;
 
   const MARK_BOX = 35;   // ◎と同じ“右側セルの箱”
-  const STAR_SIZE = 20;  // ★の実サイズ
+  const STAR_SIZE = 18;  // ★の実サイズ
 
   if (isWishlist) { 
     return (
