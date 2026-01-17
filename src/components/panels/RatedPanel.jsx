@@ -38,8 +38,11 @@ function RightMark({ it }) {
   // kind はバックを基本信頼（事故防止のため、rating があれば「評価、rating が無ければ「飲みたい（wishlist）」でUI判定）
   const rating = it?.rating;
   const isWishlist = rating == null || Number(rating) <= 0;
-  if (isWishlist) {
-    const STAR_SIZE = 20; // 星アイコンだけ小さく   
+
+  const MARK_BOX = 35;   // ◎と同じ“右側セルの箱”
+  const STAR_SIZE = 20;  // ★の実サイズ
+
+  if (isWishlist) { 
     return (
       <span
         aria-label="飲みたい"
@@ -48,8 +51,8 @@ function RightMark({ it }) {
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          width: STAR_SIZE,
-          height: STAR_SIZE,
+          width: MARK_BOX,
+          height: MARK_BOX,
         }}
       >
         <img
