@@ -18,13 +18,14 @@ import {
   HEAT_CLIP_PCT,
   MAP_POINT_COLOR,
   getClusterRGBA,
-  // WISH_STAR_COLOR / WISH_STAR_SIZE は（旧: wishJansSetルート）で使用していたが
-  // 今回「wishlist=DB正（favorites）」に一本化するため MapCanvas では使わない
+  // wishlist（飲みたい）★は constants を正とする（色/サイズの調整点を一本化）
+  WISH_STAR_COLOR,
+  WISH_STAR_SIZE,
 } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
-// wishlist（飲みたい）ON の★色（添付の色に合わせる。必要ならここだけ調整）
-const WISH_STAR_RGBA = [178, 53, 103, 255]; // = 旧 FAVORITE_RED
+// constants の色を正とする（RGBだけ使う）
+const WISH_STAR_RGBA = WISH_STAR_COLOR; // [178, 53, 103, 255] を想定
 const STAR_ORANGE = [247, 147, 30, 255]; // #F7931E くらいのオレンジ
 const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
@@ -658,8 +659,8 @@ const MapCanvas = forwardRef(function MapCanvas(
       getPosition: (d) => d.position,
       getIcon: () => icon,
       sizeUnits: "meters",
-      // サイズは constants に依存せず固定（必要ならここだけ調整）
-      getSize: () => 0.32,
+      // サイズは constants を正とする
+      getSize: () => WISH_STAR_SIZE,
       billboard: true,
       pickable: true,
       onClick: (info) => {
@@ -670,8 +671,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       },
       parameters: { depthTest: false },
       updateTriggers: {
-        // favoritesVersion で確実に再描画
-        getSize: [favoritesVersion],
+        // favoritesVersion（SET_WISHLIST等）で確実に再描画
         getIcon: [favoritesVersion, wishColorCss],
       },
     });
@@ -787,8 +787,8 @@ const MapCanvas = forwardRef(function MapCanvas(
       sizeUnits: "meters",
       getSize: 0.5,
       billboard: true,
-      pickable: true,               // ★ クリック可能にする
-      onClick: () => {              // ★ コンパスをタップしたら SliderPage を開く
+      pickable: true,               // クリック可能にする
+      onClick: () => {              // コンパスをタップしたら SliderPage を開く
         onOpenSlider?.();
       },
       parameters: { depthTest: false },
@@ -843,7 +843,7 @@ const MapCanvas = forwardRef(function MapCanvas(
 
   return (
     <DeckGL
-      ref={setDeckRef}   // ★ 親refがnullでも落ちない安全なref
+      ref={setDeckRef}   // 親refがnullでも落ちない安全なref
       views={new OrthographicView({ near: -1, far: 1 })}
       viewState={viewState}
       style={{ position: "absolute", inset: 0 }}
@@ -1031,13 +1031,13 @@ const MapCanvas = forwardRef(function MapCanvas(
         compassLayer,
         anchorCompassLayer,
 
-        // 打点（店舗商品の●グレイ）
+        // 打点（店舗商品の ●グレイ）
         mainLayer,
 
-        // EC専用商品の●オレンジ
+        // EC専用商品の ●オレンジ
         ecPointLayer,
 
-        // 飲みたい★赤（store/ec の上に重ねる）
+        // 飲みたい ★赤（store/ec の上に重ねる）
         wishStarLayer,
 
         // 選択中のみ dot.svg を重ねる

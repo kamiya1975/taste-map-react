@@ -43,7 +43,7 @@ export const MAP_POINT_SELECTED = [ 80,  80,  80, 255];
 export const ORANGE = [255, 140, 0];
 
 // ===== wishlist（飲みたい）星 =====
-export const WISH_STAR_COLOR = [160, 160, 160, 255]; // グレイ
+export const WISH_STAR_COLOR = [178, 53, 103, 255]; 
 // IconLayer の sizeUnits="meters" 用（MapCanvas の getSize と合わせる）
 export const WISH_STAR_SIZE = 0.32; // 0.28〜0.36で好み調整
 
