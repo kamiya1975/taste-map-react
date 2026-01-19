@@ -2242,6 +2242,9 @@ function MapPage() {
 
           if (!userDisplayName) return null;
 
+         // RatedPanel 表示中は、ラベルがパネル内に透けるので消す
+         if (isRatedOpen) return null;
+
           return (
             <div
               style={{
