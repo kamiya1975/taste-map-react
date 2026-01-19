@@ -21,6 +21,8 @@ import {
   // wishlist（飲みたい）★は constants を正とする（色/サイズの調整点を一本化）
   WISH_STAR_COLOR,
   WISH_STAR_SIZE,
+  MAP_POINT_RADIUS,
+  MAP_POINT_RADIUS_CLUSTER,
 } from "../../ui/constants";
 
 const BLACK = [0, 0, 0, 255];
@@ -581,7 +583,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           getFillColor: [clusterColorMode],
         },
         radiusUnits: "meters",
-        getRadius: 0.03,
+        getRadius: clusterColorMode ? MAP_POINT_RADIUS_CLUSTER : MAP_POINT_RADIUS,
         pickable: true,
       }),
      [storePoints, userRatings, clusterColorMode]
@@ -622,7 +624,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         getFillColor: [clusterColorMode],
       },
       radiusUnits: "meters",
-      getRadius: 0.03, // mainLayer と同じ（必要なら 0.035 などに微調整）
+      getRadius: clusterColorMode ? MAP_POINT_RADIUS_CLUSTER : MAP_POINT_RADIUS,
       pickable: true,
       parameters: { depthTest: false },
     });

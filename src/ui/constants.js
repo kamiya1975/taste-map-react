@@ -36,6 +36,12 @@ export const CENTER_Y_OFFSET = -3.5;
 export const ZOOM_LIMITS = { min: 5.25, max: 8.00 };
 export const INITIAL_ZOOM = 5.5;
 
+// ===== Map point radius（打点の大きさ）=====
+// ScatterplotLayer の radius（UMAP座標系のワールド単位）
+export const MAP_POINT_RADIUS = 0.03;
+// クラスタ配色ON時は少し大きく（好みで 0.034〜0.040 に調整）
+export const MAP_POINT_RADIUS_CLUSTER = 0.036;
+
 // 打点カラー
 export const MAP_POINT_COLOR    = [160, 160, 160, 220];
 export const MAP_POINT_HOVER    = [120, 120, 120, 255];
