@@ -1,6 +1,6 @@
 // src/pages/StorePage.jsx
 // メイン店舗選択画面
-import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OFFICIAL_STORE_ID } from "../ui/constants";
 
@@ -27,23 +27,6 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [locFailed, setLocFailed] = useState(false); // 位置情報NGフラグ
-
-  const headerRef = useRef(null);
-  const [headerH, setHeaderH] = useState(0);
-
-  useLayoutEffect(() => {
-    if (!headerRef.current) return;
-    const el = headerRef.current;
-    const update = () => setHeaderH(el.getBoundingClientRect().height);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    window.addEventListener("resize", update);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", update);
-    };
-  }, []);
 
   useEffect(() => {
     const run = async () => {
@@ -212,25 +195,18 @@ export default function StorePage() {
   };
 
   return (
-    <div
-      style={{
-        fontFamily: "sans-serif",
-        height: "100vh",
-        overflow: "hidden",
-      }}
-    >
-      {/* 固定ヘッダ */}
+    <div style={{ fontFamily: "sans-serif", background: "rgb(250,250,250)" }}>
+      {/* 全体スクロール（固定なし） */}
       <div
-        ref={headerRef}
         style={{
-          position: "fixed",
-          top: 0,
-          width: "100%",
           maxWidth: 500,
-          background: "rgb(250,250,250)",
-          zIndex: 100,
+          margin: "0 auto",
+          minHeight: "100dvh",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
         }}
       >
+        {/* ヘッダ（固定しない） */}
         <div style={{ padding: "70px 16px 30px" }}>
           <h2 className="store-header" style={{ margin: 0 }}>
             購入した店舗を選択してください。
@@ -249,19 +225,8 @@ export default function StorePage() {
           </p>
         </div>
         <div style={{ height: 1, background: "#ccc" }} />
-      </div>
 
-      {/* リスト */}
-      <div
-        style={{
-          paddingTop: headerH,
-          overflowY: "auto",
-          height: "100vh",
-          maxWidth: 500,
-          margin: "0 auto",
-          background: "rgb(250,250,250)",
-        }}
-      >
+        {/* リスト（同じスクロール領域の中） */}
         {loading && <div style={{ padding: 16 }}>読み込み中…</div>}
         {err && <div style={{ padding: 16, color: "crimson" }}>{err}</div>}
 
