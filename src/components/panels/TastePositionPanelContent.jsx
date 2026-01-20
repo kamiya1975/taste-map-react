@@ -16,7 +16,7 @@ export default function TastePositionPanelContent({ userPin }) {
     <div style={{ padding: 18 }}>
       <div
         style={{
-          fontSize: 18,
+          fontSize: 16,
           fontWeight: 600,
           marginTop: 6,
           marginBottom: 22,
@@ -36,12 +36,12 @@ export default function TastePositionPanelContent({ userPin }) {
           margin: "0 auto",
         }}
       >
-        <div style={{ fontSize: 18, }}>味覚緯度</div>
+        <div style={{ fontSize: 16, }}>味覚緯度</div>
         <div style={{ fontSize: 26, fontWeight: 800, textAlign: "right" }}>
           {fmt(lat)}
         </div>
 
-        <div style={{ fontSize: 18, }}>味覚経度</div>
+        <div style={{ fontSize: 16, }}>味覚経度</div>
         <div style={{ fontSize: 26, fontWeight: 800, textAlign: "right" }}>
           {fmt(lon)}
         </div>
