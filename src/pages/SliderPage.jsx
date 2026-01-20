@@ -310,9 +310,6 @@ export default function SliderPage() {
     try {
       sessionStorage.setItem("tm_center_on_userpin", "1");
     } catch {}
-    try {
-      sessionStorage.setItem("tm_autopen_nearest", "1");
-    } catch {}
 
     navigate("/map?open=guide", { state: { centerOnUserPin: true } });
   };
