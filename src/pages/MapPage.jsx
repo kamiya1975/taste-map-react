@@ -498,6 +498,44 @@ function MapPage() {
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
   const [cartEnabled, setCartEnabled] = useState(false);
 
+  // =========================
+  // points 再取得（更新ボタン代替用）　2026.01.
+  // - cache を強制的に無効化
+  // - ?v= でURLをバスト（静的配信の強キャッシュ対策）
+  // =========================
+  const fetchPoints = useCallback(
+    async (opts = {}) => {
+      const { bust = true } = opts;
+      try {
+        const baseUrl = String(TASTEMAP_POINTS_URL || "");
+        if (!baseUrl) return;
+
+        const url = new URL(baseUrl, window.location.origin);
+        if (bust) url.searchParams.set("v", String(Date.now()));
+
+        console.log("[MapPage] fetch points (refresh) from", url.toString());
+        const res = await fetch(url.toString(), { cache: "no-store" });
+        if (!res.ok) {
+          console.error("[MapPage] points fetch !ok", res.status, res.statusText);
+          return;
+        }
+
+        const json = await res.json();
+        const list = Array.isArray(json) ? json : json.points || [];
+        const normalized = normalizePoints(list);
+        console.log(
+          "[MapPage] points length raw/normalized =",
+          list.length,
+          normalized.length
+        );
+        setData(normalized);
+      } catch (e) {
+        console.error("[MapPage] points fetch error", e);
+      }
+    },
+    []
+  );
+  
   // ------------------------------
   // 描画用の主集合（visible）
   // - allowedJansSet があるならそれを優先
@@ -866,46 +904,36 @@ function MapPage() {
     };
   }, [data]);
 
-  // ====== 打点データ読み込み（TASTEMAP_POINTS_URL から）=====
+  // ====== 打点データ読み込み（初回）===== 2026.01.
   useEffect(() => {
-    let cancelled = false;
+    fetchPoints({ bust: true });
+  }, [fetchPoints]);
 
-    (async () => {
-      try {
-        console.log("[MapPage] fetch points from", TASTEMAP_POINTS_URL);
-        const res = await fetch(TASTEMAP_POINTS_URL);
-        if (!res.ok) {
-          console.error(
-            "[MapPage] points fetch !ok",
-            res.status,
-            res.statusText
-          );
-          return;
+  // =========================
+  // 検索 / 評価ボタンを「更新ボタン代替」にする　2026.01.
+  // - 未ログイン時：mainStoreId はローカル由来のまま（reloadAllowedJans が内部で吸収）
+  // - ログイン時：rated-panel 同期も実行
+  // =========================
+  const refreshDataForPanels = useCallback(
+    async () => {
+      // 1) points（静的/デプロイ差し替えの反映）
+      await fetchPoints({ bust: true });
+      // 2) allowed-jans（店舗選択/EC可否/表示JANの反映）
+      await reloadAllowedJans();
+      // 3) wishlist/rating（ログイン時のみ。未ログインは syncRatedPanel 内で早期returnするが明示）
+      const token = (() => {
+        try {
+          return localStorage.getItem("app.access_token") || "";
+        } catch {
+          return "";
         }
-
-        const json = await res.json();
-
-        // 配列ならそのまま / {points:[...]} 形式なら中身を使う
-        const list = Array.isArray(json) ? json : json.points || [];
-        const normalized = normalizePoints(list);
-        console.log(
-          "[MapPage] points length raw/normalized =",
-          list.length,
-          normalized.length
-        );
-
-        if (!cancelled) {
-          setData(normalized);
-        }
-      } catch (e) {
-        console.error("[MapPage] points fetch error", e);
+      })();
+      if (token) {
+        await syncRatedPanel();
       }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    },
+    [fetchPoints, reloadAllowedJans, syncRatedPanel]
+  );
 
   // スキャナ：未登録JANの警告リセット
   useEffect(() => {
@@ -1568,7 +1596,10 @@ function MapPage() {
 
       {/* 右上: 検索 */}
       <button
-        onClick={() => openPanel("search")}
+        onClick={async () => {
+          await refreshDataForPanels();
+          openPanel("search");
+        }}
         style={{
           /* 上と同様。topだけ60pxに */
           pointerEvents: "auto",
@@ -1605,7 +1636,10 @@ function MapPage() {
 
       {/* 右サイド: 評価 */}
       <button
-        onClick={() => openPanel("rated")}
+        onClick={async () => {
+          await refreshDataForPanels();
+          openPanel("rated");
+        }}
         style={{
           /* 110px */
           pointerEvents: "auto",
