@@ -239,7 +239,7 @@ export default function StorePage() {
         {/* ヘッダ（固定しない） */}
         <div style={{ padding: "70px 16px 30px" }}>
           <h2 className="store-header" style={{ margin: 0 }}>
-            購入した店舗を選択してください。
+            基準のワインを購入した店舗を選択
           </h2>
           <p
             style={{
