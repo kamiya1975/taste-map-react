@@ -84,6 +84,21 @@ export default function StorePanelContent() {
     return "";
   };
 
+  const renderStoreDetails = (s) => {
+    if (!s) return null;
+    const bh = String(s.business_hours || "").trim();
+    const hol = String(s.holiday_text || "").trim();
+    const intro = String(s.intro_text || "").trim();
+    if (!bh && !hol && !intro) return null;
+    return (
+      <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2, lineHeight: 1.4 }}>
+        {bh && <div>営業時間：{bh}</div>}
+        {hol && <div>定休日：{hol}</div>}
+        {intro && <div>紹介：{intro}</div>}
+      </div>
+    );
+  };
+  
   useEffect(() => {
     let alive = true;
 
@@ -162,6 +177,9 @@ export default function StorePanelContent() {
             is_sub: !!s.is_sub,
             ec_active: !!s.ec_active, // 追加（レスポンスにあれば）
             updated_at: s.updated_at,
+            business_hours: s.business_hours ?? "",
+            holiday_text: s.holiday_text ?? "",
+            intro_text: s.intro_text ?? "",
             _key: `${s.store_id}@@${idx}`,
           };
         });
@@ -327,6 +345,7 @@ export default function StorePanelContent() {
                 <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
                   {formatKm(mainStore.distance)}
                 </div>
+                {renderStoreDetails(mainStore)}
               </div>
               <div
                 style={{

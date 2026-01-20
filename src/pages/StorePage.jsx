@@ -106,6 +106,9 @@ export default function StorePage() {
             is_main: !!s.is_main,
             ec_active: !!s.ec_active, // ★追加：公式Shop/EC連携可否を保持
             updated_at: s.updated_at,
+            business_hours: s.business_hours ?? "",
+            holiday_text: s.holiday_text ?? "",
+            intro_text: s.intro_text ?? "",
             branch: "",
             address: "",
             genre: "",
@@ -149,6 +152,30 @@ export default function StorePage() {
       return `${d.toFixed(1)}km`;
     }
     return "";
+  };
+
+  const renderStoreDetails = (store) => {
+    if (!store) return null;
+    const bh = String(store.business_hours || "").trim();
+    const hol = String(store.holiday_text || "").trim();
+    const intro = String(store.intro_text || "").trim();
+    if (!bh && !hol && !intro) return null;
+    return (
+      <div
+        style={{
+          fontSize: 12,
+          color: "#6e6e73",
+          marginTop: 2,
+          lineHeight: 1.4,
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+        }}
+      >
+        {bh && <div>営業時間：{bh}</div>}
+        {hol && <div>定休日：{hol}</div>}
+        {intro && <div>紹介：{intro}</div>}
+      </div>
+    );
   };
 
   const handleStoreSelect = (store) => {
@@ -264,8 +291,11 @@ export default function StorePage() {
                     {store.genre ? ` / ${store.genre}` : ""}
                   </div>
                 </div>
-                <div style={{ marginLeft: 12 }}>
-                  {formatKm(store.distance)}
+                <div style={{ marginLeft: 12, textAlign: "right", minWidth: 90 }}>
+                  <div style={{ fontSize: 12, color: "#6e6e73" }}>
+                    {formatKm(store.distance)}
+                  </div>
+                  {renderStoreDetails(store)}
                 </div>
               </div>
 
