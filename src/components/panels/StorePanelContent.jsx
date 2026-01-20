@@ -210,9 +210,25 @@ export default function StorePanelContent() {
     };
     window.addEventListener("tm_auth_changed", handleAuthChanged);
 
+    // ① MapPage がパネル open 時に投げるイベント → 再取得
+    const handlePanelOpen = () => {
+      fetchStores();
+    };
+    window.addEventListener("tm_store_panel_open", handlePanelOpen);
+
+    // さらに強くする：iOS/PWA で「画面復帰」時に再取得
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchStores();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
       alive = false;
       window.removeEventListener("tm_auth_changed", handleAuthChanged);
+      window.removeEventListener("tm_store_panel_open", handlePanelOpen);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
 

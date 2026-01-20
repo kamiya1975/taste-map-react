@@ -687,6 +687,13 @@ function MapPage() {
     syncRatedPanel();
   }, [isRatedOpen, syncRatedPanel]);
 
+  // Storeパネル（お気に入り店舗登録）を開いたタイミングで、
+  // 店舗情報のDB更新（営業時間など）を即反映させるために裏で更新する　2026.01.
+  useEffect(() => {
+    if (!isStoreOpen) return;
+    refreshDataInBackground();
+  }, [isStoreOpen, refreshDataInBackground]);
+
   // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
   const [clusterCollapseKey, setClusterCollapseKey] = useState(null);
