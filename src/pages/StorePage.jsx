@@ -28,6 +28,38 @@ export default function StorePage() {
   const [err, setErr] = useState("");
   const [locFailed, setLocFailed] = useState(false); // 位置情報NGフラグ
 
+  // ---- StorePageではスクロールロックを解除（Map系の副作用対策） ----
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      htmlHeight: html.style.height,
+      bodyOverflow: body.style.overflow,
+      bodyHeight: body.style.height,
+      bodyPosition: body.style.position,
+      bodyWidth: body.style.width,
+    };
+
+    html.style.overflow = "auto";
+    html.style.height = "auto";
+    body.style.overflow = "auto";
+    body.style.height = "auto";
+    body.style.position = "static";
+    body.style.width = "auto";
+
+    return () => {
+      html.style.overflow = prev.htmlOverflow;
+      html.style.height = prev.htmlHeight;
+      body.style.overflow = prev.bodyOverflow;
+      body.style.height = prev.bodyHeight;
+      body.style.position = prev.bodyPosition;
+      body.style.width = prev.bodyWidth;
+    };
+  }, []);
+  // ここまで スクロール対策 2026.01.
+
   useEffect(() => {
     const run = async () => {
       setLoading(true);
@@ -201,9 +233,7 @@ export default function StorePage() {
         style={{
           maxWidth: 500,
           margin: "0 auto",
-          minHeight: "100dvh",
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
+         paddingBottom: 24,
         }}
       >
         {/* ヘッダ（固定しない） */}
