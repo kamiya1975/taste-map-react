@@ -313,26 +313,25 @@ export default function StorePage() {
                 {/* 営業時間/定休日/紹介 */}
                 {renderStoreDetails(store)}
               </div>
-
-              {/* 位置情報NG時は、公式Shop(id=1) の下に説明メッセージ */}
-              {locFailed && store.id === OFFICIAL_STORE_ID && (
-                <div
-                  style={{
-                    padding: "8px 16px 16px",
-                    fontSize: 12,
-                    color: "#555",
-                    background: "rgb(250,250,250)",
-                  }}
-                >
-                  位置情報が取得できず、近くの店舗を表示できません。
-                  <br />
-                  端末の「設定」から位置情報取得を許可するか、
-                  <br />
-                  許可が難しい場合は、TasteMap 公式EC shopをお選びください。
-                </div>
-              )}
             </React.Fragment>
           ))}
+        {/* 位置情報NGメッセージ：全店舗の「下」に1回だけ表示 */}
+        {!loading && !err && locFailed && (
+          <div
+            style={{
+              padding: "12px 16px 16px",
+              fontSize: 12,
+              color: "#555",
+              background: "rgb(250,250,250)",
+            }}
+          >
+            位置情報が取得できず、近くの店舗を表示できません。
+            <br />
+            端末の「設定」から位置情報取得を許可するか、
+            <br />
+            許可が難しい場合は、TasteMap 公式EC shopをお選びください。
+          </div>
+        )}
       </div>
     </div>
   );
