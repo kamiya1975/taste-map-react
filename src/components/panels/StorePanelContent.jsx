@@ -400,6 +400,7 @@ export default function StorePanelContent() {
                     >
                       {formatKm(store.distance)}
                     </div>
+                    {renderStoreDetails(store)}
                   </div>
                 </div>
                 {i !== otherStores.length - 1 && (
