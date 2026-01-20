@@ -249,7 +249,7 @@ export default function StorePanelContent() {
 
   const storeDisplayName = (s) => {
     if (!s) return "";
-    if (s.id === OFFICIAL_STORE_ID) return "TasteMap公式Shop";
+    if (s.id === OFFICIAL_STORE_ID) return "TasteMap 公式EC shop";
     return s.name;
   };
 

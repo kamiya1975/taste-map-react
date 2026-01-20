@@ -104,7 +104,7 @@ export default function StorePage() {
             distance: d,
             distance_km: numD,
             is_main: !!s.is_main,
-            ec_active: !!s.ec_active, // ★追加：公式Shop/EC連携可否を保持
+            ec_active: !!s.ec_active, // 追加：公式Shop/EC連携可否を保持
             updated_at: s.updated_at,
             business_hours: s.business_hours ?? "",
             holiday_text: s.holiday_text ?? "",
@@ -118,9 +118,8 @@ export default function StorePage() {
           };
         });
 
-        // ★ ここでは再ソートしない（バックエンドが
-        //    「公式Shop(OFFICIAL_STORE_ID) 最上段 → それ以外距離順」
-        //    を保証している前提）
+        // ここでは再ソートしない（バックエンドが
+        // 「公式Shop(OFFICIAL_STORE_ID) 最上段 → それ以外距離順」を保証している前提    
         const finalStores = enriched;
 
         setStores(finalStores);
@@ -207,7 +206,7 @@ export default function StorePage() {
 
   const displayName = (store) => {
     if (store.id === OFFICIAL_STORE_ID) {
-      return "TasteMap公式Shop";
+      return "TasteMap 公式EC shop";
     }
     return `${store.name} ${store.branch || ""}`;
   };
@@ -246,7 +245,7 @@ export default function StorePage() {
           >
             購入した店舗がない場合は、
             <br />
-            TasteMap公式Shopをお選びください。
+            「TasteMap 公式EC shop」をお選びください。
           </p>
         </div>
         <div style={{ height: 1, background: "#ccc" }} />
@@ -279,7 +278,7 @@ export default function StorePage() {
                   background: "#fff",
                 }}
               >
-                {/* 1) 店名（1行・全幅） */}
+                {/* 店名 */}
                 <div
                   className="store-link"
                   style={{
@@ -290,7 +289,7 @@ export default function StorePage() {
                   {displayName(store)}
                 </div>
 
-                {/* 2) 距離（全幅の下段） */}
+                {/* 距離 */}
                 <div
                   style={{
                     marginTop: 4,
@@ -302,7 +301,7 @@ export default function StorePage() {
                   {formatKm(store.distance)}
                 </div>
 
-                {/* 3) 住所など（任意：今は空が多いので残すなら下に） */}
+                {/* 住所 */}
                 {(store.address || store.genre) && (
                   <div
                     style={{
@@ -316,11 +315,11 @@ export default function StorePage() {
                   </div>
                 )}
 
-                {/* 4) 営業時間/定休日/紹介（全幅） */}
+                {/* 営業時間/定休日/紹介 */}
                 {renderStoreDetails(store)}
               </div>
 
-              {/* ★ 位置情報NG時は、公式Shop(id=1) の下に説明メッセージ */}
+              {/* 位置情報NG時は、公式Shop(id=1) の下に説明メッセージ */}
               {locFailed && store.id === OFFICIAL_STORE_ID && (
                 <div
                   style={{
@@ -334,7 +333,7 @@ export default function StorePage() {
                   <br />
                   端末の「設定」から位置情報取得を許可するか、
                   <br />
-                  許可が難しい場合は、TasteMap公式Shopをお選びください。
+                  許可が難しい場合は、TasteMap 公式EC shopをお選びください。
                 </div>
               )}
             </React.Fragment>
