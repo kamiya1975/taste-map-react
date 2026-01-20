@@ -952,12 +952,13 @@ function MapPage() {
   );
 
   // ボタン押下で「即open + 裏で更新」を安全に走らせる　2026.01.
-  const refreshDataInBackground = useCallback(() => {
+  // ※ eslint(no-use-before-define) 回避のため “関数宣言” にする（宣言は hoist される）
+  function refreshDataInBackground() {
     // await しない（体感速度優先）
     refreshDataForPanels().catch((e) => {
       console.warn("[MapPage] background refresh failed:", e);
     });
-  }, [refreshDataForPanels]);
+  }
 
   // スキャナ：未登録JANの警告リセット
   useEffect(() => {
