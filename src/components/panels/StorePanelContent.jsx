@@ -93,8 +93,8 @@ export default function StorePanelContent() {
     return (
       <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2, lineHeight: 1.4 }}>
         {bh && <div>営業時間：{bh}</div>}
-        {hol && <div>定休日：{hol}</div>}
-        {intro && <div>紹介：{intro}</div>}
+        {hol && <div>定 休 日：{hol}</div>}
+        {intro && <div>{intro}</div>}
       </div>
     );
   };
@@ -342,7 +342,7 @@ export default function StorePanelContent() {
                 <div style={{ fontWeight: 700, lineHeight: 1.2 }}>
                   {storeDisplayName(mainStore)}
                 </div>
-                <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2 }}>
+                <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 8 }}>
                   {formatKm(mainStore.distance)}
                 </div>
                 {renderStoreDetails(mainStore)}
@@ -395,7 +395,7 @@ export default function StorePanelContent() {
                       style={{
                         fontSize: 12,
                         color: "#6e6e73",
-                        marginTop: 2,
+                        marginTop: 8,
                       }}
                     >
                       {formatKm(store.distance)}
