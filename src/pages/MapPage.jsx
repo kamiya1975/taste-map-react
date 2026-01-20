@@ -642,6 +642,39 @@ function MapPage() {
     }
   }, []);
 
+  // =========================
+  // 検索 / 評価ボタンを「更新ボタン代替」にする　2026.01.
+  // - 未ログイン時：mainStoreId はローカル由来のまま（reloadAllowedJans が内部で吸収）
+  // - ログイン時：rated-panel 同期も実行
+  // =========================
+  const refreshDataForPanels = useCallback(
+    async () => {
+      // 1) points（静的/デプロイ差し替えの反映）
+      await fetchPoints({ bust: true });
+      // 2) allowed-jans（店舗選択/EC可否/表示JANの反映）
+      await reloadAllowedJans();
+      // 3) wishlist/rating（ログイン時のみ。未ログインは syncRatedPanel 内で早期returnするが明示）
+      const token = (() => {
+        try {
+          return localStorage.getItem("app.access_token") || "";
+        } catch {
+          return "";
+        }
+      })();
+      if (token) {
+        await syncRatedPanel();
+      }
+    },
+    [fetchPoints, reloadAllowedJans, syncRatedPanel]
+  );
+
+  // ボタン押下で「即open + 裏で更新」を安全に走らせる（参照を安定化）2026.01.
+  const refreshDataInBackground = useCallback(() => {
+    refreshDataForPanels().catch((e) => {
+      console.warn("[MapPage] background refresh failed:", e);
+    });
+  }, [refreshDataForPanels]);
+
   // 初回・ログイン/ログアウト・店舗変更などで同期
   useEffect(() => {
     syncRatedPanel();
@@ -924,39 +957,6 @@ function MapPage() {
   useEffect(() => {
     fetchPoints({ bust: true });
   }, [fetchPoints]);
-
-  // =========================
-  // 検索 / 評価ボタンを「更新ボタン代替」にする　2026.01.
-  // - 未ログイン時：mainStoreId はローカル由来のまま（reloadAllowedJans が内部で吸収）
-  // - ログイン時：rated-panel 同期も実行
-  // =========================
-  const refreshDataForPanels = useCallback(
-    async () => {
-      // 1) points（静的/デプロイ差し替えの反映）
-      await fetchPoints({ bust: true });
-      // 2) allowed-jans（店舗選択/EC可否/表示JANの反映）
-      await reloadAllowedJans();
-      // 3) wishlist/rating（ログイン時のみ。未ログインは syncRatedPanel 内で早期returnするが明示）
-      const token = (() => {
-        try {
-          return localStorage.getItem("app.access_token") || "";
-        } catch {
-          return "";
-        }
-      })();
-      if (token) {
-        await syncRatedPanel();
-      }
-    },
-    [fetchPoints, reloadAllowedJans, syncRatedPanel]
-  );
-
-  // ボタン押下で「即open + 裏で更新」を安全に走らせる（参照を安定化）
-  const refreshDataInBackground = useCallback(() => {
-    refreshDataForPanels().catch((e) => {
-      console.warn("[MapPage] background refresh failed:", e);
-    });
-  }, [refreshDataForPanels]);
 
   // スキャナ：未登録JANの警告リセット
   useEffect(() => {
