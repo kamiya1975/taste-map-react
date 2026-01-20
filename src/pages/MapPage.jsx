@@ -935,6 +935,14 @@ function MapPage() {
     [fetchPoints, reloadAllowedJans, syncRatedPanel]
   );
 
+  // ボタン押下で「即open + 裏で更新」を安全に走らせる　2026.01.
+  const refreshDataInBackground = useCallback(() => {
+    // await しない（体感速度優先）
+    refreshDataForPanels().catch((e) => {
+      console.warn("[MapPage] background refresh failed:", e);
+    });
+  }, [refreshDataForPanels]);
+
   // スキャナ：未登録JANの警告リセット
   useEffect(() => {
     if (isScannerOpen) unknownWarnedRef.current.clear();
@@ -1597,11 +1605,12 @@ function MapPage() {
       {/* 右上: 検索 */}
       <button
         onClick={async () => {
-          await refreshDataForPanels();
+          // 先に開く（体感速度優先）
           openPanel("search");
+          // 裏で更新（points/allowed/rated-panel）
+          refreshDataInBackground();
         }}
         style={{
-          /* 上と同様。topだけ60pxに */
           pointerEvents: "auto",
           position: "absolute",
           top: "60px",
@@ -1637,8 +1646,10 @@ function MapPage() {
       {/* 右サイド: 評価 */}
       <button
         onClick={async () => {
-          await refreshDataForPanels();
+          // 先に開く（体感速度優先）
           openPanel("rated");
+          // 裏で更新（points/allowed/rated-panel）
+          refreshDataInBackground();
         }}
         style={{
           /* 110px */
