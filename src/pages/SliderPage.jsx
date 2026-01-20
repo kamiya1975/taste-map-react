@@ -311,7 +311,7 @@ export default function SliderPage() {
       sessionStorage.setItem("tm_center_on_userpin", "1");
     } catch {}
 
-    navigate("/map?open=guide", { state: { centerOnUserPin: true } });
+    navigate("/map?open=position", { state: { centerOnUserPin: true } });
   };
 
   /* ---------- スタイル ---------- */

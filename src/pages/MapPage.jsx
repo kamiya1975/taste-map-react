@@ -24,6 +24,7 @@ import MyPagePanelContent from "../components/panels/MyPagePanelContent";
 import MilesPanelContent from "../components/panels/MilesPanelContent";
 import ClusterPalettePanel from "../components/panels/ClusterPalettePanel";
 import SimpleCartPanel from "../components/panels/SimpleCartPanel";
+import TastePositionPanelContent from "../components/panels/TastePositionPanelContent";
 import { useSimpleCart } from "../cart/simpleCart";
 import {
   drawerModalProps,
@@ -451,6 +452,7 @@ function MapPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false); // 検索
   const [isRatedOpen, setIsRatedOpen] = useState(false); // 評価（◎）
   const [isMapGuideOpen, setIsMapGuideOpen] = useState(false); // マップガイド（オーバーレイ）
+  const [isTastePositionOpen, setIsTastePositionOpen] = useState(false); // あなたの味覚位置（オーバーレイ）
   const [isStoreOpen, setIsStoreOpen] = useState(false); // お気に入り店舗登録（オーバーレイ）
   const [isAccountOpen, setIsAccountOpen] = useState(false); // マイアカウント（メニュー）
   const [isMilesOpen, setIsMilesOpen] = useState(false); // 獲得マイル（メニュー）
@@ -768,6 +770,10 @@ function MapPage() {
         setIsMapGuideOpen(false);
         willClose = true;
       }
+      if (isTastePositionOpen) {
+        setIsTastePositionOpen(false);
+        willClose = true;
+      }      
       if (isStoreOpen) {
         setIsStoreOpen(false);
         willClose = true;
@@ -814,6 +820,7 @@ function MapPage() {
     [
       productDrawerOpen,
       isMapGuideOpen,
+      isTastePositionOpen,
       isStoreOpen,
       isSearchOpen,
       isRatedOpen,
@@ -839,6 +846,7 @@ function MapPage() {
 
       if (kind === "mypage") setIsMyPageOpen(true);
       else if (kind === "mapguide" || kind === "guide") setIsMapGuideOpen(true);
+      else if (kind === "position") setIsTastePositionOpen(true);
       else if (kind === "store") setIsStoreOpen(true);
       else if (kind === "search") setIsSearchOpen(true);
       else if (kind === "rated") setIsRatedOpen(true);
@@ -856,6 +864,7 @@ function MapPage() {
     async (kind) => {
       await closeUIsThen({ preserveMyPage: true, preserveCluster: true });
       if (kind === "mapguide") setIsMapGuideOpen(true);
+      else if (kind === "position") setIsTastePositionOpen(true);
       else if (kind === "store") setIsStoreOpen(true);
       else if (kind === "guide") setIsMapGuideOpen(true);
       else if (kind === "account") setIsAccountOpen(true);
@@ -869,7 +878,7 @@ function MapPage() {
     }, [closeUIsThen, cartEnabled]
   );
 
-  // クエリで各パネルを開く（/ ?open=mypage|search|rated|mapguide|guide|store）
+  // クエリで各パネルを開く（/ ?open=mypage|search|rated|mapguide|guide|position|store）
   useEffect(() => {
     try {
       const p = new URLSearchParams(location.search);
@@ -2016,7 +2025,7 @@ function MapPage() {
         }}
       >
         <PanelHeader
-          title="カート"
+          title="ECカート"
           icon="icon-cart2.png"
           onClose={() => setCartOpen(false)}
         />
@@ -2080,6 +2089,43 @@ function MapPage() {
             navigate("/slider", { replace: false, state: { from: "menu" } });
           }}
         />
+      </Drawer>
+
+      {/* あなたの味覚位置 */}
+      <Drawer
+        anchor="bottom"
+        open={isTastePositionOpen}
+        onClose={() => setIsTastePositionOpen(false)}
+        sx={{ zIndex: 1800, ...passThroughDrawerSx }}
+        hideBackdrop
+        BackdropProps={passThroughBackdropProps}
+        ModalProps={{
+          ...drawerModalProps,
+          keepMounted: true,
+          disableEnforceFocus: true,
+          disableAutoFocus: true,
+          disableRestoreFocus: true,
+          disableScrollLock: true,
+        }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            height: DRAWER_HEIGHT,
+            display: "flex",
+            flexDirection: "column",
+          },
+          sx: passThroughPaperSx,
+        }}
+      >
+        <PanelHeader
+          title="あなたの味覚位置"
+          icon="dot.svg"
+          onClose={() => setIsTastePositionOpen(false)}
+        />
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
+          <TastePositionPanelContent userPin={userPin} />
+        </div>
       </Drawer>
 
       {/* マップガイド */}
