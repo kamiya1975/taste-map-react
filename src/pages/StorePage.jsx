@@ -1,5 +1,5 @@
 // src/pages/StorePage.jsx
-// 多分 メイン店舗選択画面
+// メイン店舗選択画面
 import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { OFFICIAL_STORE_ID } from "../ui/constants";
@@ -165,7 +165,7 @@ export default function StorePage() {
         style={{
           fontSize: 12,
           color: "#6e6e73",
-          marginTop: 2,
+          marginTop: 6,
           lineHeight: 1.4,
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
@@ -173,7 +173,7 @@ export default function StorePage() {
       >
         {bh && <div>営業時間：{bh}</div>}
         {hol && <div>定休日：{hol}</div>}
-        {intro && <div>紹介：{intro}</div>}
+        {intro && <div>{intro}</div>}
       </div>
     );
   };
@@ -267,36 +267,51 @@ export default function StorePage() {
               <div
                 onClick={() => handleStoreSelect(store)}
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
                   padding: "12px 16px",
                   borderBottom: "1px solid #eee",
                   cursor: "pointer",
-                  alignItems: "flex-start",
                   background: "#fff",
                 }}
               >
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <div className="store-link">
-                    {displayName(store)}
-                  </div>
+                {/* 1) 店名（1行・全幅） */}
+                <div
+                  className="store-link"
+                  style={{
+                    whiteSpace: "normal",   // 折り返す
+                    wordBreak: "break-word" // 長い単語があっても折れる
+                  }}
+                >
+                  {displayName(store)}
+                </div>
+
+                {/* 2) 距離（全幅の下段） */}
+                <div
+                  style={{
+                    marginTop: 4,
+                    fontSize: 12,
+                    color: "#6e6e73",
+                    textAlign: "left",
+                  }}
+                >
+                  {formatKm(store.distance)}
+                </div>
+
+                {/* 3) 住所など（任意：今は空が多いので残すなら下に） */}
+                {(store.address || store.genre) && (
                   <div
                     style={{
+                      marginTop: 4,
                       fontSize: 12,
                       color: "#6e6e73",
                       whiteSpace: "normal",
                     }}
                   >
-                    {store.address || ""}{" "}
-                    {store.genre ? ` / ${store.genre}` : ""}
+                    {store.address || ""} {store.genre ? ` / ${store.genre}` : ""}
                   </div>
-                </div>
-                <div style={{ marginLeft: 12, textAlign: "right", minWidth: 90 }}>
-                  <div style={{ fontSize: 12, color: "#6e6e73" }}>
-                    {formatKm(store.distance)}
-                  </div>
-                  {renderStoreDetails(store)}
-                </div>
+                )}
+
+                {/* 4) 営業時間/定休日/紹介（全幅） */}
+                {renderStoreDetails(store)}
               </div>
 
               {/* ★ 位置情報NG時は、公式Shop(id=1) の下に説明メッセージ */}
