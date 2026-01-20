@@ -86,12 +86,16 @@ export default function StorePanelContent() {
 
   const renderStoreDetails = (s) => {
     if (!s) return null;
+    const pref = String(s.store_prefectures || "").trim();
+    const addr = String(s.store_address || "").trim();
+    const fullAddr = `${pref}${addr}`.trim();
     const bh = String(s.business_hours || "").trim();
     const hol = String(s.holiday_text || "").trim();
     const intro = String(s.intro_text || "").trim();
-    if (!bh && !hol && !intro) return null;
+    if (!fullAddr && !bh && !hol && !intro) return null;
     return (
       <div style={{ fontSize: 12, color: "#6e6e73", marginTop: 2, lineHeight: 1.4 }}>
+        {fullAddr && <div>{fullAddr}</div>}
         {bh && <div>営業時間：{bh}</div>}
         {hol && <div>定休日：{hol}</div>}
         {intro && <div>{intro}</div>}
@@ -175,11 +179,13 @@ export default function StorePanelContent() {
             distance_km: numD, // 生の値（参考）
             is_main: !!s.is_main,
             is_sub: !!s.is_sub,
-            ec_active: !!s.ec_active, // 追加（レスポンスにあれば）
+            ec_active: !!s.ec_active,
             updated_at: s.updated_at,
             business_hours: s.business_hours ?? "",
             holiday_text: s.holiday_text ?? "",
             intro_text: s.intro_text ?? "",
+            store_prefectures: s.store_prefectures ?? "",
+            store_address: s.store_address ?? "",
             _key: `${s.store_id}@@${idx}`,
           };
         });

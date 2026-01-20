@@ -109,6 +109,8 @@ export default function StorePage() {
             business_hours: s.business_hours ?? "",
             holiday_text: s.holiday_text ?? "",
             intro_text: s.intro_text ?? "",
+            store_prefectures: s.store_prefectures ?? "",
+            store_address: s.store_address ?? "",
             branch: "",
             address: "",
             genre: "",
@@ -156,10 +158,13 @@ export default function StorePage() {
 
   const renderStoreDetails = (store) => {
     if (!store) return null;
+    const pref = String(store.store_prefectures || "").trim();
+    const addr = String(store.store_address || "").trim();
+    const fullAddr = `${pref}${addr}`.trim();
     const bh = String(store.business_hours || "").trim();
     const hol = String(store.holiday_text || "").trim();
     const intro = String(store.intro_text || "").trim();
-    if (!bh && !hol && !intro) return null;
+    if (!fullAddr && !bh && !hol && !intro) return null;
     return (
       <div
         style={{
@@ -171,6 +176,7 @@ export default function StorePage() {
           wordBreak: "break-word",
         }}
       >
+        {fullAddr && <div>{fullAddr}</div>}
         {bh && <div>営業時間：{bh}</div>}
         {hol && <div>定休日：{hol}</div>}
         {intro && <div>{intro}</div>}
