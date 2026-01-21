@@ -645,12 +645,12 @@ function MapPage() {
         await fetchAllowedJansAuto();
 
       const fromLS = getCurrentMainStoreEcActiveFromStorage();
-      const apiEc = typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null;
+      const apiEc = typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null; // ← これを使う
 
       // ここで一本化：main==公式 or subに公式 が入った判定を正とする　2026.01.
       const ecEnabled = !!ecEnabledInContext;
       setCartEnabled(ecEnabled);
-      console.log("[cartEnabled]", { mainStoreId, hasToken, mainStoreEcActive, fromLS, ecEnabledInContext, ecEnabled });
+      console.log("[cartEnabled]", { mainStoreId, hasToken, apiEc, mainStoreEcActive, fromLS, ecEnabledInContext, ecEnabled });
 
       setAllowedJansSet(allowedJans ? new Set(allowedJans) : null);
       setEcOnlyJansSet(ecOnlyJans ? new Set(ecOnlyJans) : null);
@@ -767,7 +767,21 @@ function MapPage() {
 
   // ====== ログイン状態や店舗選択の変更を拾って再取得 ======
   useEffect(() => {
-    const handler = () => {
+    const handler = (e) => {
+      // storage のときだけ key で絞る（関係ない localStorage 更新での過剰リロード防止）
+      if (e && e.type === "storage") {
+        const k = e.key || "";
+        const ok =
+          k === "app.access_token" ||
+          k === "app.user" ||
+          k === "selectedStore" ||
+          k === "main_store" ||
+          k === "sub_store_ids" ||
+          k === "selectedSubStoreIds" ||
+          k === "selectedSubStores" ||
+          k === "app.sub_store_ids";
+        if (!ok) return;
+      }
       reloadAllowedJans();
     };
 
