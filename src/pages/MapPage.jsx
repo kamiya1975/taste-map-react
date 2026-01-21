@@ -42,6 +42,47 @@ import { getLotId } from "../utils/lot";
 import { getCurrentMainStoreIdSafe } from "../utils/store";
 
 // =========================
+// サブ店舗IDをローカルから拾う（キーの揺れを吸収） 2026.01.追加
+// =========================
+const getCurrentSubStoreIdsFromStorage = () => {
+  const tryParseIds = (raw) => {
+    if (!raw) return [];
+    try {
+      const v = JSON.parse(raw);
+      if (Array.isArray(v)) return v.map((x) => Number(x)).filter((n) => Number.isFinite(n));
+      if (Array.isArray(v?.sub_store_ids)) return v.sub_store_ids.map(Number).filter(Number.isFinite);
+      if (Array.isArray(v?.subStoreIds)) return v.subStoreIds.map(Number).filter(Number.isFinite);
+    } catch {}
+    return [];
+  };
+
+  try {
+    // ※ここは運用で増やしてOK（StorePanel側の保存キーに合わせる）
+    const keys = [
+      "sub_store_ids",
+      "selectedSubStoreIds",
+      "selectedSubStores",
+      "app.sub_store_ids",
+      "app.user",
+    ];
+    for (const k of keys) {
+      const raw = localStorage.getItem(k);
+      const ids = tryParseIds(raw);
+      if (ids.length) return ids;
+    }
+  } catch {}
+  return [];
+};
+
+// EC許可コンテキスト：main==公式 or subに公式
+const isEcEnabledInContext = (mainStoreId, subStoreIds) => {
+  const main = Number(mainStoreId);
+  const subs = Array.isArray(subStoreIds) ? subStoreIds.map(Number) : [];
+  return main === OFFICIAL_STORE_ID || subs.includes(OFFICIAL_STORE_ID);
+};
+// ここまで 2026.01.追加
+
+// =========================
 // points 正規化（入口で吸収） 2025.12.20.追加
 // =========================
 function normalizePointRow(row) {
@@ -285,11 +326,15 @@ async function fetchAllowedJansAuto() {
         const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
           await fetchAllowedJansForStore(mainStoreId);
 
+        const subStoreIds = getCurrentSubStoreIdsFromStorage();
+        const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);
+
         return { 
           allowedJans,
           ecOnlyJans: ecOnlyJans || [],
           storeJans: storeJans || [],
           mainStoreEcActive,
+          ecEnabledInContext,
         };
       } catch (e) {
         console.warn(
@@ -297,7 +342,13 @@ async function fetchAllowedJansAuto() {
           e
         );
         showAllowedJansErrorOnce();
-        return { allowedJans: null, ecOnlyJans: [], storeJans: [], mainStoreEcActive: null };
+        return {
+          allowedJans: null,
+          ecOnlyJans: [],
+          storeJans: [],
+          mainStoreEcActive: null,
+          ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),
+        };
       }
     }
 
@@ -314,23 +365,39 @@ async function fetchAllowedJansAuto() {
       const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
         parseAllowedJansResponse(json);
 
+      const subStoreIds = getCurrentSubStoreIdsFromStorage();
+      const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);
+
       return {
         allowedJans,
         ecOnlyJans: ecOnlyJans || [],
         storeJans: storeJans || [],
         mainStoreEcActive,
+        ecEnabledInContext,
       };
     } else {
       console.warn(
         `allowed-jans/auto HTTP ${res.status} → フィルタ無しで続行`
       );
       showAllowedJansErrorOnce();
-      return { allowedJans: null, ecOnlyJans: [], storeJans: [], mainStoreEcActive: null };
+      return {
+        allowedJans: null,
+        ecOnlyJans: [],
+        storeJans: [],
+        mainStoreEcActive: null,
+        ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),
+      };
     }
   } catch (e) {
     console.warn("allowed-jans/auto の取得に失敗 → フィルタ無しで続行", e);
     showAllowedJansErrorOnce();
-     return { allowedJans: null, ecOnlyJans: [], storeJans: [], mainStoreEcActive: null };
+     return {
+       allowedJans: null,
+       ecOnlyJans: [],
+       storeJans: [],
+       mainStoreEcActive: null,
+       ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),
+     };
   }
 }
 
@@ -500,6 +567,10 @@ function MapPage() {
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
   const [cartEnabled, setCartEnabled] = useState(false);
 
+  // 既存：右上カートボタンは cartEnabled で出し分けしているので、
+  // cartEnabled を「EC許可コンテキスト（main or sub に公式Shop）」で true にする。
+  // 実際のセットは allowed-jans 取得後の useEffect 側で行う（下の差分参照）　2026.01.
+
   // =========================
   // points 再取得（更新ボタン代替用）　2026.01.
   // - cache を強制的に無効化
@@ -537,7 +608,7 @@ function MapPage() {
     },
     []
   );
-  
+
   // ------------------------------
   // 描画用の主集合（visible）
   // - allowedJansSet があるならそれを優先
@@ -570,26 +641,16 @@ function MapPage() {
     const hasToken = !!(localStorage.getItem("app.access_token") || "");
 
     try {
-      const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
+      const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext } =
         await fetchAllowedJansAuto();
 
       const fromLS = getCurrentMainStoreEcActiveFromStorage();
       const apiEc = typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null;
 
-      let ecEnabled = false;
-
-      if (mainStoreId === OFFICIAL_STORE_ID) {
-        ecEnabled = true;
-      } else if (apiEc !== null) {
-        ecEnabled = apiEc;
-      } else if (!hasToken && typeof fromLS === "boolean") {
-        ecEnabled = fromLS;
-      } else {
-        ecEnabled = false;
-      }
-
+      // ここで一本化：main==公式 or subに公式 が入った判定を正とする　2026.01.
+      const ecEnabled = !!ecEnabledInContext;
       setCartEnabled(ecEnabled);
-      console.log("[cartEnabled]", { mainStoreId, hasToken, mainStoreEcActive, fromLS, ecEnabled });
+      console.log("[cartEnabled]", { mainStoreId, hasToken, mainStoreEcActive, fromLS, ecEnabledInContext, ecEnabled });
 
       setAllowedJansSet(allowedJans ? new Set(allowedJans) : null);
       setEcOnlyJansSet(ecOnlyJans ? new Set(ecOnlyJans) : null);

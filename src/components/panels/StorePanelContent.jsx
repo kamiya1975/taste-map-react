@@ -5,6 +5,17 @@ import { OFFICIAL_STORE_ID } from "../../ui/constants";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
+// サブ店舗IDを localStorage に保存（MapPage が参照する）　2026.01.
+function persistSubStoreIdsToStorage(stores) {
+  try {
+    const ids = (Array.isArray(stores) ? stores : [])
+      .filter((s) => s && s.is_sub && !s.is_main)
+      .map((s) => Number(s.id))
+      .filter((n) => Number.isFinite(n));
+    localStorage.setItem("sub_store_ids", JSON.stringify(ids));
+  } catch {}
+}
+
 function AuthRequiredMessage({ label = "お気に入り店舗登録" }) {
   return (
     <div style={{ padding: "16px 18px" }}>
@@ -196,6 +207,7 @@ export default function StorePanelContent() {
 
         if (alive) {
           setStores(mapped);
+          persistSubStoreIdsToStorage(mapped);
           setErr("");
         }
       } catch (e) {
@@ -314,11 +326,13 @@ export default function StorePanelContent() {
         throw new Error("UPSERT_FAILED");
       }
 
-      setStores((prev) =>
-        prev.map((s) =>
+      setStores((prev) => {
+        const next = prev.map((s) =>
           s.id === store.id ? { ...s, is_sub: nextActive } : s
-        )
-      );
+        );
+        persistSubStoreIdsToStorage(next);
+        return next;
+      });
 
       // サブ店舗更新 → MapPage に allowed-jans を取り直させる
       window.dispatchEvent(new Event("tm_store_changed"));
