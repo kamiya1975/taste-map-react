@@ -485,14 +485,18 @@ export default function ProductPage() {
       setProduct(null);
 
       const mainId = getCurrentMainStoreIdSafe();
-
       // sub_store_ids は送らない（未ログイン時は main だけ、ログイン時はトークンで sub を見る）
       const qsStr = mainId ? `?main_store_id=${encodeURIComponent(String(mainId))}` : "";
+
+      // app API 用トークン（存在すれば付ける）2026.01.
+      let token = "";
+      try { token = localStorage.getItem("app.access_token") || ""; } catch {}
+      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
 
       try {
         const res = await fetch(
           `${API_BASE}/api/app/map-products/${encodeURIComponent(jan_code)}${qsStr}`,
-          { signal: controller.signal }
+        { signal: controller.signal, headers }
         );
         // 重要：res.ok で早期 return しない（後続の wish/rating 初期化が飛ぶため）
         if (!res.ok) {
