@@ -759,20 +759,25 @@ export default function ProductPage() {
   const isEcContext = !!product?.is_ec_product;
   const canShowCartButton = isEcContext;
 
-  // 価格下の文言（EC / 店舗 / どちらも無し）
-  const hasStoreName = !!priceStoreName;
-
+  // 価格下の文言（EC / 店舗 / それ以外）
+  // 店舗文言は「店名がある」ではなく「選択中店舗で取扱あり」のときだけ出す
   let availabilityLine = null;
   if (isEcContext) {
     availabilityLine = <>この商品はネット購入できます。</>;
-  } else if (hasStoreName) {
+  } else if (availableInSelected === true) {
+    const storeLabel =
+      product?.price_store_name ||
+      product?.candidate_store_name || // 取扱判定の店舗名（あればこれが最優先）
+      product?.store_name ||
+      product?.main_store_name ||
+      "";
     availabilityLine = (
       <>
-        この商品は、近くの{priceStoreName}でお買い求めいただけます。<br />
+        この商品は、近くの{storeLabel}でお買い求めいただけます。<br />
         在庫・価格は店舗でご確認ください。
       </>
     );
-  } else if (availableInSelected === false) {
+  } else {
     availabilityLine = (
       <>
         現在、お選びの店舗ではお取り扱いがありません。<br />
