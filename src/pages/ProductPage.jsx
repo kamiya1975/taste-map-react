@@ -732,14 +732,6 @@ export default function ProductPage() {
       ? `¥${priceNum.toLocaleString()}`
       : "価格未定";
 
-  // どの店舗の価格か（バックエンドのフィールド候補を順に見る）
-  const priceStoreName =
-    product?.price_store_name || // 推奨：価格算出元の店舗名
-    product?.store_name ||       // 一般的な店舗名フィールド
-    product?.main_store_name ||  // メイン店舗の名前
-    product?.ec_store_name ||    // EC用の表示名（もしあれば）
-    "";
-
   // 選択中店舗にアクティブ取扱があるか（※EC判定には使わない。availabilityLineの「評価履歴」表示用）
   const availableInSelected = product?.available_in_selected_stores;
 
@@ -765,25 +757,28 @@ export default function ProductPage() {
   if (isEcContext) {
     availabilityLine = <>この商品はネット購入できます。</>;
   } else if (availableInSelected === true) {
+    // 取扱が「ある」と確定した時だけ店名を出す（誤表示防止）
     const storeLabel =
-      product?.price_store_name ||
-      product?.candidate_store_name || // 取扱判定の店舗名（あればこれが最優先）
-      product?.store_name ||
-      product?.main_store_name ||
+      product?.candidate_store_name || // 取扱判定の店舗名（最優先）
+      product?.price_store_name ||     // 価格算出元（次点）
+      product?.store_name ||           // 旧互換
       "";
     availabilityLine = (
       <>
-        この商品は、近くの{storeLabel}でお買い求めいただけます。<br />
+        この商品は、近くの{storeLabel || "店舗"}でお買い求めいただけます。<br />
         在庫・価格は店舗でご確認ください。
       </>
     );
-  } else {
+  } else if (availableInSelected === false) {
     availabilityLine = (
       <>
         現在、お選びの店舗ではお取り扱いがありません。<br />
         過去の評価履歴として表示しています。
       </>
     );
+  } else {
+    // availableInSelected が未取得/不明なときは何も出さない（サブ店舗名の誤表示を防ぐ）
+    availabilityLine = null;
   }
 
   const handleAddToCart = async () => {
