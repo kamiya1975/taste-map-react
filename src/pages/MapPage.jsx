@@ -157,7 +157,7 @@ function parseRatedPanelItems(json) {
   const nextFav = {};
 
   for (const it of items) {
-    const jan = String(it?.jan_code ?? it?.jan ?? it?.JAN ?? "");
+    const jan = String(it?.jan_code ?? it?.jan ?? it?.JAN ?? "").trim();
     if (!jan) continue;
 
     // rating（あれば同期）
@@ -681,7 +681,17 @@ function MapPage() {
   }, [syncRatedPanel]);
 
   useEffect(() => {
-    const handler = () => {
+    const handler = (e) => {
+      // storage のときだけ key で絞る
+      if (e && e.type === "storage") {
+        const k = e.key || "";
+        const ok =
+          k === "app.access_token" ||
+          k === "app.user" ||
+          k === "selectedStore" ||
+          k === "main_store";
+        if (!ok) return;
+      }
       syncRatedPanel();
     };
     window.addEventListener("tm_auth_changed", handler);
@@ -1319,7 +1329,7 @@ function MapPage() {
                   userRatings[janStr]?.rating ||
                   0) > 0,
             },
-            "*"
+            CHILD_ORIGIN
           );
           // HIDE_HEART 明示送信は廃止（子は rating から自律判定）
         } catch {}
@@ -1334,7 +1344,7 @@ function MapPage() {
               jan: janStr,
               rating: ratingObjOrNull, // { rating, date } もしくは null（クリア）
             },
-            "*"
+            CHILD_ORIGIN
           );
         } catch {}
       };
@@ -1983,7 +1993,7 @@ function MapPage() {
                         type: "REQUEST_STATE",
                         jan: String(selectedJAN),
                       },
-                      "*"
+                      CHILD_ORIGIN
                     );
                   });
                 } catch {}

@@ -290,7 +290,7 @@ function ProductImage({ product, jan_code, maxHeight = 225 }) {
       alt="商品画像"
       decoding="async"
       loading="eager"
-      fetchpriority="high"
+      fetchPriority="high"
       style={{
         maxHeight: maxHeight,
         objectFit: "contain",
@@ -709,21 +709,24 @@ export default function ProductPage() {
 
     // 3) バックエンドへも送信
     try {
-    if (newRating > 0) {
-      await postRating({ jan_code, rating: newRating });
-    } else {
-      // 0 は送らない（削除APIが無い前提）
-    }    } catch (e) {
+      if (newRating > 0) {
+        await postRating({ jan_code, rating: newRating });
+      } else {
+        // 0 は送らない（削除APIが無い前提）
+      }
+    } catch (e) {
       console.error(e);
     }
   };
 
   // 価格・タイプ色などの表示用
-  const price = product?.price_inc_tax ?? null;
-  // 重要：NaN 対策（"" や "---" で "¥NaN" にならない）
-  const priceNum = Number(price);
+  const price = product?.price_inc_tax;
+  const priceNum =
+    price === null || price === undefined || price === "" ? null : Number(price);
   const displayPrice =
-    Number.isFinite(priceNum) ? `¥${priceNum.toLocaleString()}` : "価格未定";
+    priceNum !== null && Number.isFinite(priceNum)
+      ? `¥${priceNum.toLocaleString()}`
+      : "価格未定";
 
   // どの店舗の価格か（バックエンドのフィールド候補を順に見る）
   const priceStoreName =
@@ -789,7 +792,7 @@ export default function ProductPage() {
       await add({
         jan: jan_code,
         title,
-        price: Number(price) || 0,
+        price: priceNum ?? 0,
         qty: 1,
         volume_ml: Number(product?.volume_ml) || 750,
         imageUrl:
