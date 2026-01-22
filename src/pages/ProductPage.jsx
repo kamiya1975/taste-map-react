@@ -484,7 +484,14 @@ export default function ProductPage() {
       setLoading(true);
       setProduct(null);
 
-      const mainId = getCurrentMainStoreIdSafe();
+    // 正キーが無い状態で旧キー migrate されると「過去店舗」が復活するので抑止　2026.01.
+    let mainId = null;
+    try {
+      const rawMain = localStorage.getItem("app.main_store_id");
+      const n = Number(rawMain);
+      mainId = Number.isFinite(n) && n > 0 ? n : null;
+    } catch {}
+
       // sub_store_ids は送らない（未ログイン時は main だけ、ログイン時はトークンで sub を見る）
       const qsStr = mainId ? `?main_store_id=${encodeURIComponent(String(mainId))}` : "";
 
@@ -496,7 +503,7 @@ export default function ProductPage() {
       try {
         const res = await fetch(
           `${API_BASE}/api/app/map-products/${encodeURIComponent(jan_code)}${qsStr}`,
-        { signal: controller.signal, headers }
+        { signal: controller.signal, headers, cache: "no-store" }
         );
         // 重要：res.ok で早期 return しない（後続の wish/rating 初期化が飛ぶため）
         if (!res.ok) {
@@ -765,7 +772,7 @@ export default function ProductPage() {
       "";
     availabilityLine = (
       <>
-        この商品は、近くの{storeLabel || "店舗"}でお買い求めいただけます。<br />
+        この商品は、近くの{storeLabel || "店舗"}でお買い求めいただけます。
         在庫・価格は店舗でご確認ください。
       </>
     );
