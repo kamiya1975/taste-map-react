@@ -522,60 +522,6 @@ function CartProbe() {
 }
 
 function MapPage() {
-  // =========================
-  // Debug（?debug=1 を付けた時だけ表示/ログ）　　今だけログ
-  // =========================
-  const debugEnabled = useMemo(() => {
-    try {
-      const p = new URLSearchParams(window.location.search);
-      return p.get("debug") === "1";
-    } catch {
-      return false;
-    }
-  }, []);
-
-  const debugLog = useCallback((label, extra = {}) => {
-    if (!debugEnabled) return;
-    try {
-      const mainStoreId = (() => {
-        try { return getCurrentMainStoreIdSafe(); } catch { return null; }
-      })();
-      const subStoreIds = getCurrentSubStoreIdsFromStorage();
-      const token = (() => {
-        try { return localStorage.getItem("app.access_token") || ""; } catch { return ""; }
-      })();
-
-      const payload = {
-        label,
-        at: new Date().toISOString(),
-        token: token ? "YES" : "NO",
-        mainStoreId,
-        subStoreIds,
-        dataLen: Array.isArray(data) ? data.length : -1,
-        allowedSize: allowedJansSet instanceof Set ? allowedJansSet.size : null,
-        ecOnlySize: ecOnlyJansSet instanceof Set ? ecOnlyJansSet.size : null,
-        storeSize: storeJansSet instanceof Set ? storeJansSet.size : null,
-        visibleSize: visibleJansSet instanceof Set ? visibleJansSet.size : null,
-        cartEnabled,
-        storeContextKey,
-        ...extra,
-      };
-      console.log("[TM-DBG]", payload);
-    } catch (e) {
-      console.log("[TM-DBG] log failed", e);
-    }
-  }, [
-    debugEnabled,
-    data,
-    allowedJansSet,
-    ecOnlyJansSet,
-    storeJansSet,
-    visibleJansSet,
-    cartEnabled,
-    storeContextKey,
-  ]);
-  // ログここまで
-
   // Drawer を “背面（Map）に操作を通す” 共通設定
   const passThroughDrawerSx = useMemo(() => ({ pointerEvents: "none" }), []);
   const passThroughBackdropProps = useMemo(
@@ -700,6 +646,37 @@ function MapPage() {
   // 実際のセットは allowed-jans 取得後の useEffect 側で行う（下の差分参照）　2026.01.
 
   // =========================
+  // debug log（state直参照しない版） 2026.01.ログ
+  // - debugLog を deps に入れられるよう、先に定義しておく
+  // =========================
+  const dbgRef = useRef({});
+
+  useEffect(() => {
+    dbgRef.current = {
+      dataLen: Array.isArray(data) ? data.length : null,
+      allowedSize: allowedJansSet?.size ?? null,
+      ecOnlySize: ecOnlyJansSet?.size ?? null,
+      storeSize: storeJansSet?.size ?? null,
+      visibleSize: visibleJansSet?.size ?? null,
+      cartEnabled: !!cartEnabled,
+      storeContextKey: storeContextKey ?? null,
+    };
+  }, [
+    data,
+    allowedJansSet,
+    ecOnlyJansSet,
+    storeJansSet,
+    visibleJansSet,
+    cartEnabled,
+    storeContextKey,
+  ]);
+
+  const debugLog = useCallback((label, extra = {}) => {
+    const snap = dbgRef.current || {};
+    console.log(`[DBG] ${label}`, { ...snap, ...extra });
+  }, []);  
+
+  // =========================
   // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み） 2026.01.
   // - ctx: 店舗コンテキスト（main/sub/token）
   // - _  : iframeNonce（強制再読み込み用）
@@ -751,7 +728,7 @@ function MapPage() {
         debugLog("fetchPoints:err", { error: String(e?.message || e) });
       }
     },
-    []
+    [debugLog]    // 本来[]
   );
 
   // ------------------------------
@@ -838,7 +815,7 @@ function MapPage() {
       setCartEnabled(false);
       debugLog("reloadAllowedJans:fallbackNull");
     }
-  }, []);
+  }, [debugLog]);    // 本来  }, []);
 
   // ====== 初回マウント時に allowed-jans を取得 ======
   useEffect(() => {
@@ -979,7 +956,7 @@ function MapPage() {
       window.removeEventListener("storage", handler);
       window.removeEventListener("tm_store_changed", handler);
     };
-  }, [reloadAllowedJans]);
+  }, [reloadAllowedJans, debugLog]);    // 本来  }, [reloadAllowedJans]);
 
   // RatedPanel を開いたタイミングでも、DB正スナップショットを再同期
   // （wishlist星の即時反映＆別端末変更の取り込み）
