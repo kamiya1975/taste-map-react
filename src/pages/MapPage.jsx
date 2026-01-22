@@ -108,6 +108,51 @@ const getStoreContextKeyFromStorage = () => {
   ].join("|");
 };
 
+// 2026.01.
+const ALLOWED_SNAPSHOT_KEY = "tm_allowed_snapshot_v1";
+
+function readAllowedSnapshot() {
+  try {
+    const raw = localStorage.getItem(ALLOWED_SNAPSHOT_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+
+    const allowed = Array.isArray(s?.allowedJans) ? s.allowedJans.map(String) : null;
+    const ecOnly  = Array.isArray(s?.ecOnlyJans) ? s.ecOnlyJans.map(String) : [];
+    const store   = Array.isArray(s?.storeJans) ? s.storeJans.map(String) : [];
+
+    if (!allowed || allowed.length === 0) return null;
+
+    return {
+      allowedJans: allowed,
+      ecOnlyJans: ecOnly,
+      storeJans: store,
+      mainStoreEcActive: typeof s?.mainStoreEcActive === "boolean" ? s.mainStoreEcActive : null,
+      ecEnabledInContext: !!s?.ecEnabledInContext,
+      savedAt: s?.savedAt || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeAllowedSnapshot(payload) {
+  try {
+    const snap = {
+      allowedJans: payload.allowedJans || null,
+      ecOnlyJans: payload.ecOnlyJans || [],
+      storeJans: payload.storeJans || [],
+      mainStoreEcActive: typeof payload.mainStoreEcActive === "boolean" ? payload.mainStoreEcActive : null,
+      ecEnabledInContext: !!payload.ecEnabledInContext,
+      savedAt: new Date().toISOString(),
+    };
+    if (Array.isArray(snap.allowedJans) && snap.allowedJans.length > 0) {
+      localStorage.setItem(ALLOWED_SNAPSHOT_KEY, JSON.stringify(snap));
+    }
+  } catch {}
+}
+// ここまで 2026.01.
+
 // =========================
 // points 正規化（入口で吸収） 2025.12.20.追加
 // =========================
@@ -155,6 +200,8 @@ function normalizePoints(rows) {
     .filter((d) => d.jan_code && Number.isFinite(d.umap_x) && Number.isFinite(d.umap_y));
 }
 // ここまで 正規化ユーティリティ 2025.12.20.追加
+
+
 
 // 任意のオブジェクトから JAN を安全に取り出す共通ヘルパー
 const getJanFromItem = (item) => {
@@ -687,7 +734,7 @@ function MapPage() {
         await fetchAllowedJansAuto();
 
       const fromLS = getCurrentMainStoreEcActiveFromStorage();
-      const apiEc = typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null; // ← これを使う
+      const apiEc = typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null;
 
       // ここで一本化：main==公式 or subに公式 が入った判定を正とする　2026.01.
       const ecEnabled = !!ecEnabledInContext;
@@ -697,8 +744,23 @@ function MapPage() {
       setAllowedJansSet(allowedJans ? new Set(allowedJans) : null);
       setEcOnlyJansSet(ecOnlyJans ? new Set(ecOnlyJans) : null);
       setStoreJansSet(new Set(storeJans || []));
+
+      // ✅ 成功したらスナップショット保存（ログアウト後も維持）2026.01.
+      writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext });
+
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
+      // ✅ 失敗したら最後の成功値へフォールバック
+      const snap = readAllowedSnapshot();
+      if (snap?.allowedJans) {
+        setAllowedJansSet(new Set(snap.allowedJans));
+        setEcOnlyJansSet(new Set(snap.ecOnlyJans || []));
+        setStoreJansSet(new Set(snap.storeJans || []));
+        setCartEnabled(!!snap.ecEnabledInContext);
+        return;
+      }
+
+      // どうしても無いときだけ null（＝ここに落ちる頻度を極小化）
       setAllowedJansSet(null);
       setEcOnlyJansSet(null);
       setStoreJansSet(new Set());
@@ -718,9 +780,6 @@ function MapPage() {
       token = localStorage.getItem("app.access_token") || "";
     } catch {}
     if (!token) {
-      // 未ログインなら DB正が無いので、表示用キャッシュは一旦空に（ローカル運用を残したいならここは削除）
-      setFavoriteCache({});
-      bumpFavoritesVersion();
       return;
     }
 
