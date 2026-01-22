@@ -522,6 +522,60 @@ function CartProbe() {
 }
 
 function MapPage() {
+  // =========================
+  // Debug（?debug=1 を付けた時だけ表示/ログ）　　今だけログ
+  // =========================
+  const debugEnabled = useMemo(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      return p.get("debug") === "1";
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const debugLog = useCallback((label, extra = {}) => {
+    if (!debugEnabled) return;
+    try {
+      const mainStoreId = (() => {
+        try { return getCurrentMainStoreIdSafe(); } catch { return null; }
+      })();
+      const subStoreIds = getCurrentSubStoreIdsFromStorage();
+      const token = (() => {
+        try { return localStorage.getItem("app.access_token") || ""; } catch { return ""; }
+      })();
+
+      const payload = {
+        label,
+        at: new Date().toISOString(),
+        token: token ? "YES" : "NO",
+        mainStoreId,
+        subStoreIds,
+        dataLen: Array.isArray(data) ? data.length : -1,
+        allowedSize: allowedJansSet instanceof Set ? allowedJansSet.size : null,
+        ecOnlySize: ecOnlyJansSet instanceof Set ? ecOnlyJansSet.size : null,
+        storeSize: storeJansSet instanceof Set ? storeJansSet.size : null,
+        visibleSize: visibleJansSet instanceof Set ? visibleJansSet.size : null,
+        cartEnabled,
+        storeContextKey,
+        ...extra,
+      };
+      console.log("[TM-DBG]", payload);
+    } catch (e) {
+      console.log("[TM-DBG] log failed", e);
+    }
+  }, [
+    debugEnabled,
+    data,
+    allowedJansSet,
+    ecOnlyJansSet,
+    storeJansSet,
+    visibleJansSet,
+    cartEnabled,
+    storeContextKey,
+  ]);
+  // ログここまで
+
   // Drawer を “背面（Map）に操作を通す” 共通設定
   const passThroughDrawerSx = useMemo(() => ({ pointerEvents: "none" }), []);
   const passThroughBackdropProps = useMemo(
@@ -691,8 +745,10 @@ function MapPage() {
           normalized.length
         );
         setData(normalized);
+        debugLog("fetchPoints:ok", { rawLen: list.length, normalizedLen: normalized.length, url: url.toString() });
       } catch (e) {
         console.error("[MapPage] points fetch error", e);
+        debugLog("fetchPoints:err", { error: String(e?.message || e) });
       }
     },
     []
@@ -744,12 +800,20 @@ function MapPage() {
       setAllowedJansSet(allowedJans ? new Set(allowedJans) : null);
       setEcOnlyJansSet(ecOnlyJans ? new Set(ecOnlyJans) : null);
       setStoreJansSet(new Set(storeJans || []));
+      debugLog("reloadAllowedJans:ok", {
+        allowedLen: Array.isArray(allowedJans) ? allowedJans.length : null,
+        ecOnlyLen: Array.isArray(ecOnlyJans) ? ecOnlyJans.length : null,
+        storeLen: Array.isArray(storeJans) ? storeJans.length : null,
+        mainStoreEcActive,
+        ecEnabledInContext,
+      });
 
       // ✅ 成功したらスナップショット保存（ログアウト後も維持）2026.01.
       writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext });
 
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
+      debugLog("reloadAllowedJans:err", { error: String(e?.message || e) });  
       // ✅ 失敗したら最後の成功値へフォールバック
       const snap = readAllowedSnapshot();
       if (snap?.allowedJans) {
@@ -757,6 +821,13 @@ function MapPage() {
         setEcOnlyJansSet(new Set(snap.ecOnlyJans || []));
         setStoreJansSet(new Set(snap.storeJans || []));
         setCartEnabled(!!snap.ecEnabledInContext);
+        debugLog("reloadAllowedJans:fallbackSnapshot", {
+          snapAllowedLen: snap.allowedJans?.length || 0,
+          snapStoreLen: snap.storeJans?.length || 0,
+          snapEcOnlyLen: snap.ecOnlyJans?.length || 0,
+          snapEcEnabledInContext: !!snap.ecEnabledInContext,
+          snapSavedAt: snap.savedAt || null,
+        });
         return;
       }
 
@@ -765,6 +836,7 @@ function MapPage() {
       setEcOnlyJansSet(null);
       setStoreJansSet(new Set());
       setCartEnabled(false);
+      debugLog("reloadAllowedJans:fallbackNull");
     }
   }, []);
 
@@ -884,6 +956,7 @@ function MapPage() {
         if (!ok) return;
       }
       reloadAllowedJans();
+      debugLog("event:contextChanged", { eventType: e?.type || "custom", key: e?.key || null });
 
       // 店舗コンテキストが変わったら商品iframeを必ずリロード　2026.01.追加
       const nextKey = getStoreContextKeyFromStorage();
@@ -2568,6 +2641,43 @@ function MapPage() {
       })()}
 
       {process.env.NODE_ENV === "development" && <CartProbe />}
+
+      {debugEnabled && (
+        <pre
+          style={{
+            position: "absolute",
+            left: 8,
+            top: 8,
+            zIndex: 99999,
+            background: "rgba(0,0,0,0.75)",
+            color: "#0f0",
+            fontSize: 11,
+            padding: 8,
+            borderRadius: 8,
+            pointerEvents: "none",
+            maxWidth: "92vw",
+            overflow: "hidden",
+          }}
+        >
+          {JSON.stringify(
+            {
+              dataLen: Array.isArray(data) ? data.length : -1,
+              allowed: allowedJansSet instanceof Set ? allowedJansSet.size : null,
+              visible: visibleJansSet instanceof Set ? visibleJansSet.size : null,
+              store: storeJansSet instanceof Set ? storeJansSet.size : null,
+              token: (() => {
+                try { return (localStorage.getItem("app.access_token") || "") ? "YES" : "NO"; } catch { return "?"; }
+              })(),
+              mainStoreId: (() => {
+                try { return getCurrentMainStoreIdSafe(); } catch { return null; }
+              })(),
+              ctx: storeContextKey,
+            },
+            null,
+            0
+          )}
+        </pre>
+      )}
     </div>
   );
 }
