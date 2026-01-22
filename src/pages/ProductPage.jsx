@@ -19,6 +19,8 @@ import {
 const API_BASE = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || "";
 const PUBLIC_BASE = process.env.PUBLIC_URL || "";
 
+const STORE_CTX_BC = "store_ctx_bus";
+
 /** =========================
  *  ユーティリティ
  * ========================= */
@@ -416,7 +418,48 @@ export default function ProductPage() {
   const [wish, setWish] = useState(false);
   const [clusterId, setClusterId] = useState(null);
 
-  // ★ CartContext（ローカル積み → カートで同期）
+  // 店舗コンテキスト（メイン店舗）: これが変わったら必ず再fetch　2026.01.追加
+  const [mainStoreIdForFetch, setMainStoreIdForFetch] = useState(null);
+
+  // 親（MapPage）からの店舗変更通知を受ける（同一タブ内でも確実に拾う）
+  useEffect(() => {
+    const onMsg = (e) => {
+      const { type, main_store_id } = e.data || {};
+      if (type !== "STORE_CONTEXT_CHANGED") return;
+      const n = Number(main_store_id);
+      const next = Number.isFinite(n) && n > 0 ? n : null;
+      setMainStoreIdForFetch(next);
+    };
+    window.addEventListener("message", onMsg);
+
+    let bc = null;
+    try {
+      bc = new BroadcastChannel(STORE_CTX_BC);
+      bc.onmessage = (ev) => {
+        const { type, main_store_id } = ev.data || {};
+        if (type !== "STORE_CONTEXT_CHANGED") return;
+        const n = Number(main_store_id);
+        const next = Number.isFinite(n) && n > 0 ? n : null;
+        setMainStoreIdForFetch(next);
+      };
+    } catch {}
+
+    // 初期値（未ログイン時のローカルキャッシュ）も拾っておく
+    try {
+      const rawMain = localStorage.getItem("app.main_store_id");
+      const n = Number(rawMain);
+      const init = Number.isFinite(n) && n > 0 ? n : null;
+      setMainStoreIdForFetch((prev) => (prev == null ? init : prev));
+    } catch {}
+
+    return () => {
+      window.removeEventListener("message", onMsg);
+      try { bc && bc.close(); } catch {}
+    };
+  }, []);
+  // ここまで 再fetch 2026.01.
+  
+  // CartContext（ローカル積み → カートで同期）
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState(false);
   const { add } = useSimpleCart();
@@ -483,14 +526,17 @@ export default function ProductPage() {
       setLoading(true);
       setProduct(null);
 
-    // 正キーが無い状態で旧キー migrate されると「過去店舗」が復活するので抑止　2026.01.
-    let mainId = null;
-    try {
-      const rawMain = localStorage.getItem("app.main_store_id");
-      const n = Number(rawMain);
-      mainId = Number.isFinite(n) && n > 0 ? n : null;
-    } catch {}
-
+      // main_store_id は state を優先（STORE_CONTEXT_CHANGED で最新化） 2026.01.追加
+      // state が無ければ localStorage（未ログイン時）をフォールバック
+      let mainId = mainStoreIdForFetch;
+      if (mainId == null) {
+        try {
+          const rawMain = localStorage.getItem("app.main_store_id");
+          const n = Number(rawMain);
+          mainId = Number.isFinite(n) && n > 0 ? n : null;
+        } catch {}
+      }
+ 
       // sub_store_ids は送らない（未ログイン時は main だけ、ログイン時はトークンで sub を見る）
       const qsStr = mainId ? `?main_store_id=${encodeURIComponent(String(mainId))}` : "";
 
@@ -562,7 +608,7 @@ export default function ProductPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [jan_code]);
+  }, [jan_code, mainStoreIdForFetch]);
 
   // 風味データ（umapData or JSON）から cluster を取得
   useEffect(() => {
@@ -763,12 +809,9 @@ export default function ProductPage() {
   if (isEcContext) {
     availabilityLine = <>この商品はネット購入できます。</>;
   } else if (availableInSelected === true) {
-    // 取扱が「ある」と確定した時だけ店名を出す（誤表示防止）
-    const storeLabel =
-      product?.candidate_store_name || // 取扱判定の店舗名（最優先）
-      product?.price_store_name ||     // 価格算出元（次点）
-      product?.store_name ||           // 旧互換
-      "";
+    // 店名は candidate_store_name のみ（誤表示ゼロ優先） 2026.01.修正
+    // candidate が無ければ「店舗」とする（他のフィールドで補完しない）
+    const storeLabel = product?.candidate_store_name || "";
     availabilityLine = (
       <>
         この商品は、近くの{storeLabel || "店舗"}でお買い求めいただけます。

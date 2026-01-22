@@ -80,7 +80,33 @@ const isEcEnabledInContext = (mainStoreId, subStoreIds) => {
   const subs = Array.isArray(subStoreIds) ? subStoreIds.map(Number) : [];
   return main === OFFICIAL_STORE_ID || subs.includes(OFFICIAL_STORE_ID);
 };
-// ここまで 2026.01.追加
+
+// =========================
+// 店舗コンテキストKey（iframe再読み込み判定用） 2026.01.追加
+// =========================
+const getStoreContextKeyFromStorage = () => {
+  let mainStoreId = null;
+  try {
+    mainStoreId = getCurrentMainStoreIdSafe();
+  } catch {}
+
+  const subStoreIds = getCurrentSubStoreIdsFromStorage()
+    .map((n) => Number(n))
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
+
+  let hasToken = false;
+  try {
+    hasToken = !!(localStorage.getItem("app.access_token") || "");
+  } catch {}
+
+  // ここは「同じ状況なら同じKey」になることが目的
+  return [
+    `m=${Number(mainStoreId) || 0}`,
+    `s=${subStoreIds.join(",")}`,
+    `t=${hasToken ? 1 : 0}`,
+  ].join("|");
+};
 
 // =========================
 // points 正規化（入口で吸収） 2025.12.20.追加
@@ -562,6 +588,7 @@ function MapPage() {
   const [selectedJAN, setSelectedJAN] = useState(null);
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [iframeNonce, setIframeNonce] = useState(0);
+  const [storeContextKey, setStoreContextKey] = useState(() => getStoreContextKeyFromStorage());
   const [allowedJansSet, setAllowedJansSet] = useState(null);
   const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null);
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
@@ -570,6 +597,21 @@ function MapPage() {
   // 既存：右上カートボタンは cartEnabled で出し分けしているので、
   // cartEnabled を「EC許可コンテキスト（main or sub に公式Shop）」で true にする。
   // 実際のセットは allowed-jans 取得後の useEffect 側で行う（下の差分参照）　2026.01.
+
+  // =========================
+  // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み） 2026.01.
+  // - ctx: 店舗コンテキスト（main/sub/token）
+  // - _  : iframeNonce（強制再読み込み用）
+  // =========================
+  const productIframeSrc = useMemo(() => {
+    if (!selectedJAN) return "";
+    const base = process.env.PUBLIC_URL || "";
+    const jan = encodeURIComponent(String(selectedJAN));
+    const ctx = encodeURIComponent(String(storeContextKey || ""));
+    const nonce = encodeURIComponent(String(iframeNonce || 0));
+    // HashRouter 前提： /#/products/:jan
+    return `${base}/#/products/${jan}?embed=1&ctx=${ctx}&_=${nonce}`;
+  }, [selectedJAN, storeContextKey, iframeNonce]);  
 
   // =========================
   // points 再取得（更新ボタン代替用）　2026.01.
@@ -783,6 +825,15 @@ function MapPage() {
         if (!ok) return;
       }
       reloadAllowedJans();
+
+      // 店舗コンテキストが変わったら商品iframeを必ずリロード　2026.01.追加
+      const nextKey = getStoreContextKeyFromStorage();
+      setStoreContextKey((prev) => {
+        if (prev === nextKey) return prev;
+        // Drawer が開いていようがいまいが、nonceを進めて「次に開いた時」も新鮮にする
+        setIframeNonce((n) => n + 1);
+        return nextKey;
+      });
     };
 
     // MyAccount でログイン/ログアウト時に発火させる想定
@@ -2055,10 +2106,8 @@ function MapPage() {
             <iframe
               title={`product-${selectedJAN || "preview"}`}
               ref={iframeRef}
-              key={`${selectedJAN}-${iframeNonce}`}
-              src={`${
-                process.env.PUBLIC_URL || ""
-              }/#/products/${selectedJAN}?embed=1&_=${iframeNonce}`}
+              key={productIframeSrc}   // URLが変われば確実に差し替え 2026.01.
+              src={productIframeSrc}
               style={{ width: "100%", height: "100%", border: "none" }}
               onLoad={() => {
                 try {
