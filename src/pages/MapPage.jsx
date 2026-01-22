@@ -651,6 +651,21 @@ function MapPage() {
   // =========================
   const dbgRef = useRef({});
 
+  // ------------------------------
+  // 描画用の主集合（visible）
+  // - allowedJansSet があるならそれを優先
+  // - 無いなら「全打点OK」（表示フォールバック）
+  // ※ storeJansSet（店舗集合）とは混ぜない
+  // ------------------------------
+  const visibleJansSet = useMemo(() => {
+    // allowedJansSet が null のときは「全件表示」扱い（MapCanvas側で全通過にしてもOK）
+    // ただ、MapCanvasが Set を前提にしている場合に備えて Set を作る
+    if (allowedJansSet && allowedJansSet instanceof Set) return allowedJansSet;
+    if (!Array.isArray(data) || data.length === 0) return null;
+    return new Set(data.map((d) => String(d.jan_code || "")));
+  }, [allowedJansSet, data]);
+
+  // 上記のログ 2026.01.
   useEffect(() => {
     dbgRef.current = {
       dataLen: Array.isArray(data) ? data.length : null,
@@ -732,20 +747,6 @@ function MapPage() {
     },
     [debugLog]    // 本来[]
   );
-
-  // ------------------------------
-  // 描画用の主集合（visible）
-  // - allowedJansSet があるならそれを優先
-  // - 無いなら「全打点OK」（表示フォールバック）
-  // ※ storeJansSet（店舗集合）とは混ぜない
-  // ------------------------------
-  const visibleJansSet = useMemo(() => {
-    // allowedJansSet が null のときは「全件表示」扱い（MapCanvas側で全通過にしてもOK）
-    // ただ、MapCanvasが Set を前提にしている場合に備えて Set を作る
-    if (allowedJansSet && allowedJansSet instanceof Set) return allowedJansSet;
-    if (!Array.isArray(data) || data.length === 0) return null;
-    return new Set(data.map((d) => String(d.jan_code || "")));
-  }, [allowedJansSet, data]);
 
   // ------------------------------
   // 検索パネルに渡すデータ（Plan A: Mapに出てるものだけ検索）
