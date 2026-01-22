@@ -677,7 +677,7 @@ function MapPage() {
   }, []);  
 
   const debugEnabled = process.env.NODE_ENV === "development";
-  
+
   // =========================
   // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み） 2026.01.
   // - ctx: 店舗コンテキスト（main/sub/token）
