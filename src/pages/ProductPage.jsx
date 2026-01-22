@@ -15,7 +15,6 @@ import {
   toJapaneseWineType,
   TASTEMAP_POINTS_URL,
 } from "../ui/constants";
-import { getCurrentMainStoreIdSafe } from "../utils/store"; // 2025.12.22.追加
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || "";
 const PUBLIC_BASE = process.env.PUBLIC_URL || "";
