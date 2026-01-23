@@ -661,7 +661,7 @@ function MapPage() {
     // 表示集合は “allowed のみ” を正とする（憲法）
     if (allowedJansSet instanceof Set) return allowedJansSet;
     return new Set(); // 念のため
-  }, [allowedJansSet, data]);
+  }, [allowedJansSet]);
 
   // 上記のログ 2026.01.
   useEffect(() => {

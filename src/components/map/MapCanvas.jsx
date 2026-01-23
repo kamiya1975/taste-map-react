@@ -295,10 +295,10 @@ const MapCanvas = forwardRef(function MapCanvas(
     // - ここでは“表示”の入口としてだけ使う（意味集合とは混ぜない）
     // - 以前はこれだったが 2026.01.修正で空Setが起こりやすいため下記に変更   const hasVisible = visibleJansSet instanceof Set;
     // - ログアウト直後や通信失敗で空Setになると打点が全消しになるため
+    // - “空Set” は無効（＝絞り込み無し扱い）にして全消しを防ぐ
     const hasVisible = isNonEmptySet(visibleJansSet);
-    // - 空Setは無効（= 絞り込み無し）
-    const allowMode = isNonEmptySet(allowedJansSet);
-    const ecMode    = isNonEmptySet(ecOnlyJansSet);
+    const allowMode  = isNonEmptySet(allowedJansSet);
+    const ecMode     = isNonEmptySet(ecOnlyJansSet);
 
     // ① まず visibleJansSet があれば、それに含まれるものだけを候補にする
     //    （visible が無い場合は従来通り data 全体を候補）
@@ -348,8 +348,8 @@ const MapCanvas = forwardRef(function MapCanvas(
       const jan = janOf(d);
       if (!jan) return;
 
-      const isEc = ecOnlyJansSet?.has(jan);
-      const isStore = allowedJansSet?.has(jan) && !isEc;
+      const isEc    = ecOnlyJansSet.has(jan);
+      const isStore = allowedJansSet.has(jan) && !isEc;
 
       if (isStore) store.push(d);
       else if (isEc) ec.push(d);
