@@ -315,7 +315,7 @@ const showAllowedJansErrorOnce = () => {
   if (allowedJansErrorShown) return;
   allowedJansErrorShown = true;
   try {
-    alert("allowed-jans の取得に失敗しました。全件表示にフォールバックします。");
+    alert("allowed-jans の取得に失敗しました。表示点が一時的に減ることがあります。再読み込みしてください。");
   } catch (e) {
     console.warn("allowed-jans error (alert failed)", e);
   }
@@ -636,8 +636,8 @@ function MapPage() {
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [iframeNonce, setIframeNonce] = useState(0);
   const [storeContextKey, setStoreContextKey] = useState(() => getStoreContextKeyFromStorage());
-  const [allowedJansSet, setAllowedJansSet] = useState(null);
-  const [ecOnlyJansSet, setEcOnlyJansSet] = useState(null);
+  const [allowedJansSet, setAllowedJansSet] = useState(() => new Set());
+  const [ecOnlyJansSet, setEcOnlyJansSet] = useState(() => new Set());
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
   const [cartEnabled, setCartEnabled] = useState(false);
 
@@ -658,15 +658,9 @@ function MapPage() {
   // ※ storeJansSet（店舗集合）とは混ぜない
   // ------------------------------
   const visibleJansSet = useMemo(() => {
-    // ✅ allowedJansSet が「非空Set」のときだけ採用（空Setは採用しない）
-    if (allowedJansSet instanceof Set && allowedJansSet.size > 0) return allowedJansSet;
-    // ✅ data から fallback Set を作るのは「非空」のときだけ（空Setを作らない）
-    if (!Array.isArray(data) || data.length === 0) return null;
-    const jans = data
-      .map((d) => String(d?.jan_code || "").trim())
-      .filter((s) => s.length > 0);
-    if (jans.length === 0) return null;
-    return new Set(jans);
+    // 表示集合は “allowed のみ” を正とする（憲法）
+    if (allowedJansSet instanceof Set) return allowedJansSet;
+    return new Set(); // 念のため
   }, [allowedJansSet, data]);
 
   // 上記のログ 2026.01.
@@ -781,9 +775,9 @@ function MapPage() {
       setCartEnabled(ecEnabled);
       console.log("[cartEnabled]", { mainStoreId, hasToken, apiEc, mainStoreEcActive, fromLS, ecEnabledInContext, ecEnabled });
 
-      // ✅ 空配列は null（空Setを作らない）
-      setAllowedJansSet(Array.isArray(allowedJans) && allowedJans.length > 0 ? new Set(allowedJans) : null);
-      setEcOnlyJansSet(Array.isArray(ecOnlyJans) && ecOnlyJans.length > 0 ? new Set(ecOnlyJans) : null);
+      // 常に Set（null禁止）
+      if (Array.isArray(allowedJans)) setAllowedJansSet(new Set(allowedJans.map(String)));
+      if (Array.isArray(ecOnlyJans)) setEcOnlyJansSet(new Set(ecOnlyJans.map(String)));
       setStoreJansSet(new Set(storeJans || []));
       debugLog("reloadAllowedJans:ok", {
         allowedLen: Array.isArray(allowedJans) ? allowedJans.length : null,
@@ -804,7 +798,7 @@ function MapPage() {
       // ✅ snap.allowedJans は「配列 & 非空」のときだけ採用（空Setを作らない）
       if (Array.isArray(snap?.allowedJans) && snap.allowedJans.length > 0) {
         setAllowedJansSet(new Set(snap.allowedJans));
-        setEcOnlyJansSet(Array.isArray(snap.ecOnlyJans) && snap.ecOnlyJans.length > 0 ? new Set(snap.ecOnlyJans) : null);
+        setEcOnlyJansSet(new Set((snap.ecOnlyJans || []).map(String)));
         setStoreJansSet(new Set(snap.storeJans || []));
         setCartEnabled(!!snap.ecEnabledInContext);
         debugLog("reloadAllowedJans:fallbackSnapshot", {
@@ -817,9 +811,9 @@ function MapPage() {
         return;
       }
 
-      // どうしても無いときだけ null（＝ここに落ちる頻度を極小化）
-      setAllowedJansSet(null);
-      setEcOnlyJansSet(null);
+      // 最後の成功値を保持したいが、初回で何も無いなら空Set（全件表示より安全）
+      setAllowedJansSet((prev) => (prev instanceof Set ? prev : new Set()));
+      setEcOnlyJansSet((prev) => (prev instanceof Set ? prev : new Set()));
       setStoreJansSet(new Set());
       setCartEnabled(false);
       debugLog("reloadAllowedJans:fallbackNull");
@@ -1686,25 +1680,19 @@ function MapPage() {
     <div id="map-root" className="map-root" tabIndex={-1}>
       <MapCanvas
         data={data}
-
         // 店舗集合（意味の集合）：信頼できる時だけ意味を持つ
         storeJansSet={storeJansSet}
+        // 描画用の主集合（表示フォールバックはこっちで吸収）
+        visibleJansSet={visibleJansSet instanceof Set ? visibleJansSet : new Set()}
+        // EC専用JAN（星・色替え用）
+        ecOnlyJansSet={ecOnlyJansSet instanceof Set ? ecOnlyJansSet : new Set()}
+        // 表示許可集合（フェード/非表示制御）
+        allowedJansSet={allowedJansSet instanceof Set ? allowedJansSet : new Set()}
 
-        visibleJansSet={
-          visibleJansSet instanceof Set && visibleJansSet.size > 0 ? visibleJansSet : null
-        }
-        ecOnlyJansSet={
-          ecOnlyJansSet instanceof Set && ecOnlyJansSet.size > 0 ? ecOnlyJansSet : null
-        }
-        allowedJansSet={
-          allowedJansSet instanceof Set && allowedJansSet.size > 0 ? allowedJansSet : null
-        }
         // 描画用の主集合（表示フォールバックはこっちで吸収）　20206.01.修正前は下記　事故を防ぐため上記に修正
         // visibleJansSet={visibleJansSet}
-
         // EC専用JAN（星・色替え用）　20206.01.修正前は下記　事故を防ぐため上記に修正
         // ecOnlyJansSet={ecOnlyJansSet}
-
         // 表示許可集合（フェード/非表示制御）　20206.01.修正前は下記　事故を防ぐため上記に修正
         // allowedJansSet={allowedJansSet}
 

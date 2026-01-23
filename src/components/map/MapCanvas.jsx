@@ -1,6 +1,6 @@
 // src/components/map/MapCanvas.jsx
 // マップ描画
-// - 打点表示（ MapPage から渡された扱いを どう表現するか）が責務
+// - 打点表示（MapPage から渡された扱いをどう表現するか）が責務
 import React, { forwardRef, useMemo, useRef, useCallback, useEffect } from "react";
 import DeckGL from "@deck.gl/react";
 import { OrthographicView } from "@deck.gl/core";
@@ -210,6 +210,11 @@ function clampViewState(nextVS, panBounds, sizePx, margins = {}) {
     maxY = cy + slack;
   }
 
+  // ===== 集合の「有効判定」 =====
+  // 空Setは「未取得/失敗/ログアウト直後」などで発生しやすく、ここを有効扱いにすると全消し事故になる
+  // -> “Set かつ size>0” のときだけ有効とする。
+  const isNonEmptySet = (s) => s instanceof Set && s.size > 0;
+
   const EPS_EDGE = 1e-6;
   const x = Math.max(minX + EPS_EDGE, Math.min(maxX - EPS_EDGE, nextVS.target[0]));
   const y = Math.max(minY + EPS_EDGE, Math.min(maxY - EPS_EDGE, nextVS.target[1]));
@@ -286,13 +291,11 @@ const MapCanvas = forwardRef(function MapCanvas(
     // - MapPage が「allowedが取れないときは全打点Set」を渡してくる前提
     // - ここでは“表示”の入口としてだけ使う（意味集合とは混ぜない）
     // - 以前はこれだったが 2026.01.修正で空Setが起こりやすいため下記に変更   const hasVisible = visibleJansSet instanceof Set;
-    // visibleJansSet が「空Set」の場合は “絞り込み無し” 扱いにする 2026.01.
     // - ログアウト直後や通信失敗で空Setになると打点が全消しになるため
-    const hasVisible =
-      visibleJansSet instanceof Set && visibleJansSet.size > 0;
-
-    const allowMode = allowedJansSet != null; // null/undefined は無効
-    const ecMode    = ecOnlyJansSet != null;
+    const hasVisible = isNonEmptySet(visibleJansSet);
+    // - 空Setは無効（= 絞り込み無し）
+    const allowMode = isNonEmptySet(allowedJansSet);
+    const ecMode    = isNonEmptySet(ecOnlyJansSet);
 
     // ① まず visibleJansSet があれば、それに含まれるものだけを候補にする
     //    （visible が無い場合は従来通り data 全体を候補）
@@ -329,8 +332,8 @@ const MapCanvas = forwardRef(function MapCanvas(
   //  EC★ = ecOnly　　
   const { storePoints, ecPoints } = useMemo(() => {
     // 集合が無い = フィルタ無し → 全件を店舗●として表示
-    const allowMode = allowedJansSet != null;
-    const ecMode = ecOnlyJansSet != null;
+    const allowMode = isNonEmptySet(allowedJansSet);
+    const ecMode    = isNonEmptySet(ecOnlyJansSet);
     if (!allowMode && !ecMode) {
       return { storePoints: filteredData, ecPoints: [] };
     }
@@ -519,7 +522,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           hasRating: false,
         });
       }
-      if ((userRatings[janOf(d)]?.rating ?? 0) > 0) {
+      if ((userRatings?.[janOf(d)]?.rating ?? 0) > 0) {
         map.get(key).hasRating = true;
       }
       map.get(key).count += 1;
@@ -596,8 +599,8 @@ const MapCanvas = forwardRef(function MapCanvas(
   // --- デバッグ（集合ベース） ---
   useEffect(() => {
     // points.csv 由来の data には is_ec_product は基本載らない前提
-    const a = allowedJansSet ? allowedJansSet.size : null;
-    const e = ecOnlyJansSet ? ecOnlyJansSet.size : null;
+    const a = allowedJansSet instanceof Set ? allowedJansSet.size : null;
+    const e = ecOnlyJansSet instanceof Set ? ecOnlyJansSet.size : null;
     const v = visibleJansSet instanceof Set ? visibleJansSet.size : null;
     console.log("[MapCanvas] visibleJansSet size =", v);
     console.log("[MapCanvas] allowedJansSet size =", a, "ecOnlyJansSet size =", e);
