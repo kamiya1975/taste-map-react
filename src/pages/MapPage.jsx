@@ -738,7 +738,6 @@ function MapPage() {
       writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext });
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
-      debugLog("reloadAllowedJans:err", { error: String(e?.message || e) });  
       // ✅ 失敗したら最後の成功値へフォールバック
       const snap = readAllowedSnapshot();
       // ✅ snap.allowedJans は「配列 & 非空」のときだけ採用（空Setを作らない）
