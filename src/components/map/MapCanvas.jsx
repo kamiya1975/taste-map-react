@@ -213,11 +213,6 @@ function clampViewState(nextVS, panBounds, sizePx, margins = {}) {
     maxY = cy + slack;
   }
 
-  // ===== 集合の「有効判定」 =====
-  // 空Setは「未取得/失敗/ログアウト直後」などで発生しやすく、ここを有効扱いにすると全消し事故になる
-  // -> “Set かつ size>0” のときだけ有効とする。
-  const isNonEmptySet = (s) => s instanceof Set && s.size > 0;
-
   const EPS_EDGE = 1e-6;
   const x = Math.max(minX + EPS_EDGE, Math.min(maxX - EPS_EDGE, nextVS.target[0]));
   const y = Math.max(minY + EPS_EDGE, Math.min(maxY - EPS_EDGE, nextVS.target[1]));
