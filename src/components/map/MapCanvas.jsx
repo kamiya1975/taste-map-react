@@ -285,7 +285,11 @@ const MapCanvas = forwardRef(function MapCanvas(
     // 描画用の主集合（visible）：
     // - MapPage が「allowedが取れないときは全打点Set」を渡してくる前提
     // - ここでは“表示”の入口としてだけ使う（意味集合とは混ぜない）
-    const hasVisible = visibleJansSet instanceof Set;
+    // - 以前はこれだったが 2026.01.修正で空Setが起こりやすいため下記に変更   const hasVisible = visibleJansSet instanceof Set;
+    // visibleJansSet が「空Set」の場合は “絞り込み無し” 扱いにする 2026.01.
+    // - ログアウト直後や通信失敗で空Setになると打点が全消しになるため
+    const hasVisible =
+      visibleJansSet instanceof Set && visibleJansSet.size > 0;
 
     const allowMode = allowedJansSet != null; // null/undefined は無効
     const ecMode    = ecOnlyJansSet != null;
@@ -594,9 +598,11 @@ const MapCanvas = forwardRef(function MapCanvas(
     // points.csv 由来の data には is_ec_product は基本載らない前提
     const a = allowedJansSet ? allowedJansSet.size : null;
     const e = ecOnlyJansSet ? ecOnlyJansSet.size : null;
+    const v = visibleJansSet instanceof Set ? visibleJansSet.size : null;
+    console.log("[MapCanvas] visibleJansSet size =", v);
     console.log("[MapCanvas] allowedJansSet size =", a, "ecOnlyJansSet size =", e);
     console.log("[MapCanvas] storePoints =", storePoints.length, "ecPoints =", ecPoints.length);
-  }, [allowedJansSet, ecOnlyJansSet, storePoints.length, ecPoints.length]);
+  }, [visibleJansSet, allowedJansSet, ecOnlyJansSet, storePoints.length, ecPoints.length]);
 
   // --- レイヤ：EC商品の●マーカー（オレンジ） ---
   const ecPointLayer = useMemo(() => {

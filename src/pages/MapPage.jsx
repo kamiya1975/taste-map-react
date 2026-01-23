@@ -658,11 +658,15 @@ function MapPage() {
   // ※ storeJansSet（店舗集合）とは混ぜない
   // ------------------------------
   const visibleJansSet = useMemo(() => {
-    // allowedJansSet が null のときは「全件表示」扱い（MapCanvas側で全通過にしてもOK）
-    // ただ、MapCanvasが Set を前提にしている場合に備えて Set を作る
-    if (allowedJansSet && allowedJansSet instanceof Set) return allowedJansSet;
+    // ✅ allowedJansSet が「非空Set」のときだけ採用（空Setは採用しない）
+    if (allowedJansSet instanceof Set && allowedJansSet.size > 0) return allowedJansSet;
+    // ✅ data から fallback Set を作るのは「非空」のときだけ（空Setを作らない）
     if (!Array.isArray(data) || data.length === 0) return null;
-    return new Set(data.map((d) => String(d.jan_code || "")));
+    const jans = data
+      .map((d) => String(d?.jan_code || "").trim())
+      .filter((s) => s.length > 0);
+    if (jans.length === 0) return null;
+    return new Set(jans);
   }, [allowedJansSet, data]);
 
   // 上記のログ 2026.01.
@@ -777,8 +781,9 @@ function MapPage() {
       setCartEnabled(ecEnabled);
       console.log("[cartEnabled]", { mainStoreId, hasToken, apiEc, mainStoreEcActive, fromLS, ecEnabledInContext, ecEnabled });
 
-      setAllowedJansSet(allowedJans ? new Set(allowedJans) : null);
-      setEcOnlyJansSet(ecOnlyJans ? new Set(ecOnlyJans) : null);
+      // ✅ 空配列は null（空Setを作らない）
+      setAllowedJansSet(Array.isArray(allowedJans) && allowedJans.length > 0 ? new Set(allowedJans) : null);
+      setEcOnlyJansSet(Array.isArray(ecOnlyJans) && ecOnlyJans.length > 0 ? new Set(ecOnlyJans) : null);
       setStoreJansSet(new Set(storeJans || []));
       debugLog("reloadAllowedJans:ok", {
         allowedLen: Array.isArray(allowedJans) ? allowedJans.length : null,
@@ -796,9 +801,10 @@ function MapPage() {
       debugLog("reloadAllowedJans:err", { error: String(e?.message || e) });  
       // ✅ 失敗したら最後の成功値へフォールバック
       const snap = readAllowedSnapshot();
-      if (snap?.allowedJans) {
+      // ✅ snap.allowedJans は「配列 & 非空」のときだけ採用（空Setを作らない）
+      if (Array.isArray(snap?.allowedJans) && snap.allowedJans.length > 0) {
         setAllowedJansSet(new Set(snap.allowedJans));
-        setEcOnlyJansSet(new Set(snap.ecOnlyJans || []));
+        setEcOnlyJansSet(Array.isArray(snap.ecOnlyJans) && snap.ecOnlyJans.length > 0 ? new Set(snap.ecOnlyJans) : null);
         setStoreJansSet(new Set(snap.storeJans || []));
         setCartEnabled(!!snap.ecEnabledInContext);
         debugLog("reloadAllowedJans:fallbackSnapshot", {
@@ -1684,14 +1690,23 @@ function MapPage() {
         // 店舗集合（意味の集合）：信頼できる時だけ意味を持つ
         storeJansSet={storeJansSet}
 
-        // 描画用の主集合（表示フォールバックはこっちで吸収）
-        visibleJansSet={visibleJansSet}
+        visibleJansSet={
+          visibleJansSet instanceof Set && visibleJansSet.size > 0 ? visibleJansSet : null
+        }
+        ecOnlyJansSet={
+          ecOnlyJansSet instanceof Set && ecOnlyJansSet.size > 0 ? ecOnlyJansSet : null
+        }
+        allowedJansSet={
+          allowedJansSet instanceof Set && allowedJansSet.size > 0 ? allowedJansSet : null
+        }
+        // 描画用の主集合（表示フォールバックはこっちで吸収）　20206.01.修正前は下記　事故を防ぐため上記に修正
+        // visibleJansSet={visibleJansSet}
 
-        // EC専用JAN（星・色替え用）
-        ecOnlyJansSet={ecOnlyJansSet}
+        // EC専用JAN（星・色替え用）　20206.01.修正前は下記　事故を防ぐため上記に修正
+        // ecOnlyJansSet={ecOnlyJansSet}
 
-        // 表示許可集合（フェード/非表示制御）
-        allowedJansSet={allowedJansSet}
+        // 表示許可集合（フェード/非表示制御）　20206.01.修正前は下記　事故を防ぐため上記に修正
+        // allowedJansSet={allowedJansSet}
 
         userRatings={userRatings}
         selectedJAN={selectedJAN}
