@@ -201,8 +201,6 @@ function normalizePoints(rows) {
 }
 // ここまで 正規化ユーティリティ 2025.12.20.追加
 
-
-
 // 任意のオブジェクトから JAN を安全に取り出す共通ヘルパー
 const getJanFromItem = (item) => {
   if (!item) return "";
@@ -491,36 +489,6 @@ function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
   return (0.5 - fracFromTop) * hPx * worldPerPx;
 }
 
-function CartProbe() {
-  const { totalQty, subtotal, items } = useSimpleCart();
-  return (
-    <pre
-      style={{
-        position: "absolute",
-        left: 8,
-        bottom: 8,
-        zIndex: 9999,
-        background: "#000",
-        color: "#0f0",
-        fontSize: 12,
-        padding: 6,
-        borderRadius: 6,
-        opacity: 0.85,
-      }}
-    >
-      {JSON.stringify(
-        {
-          totalQty,
-          subtotal,
-          linesLen: Array.isArray(items) ? items.length : -1,
-        },
-        null,
-        2
-      )}
-    </pre>
-  );
-}
-
 function MapPage() {
   // Drawer を “背面（Map）に操作を通す” 共通設定
   const passThroughDrawerSx = useMemo(() => ({ pointerEvents: "none" }), []);
@@ -662,12 +630,6 @@ function MapPage() {
     }
   }, [navigate]);
 
-  // =========================
-  // debug log（state直参照しない版） 2026.01.ログ
-  // - debugLog を deps に入れられるよう、先に定義しておく
-  // =========================
-  const dbgRef = useRef({});
-
   // ------------------------------
   // 描画用の主集合（visible）
   // - allowedJansSet があるならそれを優先
@@ -683,34 +645,6 @@ function MapPage() {
     }
     return null; // null = 全点フォールバック扱い
   }, [allowedJansSet]);
-
-  // 上記のログ 2026.01.
-  useEffect(() => {
-    dbgRef.current = {
-      dataLen: Array.isArray(data) ? data.length : null,
-      allowedSize: allowedJansSet?.size ?? null,
-      ecOnlySize: ecOnlyJansSet?.size ?? null,
-      storeSize: storeJansSet?.size ?? null,
-      visibleSize: visibleJansSet?.size ?? null,
-      cartEnabled: !!cartEnabled,
-      storeContextKey: storeContextKey ?? null,
-    };
-  }, [
-    data,
-    allowedJansSet,
-    ecOnlyJansSet,
-    storeJansSet,
-    visibleJansSet,
-    cartEnabled,
-    storeContextKey,
-  ]);
-
-  const debugLog = useCallback((label, extra = {}) => {
-    const snap = dbgRef.current || {};
-    console.log(`[DBG] ${label}`, { ...snap, ...extra });
-  }, []);  
-
-  const debugEnabled = process.env.NODE_ENV === "development";
 
   // =========================
   // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み） 2026.01.
@@ -758,13 +692,11 @@ function MapPage() {
           normalized.length
         );
         setData(normalized);
-        debugLog("fetchPoints:ok", { rawLen: list.length, normalizedLen: normalized.length, url: url.toString() });
       } catch (e) {
         console.error("[MapPage] points fetch error", e);
-        debugLog("fetchPoints:err", { error: String(e?.message || e) });
       }
     },
-    [debugLog]    // 本来[]
+    [] // debug removed
   );
 
   // ------------------------------
@@ -801,17 +733,9 @@ function MapPage() {
       if (Array.isArray(allowedJans)) setAllowedJansSet(new Set(allowedJans.map(String)));
       if (Array.isArray(ecOnlyJans)) setEcOnlyJansSet(new Set(ecOnlyJans.map(String)));
       setStoreJansSet(new Set(storeJans || []));
-      debugLog("reloadAllowedJans:ok", {
-        allowedLen: Array.isArray(allowedJans) ? allowedJans.length : null,
-        ecOnlyLen: Array.isArray(ecOnlyJans) ? ecOnlyJans.length : null,
-        storeLen: Array.isArray(storeJans) ? storeJans.length : null,
-        mainStoreEcActive,
-        ecEnabledInContext,
-      });
 
       // ✅ 成功したらスナップショット保存（ログアウト後も維持）2026.01.
       writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext });
-
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
       debugLog("reloadAllowedJans:err", { error: String(e?.message || e) });  
@@ -823,13 +747,6 @@ function MapPage() {
         setEcOnlyJansSet(new Set((snap.ecOnlyJans || []).map(String)));
         setStoreJansSet(new Set(snap.storeJans || []));
         setCartEnabled(!!snap.ecEnabledInContext);
-        debugLog("reloadAllowedJans:fallbackSnapshot", {
-          snapAllowedLen: snap.allowedJans?.length || 0,
-          snapStoreLen: snap.storeJans?.length || 0,
-          snapEcOnlyLen: snap.ecOnlyJans?.length || 0,
-          snapEcEnabledInContext: !!snap.ecEnabledInContext,
-          snapSavedAt: snap.savedAt || null,
-        });
         return;
       }
 
@@ -838,9 +755,8 @@ function MapPage() {
       setEcOnlyJansSet((prev) => (prev instanceof Set ? prev : new Set()));
       setStoreJansSet(new Set());
       setCartEnabled(false);
-      debugLog("reloadAllowedJans:fallbackNull");
     }
-  }, [debugLog]);    // 本来  }, []);
+  }, []); // debug removed
 
   // ====== 初回マウント時に allowed-jans を取得 ======
   useEffect(() => {
@@ -958,7 +874,6 @@ function MapPage() {
         if (!ok) return;
       }
       reloadAllowedJans();
-      debugLog("event:contextChanged", { eventType: e?.type || "custom", key: e?.key || null });
 
       // 店舗コンテキストが変わったら商品iframeを必ずリロード　2026.01.追加
       const nextKey = getStoreContextKeyFromStorage();
@@ -981,7 +896,7 @@ function MapPage() {
       window.removeEventListener("storage", handler);
       window.removeEventListener("tm_store_changed", handler);
     };
-  }, [reloadAllowedJans, debugLog]);    // 本来  }, [reloadAllowedJans]);
+  }, [reloadAllowedJans]);
 
   // RatedPanel を開いたタイミングでも、DB正スナップショットを再同期
   // （wishlist星の即時反映＆別端末変更の取り込み）
@@ -2649,45 +2564,6 @@ function MapPage() {
           return null;
         }
       })()}
-
-      {process.env.NODE_ENV === "development" && <CartProbe />}
-
-      {debugEnabled && (
-        <pre
-          style={{
-            position: "absolute",
-            left: 8,
-            top: 8,
-            zIndex: 99999,
-            background: "rgba(0,0,0,0.75)",
-            color: "#0f0",
-            fontSize: 11,
-            padding: 8,
-            borderRadius: 8,
-            pointerEvents: "none",
-            maxWidth: "92vw",
-            overflow: "hidden",
-          }}
-        >
-          {JSON.stringify(
-            {
-              dataLen: Array.isArray(data) ? data.length : -1,
-              allowed: allowedJansSet instanceof Set ? allowedJansSet.size : null,
-              visible: visibleJansSet instanceof Set ? visibleJansSet.size : null,
-              store: storeJansSet instanceof Set ? storeJansSet.size : null,
-              token: (() => {
-                try { return (localStorage.getItem("app.access_token") || "") ? "YES" : "NO"; } catch { return "?"; }
-              })(),
-              mainStoreId: (() => {
-                try { return getCurrentMainStoreIdSafe(); } catch { return null; }
-              })(),
-              ctx: storeContextKey,
-            },
-            null,
-            0
-          )}
-        </pre>
-      )}
     </div>
   );
 }
