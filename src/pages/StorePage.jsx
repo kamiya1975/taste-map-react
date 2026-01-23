@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OFFICIAL_STORE_ID } from "../ui/constants";
-import { setCurrentMainStoreId, clearLegacyMainStoreKeys } from "../utils/store";
+import { setCurrentMainStoreId } from "../utils/store";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
@@ -201,11 +201,14 @@ export default function StorePage() {
 
   const handleStoreSelect = (store) => {
     try {
-      // 旧キー由来の混入を防ぐ（過去ブラウザ値が勝つのを根絶）
-      clearLegacyMainStoreKeys();
-
-      // 正キーへ保存（以後、これだけを参照）
+      // まず正キーへ保存（欠損を作らないのが最優先）
       setCurrentMainStoreId(store?.id);
+
+      // 以前の安定挙動に戻す：selectedStore も保存（JSONで）
+      // MapPage の getCurrentMainStoreEcActiveFromStorage() が参照する
+      try {
+        localStorage.setItem("selectedStore", JSON.stringify(store));
+      } catch {}
 
       const all = JSON.parse(localStorage.getItem("allStores") || "[]");
       const k = (s) => `${s?.name || ""}@@${s?.branch || ""}`;

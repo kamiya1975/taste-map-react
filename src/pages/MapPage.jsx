@@ -643,7 +643,24 @@ function MapPage() {
 
   // 既存：右上カートボタンは cartEnabled で出し分けしているので、
   // cartEnabled を「EC許可コンテキスト（main or sub に公式Shop）」で true にする。
-  // 実際のセットは allowed-jans 取得後の useEffect 側で行う（下の差分参照）　2026.01.
+  // 実際のセットは allowed-jans 取得後の useEffect 側で行う
+
+  // =========================
+  // 重要：未ログインで mainStoreId が無い状態を許容しない（0点/全点の暴れ源）
+  // - 「MapPage前に必ずStore選択」の旧仕様に戻す
+  // =========================
+  useEffect(() => {
+    let token = "";
+    try { token = localStorage.getItem("app.access_token") || ""; } catch {}
+    if (token) return; // ログイン済みは /allowed-jans/auto で復元できるので許容
+
+    let main = null;
+    try { main = getCurrentMainStoreIdSafe(); } catch {}
+    if (!main) {
+      // mainStoreId が無い＝表示すべき打点が決められないので StorePage へ戻す
+      navigate("/store", { replace: true });
+    }
+  }, [navigate]);
 
   // =========================
   // debug log（state直参照しない版） 2026.01.ログ
@@ -658,9 +675,13 @@ function MapPage() {
   // ※ storeJansSet（店舗集合）とは混ぜない
   // ------------------------------
   const visibleJansSet = useMemo(() => {
-    // 表示集合は “allowed のみ” を正とする（憲法）
-    if (allowedJansSet instanceof Set) return allowedJansSet;
-    return new Set(); // 念のため
+    // 旧安定挙動に戻す：
+    // - allowed が「未確定（空）」の瞬間は 0点にしない（全点フォールバック）
+    // - allowed が確定（size>0）したらそれを採用
+    if (allowedJansSet instanceof Set && allowedJansSet.size > 0) {
+      return allowedJansSet;
+    }
+    return null; // null = 全点フォールバック扱い
   }, [allowedJansSet]);
 
   // 上記のログ 2026.01.
@@ -753,6 +774,7 @@ function MapPage() {
   // ------------------------------
   const searchPanelData = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
+    // visibleJansSet が null のときは全点を検索対象（PlanAの暫定フォールバック）
     const set = visibleJansSet instanceof Set ? visibleJansSet : null;
     if (!set) return list;
     return list.filter((d) => set.has(String(getJanFromItem(d))));
@@ -1683,7 +1705,12 @@ function MapPage() {
         // 店舗集合（意味の集合）：信頼できる時だけ意味を持つ
         storeJansSet={storeJansSet}
         // 描画用の主集合（表示フォールバックはこっちで吸収）
-        visibleJansSet={visibleJansSet instanceof Set ? visibleJansSet : new Set()}
+        // 旧挙動：visible が未確定（null）なら全点描画（0点を防ぐ）
+        visibleJansSet={
+          visibleJansSet instanceof Set
+            ? visibleJansSet
+            : new Set((Array.isArray(data) ? data : []).map((d) => String(getJanFromItem(d))).filter(Boolean))
+        }
         // EC専用JAN（星・色替え用）
         ecOnlyJansSet={ecOnlyJansSet instanceof Set ? ecOnlyJansSet : new Set()}
         // 表示許可集合（フェード/非表示制御）
