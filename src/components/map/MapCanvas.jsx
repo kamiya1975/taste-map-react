@@ -33,10 +33,6 @@ const TILE_GRAY = `${process.env.PUBLIC_URL || ""}/img/gray-tile.png`;
 const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
 // ===== 正規化ユーティリティ（MapPageと整合）2025.12.20.追加=====
-// Set が「Set かつ 非空」か（空Setは“未確定”扱いにして全消し事故を防ぐ）
-// ※ allowedJansSet は null を「制限なし」として扱うため、ここは“Setの有効性”判定として使う
-const isNonEmptySet = (s) => s instanceof Set && s.size > 0;
-
 const toNumOrNull = (v) => {
   if (v === null || v === undefined) return null;
   if (typeof v === "string" && v.trim() === "") return null;
