@@ -726,7 +726,7 @@ function MapPage() {
       // ✅ cartEnabled の正：ecEnabledInContext（= 店舗コンテキスト判定）だけ　2026.01.24.
       //    成功時のみ確定更新。失敗時に false へ落とさない（揺れ防止）
       setCartEnabled(!!ecEnabledInContext);
-      console.log("[cartEnabled]", { mainStoreId, hasToken, apiEc, mainStoreEcActive, fromLS, ecEnabledInContext, ecEnabled });
+      console.log("[cartEnabled]", { mainStoreId, hasToken, apiEc, mainStoreEcActive, fromLS, ecEnabledInContext });
 
       // 常に Set（null禁止）
       if (Array.isArray(allowedJans)) setAllowedJansSet(new Set(allowedJans.map(String)));
