@@ -645,6 +645,29 @@ function MapPage() {
     return null; // null = 全点フォールバック扱い
   }, [allowedJansSet]);
 
+  // ------------------------------
+  // 全点フォールバック用（毎renderで new Set しない）
+  // - data が変わった時だけ再計算
+  // ------------------------------
+  const allJansSet = useMemo(() => {
+    const list = Array.isArray(data) ? data : [];
+    return new Set(
+      list.map((d) => String(getJanFromItem(d))).filter(Boolean)
+    );
+  }, [data]);
+
+  // MapCanvas に渡す “見える集合” を確定（参照安定）
+  const visibleJansSetForCanvas = useMemo(() => {
+    return visibleJansSet instanceof Set ? visibleJansSet : allJansSet;
+  }, [visibleJansSet, allJansSet]);
+
+  // MapCanvas に渡す “許可集合” は「空Set＝未確定」を null に寄せる
+  // （MapCanvas側で null を“制限なし”として扱う）
+  const allowedJansSetForCanvas = useMemo(() => {
+    if (!(allowedJansSet instanceof Set)) return null;
+    return allowedJansSet.size > 0 ? allowedJansSet : null;
+  }, [allowedJansSet]);
+  
   // =========================
   // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み） 2026.01.
   // - ctx: 店舗コンテキスト（main/sub/token）
@@ -1472,6 +1495,14 @@ function MapPage() {
       const { type } = msg || {};
       if (!type) return;
 
+      // ctx が付いているメッセージは「現在の storeContextKey と一致するものだけ」採用
+      // （店舗変更直後の遅延 message 混入を捨てる / latest-only）
+      try {
+        if (msg.ctx != null && String(msg.ctx) !== String(storeContextKey || "")) {
+          return;
+        }
+      } catch {}
+
       // === ProductPage からのカート関連メッセージ ===
       if (type === "OPEN_CART") {
         if (!cartEnabled) return;
@@ -1496,6 +1527,7 @@ function MapPage() {
           iframeRef.current?.contentWindow?.postMessage(
             {
               type: "STATE_SNAPSHOT",
+              ctx: String(storeContextKey || ""),
               jan: janStr,
               wished: isWished,
               favorite: isWished, // 後方互換
@@ -1518,6 +1550,7 @@ function MapPage() {
           iframeRef.current?.contentWindow?.postMessage(
             {
               type: "SET_RATING", // 子側でこれを受けてUIを即時更新させる
+              ctx: String(storeContextKey || ""),
               jan: janStr,
               rating: ratingObjOrNull, // { rating, date } もしくは null（クリア）
             },
@@ -1612,6 +1645,7 @@ function MapPage() {
     addLocal,
     cartEnabled,
     CHILD_ORIGIN,
+    storeContextKey,
   ]);
 
   // ====== レンダリング
@@ -1621,24 +1655,17 @@ function MapPage() {
         data={data}
         // 店舗集合（意味の集合）：信頼できる時だけ意味を持つ
         storeJansSet={storeJansSet}
-        // 描画用の主集合（表示フォールバックはこっちで吸収）
-        // 旧挙動：visible が未確定（null）なら全点描画（0点を防ぐ）
-        visibleJansSet={
-          visibleJansSet instanceof Set
-            ? visibleJansSet
-            : new Set((Array.isArray(data) ? data : []).map((d) => String(getJanFromItem(d))).filter(Boolean))
-        }
+
+        // 描画用の主集合（参照安定：毎回 new Set しない）
+        // 旧挙動：visible 未確定でも 0点にしない（allJansSet でフォールバック）
+        visibleJansSet={visibleJansSetForCanvas}
+
         // EC専用JAN（星・色替え用）
         ecOnlyJansSet={ecOnlyJansSet instanceof Set ? ecOnlyJansSet : new Set()}
-        // 表示許可集合（フェード/非表示制御）
-        allowedJansSet={allowedJansSet instanceof Set ? allowedJansSet : new Set()}
 
-        // 描画用の主集合（表示フォールバックはこっちで吸収）　20206.01.修正前は下記　事故を防ぐため上記に修正
-        // visibleJansSet={visibleJansSet}
-        // EC専用JAN（星・色替え用）　20206.01.修正前は下記　事故を防ぐため上記に修正
-        // ecOnlyJansSet={ecOnlyJansSet}
-        // 表示許可集合（フェード/非表示制御）　20206.01.修正前は下記　事故を防ぐため上記に修正
-        // allowedJansSet={allowedJansSet}
+        // 表示許可集合（フェード/非表示制御）
+        // 空Setは未確定扱いで null（制限なし）へ寄せる
+        allowedJansSet={allowedJansSetForCanvas}
 
         userRatings={userRatings}
         selectedJAN={selectedJAN}
@@ -2174,6 +2201,7 @@ function MapPage() {
                     iframeRef.current?.contentWindow?.postMessage(
                       {
                         type: "REQUEST_STATE",
+                        ctx: String(storeContextKey || ""),
                         jan: String(selectedJAN),
                       },
                       CHILD_ORIGIN

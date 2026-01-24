@@ -1,6 +1,6 @@
 // src/pages/ProductPage.jsx
 // 商品詳細画面
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { useSimpleCart } from "../cart/simpleCart";
 import { postRating } from "../lib/appRatings";
@@ -418,8 +418,10 @@ export default function ProductPage() {
   const [wish, setWish] = useState(false);
   const [clusterId, setClusterId] = useState(null);
 
-  // 店舗コンテキスト（メイン店舗）: これが変わったら必ず再fetch　2026.01.追加
+  // 店舗コンテキスト（メイン店舗）: これが変わったら必ず再fetch
   const [mainStoreIdForFetch, setMainStoreIdForFetch] = useState(null);
+  // latest-only（古いレスポンスで上書きしない）
+  const fetchSeqRef = useRef(0);
 
   // 親（MapPage）からの店舗変更通知を受ける（同一タブ内でも確実に拾う）
   useEffect(() => {
@@ -521,6 +523,7 @@ export default function ProductPage() {
 
     let cancelled = false;
     const controller = new AbortController();
+    const seq = ++fetchSeqRef.current; // この effect の世代番号（最後だけ反映）
 
     const fetchProduct = async () => {
       setLoading(true);
@@ -554,12 +557,21 @@ export default function ProductPage() {
         if (!res.ok) {
           console.warn("商品APIエラー", res.status);
           if (!cancelled) {
-            setProduct({ jan_code }); // 最低限
+            // 古い世代は捨てる
+            if (seq !== fetchSeqRef.current) return;
+            setProduct((prev) => ({
+              ...(prev || {}),
+              jan_code,
+              // 判定用は「不明」を明示：UIが嘘をつかない
+              is_ec_product: prev?.is_ec_product ?? false,
+              available_in_selected_stores: prev?.available_in_selected_stores ?? null,
+            }));
             setLoading(false);
           }  
         } else {
           const data = await res.json();
           if (!cancelled) {
+            if (seq !== fetchSeqRef.current) return;
             setProduct(data);
             setLoading(false);
           }
@@ -567,8 +579,11 @@ export default function ProductPage() {
       } catch (e) {
         if (!cancelled && e.name !== "AbortError") {
           console.error("商品API読込エラー:", e);
+          if (seq !== fetchSeqRef.current) return;
           setLoading(false);
         }
+        // Abort のときはここで打ち切り（後続の wishlist/rating 初期化も不要）
+        if (e?.name === "AbortError") return;
       }
 
       // wishlist 初期点灯（DB 正）
@@ -577,13 +592,20 @@ export default function ProductPage() {
         if (!cancelled) {
           if (isAppLoggedIn()) {
             const st = await fetchWishlistStatus(jan_code);
-            if (!cancelled) setWish(!!st?.is_wished);
+            if (!cancelled) {
+              if (seq !== fetchSeqRef.current) return;
+              setWish(!!st?.is_wished);
+            }
           } else {
+            if (seq !== fetchSeqRef.current) return;
             setWish(false);
           }
         }
       } catch {
-        if (!cancelled) setWish(false);
+        if (!cancelled) {
+          if (seq !== fetchSeqRef.current) return;
+          setWish(false);
+        }
       }
 
       // ローカルの userRatings 読込（従来通り）
@@ -595,10 +617,12 @@ export default function ProductPage() {
             meta?.source === "wish" && Number(meta?.rating) === 1
               ? 0
               : meta?.rating ?? 0;
+          if (seq !== fetchSeqRef.current) return;
           setRating(val);
-        } else {
+            } else {
+          if (seq !== fetchSeqRef.current) return;
           setRating(0);
-        }
+            }
       } catch {}
     };
 

@@ -34,6 +34,7 @@ const TILE_OCHRE = `${process.env.PUBLIC_URL || ""}/img/ochre-tile.png`;
 
 // ===== 正規化ユーティリティ（MapPageと整合）2025.12.20.追加=====
 // Set が「Set かつ 非空」か（空Setは“未確定”扱いにして全消し事故を防ぐ）
+// ※ allowedJansSet は null を「制限なし」として扱うため、ここは“Setの有効性”判定として使う
 const isNonEmptySet = (s) => s instanceof Set && s.size > 0;
 
 const toNumOrNull = (v) => {
@@ -170,6 +171,10 @@ function clampViewState(nextVS, panBounds, sizePx, margins = {}) {
   const zoom = Math.max(ZOOM_LIMITS.min, Math.min(ZOOM_LIMITS.max, nextVS.zoom));
   if (!PAN_CLAMP) return { ...nextVS, zoom };
 
+  const t0 = Array.isArray(nextVS?.target) ? nextVS.target : [0, 0, 0];
+  const tx = Number(t0[0]) || 0;
+  const ty = Number(t0[1]) || 0;
+
   const { halfW, halfH } = halfSizeWorld(zoom, sizePx);
   const xmin = panBounds?.xmin ?? -Infinity;
   const xmax = panBounds?.xmax ?? Infinity;
@@ -214,8 +219,8 @@ function clampViewState(nextVS, panBounds, sizePx, margins = {}) {
   }
 
   const EPS_EDGE = 1e-6;
-  const x = Math.max(minX + EPS_EDGE, Math.min(maxX - EPS_EDGE, nextVS.target[0]));
-  const y = Math.max(minY + EPS_EDGE, Math.min(maxY - EPS_EDGE, nextVS.target[1]));
+  const x = Math.max(minX + EPS_EDGE, Math.min(maxX - EPS_EDGE, tx));
+  const y = Math.max(minY + EPS_EDGE, Math.min(maxY - EPS_EDGE, ty));
   return { ...nextVS, zoom, target: [x, y, 0] };
 }
 
@@ -288,12 +293,13 @@ const MapCanvas = forwardRef(function MapCanvas(
     // 描画用の主集合（visible）：
     // - MapPage が「allowedが取れないときは全打点Set」を渡してくる前提
     // - ここでは“表示”の入口としてだけ使う（意味集合とは混ぜない）
-    // - 以前はこれだったが 2026.01.修正で空Setが起こりやすいため下記に変更   const hasVisible = visibleJansSet instanceof Set;
     // - ログアウト直後や通信失敗で空Setになると打点が全消しになるため
     // - “空Set” は無効（＝絞り込み無し扱い）にして全消しを防ぐ
-    const hasVisible = isNonEmptySet(visibleJansSet);
-    const allowMode  = isNonEmptySet(allowedJansSet);
-    const ecMode     = isNonEmptySet(ecOnlyJansSet);
+    // - allowedJansSet: null/undefined は「制限なし」なので allowMode=false（=フィルタの根拠なし）にする
+    // - Set かつ size>0 のときだけ「店舗許可集合として有効」
+    const hasVisible = visibleJansSet instanceof Set && visibleJansSet.size > 0;
+    const allowMode  = allowedJansSet instanceof Set && allowedJansSet.size > 0;
+    const ecMode     = ecOnlyJansSet instanceof Set && ecOnlyJansSet.size > 0;
 
     // ① まず visibleJansSet があれば、それに含まれるものだけを候補にする
     //    （visible が無い場合は従来通り data 全体を候補）
@@ -304,8 +310,9 @@ const MapCanvas = forwardRef(function MapCanvas(
         })
       : data;
 
-    // ② allowed/ecOnly が両方無いなら「表示フォールバック」として base をそのまま返す
-    if (!allowMode && !ecMode) return base;
+    // ② allowedJansSet === null（未確定）または
+    //    allowed/ecOnly ともに無効なら「制限なし」＝ base を返す
+      if (!allowMode && !ecMode) return base;
 
     // ③ allowed/ecOnly がある場合は、従来通り集合でフィルタ
     return base.filter((d) => {
@@ -330,8 +337,8 @@ const MapCanvas = forwardRef(function MapCanvas(
   //  EC★ = ecOnly　　
   const { storePoints, ecPoints } = useMemo(() => {
     // 集合が無い = フィルタ無し → 全件を店舗●として表示
-    const allowMode = isNonEmptySet(allowedJansSet);
-    const ecMode    = isNonEmptySet(ecOnlyJansSet);
+    const allowMode = allowedJansSet instanceof Set && allowedJansSet.size > 0;
+    const ecMode    = ecOnlyJansSet instanceof Set && ecOnlyJansSet.size > 0;
     if (!allowMode && !ecMode) {
       return { storePoints: filteredData, ecPoints: [] };
     }
@@ -343,8 +350,9 @@ const MapCanvas = forwardRef(function MapCanvas(
       const jan = janOf(d);
       if (!jan) return;
 
-      const isEc    = ecOnlyJansSet.has(jan);
-      const isStore = allowedJansSet.has(jan) && !isEc;
+      // null/undefined の場合に .has() を呼ばない（MapPage の「null=制限なし」と整合）
+      const isEc    = ecMode && ecOnlyJansSet.has(jan);
+      const isStore = allowMode && allowedJansSet.has(jan) && !isEc;
 
       if (isStore) store.push(d);
       else if (isEc) ec.push(d);
@@ -585,7 +593,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         },
         updateTriggers: {
           // favoritesVersion は色上書きでは使わなくなったので外す（不要な再生成を減らす）
-          getFillColor: [clusterColorMode],
+          getFillColor: [clusterColorMode, userRatings],
         },
         radiusUnits: "meters",
         getRadius: clusterColorMode ? MAP_POINT_RADIUS_CLUSTER : MAP_POINT_RADIUS,
@@ -601,7 +609,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     const e = ecOnlyJansSet instanceof Set ? ecOnlyJansSet.size : null;
     const v = visibleJansSet instanceof Set ? visibleJansSet.size : null;
     console.log("[MapCanvas] visibleJansSet size =", v);
-    console.log("[MapCanvas] allowedJansSet size =", a, "ecOnlyJansSet size =", e);
+    console.log("[MapCanvas] allowedJansSet size =", a, "ecOnlyJansSet size =", e, "allowedIsNull=", allowedJansSet == null);
     console.log("[MapCanvas] storePoints =", storePoints.length, "ecPoints =", ecPoints.length);
   }, [visibleJansSet, allowedJansSet, ecOnlyJansSet, storePoints.length, ecPoints.length]);
 
@@ -628,7 +636,7 @@ const MapCanvas = forwardRef(function MapCanvas(
         return STAR_ORANGE; // ← EC扱いはオレンジ●
       },
       updateTriggers: {
-        getFillColor: [clusterColorMode],
+        getFillColor: [clusterColorMode, userRatings],
       },
       radiusUnits: "meters",
       getRadius: clusterColorMode ? MAP_POINT_RADIUS_CLUSTER : MAP_POINT_RADIUS,
@@ -991,7 +999,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           pickable: false,
           parameters: { depthTest: false },
           updateTriggers: {
-            getIcon: [JSON.stringify(cells.map((c) => c.hasRating))],
+            getIcon: [GRID_CELL_SIZE],   // もしくは updateTriggers 自体を削除でOK
             getPosition: [GRID_CELL_SIZE],
             getSize: [GRID_CELL_SIZE],
           },
