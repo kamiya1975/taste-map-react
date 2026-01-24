@@ -606,11 +606,7 @@ function MapPage() {
   const [allowedJansSet, setAllowedJansSet] = useState(() => new Set());
   const [ecOnlyJansSet, setEcOnlyJansSet] = useState(() => new Set());
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
-  const [cartEnabled, setCartEnabled] = useState(() => {
-    const snap = readAllowedSnapshot?.();
-    if (typeof snap?.ecEnabledInContext === "boolean") return snap.ecEnabledInContext;
-    return false; // 何も無い初回だけ false（PWA未ログインで「初期値が false」のままにならないように）
-  });
+  const [cartEnabled, setCartEnabled] = useState(false);
 
   // 既存：右上カートボタンは cartEnabled で出し分けしているので、
   // cartEnabled を「EC許可コンテキスト（main or sub に公式Shop）」で true にする。
@@ -729,25 +725,13 @@ function MapPage() {
 
       // ✅ cartEnabled の正：ecEnabledInContext（= 店舗コンテキスト判定）だけ
       //    成功時のみ確定更新。失敗時に false へ落とさない（揺れ防止）
-      if (typeof ecEnabledInContext === "boolean") {
-        setCartEnabled(ecEnabledInContext);
-      } else {
-        setCartEnabled((prev) => prev); // 触らない
-      }      
+      setCartEnabled(!!ecEnabledInContext);
       console.log("[cartEnabled]", { mainStoreId, hasToken, apiEc, mainStoreEcActive, fromLS, ecEnabledInContext });
 
       // 常に Set（null禁止）
       if (Array.isArray(allowedJans)) setAllowedJansSet(new Set(allowedJans.map(String)));
-      if (Array.isArray(ecOnlyJans)) {
-        setEcOnlyJansSet(new Set(ecOnlyJans.map(String)));
-      } else {
-        setEcOnlyJansSet((prev) => (prev instanceof Set ? prev : prev)); // 触らない
-      }
-      if (Array.isArray(storeJans)) {
-        setStoreJansSet(new Set(storeJans.map(String)));
-      } else {
-        setStoreJansSet((prev) => (prev instanceof Set ? prev : prev));
-      }
+      if (Array.isArray(ecOnlyJans)) setEcOnlyJansSet(new Set(ecOnlyJans.map(String)));
+      setStoreJansSet(new Set(storeJans || []));
 
       // ✅ 成功したらスナップショット保存（ログアウト後も維持）
       writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext });
@@ -764,11 +748,7 @@ function MapPage() {
         setStoreJansSet(new Set(snap.storeJans || []));
 
         // ✅ 失敗時は snapshot があるときだけ cartEnabled を更新
-        if (typeof snap?.ecEnabledInContext === "boolean") {
-          setCartEnabled(snap.ecEnabledInContext);
-        } else {
-          setCartEnabled((prev) => prev);
-        }
+        setCartEnabled(!!snap.ecEnabledInContext);
         return;
       }
 
