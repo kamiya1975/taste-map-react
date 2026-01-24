@@ -4,8 +4,7 @@
 //  - data（打点：points）を読み込み → normalizePoints() で JAN/座標/cluster を正規化して MapCanvas に渡す
 //  - allowedJansSet / storeJansSet / ecOnlyJansSet を API から取得し、表示・EC判定を制御
 //  - isSearchOpen / isRatedOpen / isMyPageOpen / cartOpen ... など 全パネルの開閉状態を一元管理
-//  - 商品詳細は Drawer + iframe(ProductPage) で開き、postMessage で ♡/評価/カート の反映をしている
-//  - isRatedOpen が true になった時に fetchLatestRatings("date") を叩いて 評価一覧の同期をする（DB→ローカルへ）
+//  - 商品詳細は Drawer + iframe(ProductPage) で開き、飲みたい/評価/カート の反映をしている
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -724,9 +723,9 @@ function MapPage() {
       const fromLS = getCurrentMainStoreEcActiveFromStorage();
       const apiEc = typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null;
 
-      // ここで一本化：main==公式 or subに公式 が入った判定を正とする　2026.01.
-      const ecEnabled = !!ecEnabledInContext;
-      setCartEnabled(ecEnabled);
+      // ✅ cartEnabled の正：ecEnabledInContext（= 店舗コンテキスト判定）だけ　2026.01.24.
+      //    成功時のみ確定更新。失敗時に false へ落とさない（揺れ防止）
+      setCartEnabled(!!ecEnabledInContext);
       console.log("[cartEnabled]", { mainStoreId, hasToken, apiEc, mainStoreEcActive, fromLS, ecEnabledInContext, ecEnabled });
 
       // 常に Set（null禁止）
@@ -738,22 +737,25 @@ function MapPage() {
       writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext });
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
+
       // ✅ 失敗したら最後の成功値へフォールバック
       const snap = readAllowedSnapshot();
+
       // ✅ snap.allowedJans は「配列 & 非空」のときだけ採用（空Setを作らない）
       if (Array.isArray(snap?.allowedJans) && snap.allowedJans.length > 0) {
         setAllowedJansSet(new Set(snap.allowedJans));
         setEcOnlyJansSet(new Set((snap.ecOnlyJans || []).map(String)));
         setStoreJansSet(new Set(snap.storeJans || []));
+        // ✅ 失敗時は snapshot があるときだけ cartEnabled を更新　2026.01.24.
         setCartEnabled(!!snap.ecEnabledInContext);
         return;
       }
 
-      // 最後の成功値を保持したいが、初回で何も無いなら空Set（全件表示より安全）
+      // ✅ 初回で何も無いなら Set は prev維持（=揺れ防止）　2026.01.24.
       setAllowedJansSet((prev) => (prev instanceof Set ? prev : new Set()));
       setEcOnlyJansSet((prev) => (prev instanceof Set ? prev : new Set()));
       setStoreJansSet(new Set());
-      setCartEnabled(false);
+      setCartEnabled((prev) => prev); // ここで false に落とさない
     }
   }, []); // debug removed
 
