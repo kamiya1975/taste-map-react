@@ -345,10 +345,15 @@ function parseAllowedJansResponse(json) {
     ...ecOnlyArr,
   ].map(String)));
 
+  const wishArr =
+    Array.isArray(json?.wish_jans) ? json.wish_jans :
+    Array.isArray(json?.wishJans) ? json.wishJans :
+    [];
+  
   // ここを storeArr ベースにする（最重要）
   const storeJans = Array.isArray(storeArr) ? storeArr.map(String) : [];
 
-  return { allowedJans: allowedArr, ecOnlyJans: ecOnlyArr.map(String), storeJans, mainStoreEcActive };
+  return { allowedJans: allowedArr, ecOnlyJans: ecOnlyArr.map(String), storeJans, mainStoreEcActive, wishJans: wishArr.map(String).filter(Boolean) };
 }
 
 // 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
@@ -405,6 +410,7 @@ async function fetchAllowedJansAuto() {
           storeJans: storeJans || [],
           mainStoreEcActive,
           ecEnabledInContext,
+          wishJans: [],
         };
       } catch (e) {
         console.warn(
@@ -432,7 +438,7 @@ async function fetchAllowedJansAuto() {
 
     if (res.ok) {
       const json = await res.json();
-      const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
+      const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, wishJans } =
         parseAllowedJansResponse(json);
 
       const subStoreIds = getCurrentSubStoreIdsFromStorage();
@@ -444,6 +450,7 @@ async function fetchAllowedJansAuto() {
         storeJans: storeJans || [],
         mainStoreEcActive,
         ecEnabledInContext,
+        wishJans: wishJans || [],
       };
     } else {
       console.warn(
@@ -603,10 +610,11 @@ function MapPage() {
   const [productDrawerOpen, setProductDrawerOpen] = useState(false);
   const [iframeNonce, setIframeNonce] = useState(0);
   const [storeContextKey, setStoreContextKey] = useState(() => getStoreContextKeyFromStorage());
-  const [allowedJansSet, setAllowedJansSet] = useState(() => new Set());
+  const [allowedJansSet, setAllowedJansSet] = useState(() => new Set());  
   const [ecOnlyJansSet, setEcOnlyJansSet] = useState(() => new Set());
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
   const [cartEnabled, setCartEnabled] = useState(false);
+  const [wishJansSet, setWishJansSet] = useState(() => new Set());
 
   // 既存：右上カートボタンは cartEnabled で出し分けしているので、
   // cartEnabled を「EC許可コンテキスト（main or sub に公式Shop）」で true にする。
@@ -740,7 +748,7 @@ function MapPage() {
     const hasToken = !!(localStorage.getItem("app.access_token") || "");
 
     try {
-      const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext } =
+      const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans } =
         await fetchAllowedJansAuto();
 
       const fromLS = getCurrentMainStoreEcActiveFromStorage();
@@ -754,10 +762,12 @@ function MapPage() {
       // 常に Set（null禁止）
       if (Array.isArray(allowedJans)) setAllowedJansSet(new Set(allowedJans.map(String)));
       if (Array.isArray(ecOnlyJans)) setEcOnlyJansSet(new Set(ecOnlyJans.map(String)));
+      if (Array.isArray(wishJans)) setWishJansSet(new Set(wishJans.map(String))); // wishJans追加
+      else setWishJansSet((prev) => (prev instanceof Set ? prev : new Set()));    // wishJans追加
       setStoreJansSet(new Set(storeJans || []));
 
       // ✅ 成功したらスナップショット保存（ログアウト後も維持）
-      writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext });
+      writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans });
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
 
@@ -769,6 +779,7 @@ function MapPage() {
         setAllowedJansSet(new Set(snap.allowedJans));
         setEcOnlyJansSet(new Set((snap.ecOnlyJans || []).map(String)));
         setStoreJansSet(new Set(snap.storeJans || []));
+        setWishJansSet(new Set((snap.wishJans || []).map(String)));
 
         // ✅ 失敗時は snapshot があるときだけ cartEnabled を更新
         setCartEnabled(!!snap.ecEnabledInContext);
@@ -1672,8 +1683,9 @@ function MapPage() {
 
         userRatings={userRatings}
         selectedJAN={selectedJAN}
-        favorites={favoriteCache}          // wishlist（飲みたい）表示用キャッシュ（DB正で復元済み）
-        favoritesVersion={favoritesVersion}
+        wishJansSet={wishJansSet}
+        favorites={favoriteCache}           //  
+        favoritesVersion={favoritesVersion} //
         highlight2D={highlight2D}
         userPin={userPin}
         panBounds={panBounds}

@@ -228,6 +228,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     ecOnlyJansSet,
     userRatings,
     selectedJAN,
+    wishJansSet,
     favorites,
     favoritesVersion,
     highlight2D,
@@ -643,10 +644,10 @@ const MapCanvas = forwardRef(function MapCanvas(
 
   // --- レイヤ：飲みたい（★）---
   // 優先順位：rating > wished(★) > store/ec
-  // 「wished」は DB正（rated-panel/SET_WISHLIST）で復元された favorites を唯一ソースにする
+  // 「wished(★)」は allowed-jans/auto（ログイン後） で返る wishJansSet を唯一ソースにする
   const wishStarLayer = useMemo(() => {
-    const fav = favorites && typeof favorites === "object" ? favorites : null;
-    if (!fav || Object.keys(fav).length === 0) return null;
+    const wishSet = wishJansSet instanceof Set ? wishJansSet : null;
+    if (!wishSet || wishSet.size === 0) return null;
 
     // ★色（SVGはalphaを使わないのでRGBだけ）
     const wishColorCss = `rgb(${WISH_STAR_RGBA[0]}, ${WISH_STAR_RGBA[1]}, ${WISH_STAR_RGBA[2]})`;
@@ -656,7 +657,7 @@ const MapCanvas = forwardRef(function MapCanvas(
       .map((d) => {
         const jan = janOf(d);
         if (!jan) return null;
-        if (!fav[jan]) return null; // wished=true
+        if (!wishSet.has(jan)) return null; // wished=true（サーバ正）
         if ((Number(userRatings?.[jan]?.rating) || 0) > 0) return null; // rating優先
         const x = xOf(d), y = yOf(d);
         if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
@@ -684,11 +685,11 @@ const MapCanvas = forwardRef(function MapCanvas(
       },
       parameters: { depthTest: false },
       updateTriggers: {
-        // favoritesVersion（SET_WISHLIST等）で確実に再描画
-        getIcon: [favoritesVersion, wishColorCss],
+        // wishJansSet の変化で再描画（sizeを入れて安定化）
+        getIcon: [wishSet.size, wishColorCss],
       },
     });
-  }, [filteredData, favorites, favoritesVersion, userRatings, onPickWine]);
+  }, [filteredData, wishJansSet, userRatings, onPickWine]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
