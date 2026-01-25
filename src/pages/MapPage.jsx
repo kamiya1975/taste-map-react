@@ -597,6 +597,15 @@ function MapPage() {
   const [favoriteCache, setFavoriteCache] = useState({});
   const [favoritesVersion, setFavoritesVersion] = useState(0);
   const bumpFavoritesVersion = () => setFavoritesVersion((v) => v + 1);
+  // ---- latest refs (postMessageの取りこぼし防止) ----
+  const favoriteCacheRef = useRef({});
+  const userRatingsRef = useRef({});
+  const cartEnabledRef = useRef(false);
+  const storeContextKeyRef = useRef("");
+  const selectedJanRef = useRef(null);
+  const closeUIsThenRef = useRef(null); // closeUIsThen は後で定義されるため null
+  const addLocalRef = useRef(null);     // これも統一して null
+
   const [userPin, setUserPin] = useState(null);
   const [highlight2D, setHighlight2D] = useState("");
   const [selectedJAN, setSelectedJAN] = useState(null);
@@ -607,6 +616,14 @@ function MapPage() {
   const [ecOnlyJansSet, setEcOnlyJansSet] = useState(() => new Set());
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
   const [cartEnabled, setCartEnabled] = useState(false);
+
+  useEffect(() => { favoriteCacheRef.current = favoriteCache || {}; }, [favoriteCache]);
+  useEffect(() => { userRatingsRef.current = userRatings || {}; }, [userRatings]);
+  useEffect(() => { cartEnabledRef.current = !!cartEnabled; }, [cartEnabled]);
+  useEffect(() => { storeContextKeyRef.current = String(storeContextKey || ""); }, [storeContextKey]);
+  useEffect(() => { selectedJanRef.current = selectedJAN; }, [selectedJAN]);
+  useEffect(() => { closeUIsThenRef.current = closeUIsThen; }, [closeUIsThen]);
+  useEffect(() => { addLocalRef.current = addLocal; }, [addLocal]);
 
   // 既存：右上カートボタンは cartEnabled で出し分けしているので、
   // cartEnabled を「EC許可コンテキスト（main or sub に公式Shop）」で true にする。
@@ -802,9 +819,12 @@ function MapPage() {
       const json = await fetchRatedPanelSnapshot({ apiBase: API_BASE, token });
       const { nextRatings, nextFav } = parseRatedPanelItems(json);
 
-      // wishlist（飲みたい）を DB正で上書き復元
-      setFavoriteCache(nextFav);
-      bumpFavoritesVersion();
+      // wishlist（飲みたい）:
+      // 一瞬の失敗/空返りで星が消える事故を防ぐため、空オブジェクトでは上書きしない
+      if (nextFav && Object.keys(nextFav).length > 0) {
+        setFavoriteCache(nextFav);
+        bumpFavoritesVersion();
+      }
 
       // rating も一緒に取れているなら同期（空なら触らない）
       if (nextRatings && Object.keys(nextRatings).length > 0) {
@@ -1489,70 +1509,67 @@ function MapPage() {
   // 商品ページ（iframe）からの postMessage
   useEffect(() => {
     const onMsg = async (e) => {
-      // 同一オリジン以外は無視（混入対策）
+      // 同一オリジン以外は無視
       if (!e || e.origin !== CHILD_ORIGIN) return;
       const msg = e?.data || {};
-      const { type } = msg || {};
+      const type = msg?.type;
       if (!type) return;
 
       // ctx が付いているメッセージは「現在の storeContextKey と一致するものだけ」採用
-      // （店舗変更直後の遅延 message 混入を捨てる / latest-only）
       try {
-        if (msg.ctx != null && String(msg.ctx) !== String(storeContextKey || "")) {
-          return;
-        }
+        const curCtx = String(storeContextKeyRef.current || "");
+        if (msg.ctx != null && String(msg.ctx) !== curCtx) return;
       } catch {}
 
-      // === ProductPage からのカート関連メッセージ ===
+      // === カート ===
       if (type === "OPEN_CART") {
-        if (!cartEnabled) return;
+        if (!cartEnabledRef.current) return;
         setCartOpen(true);
         return;
       }
-
       if (type === "SIMPLE_CART_ADD" && msg.item) {
-         if (!cartEnabled) return;
+        if (!cartEnabledRef.current) return;
         try {
-          await addLocal(msg.item); // ローカルカートに積む
-          setCartOpen(true); // ついでに開く
-        } catch (e) {
-          console.error("SIMPLE_CART_ADD failed:", e);
+          await addLocalRef.current(msg.item);
+          setCartOpen(true);
+        } catch (err) {
+          console.error("SIMPLE_CART_ADD failed:", err);
         }
         return;
       }
 
-      const sendSnapshotToChild = (janStr, nextRatingObj) => {
+      const janStr = String(msg.jan ?? msg.jan_code ?? "");
+      if (!janStr) return;
+
+      const sendSnapshotToChild = (nextRatingObj) => {
         try {
-          const isWished = !!favoriteCache[janStr];
+          const curCtx = String(storeContextKeyRef.current || "");
+          const fav = favoriteCacheRef.current || {};
+          const ratings = userRatingsRef.current || {};
+          const isWished = !!fav[janStr];
           iframeRef.current?.contentWindow?.postMessage(
             {
               type: "STATE_SNAPSHOT",
-              ctx: String(storeContextKey || ""),
+              ctx: curCtx,
               jan: janStr,
               wished: isWished,
               favorite: isWished, // 後方互換
-              rating: nextRatingObj || userRatings[janStr] || null,
-              // 後方互換のため送る場合は rating>0 を反映
-              hideHeart:
-                (nextRatingObj?.rating ||
-                  userRatings[janStr]?.rating ||
-                  0) > 0,
+              rating: nextRatingObj || ratings[janStr] || null,
+              hideHeart: (nextRatingObj?.rating || ratings[janStr]?.rating || 0) > 0,
             },
             CHILD_ORIGIN
           );
-          // HIDE_HEART 明示送信は廃止（子は rating から自律判定）
         } catch {}
       };
 
-      // 評価を子iframeに明示的に適用させるための補助メッセージ
-      const sendRatingToChild = (janStr, ratingObjOrNull) => {
+      const sendRatingToChild = (ratingObjOrNull) => {
         try {
           iframeRef.current?.contentWindow?.postMessage(
             {
-              type: "SET_RATING", // 子側でこれを受けてUIを即時更新させる
-              ctx: String(storeContextKey || ""),
+              type: "SET_RATING",
+              ctx: String(storeContextKeyRef.current || ""),
               jan: janStr,
-              rating: ratingObjOrNull, // { rating, date } もしくは null（クリア）
+              rating: ratingObjOrNull,
             },
             CHILD_ORIGIN
           );
@@ -1560,21 +1577,17 @@ function MapPage() {
       };
 
       if (type === "OPEN_MYACCOUNT") {
-        await closeUIsThen({ preserveMyPage: true });
+        await closeUIsThenRef.current({ preserveMyPage: true });
         setIsMyPageOpen(true);
         setIsAccountOpen(true);
         return;
       }
 
-      const janStr = String(msg.jan ?? msg.jan_code ?? "");
-      if (!janStr) return;
-
-      // ProductPage の wishlist（DB正）→ MapPage（表示用キャッシュ）へ即反映
-      // ProductPage は API を叩いた後にこれを投げる（単一ソース維持）
+      // === wishlist（DB正）→ MapPage の表示キャッシュへ即反映 ===
       if (type === "SET_WISHLIST") {
         const isWished = !!msg.value;
         setFavoriteCache((prev) => {
-          const next = { ...prev };
+          const next = { ...(prev || {}) };
           if (isWished) next[janStr] = { addedAt: new Date().toISOString() };
           else delete next[janStr];
           return next;
@@ -1583,70 +1596,47 @@ function MapPage() {
         return;
       }
 
+      // === rating ===
       if (type === "RATING_UPDATED") {
         const payload = msg.payload || null;
-
         setUserRatings((prev) => {
-          const next = { ...prev };
+          const next = { ...(prev || {}) };
           if (!payload || !payload.rating) delete next[janStr];
           else next[janStr] = payload;
-          try {
-            localStorage.setItem("userRatings", JSON.stringify(next));
-          } catch {}
+          try { localStorage.setItem("userRatings", JSON.stringify(next)); } catch {}
           return next;
         });
-
-        // まずスナップショットを送る
-        sendSnapshotToChild(janStr, msg.payload || null);
-        // さらに評価を明示適用（特に「評価クリア(null)」時のUI遅延対策）
-        sendRatingToChild(
-          janStr,
-          payload && Number(payload.rating) > 0 ? payload : null
-        );
+        sendSnapshotToChild(payload || null);
+        sendRatingToChild(payload && Number(payload.rating) > 0 ? payload : null);
         return;
       }
 
       if (type === "tm:rating-updated") {
         const rating = Number(msg.rating) || 0;
         const date = msg.date || new Date().toISOString();
-
+        const nextRating = rating > 0 ? { rating, date } : null;
         setUserRatings((prev) => {
-          const next = { ...prev };
+          const next = { ...(prev || {}) };
           if (rating <= 0) delete next[janStr];
           else next[janStr] = { ...(next[janStr] || {}), rating, date };
-          try {
-            localStorage.setItem("userRatings", JSON.stringify(next));
-          } catch {}
+          try { localStorage.setItem("userRatings", JSON.stringify(next)); } catch {}
           return next;
         });
-
-        // スナップショット
-        const nextRating = rating > 0 ? { rating, date } : null;
-        sendSnapshotToChild(janStr, nextRating);
-        // 明示適用（評価クリア時のズレ解消）
-        sendRatingToChild(janStr, nextRating);
+        sendSnapshotToChild(nextRating);
+        sendRatingToChild(nextRating);
         return;
       }
 
-      // 子が再描画直後に状態を取りに来た時
+      // 子が状態を取りに来た時
       if (type === "REQUEST_STATE") {
-        sendSnapshotToChild(janStr, null);
+        sendSnapshotToChild(null);
         return;
       }
     };
 
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [
-    favoriteCache,
-    userRatings,
-    closeUIsThen,
-    navigate,
-    addLocal,
-    cartEnabled,
-    CHILD_ORIGIN,
-    storeContextKey,
-  ]);
+  }, [CHILD_ORIGIN]); // ★依存は固定（リスナー再生成しない）
 
   // ====== レンダリング
   return (
