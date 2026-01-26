@@ -92,7 +92,7 @@ const notifyParentClosed = (jan_code) => {
 };
 
 /** =========================
- *  お気に入りスター（☆/★ → 「飲みたい」）
+ *  飲みたい（☆/★）
  * ========================= */
 function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
   const fav = !!value;
@@ -156,7 +156,7 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
 
   return (
     <button
-      aria-label={fav ? "お気に入り解除" : "お気に入りに追加"}
+      aria-label={fav ? "飲みたい解除" : "飲みたいに追加"}
       onClick={toggle}
       disabled={hidden || busy}
       style={{
@@ -170,7 +170,7 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
         cursor: hidden ? "default" : "pointer",
         visibility: hidden ? "hidden" : "visible",
       }}
-      title={fav ? "お気に入りに登録済み" : "お気に入りに追加"}
+      title={fav ? "飲みたいに登録済み" : "飲みたいに追加"}
     >
       <img
         src={`${PUBLIC_BASE}${fav ? "/img/store.svg" : "/img/store2.svg"}`}
@@ -235,7 +235,7 @@ const CircleRating = ({ value, currentRating, onClick, centerColor = "#000" }) =
 };
 
 /** =========================
- *  商品画像（バックエンド image_url_v 優先）
+ *  商品画像（バックエンド image_url_v 優先 → 画像更新を反映）
  * ========================= */
 function ProductImage({ product, jan_code, maxHeight = 225 }) {
   const primarySrc =
@@ -517,7 +517,7 @@ export default function ProductPage() {
     };
   }, [jan_code]);
 
-  // ★★★ バックエンドの商品情報を読む useEffect ★★★
+  // -----バックエンドの商品情報を読む useEffect-----
   useEffect(() => {
     if (!jan_code) return;
 
@@ -587,7 +587,6 @@ export default function ProductPage() {
       }
 
       // wishlist 初期点灯（DB 正）
-      // ※ 商品取得とは独立に、ログイン状態に応じて確定
       try {
         if (!cancelled) {
           if (isAppLoggedIn()) {
@@ -1055,7 +1054,7 @@ export default function ProductPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center" }}>
-          {/* 左：お気に入り */}
+          {/* 左：飲みたい★ */}
           <div
             style={{
               flex: "0 0 64px",
@@ -1090,7 +1089,7 @@ export default function ProductPage() {
               alignSelf: "stretch",
             }}
           />
-          {/* 右：◎ */}
+          {/* 右：評価◎ */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
