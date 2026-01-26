@@ -601,9 +601,9 @@ function MapPage() {
   // データ & 状態
   const [data, setData] = useState([]);
   const [userRatings, setUserRatings] = useState({});
-  const [favoriteCache, setFavoriteCache] = useState({});
-  const [, setFavoritesVersion] = useState(0);
-  const bumpFavoritesVersion = () => setFavoritesVersion((v) => v + 1);
+  // const [favoriteCache, setFavoriteCache] = useState({}); を削除
+  // const [, setFavoritesVersion] = useState(0); を削除
+  // const bumpFavoritesVersion = () => setFavoritesVersion((v) => v + 1); を削除
   const [userPin, setUserPin] = useState(null);
   const [highlight2D, setHighlight2D] = useState("");
   const [selectedJAN, setSelectedJAN] = useState(null);
@@ -811,14 +811,13 @@ function MapPage() {
 
     try {
       const json = await fetchRatedPanelSnapshot({ apiBase: API_BASE, token });
-      const { nextRatings, nextFav } = parseRatedPanelItems(json);
+      const { nextRatings } = parseRatedPanelItems(json);
 
       // wishlist（飲みたい）:
       // 一瞬の失敗/空返りで星が消える事故を防ぐため、空オブジェクトでは上書きしない
-      if (nextFav && Object.keys(nextFav).length > 0) {
-        setFavoriteCache(nextFav);
-        bumpFavoritesVersion();
-      }
+      // if (nextFav && Object.keys(nextFav).length > 0) {
+      //  setWishJansSet(new Set(Object.keys(nextFav).map(String)));
+      //} を削除
 
       // rating も一緒に取れているなら同期（空なら触らない）
       if (nextRatings && Object.keys(nextRatings).length > 0) {
@@ -1536,7 +1535,7 @@ function MapPage() {
 
       const sendSnapshotToChild = (janStr, nextRatingObj) => {
         try {
-          const isWished = !!favoriteCache[janStr];
+          const isWished = wishJansSet instanceof Set ? wishJansSet.has(janStr) : false;
           iframeRef.current?.contentWindow?.postMessage(
             {
               type: "STATE_SNAPSHOT",
@@ -1595,14 +1594,9 @@ function MapPage() {
           else next.delete(key);
           return next;
         });
-        // favoriteCache, FavoritesVersion は昔の名残のため削除整理対象
-        setFavoriteCache((prev) => {
-          const next = { ...prev };
-          if (isWished) next[janStr] = { addedAt: new Date().toISOString() };
-          else delete next[janStr];
-          return next;
-        });
-        bumpFavoritesVersion();
+        // 子の表示ズレ防止（任意）
+        // sendSnapshotToChild(janStr, null);
+        // setFavoriteCache((prev) => { を削除
         return;
       }
 
@@ -1661,8 +1655,9 @@ function MapPage() {
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [
-    favoriteCache,
+  //  favoriteCache, を削除
     userRatings,
+    wishJansSet,
     closeUIsThen,
     navigate,
     addLocal,

@@ -28,8 +28,6 @@ const RECENT_KEYS = [
 const WISHLIST_KEYS = [
   "app.wishlistCache",
   "wishlistCache",
-  "favoriteCache",
-  "favorites",
   "tastemap.wishlistCache",
 ];
 
