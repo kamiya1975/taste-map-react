@@ -241,7 +241,6 @@ const getCurrentMainStoreEcActiveFromStorage = () => {
 
 // =========================
 // rated-panel（DB正）スナップショット取得
-// - wishlist（飲みたい）を favoriteCache に復元する目的（favoriteCache は昔の名残のため整理対象）
 // - rating も同時に取れれば userRatings も同期
 // =========================
 async function fetchRatedPanelSnapshot({ apiBase, token }) {
@@ -370,7 +369,7 @@ async function fetchAllowedJansForStore(storeId) {
   params.set("include_ec", "true");
 
   // 実在店舗（id > 0）のときだけ main_store_id を付ける
-  params.set("main_store_id", String(sid)); // ★ 常に付けてOK（sidは必ず>0）
+  params.set("main_store_id", String(sid)); // 常に付けてOK（sidは必ず>0）
 
   const res = await fetch(`${API_BASE}/api/app/allowed-jans?${params.toString()}`, { cache: "no-store" });  
   if (!res.ok) {
@@ -601,9 +600,6 @@ function MapPage() {
   // データ & 状態
   const [data, setData] = useState([]);
   const [userRatings, setUserRatings] = useState({});
-  // const [favoriteCache, setFavoriteCache] = useState({}); を削除
-  // const [, setFavoritesVersion] = useState(0); を削除
-  // const bumpFavoritesVersion = () => setFavoritesVersion((v) => v + 1); を削除
   const [userPin, setUserPin] = useState(null);
   const [highlight2D, setHighlight2D] = useState("");
   const [selectedJAN, setSelectedJAN] = useState(null);
@@ -618,7 +614,6 @@ function MapPage() {
 
   // 既存：右上カートボタンは cartEnabled で出し分けしているので、
   // cartEnabled を「EC許可コンテキスト（main or sub に公式Shop）」で true にする。
-  // 実際のセットは allowed-jans 取得後の useEffect 側で行う
 
   // =========================
   // 重要：未ログインで mainStoreId が無い状態を許容しない（0点/全点の暴れ源）
@@ -812,12 +807,6 @@ function MapPage() {
     try {
       const json = await fetchRatedPanelSnapshot({ apiBase: API_BASE, token });
       const { nextRatings } = parseRatedPanelItems(json);
-
-      // wishlist（飲みたい）:
-      // 一瞬の失敗/空返りで星が消える事故を防ぐため、空オブジェクトでは上書きしない
-      // if (nextFav && Object.keys(nextFav).length > 0) {
-      //  setWishJansSet(new Set(Object.keys(nextFav).map(String)));
-      //} を削除
 
       // rating も一緒に取れているなら同期（空なら触らない）
       if (nextRatings && Object.keys(nextRatings).length > 0) {
@@ -1594,9 +1583,6 @@ function MapPage() {
           else next.delete(key);
           return next;
         });
-        // 子の表示ズレ防止（任意）
-        // sendSnapshotToChild(janStr, null);
-        // setFavoriteCache((prev) => { を削除
         return;
       }
 
@@ -1655,7 +1641,6 @@ function MapPage() {
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, [
-  //  favoriteCache, を削除
     userRatings,
     wishJansSet,
     closeUIsThen,
