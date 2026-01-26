@@ -602,7 +602,7 @@ function MapPage() {
   const [data, setData] = useState([]);
   const [userRatings, setUserRatings] = useState({});
   const [favoriteCache, setFavoriteCache] = useState({});
-  const [favoritesVersion, setFavoritesVersion] = useState(0);
+  const [, setFavoritesVersion] = useState(0);
   const bumpFavoritesVersion = () => setFavoritesVersion((v) => v + 1);
   const [userPin, setUserPin] = useState(null);
   const [highlight2D, setHighlight2D] = useState("");
