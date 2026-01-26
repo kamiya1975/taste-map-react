@@ -1684,8 +1684,6 @@ function MapPage() {
         userRatings={userRatings}
         selectedJAN={selectedJAN}
         wishJansSet={wishJansSet}
-        favorites={favoriteCache}           //  
-        favoritesVersion={favoritesVersion} //
         highlight2D={highlight2D}
         userPin={userPin}
         panBounds={panBounds}

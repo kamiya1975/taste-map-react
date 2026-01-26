@@ -229,8 +229,6 @@ const MapCanvas = forwardRef(function MapCanvas(
     userRatings,
     selectedJAN,
     wishJansSet,
-    favorites,
-    favoritesVersion,
     highlight2D,
     userPin,
     compassPoint,
@@ -589,7 +587,6 @@ const MapCanvas = forwardRef(function MapCanvas(
           return MAP_POINT_COLOR;
         },
         updateTriggers: {
-          // favoritesVersion は色上書きでは使わなくなったので外す（不要な再生成を減らす）
           getFillColor: [clusterColorMode, userRatings],
         },
         radiusUnits: "meters",
