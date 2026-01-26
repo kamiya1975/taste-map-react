@@ -241,7 +241,7 @@ const getCurrentMainStoreEcActiveFromStorage = () => {
 
 // =========================
 // rated-panel（DB正）スナップショット取得
-// - wishlist（飲みたい）を favoriteCache に復元する目的
+// - wishlist（飲みたい）を favoriteCache に復元する目的（favoriteCache は昔の名残のため整理対象）
 // - rating も同時に取れれば userRatings も同期
 // =========================
 async function fetchRatedPanelSnapshot({ apiBase, token }) {
@@ -1496,7 +1496,6 @@ function MapPage() {
   }, [location.key, userPin, data, findNearestWineWorld, focusOnWine]);
 
   // ====== 子iframeへ（wishlist反映など）状態スナップショットを送る
-  // ※ favoriteCache（= 表示用wishlistキャッシュ）を唯一のソースにする
   const CHILD_ORIGIN =
     typeof window !== "undefined" ? window.location.origin : "*";
 
@@ -1587,6 +1586,16 @@ function MapPage() {
       // ProductPage は API を叩いた後にこれを投げる（単一ソース維持）
       if (type === "SET_WISHLIST") {
         const isWished = !!msg.value;
+        // 飲みたいの正：wishJansSet を即時更新（MapCanvas即反映）
+        setWishJansSet((prev) => {
+          const base = prev instanceof Set ? prev : new Set();
+          const next = new Set(base);
+          const key = String(janStr);
+          if (isWished) next.add(key);
+          else next.delete(key);
+          return next;
+        });
+        // favoriteCache, FavoritesVersion は昔の名残のため削除整理対象
         setFavoriteCache((prev) => {
           const next = { ...prev };
           if (isWished) next[janStr] = { addedAt: new Date().toISOString() };
