@@ -833,9 +833,9 @@ export default function ProductPage() {
   if (isEcContext) {
     availabilityLine = <>この商品はネット購入できます。</>;
   } else if (availableInSelected === true) {
-    // 店名は candidate_store_name のみ（誤表示ゼロ優先） 2026.01.修正
-    // candidate が無ければ「店舗」とする（他のフィールドで補完しない）
-    const storeLabel = product?.candidate_store_name || "";
+    // 店名はバックの price_store_name に 1本化（価格表示の出典と一致させる）
+    // 無い場合は「店舗」とする（誤表示ゼロ優先）
+    const storeLabel = product?.price_store_name || "";
     availabilityLine = (
       <>
         この商品は、近くの{storeLabel || "店舗"}でお買い求めいただけます。
