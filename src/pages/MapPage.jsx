@@ -700,7 +700,102 @@ function MapPage() {
     [] // debug removed
   );
 
-  //ここを削除
+  // ------------------------------
+  // 検索パネルに渡すデータ（Plan A: Mapに出てるものだけ検索）
+  // - visibleJansSet がある → その集合に含まれる点だけ
+  // - visibleJansSet が null → フォールバックで全点
+  // ------------------------------
+  const searchPanelData = useMemo(() => {
+    const list = Array.isArray(data) ? data : [];
+    // visibleJansSet が null のときは全点を検索対象（PlanAの暫定フォールバック）
+    const set = visibleJansSet instanceof Set ? visibleJansSet : null;
+    if (!set) return list;
+    return list.filter((d) => set.has(String(getJanFromItem(d))));
+  }, [data, visibleJansSet]);
+
+  // ====== allowed-jans を読み直す共通関数 ======
+  const reloadAllowedJans = useCallback(async () => {
+    const mainStoreId = getCurrentMainStoreIdSafe();
+    const hasToken = !!(localStorage.getItem("app.access_token") || "");
+
+    try {
+      const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans } =
+        await fetchAllowedJansAuto();
+
+      const fromLS = getCurrentMainStoreEcActiveFromStorage();
+      const apiEc = typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null;
+
+      // ✅ cartEnabled の正：ecEnabledInContext（= 店舗コンテキスト判定）だけ
+      //    成功時のみ確定更新。失敗時に false へ落とさない（揺れ防止）
+      setCartEnabled(!!ecEnabledInContext);
+      console.log("[cartEnabled]", { mainStoreId, hasToken, apiEc, mainStoreEcActive, fromLS, ecEnabledInContext });
+
+      // 常に Set（null禁止）
+      if (Array.isArray(allowedJans)) setAllowedJansSet(new Set(allowedJans.map(String)));
+      if (Array.isArray(ecOnlyJans)) setEcOnlyJansSet(new Set(ecOnlyJans.map(String)));
+      if (Array.isArray(wishJans)) setWishJansSet(new Set(wishJans.map(String))); // wishJans追加
+      else setWishJansSet((prev) => (prev instanceof Set ? prev : new Set()));    // wishJans追加
+      setStoreJansSet(new Set(storeJans || []));
+
+      // ✅ 成功したらスナップショット保存（ログアウト後も維持）
+      writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans });
+    } catch (e) {
+      console.error("allowed-jans の取得に失敗:", e);
+
+      // ✅ 失敗したら最後の成功値へフォールバック
+      const snap = readAllowedSnapshot();
+
+      // ✅ snap.allowedJans は「配列 & 非空」のときだけ採用（空Setを作らない）
+      if (Array.isArray(snap?.allowedJans) && snap.allowedJans.length > 0) {
+        setAllowedJansSet(new Set(snap.allowedJans));
+        setEcOnlyJansSet(new Set((snap.ecOnlyJans || []).map(String)));
+        setStoreJansSet(new Set(snap.storeJans || []));
+        setWishJansSet(new Set((snap.wishJans || []).map(String)));
+
+        // ✅ 失敗時は snapshot があるときだけ cartEnabled を更新
+        setCartEnabled(!!snap.ecEnabledInContext);
+        return;
+      }
+
+      // ✅ 初回で何も無いなら Set は prev維持（=揺れ防止）
+      setAllowedJansSet((prev) => (prev instanceof Set ? prev : new Set()));
+      setEcOnlyJansSet((prev) => (prev instanceof Set ? prev : new Set()));
+      setStoreJansSet(new Set());
+      setCartEnabled((prev) => prev); // ここで false に落とさない
+    }
+  }, []); // debug removed
+
+  // ====== 初回マウント時に allowed-jans を取得 ======
+  useEffect(() => {
+    reloadAllowedJans();
+  }, [reloadAllowedJans]);
+
+  // ====== rated-panel（DB正）から wishlist を同期 ======
+  const syncRatedPanel = useCallback(async () => {
+    let token = "";
+    try {
+      token = localStorage.getItem("app.access_token") || "";
+    } catch {}
+    if (!token) {
+      return;
+    }
+
+    try {
+      const json = await fetchRatedPanelSnapshot({ apiBase: API_BASE, token });
+      const { nextRatings } = parseRatedPanelItems(json);
+
+      // rating も一緒に取れているなら同期（空なら触らない）
+      if (nextRatings && Object.keys(nextRatings).length > 0) {
+        setUserRatings(nextRatings);
+        try {
+          localStorage.setItem("userRatings", JSON.stringify(nextRatings));
+        } catch {}
+      }
+    } catch (e) {
+      console.warn("rated-panel sync failed:", e);
+      // rated-panel が無い/失敗しても動作は継続（wishlist星が出ないだけ）
+    }
+  }, []);
 
   // =========================
   // 検索 / 評価ボタンを「更新ボタン代替」にする　2026.01.
