@@ -705,13 +705,13 @@ function MapPage() {
   // - visibleJansSet がある → その集合に含まれる点だけ
   // - visibleJansSet が null → フォールバックで全点
   // ------------------------------
-  //const searchPanelData = useMemo(() => { を削除
-  //  const list = Array.isArray(data) ? data : [];
-  // visibleJansSet が null のときは全点を検索対象（PlanAの暫定フォールバック）
-  //  const set = visibleJansSet instanceof Set ? visibleJansSet : null;
-  //  if (!set) return list;
-  //  return list.filter((d) => set.has(String(getJanFromItem(d))));
-  //}, [data, visibleJansSet]);
+  const searchPanelData = useMemo(() => {
+    const list = Array.isArray(data) ? data : [];
+    //visibleJansSet が null のときは全点を検索対象（PlanAの暫定フォールバック）
+    const set = visibleJansSet instanceof Set ? visibleJansSet : null;
+    if (!set) return list;
+    return list.filter((d) => set.has(String(getJanFromItem(d))));
+  }, [data, visibleJansSet]);
 
   // ====== allowed-jans を読み直す共通関数 ======
   const reloadAllowedJans = useCallback(async () => {
@@ -1965,8 +1965,8 @@ function MapPage() {
       <SearchPanel
         open={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        //data={searchPanelData}  を削除
-        data={data}   //を削除して置き換え
+        data={searchPanelData}
+        //data={data}   を削除
         onPick={async (item) => {
           if (!item) return;
 
