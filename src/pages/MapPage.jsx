@@ -71,34 +71,25 @@ const isEcEnabledInContext = (mainStoreId, subStoreIds) => {
   return main === OFFICIAL_STORE_ID || subs.includes(OFFICIAL_STORE_ID);
 };
 
-// =========================
 // 店舗コンテキストKey（iframe再読み込み判定用） 2026.01.追加
-// =========================
 const getStoreContextKeyFromStorage = () => {
   let mainStoreId = null;
   try {
     mainStoreId = getCurrentMainStoreIdSafe();
   } catch {}
 
-//  const subStoreIds = getCurrentSubStoreIdsFromStorage()  を削除
-//    .map((n) => Number(n))
-//    .filter(Number.isFinite)
-//    .sort((a, b) => a - b);
-
   let hasToken = false;
   try {
     hasToken = !!(localStorage.getItem("app.access_token") || "");
   } catch {}
 
-  // ここは「同じ状況なら同じKey」になることが目的
   return [
     `m=${Number(mainStoreId) || 0}`,
-//    `s=${subStoreIds.join(",")}`, 　を削除
     `t=${hasToken ? 1 : 0}`,
   ].join("|");
 };
 
-// 2026.01.
+// スナップショット　2026.01.
 const ALLOWED_SNAPSHOT_KEY = "tm_allowed_snapshot_v1";
 
 function readAllowedSnapshot() {
@@ -189,7 +180,7 @@ function normalizePoints(rows) {
     // JANが空 or 座標が数値でない行は落とす（描画事故を防ぐ）
     .filter((d) => d.jan_code && Number.isFinite(d.umap_x) && Number.isFinite(d.umap_y));
 }
-// ここまで 正規化ユーティリティ 2025.12.20.追加
+// ここまでが正規化ユーティリティ
 
 // 任意のオブジェクトから JAN を安全に取り出す共通ヘルパー
 const getJanFromItem = (item) => {
@@ -600,9 +591,6 @@ function MapPage() {
   const [cartEnabled, setCartEnabled] = useState(false);
   const [wishJansSet, setWishJansSet] = useState(() => new Set());
 
-  // 既存：右上カートボタンは cartEnabled で出し分けしているので、
-  // cartEnabled を「EC許可コンテキスト（main or sub に公式Shop）」で true にする。
-
   // =========================
   // 重要：未ログインで mainStoreId が無い状態を許容しない（0点/全点の暴れ源）
   // - 「MapPage前に必ずStore選択」の旧仕様に戻す
@@ -712,102 +700,7 @@ function MapPage() {
     [] // debug removed
   );
 
-  // ------------------------------
-  // 検索パネルに渡すデータ（Plan A: Mapに出てるものだけ検索）
-  // - visibleJansSet がある → その集合に含まれる点だけ
-  // - visibleJansSet が null → フォールバックで全点
-  // ------------------------------
-  const searchPanelData = useMemo(() => {
-    const list = Array.isArray(data) ? data : [];
-    // visibleJansSet が null のときは全点を検索対象（PlanAの暫定フォールバック）
-    const set = visibleJansSet instanceof Set ? visibleJansSet : null;
-    if (!set) return list;
-    return list.filter((d) => set.has(String(getJanFromItem(d))));
-  }, [data, visibleJansSet]);
-
-  // ====== allowed-jans を読み直す共通関数 ======
-  const reloadAllowedJans = useCallback(async () => {
-    const mainStoreId = getCurrentMainStoreIdSafe();
-    const hasToken = !!(localStorage.getItem("app.access_token") || "");
-
-    try {
-      const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans } =
-        await fetchAllowedJansAuto();
-
-      const fromLS = getCurrentMainStoreEcActiveFromStorage();
-      const apiEc = typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null;
-
-      // ✅ cartEnabled の正：ecEnabledInContext（= 店舗コンテキスト判定）だけ
-      //    成功時のみ確定更新。失敗時に false へ落とさない（揺れ防止）
-      setCartEnabled(!!ecEnabledInContext);
-      console.log("[cartEnabled]", { mainStoreId, hasToken, apiEc, mainStoreEcActive, fromLS, ecEnabledInContext });
-
-      // 常に Set（null禁止）
-      if (Array.isArray(allowedJans)) setAllowedJansSet(new Set(allowedJans.map(String)));
-      if (Array.isArray(ecOnlyJans)) setEcOnlyJansSet(new Set(ecOnlyJans.map(String)));
-      if (Array.isArray(wishJans)) setWishJansSet(new Set(wishJans.map(String))); // wishJans追加
-      else setWishJansSet((prev) => (prev instanceof Set ? prev : new Set()));    // wishJans追加
-      setStoreJansSet(new Set(storeJans || []));
-
-      // ✅ 成功したらスナップショット保存（ログアウト後も維持）
-      writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans });
-    } catch (e) {
-      console.error("allowed-jans の取得に失敗:", e);
-
-      // ✅ 失敗したら最後の成功値へフォールバック
-      const snap = readAllowedSnapshot();
-
-      // ✅ snap.allowedJans は「配列 & 非空」のときだけ採用（空Setを作らない）
-      if (Array.isArray(snap?.allowedJans) && snap.allowedJans.length > 0) {
-        setAllowedJansSet(new Set(snap.allowedJans));
-        setEcOnlyJansSet(new Set((snap.ecOnlyJans || []).map(String)));
-        setStoreJansSet(new Set(snap.storeJans || []));
-        setWishJansSet(new Set((snap.wishJans || []).map(String)));
-
-        // ✅ 失敗時は snapshot があるときだけ cartEnabled を更新
-        setCartEnabled(!!snap.ecEnabledInContext);
-        return;
-      }
-
-      // ✅ 初回で何も無いなら Set は prev維持（=揺れ防止）
-      setAllowedJansSet((prev) => (prev instanceof Set ? prev : new Set()));
-      setEcOnlyJansSet((prev) => (prev instanceof Set ? prev : new Set()));
-      setStoreJansSet(new Set());
-      setCartEnabled((prev) => prev); // ここで false に落とさない
-    }
-  }, []); // debug removed
-
-  // ====== 初回マウント時に allowed-jans を取得 ======
-  useEffect(() => {
-    reloadAllowedJans();
-  }, [reloadAllowedJans]);
-
-  // ====== rated-panel（DB正）から wishlist を同期 ======
-  const syncRatedPanel = useCallback(async () => {
-    let token = "";
-    try {
-      token = localStorage.getItem("app.access_token") || "";
-    } catch {}
-    if (!token) {
-      return;
-    }
-
-    try {
-      const json = await fetchRatedPanelSnapshot({ apiBase: API_BASE, token });
-      const { nextRatings } = parseRatedPanelItems(json);
-
-      // rating も一緒に取れているなら同期（空なら触らない）
-      if (nextRatings && Object.keys(nextRatings).length > 0) {
-        setUserRatings(nextRatings);
-        try {
-          localStorage.setItem("userRatings", JSON.stringify(nextRatings));
-        } catch {}
-      }
-    } catch (e) {
-      console.warn("rated-panel sync failed:", e);
-      // rated-panel が無い/失敗しても動作は継続（wishlist星が出ないだけ）
-    }
-  }, []);
+  //ここを削除
 
   // =========================
   // 検索 / 評価ボタンを「更新ボタン代替」にする　2026.01.
@@ -1835,7 +1728,7 @@ function MapPage() {
           // 先に開く（体感速度優先）
           openPanel("search");
           // 裏で更新（points/allowed/rated-panel）
-          refreshDataInBackground();
+          //refreshDataInBackground();  を削除
         }}
         style={{
           pointerEvents: "auto",
@@ -1977,7 +1870,8 @@ function MapPage() {
       <SearchPanel
         open={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        data={searchPanelData}
+        //data={searchPanelData}  を削除
+        data={data}   //を削除して置き換え
         onPick={async (item) => {
           if (!item) return;
 
