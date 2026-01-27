@@ -43,35 +43,35 @@ import { getCurrentMainStoreIdSafe } from "../utils/store";
 // =========================
 // サブ店舗IDをローカルから拾う（キーの揺れを吸収） 2026.01.追加
 // =========================
-const getCurrentSubStoreIdsFromStorage = () => {
-  const tryParseIds = (raw) => {
-    if (!raw) return [];
-    try {
-      const v = JSON.parse(raw);
-      if (Array.isArray(v)) return v.map((x) => Number(x)).filter((n) => Number.isFinite(n));
-      if (Array.isArray(v?.sub_store_ids)) return v.sub_store_ids.map(Number).filter(Number.isFinite);
-      if (Array.isArray(v?.subStoreIds)) return v.subStoreIds.map(Number).filter(Number.isFinite);
-    } catch {}
-    return [];
-  };
-
-  try {
-    // ※ここは運用で増やしてOK（StorePanel側の保存キーに合わせる）
-    const keys = [
-      "sub_store_ids",
-      "selectedSubStoreIds",
-      "selectedSubStores",
-      "app.sub_store_ids",
-      "app.user",
-    ];
-    for (const k of keys) {
-      const raw = localStorage.getItem(k);
-      const ids = tryParseIds(raw);
-      if (ids.length) return ids;
-    }
-  } catch {}
-  return [];
-};
+//const getCurrentSubStoreIdsFromStorage = () => {  を削除
+//  const tryParseIds = (raw) => {
+//    if (!raw) return [];
+//    try {
+//      const v = JSON.parse(raw);
+//      if (Array.isArray(v)) return v.map((x) => Number(x)).filter((n) => Number.isFinite(n));
+//      if (Array.isArray(v?.sub_store_ids)) return v.sub_store_ids.map(Number).filter(Number.isFinite);
+//      if (Array.isArray(v?.subStoreIds)) return v.subStoreIds.map(Number).filter(Number.isFinite);
+//    } catch {}
+//    return [];
+//  };
+//
+//  try {
+//    // ※ここは運用で増やしてOK（StorePanel側の保存キーに合わせる）
+//    const keys = [
+//      "sub_store_ids",
+//      "selectedSubStoreIds",
+//      "selectedSubStores",
+//      "app.sub_store_ids",
+//      "app.user",
+//    ];
+//    for (const k of keys) {
+//      const raw = localStorage.getItem(k);
+//      const ids = tryParseIds(raw);
+//      if (ids.length) return ids;
+//    }
+//  } catch {}
+//  return [];
+//};
 
 // EC許可コンテキスト：main==公式 or subに公式
 const isEcEnabledInContext = (mainStoreId, subStoreIds) => {
