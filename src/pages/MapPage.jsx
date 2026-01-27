@@ -89,10 +89,10 @@ const getStoreContextKeyFromStorage = () => {
     mainStoreId = getCurrentMainStoreIdSafe();
   } catch {}
 
-  const subStoreIds = getCurrentSubStoreIdsFromStorage()
-    .map((n) => Number(n))
-    .filter(Number.isFinite)
-    .sort((a, b) => a - b);
+//  const subStoreIds = getCurrentSubStoreIdsFromStorage()  を削除
+//    .map((n) => Number(n))
+//    .filter(Number.isFinite)
+//    .sort((a, b) => a - b);
 
   let hasToken = false;
   try {
@@ -102,7 +102,7 @@ const getStoreContextKeyFromStorage = () => {
   // ここは「同じ状況なら同じKey」になることが目的
   return [
     `m=${Number(mainStoreId) || 0}`,
-    `s=${subStoreIds.join(",")}`,
+//    `s=${subStoreIds.join(",")}`, 　を削除
     `t=${hasToken ? 1 : 0}`,
   ].join("|");
 };
