@@ -402,7 +402,8 @@ async function fetchAllowedJansAuto() {
 
         //const subStoreIds = getCurrentSubStoreIdsFromStorage();　を削除して置き換え
         //const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);　を削除して置き換え
-        const ecEnabledInContext = isEcEnabledInContext(mainStoreId, []); //を削除の代わり
+        //const ecEnabledInContext = isEcEnabledInContext(mainStoreId, []); //を削除の代わり
+        const ecEnabledInContext = isEcEnabledInContext(mainStoreId, []);
 
         return { 
           allowedJans,
@@ -442,8 +443,12 @@ async function fetchAllowedJansAuto() {
       const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, wishJans } =
         parseAllowedJansResponse(json);
 
-      const subStoreIds = getCurrentSubStoreIdsFromStorage();
-      const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);
+      //const subStoreIds = getCurrentSubStoreIdsFromStorage(); を削除して置き換え
+      //const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);  を削除して置き換え
+      const ecEnabledInContext =                                //を削除の代わり
+        typeof mainStoreEcActive === "boolean"                  //を削除の代わり
+          ? mainStoreEcActive                                   //を削除の代わり
+          : Number(mainStoreId) === OFFICIAL_STORE_ID;          //を削除の代わり
 
       return {
         allowedJans,
@@ -463,7 +468,8 @@ async function fetchAllowedJansAuto() {
         ecOnlyJans: [],
         storeJans: [],
         mainStoreEcActive: null,
-        ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),
+        //ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),  を削除して置き換え
+        ecEnabledInContext: Number(mainStoreId) === OFFICIAL_STORE_ID,  //を削除の代わり
       };
     }
   } catch (e) {
@@ -474,7 +480,8 @@ async function fetchAllowedJansAuto() {
        ecOnlyJans: [],
        storeJans: [],
        mainStoreEcActive: null,
-       ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),
+       //ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()), を削除して置き換え
+       ecEnabledInContext: Number(mainStoreId) === OFFICIAL_STORE_ID, //を削除の代わり
      };
   }
 }
