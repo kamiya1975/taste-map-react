@@ -40,40 +40,31 @@ import {
 import { getLotId } from "../utils/lot";
 import { getCurrentMainStoreIdSafe } from "../utils/store";
 
-// =========================
-// サブ店舗IDをローカルから拾う（キーの揺れを吸収） 2026.01.追加
-// =========================
-//const getCurrentSubStoreIdsFromStorage = () => {  を削除
-//  const tryParseIds = (raw) => {
-//    if (!raw) return [];
-//    try {
-//      const v = JSON.parse(raw);
-//      if (Array.isArray(v)) return v.map((x) => Number(x)).filter((n) => Number.isFinite(n));
-//      if (Array.isArray(v?.sub_store_ids)) return v.sub_store_ids.map(Number).filter(Number.isFinite);
-//      if (Array.isArray(v?.subStoreIds)) return v.subStoreIds.map(Number).filter(Number.isFinite);
-//    } catch {}
-//    return [];
-//  };
-//
-//  try {
-//    // ※ここは運用で増やしてOK（StorePanel側の保存キーに合わせる）
-//    const keys = [
-//      "sub_store_ids",
-//      "selectedSubStoreIds",
-//      "selectedSubStores",
-//      "app.sub_store_ids",
-//      "app.user",
-//    ];
-//    for (const k of keys) {
-//      const raw = localStorage.getItem(k);
-//      const ids = tryParseIds(raw);
-//      if (ids.length) return ids;
-//    }
-//  } catch {}
-//  return [];
-//};
+// EC許可コンテキストのため（カートパネルボタンの表示/非表示）
+const getCurrentSubStoreIdsFromStorage = () => {
+  const tryParseIds = (raw) => {
+    if (!raw) return [];
+    try {
+      const v = JSON.parse(raw);
+      if (Array.isArray(v)) return v.map(Number).filter(Number.isFinite);
+      if (Array.isArray(v?.sub_store_ids)) return v.sub_store_ids.map(Number).filter(Number.isFinite);
+      if (Array.isArray(v?.subStoreIds)) return v.subStoreIds.map(Number).filter(Number.isFinite);
+    } catch {}
+    return [];
+  };
 
-// EC許可コンテキスト：main==公式 or subに公式
+  try {
+    // StorePanelContent が書いているキー
+    const keys = ["sub_store_ids", "app.sub_store_ids", "selectedSubStoreIds"];
+    for (const k of keys) {
+      const raw = localStorage.getItem(k);
+      const ids = tryParseIds(raw);
+      if (ids.length) return ids;
+    }
+  } catch {}
+  return [];
+};;
+// EC許可コンテキスト（カートパネルボタンの表示/非表示）：main==公式 or subに公式
 const isEcEnabledInContext = (mainStoreId, subStoreIds) => {
   const main = Number(mainStoreId);
   const subs = Array.isArray(subStoreIds) ? subStoreIds.map(Number) : [];
@@ -399,11 +390,7 @@ async function fetchAllowedJansAuto() {
       try {
         const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
           await fetchAllowedJansForStore(mainStoreId);
-
-        //const subStoreIds = getCurrentSubStoreIdsFromStorage();　を削除して置き換え
-        //const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);　を削除して置き換え
-        //const ecEnabledInContext = isEcEnabledInContext(mainStoreId, []); //を削除の代わり
-        const ecEnabledInContext = isEcEnabledInContext(mainStoreId, []);
+        const ecEnabledInContext = Number(mainStoreId) === OFFICIAL_STORE_ID;
 
         return { 
           allowedJans,
@@ -424,8 +411,7 @@ async function fetchAllowedJansAuto() {
           ecOnlyJans: [],
           storeJans: [],
           mainStoreEcActive: null,
-          //ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),  を削除して置き換え
-          ecEnabledInContext: isEcEnabledInContext(mainStoreId, []),  //を削除の代わり
+          ecEnabledInContext: Number(mainStoreId) === OFFICIAL_STORE_ID,
         };
       }
     }
@@ -442,13 +428,8 @@ async function fetchAllowedJansAuto() {
       const json = await res.json();
       const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, wishJans } =
         parseAllowedJansResponse(json);
-
-      //const subStoreIds = getCurrentSubStoreIdsFromStorage(); を削除して置き換え
-      //const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);  を削除して置き換え
-      const ecEnabledInContext =                                //を削除の代わり
-        typeof mainStoreEcActive === "boolean"                  //を削除の代わり
-          ? mainStoreEcActive                                   //を削除の代わり
-          : Number(mainStoreId) === OFFICIAL_STORE_ID;          //を削除の代わり
+      const subStoreIds = getCurrentSubStoreIdsFromStorage();
+      const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);
 
       return {
         allowedJans,
@@ -468,21 +449,19 @@ async function fetchAllowedJansAuto() {
         ecOnlyJans: [],
         storeJans: [],
         mainStoreEcActive: null,
-        //ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),  を削除して置き換え
-        ecEnabledInContext: Number(mainStoreId) === OFFICIAL_STORE_ID,  //を削除の代わり
+        ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),
       };
     }
   } catch (e) {
     console.warn("allowed-jans/auto の取得に失敗 → フィルタ無しで続行", e);
     showAllowedJansErrorOnce();
-     return {
-       allowedJans: null,
-       ecOnlyJans: [],
-       storeJans: [],
-       mainStoreEcActive: null,
-       //ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()), を削除して置き換え
-       ecEnabledInContext: Number(mainStoreId) === OFFICIAL_STORE_ID, //を削除の代わり
-     };
+    return {
+      allowedJans: null,
+      ecOnlyJans: [],
+      storeJans: [],
+      mainStoreEcActive: null,
+      ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),
+    };
   }
 }
 
