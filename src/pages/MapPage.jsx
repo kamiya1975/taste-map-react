@@ -400,8 +400,9 @@ async function fetchAllowedJansAuto() {
         const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
           await fetchAllowedJansForStore(mainStoreId);
 
-        const subStoreIds = getCurrentSubStoreIdsFromStorage();
-        const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);
+        //const subStoreIds = getCurrentSubStoreIdsFromStorage();　を削除して置き換え
+        //const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);　を削除して置き換え
+        const ecEnabledInContext = isEcEnabledInContext(mainStoreId, []); //を削除の代わり
 
         return { 
           allowedJans,
@@ -422,7 +423,8 @@ async function fetchAllowedJansAuto() {
           ecOnlyJans: [],
           storeJans: [],
           mainStoreEcActive: null,
-          ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),
+          //ecEnabledInContext: isEcEnabledInContext(mainStoreId, getCurrentSubStoreIdsFromStorage()),  を削除して置き換え
+          ecEnabledInContext: isEcEnabledInContext(mainStoreId, []),  //を削除の代わり
         };
       }
     }
