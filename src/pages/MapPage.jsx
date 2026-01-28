@@ -63,7 +63,7 @@ const getCurrentSubStoreIdsFromStorage = () => {
     }
   } catch {}
   return [];
-};;
+};
 // EC許可コンテキスト（カートパネルボタンの表示/非表示）：main==公式 or subに公式
 const isEcEnabledInContext = (mainStoreId, subStoreIds) => {
   const main = Number(mainStoreId);
@@ -71,6 +71,7 @@ const isEcEnabledInContext = (mainStoreId, subStoreIds) => {
   return main === OFFICIAL_STORE_ID || subs.includes(OFFICIAL_STORE_ID);
 };
 
+//---------------------------------------------------------------------------------
 // 店舗コンテキストKey（iframe再読み込み判定用） 2026.01.追加
 const getStoreContextKeyFromStorage = () => {
   let mainStoreId = null;
@@ -89,6 +90,7 @@ const getStoreContextKeyFromStorage = () => {
   ].join("|");
 };
 
+//---------------------------------------------------------------------------------
 // スナップショット　2026.01.
 const ALLOWED_SNAPSHOT_KEY = "tm_allowed_snapshot_v1";
 
@@ -132,11 +134,9 @@ function writeAllowedSnapshot(payload) {
     }
   } catch {}
 }
-// ここまで 2026.01.
 
-// =========================
+//---------------------------------------------------------------------------------
 // points 正規化（入口で吸収） 2025.12.20.追加
-// =========================
 function normalizePointRow(row) {
   const toNumOrNull = (v) => {
     if (v === null || v === undefined) return null;
@@ -182,6 +182,7 @@ function normalizePoints(rows) {
 }
 // ここまでが正規化ユーティリティ
 
+//---------------------------------------------------------------------------------
 // 任意のオブジェクトから JAN を安全に取り出す共通ヘルパー
 const getJanFromItem = (item) => {
   if (!item) return "";
@@ -189,6 +190,7 @@ const getJanFromItem = (item) => {
   return jan ? String(jan) : "";
 };
 
+//---------------------------------------------------------------------------------
 // メイン店舗の EC有効フラグをローカルから推定（JSONでも文字列でも耐える）
 const getCurrentMainStoreEcActiveFromStorage = () => {
   try {
@@ -221,10 +223,9 @@ const getCurrentMainStoreEcActiveFromStorage = () => {
   return null;
 };
 
-// =========================
+//---------------------------------------------------------------------------------
 // rated-panel（DB正）スナップショット取得
 // - rating も同時に取れれば userRatings も同期
-// =========================
 async function fetchRatedPanelSnapshot({ apiBase, token }) {
   if (!token) return null;
   const url = `${apiBase}/api/app/rated-panel`;
@@ -286,6 +287,7 @@ function parseRatedPanelItems(json) {
   return { nextRatings, nextFav };
 }
 
+//---------------------------------------------------------------------------------
 // allowed-jans 取得エラー時に表示
 let allowedJansErrorShown = false;
 
@@ -299,6 +301,7 @@ const showAllowedJansErrorOnce = () => {
   }
 };
 
+//---------------------------------------------------------------------------------
 // 共通のパース小ユーティリティ（先に定義しておく）
 function parseAllowedJansResponse(json) {
   const storeArr =
@@ -337,6 +340,7 @@ function parseAllowedJansResponse(json) {
   return { allowedJans: allowedArr, ecOnlyJans: ecOnlyArr.map(String), storeJans, mainStoreEcActive, wishJans: wishArr.map(String).filter(Boolean) };
 }
 
+//---------------------------------------------------------------------------------
 // 指定店舗IDの allowed_jans を取得する共通ヘルパー（未ログイン想定）
 async function fetchAllowedJansForStore(storeId) {
   if (storeId === null || storeId === undefined) {
@@ -363,7 +367,7 @@ async function fetchAllowedJansForStore(storeId) {
     parseAllowedJansResponse(json);
   return { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive };
 }
-
+//---------------------------------------------------------------------------------
 // メイン店舗（＋ログイン状態）に応じて allowed_jans を取得
 //    - 未ログイン: ローカルにメイン店舗IDがあれば /allowed-jans?stores=...&include_ec=true
 //                  メイン店舗IDが無ければ null（= フィルタ無し）
@@ -456,6 +460,7 @@ async function fetchAllowedJansAuto() {
   }
 }
 
+//---------------------------------------------------------------------------------
 const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
 const ANCHOR_JAN = "4964044046324";
@@ -473,6 +478,8 @@ function getYOffsetWorld(zoom, fracFromTop = CENTER_Y_FRAC) {
   return (0.5 - fracFromTop) * hPx * worldPerPx;
 }
 
+//==================================================================================
+//==================================================================================
 function MapPage() {
   // Drawer を “背面（Map）に操作を通す” 共通設定
   const passThroughDrawerSx = useMemo(() => ({ pointerEvents: "none" }), []);
@@ -487,6 +494,7 @@ function MapPage() {
   // ログインユーザー名（ニックネーム）表示用
   const [userDisplayName, setUserDisplayName] = useState("");
 
+  //---------------------------------------------------------------------------------
   useEffect(() => {
     const readUserFromStorage = () => {
       try {
@@ -516,6 +524,7 @@ function MapPage() {
     };
   }, []);
 
+  //---------------------------------------------------------------------------------
   // ロット → 基準ワイン座標
   const lotId = getLotId();
   const reference = useMemo(() => getReferenceLotById(lotId), [lotId]);
@@ -532,6 +541,7 @@ function MapPage() {
     [reference]
   );
 
+  //---------------------------------------------------------------------------------
   // ---- Refs ----
   const didInitialCenterRef = useRef(false);
   const iframeRef = useRef(null);
@@ -553,10 +563,11 @@ function MapPage() {
   const [cartOpen, setCartOpen] = useState(false); // カート
   const [isScannerOpen, setIsScannerOpen] = useState(false); // バーコードスキャナ
 
-  // ---- SimpleCart（ローカル）----
+  //---------------------------------------------------------------------------------
+  // SimpleCart（ローカル） カートパネル
   const { totalQty, add: addLocal } = useSimpleCart();
 
-  // ✅ Shopify チェックアウト復帰時のローカル掃除
+  // Shopify チェックアウト復帰時のローカル掃除
   useEffect(() => {
     try {
       const url = new URL(window.location.href);
@@ -570,6 +581,7 @@ function MapPage() {
     } catch {}
   }, []);
 
+  //---------------------------------------------------------------------------------
   // ---- Map / DeckGL の初期 viewState ----
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
@@ -591,10 +603,9 @@ function MapPage() {
   const [cartEnabled, setCartEnabled] = useState(false);
   const [wishJansSet, setWishJansSet] = useState(() => new Set());
 
-  // =========================
+  //---------------------------------------------------------------------------------
   // 重要：未ログインで mainStoreId が無い状態を許容しない（0点/全点の暴れ源）
   // - 「MapPage前に必ずStore選択」の旧仕様に戻す
-  // =========================
   useEffect(() => {
     let token = "";
     try { token = localStorage.getItem("app.access_token") || ""; } catch {}
@@ -608,26 +619,20 @@ function MapPage() {
     }
   }, [navigate]);
 
-  // ------------------------------
-  // 描画用の主集合（visible）
-  // - allowedJansSet があるならそれを優先
-  // - 無いなら「全打点OK」（表示フォールバック）
-  // ※ storeJansSet（店舗集合）とは混ぜない
-  // ------------------------------
+  //---------------------------------------------------------------------------------
+  // ---- JanSet（ visibleJanSet, allJanSet ）----
+  // --- 描画用の主集合（visible）---
+  // allowedJansSet があるならそれを優先 - 無いなら「全打点OK」（表示フォールバック）- storeJansSet（店舗集合）とは混ぜない
   const visibleJansSet = useMemo(() => {
-    // 旧安定挙動に戻す：
-    // - allowed が「未確定（空）」の瞬間は 0点にしない（全点フォールバック）
-    // - allowed が確定（size>0）したらそれを採用
+    // allowed が「未確定（空）」の瞬間は 0点にしない（全点フォールバック）- allowed が確定（size>0）したらそれを採用
     if (allowedJansSet instanceof Set && allowedJansSet.size > 0) {
       return allowedJansSet;
     }
-    return null; // null = 全点フォールバック扱い
+    return null;        // null = 全点フォールバック扱い
   }, [allowedJansSet]);
 
-  // ------------------------------
-  // 全点フォールバック用（毎renderで new Set しない）
-  // - data が変わった時だけ再計算
-  // ------------------------------
+  // --- 全点フォールバック用 ---
+  // 毎renderで new Set しない - data が変わった時だけ再計算
   const allJansSet = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
     return new Set(
@@ -635,23 +640,21 @@ function MapPage() {
     );
   }, [data]);
 
-  // MapCanvas に渡す “見える集合” を確定（参照安定）
+  // --- MapCanvas に渡す “見える集合” を確定（参照安定）---
   const visibleJansSetForCanvas = useMemo(() => {
     return visibleJansSet instanceof Set ? visibleJansSet : allJansSet;
   }, [visibleJansSet, allJansSet]);
 
-  // MapCanvas に渡す “許可集合” は「空Set＝未確定」を null に寄せる
-  // （MapCanvas側で null を“制限なし”として扱う）
+  // --- MapCanvas に渡す “許可集合” は「空Set＝未確定」を null に寄せる ---
+  // MapCanvas側で null を“制限なし”として扱う
   const allowedJansSetForCanvas = useMemo(() => {
     if (!(allowedJansSet instanceof Set)) return null;
     return allowedJansSet.size > 0 ? allowedJansSet : null;
   }, [allowedJansSet]);
   
-  // =========================
-  // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み） 2026.01.
-  // - ctx: 店舗コンテキスト（main/sub/token）
-  // - _  : iframeNonce（強制再読み込み用）
-  // =========================
+  //---------------------------------------------------------------------------------
+  // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み） 2026.01.追加
+  // - ctx: 店舗コンテキスト（main/sub/token） - _  : iframeNonce（強制再読み込み用）
   const productIframeSrc = useMemo(() => {
     if (!selectedJAN) return "";
     const base = process.env.PUBLIC_URL || "";
@@ -662,14 +665,13 @@ function MapPage() {
     return `${base}/#/products/${jan}?embed=1&ctx=${ctx}&_=${nonce}`;
   }, [selectedJAN, storeContextKey, iframeNonce]);  
 
-  // =========================
-  // points 再取得（更新ボタン代替用）　2026.01.
-  // - cache を強制的に無効化
-  // - ?v= でURLをバスト（静的配信の強キャッシュ対策）
-  // =========================
+  //---------------------------------------------------------------------------------
+  // 打点JSON, バックグラウンド の更新反映のため    - points 再取得
+  // - cache を強制的に無効化 - ?v= でURLをバスト（静的配信の強キャッシュ対策）
   const fetchPoints = useCallback(
     async (opts = {}) => {
-      const { bust = true } = opts;
+      //const { bust = true } = opts;
+      const { bust = false } = opts;  // 上を削除して置き換え 1行
       try {
         const baseUrl = String(TASTEMAP_POINTS_URL || "");
         if (!baseUrl) return;
@@ -700,11 +702,9 @@ function MapPage() {
     [] // debug removed
   );
 
-  // ------------------------------
-  // 検索パネルに渡すデータ（Plan A: Mapに出てるものだけ検索）
-  // - visibleJansSet がある → その集合に含まれる点だけ
-  // - visibleJansSet が null → フォールバックで全点
-  // ------------------------------
+  //---------------------------------------------------------------------------------
+  // 検索パネルに渡すデータ（初期一覧表示 = 打点）
+  // - visibleJansSetがある → その集合に含まれる点だけ / visibleJansSetがnull → フォールバックで全点
   const searchPanelData = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
     //visibleJansSet が null のときは全点を検索対象（PlanAの暫定フォールバック）
@@ -713,6 +713,7 @@ function MapPage() {
     return list.filter((d) => set.has(String(getJanFromItem(d))));
   }, [data, visibleJansSet]);
 
+  //---------------------------------------------------------------------------------
   // ====== allowed-jans を読み直す共通関数 ======
   const reloadAllowedJans = useCallback(async () => {
     const mainStoreId = getCurrentMainStoreIdSafe();
@@ -770,6 +771,7 @@ function MapPage() {
     reloadAllowedJans();
   }, [reloadAllowedJans]);
 
+  //---------------------------------------------------------------------------------
   // ====== rated-panel（DB正）から wishlist を同期 ======
   const syncRatedPanel = useCallback(async () => {
     let token = "";
@@ -797,45 +799,46 @@ function MapPage() {
     }
   }, []);
 
-  // =========================
-  // 検索 / 評価ボタンを「更新ボタン代替」にする　2026.01.
-  // - 未ログイン時：mainStoreId はローカル由来のまま（reloadAllowedJans が内部で吸収）
-  // - ログイン時：rated-panel 同期も実行
-  // =========================
-  const refreshDataForPanels = useCallback(
-    async () => {
-      // 1) points（静的/デプロイ差し替えの反映）
-      await fetchPoints({ bust: true });
-      // 2) allowed-jans（店舗選択/EC可否/表示JANの反映）
-      await reloadAllowedJans();
-      // 3) wishlist/rating（ログイン時のみ。未ログインは syncRatedPanel 内で早期returnするが明示）
-      const token = (() => {
-        try {
-          return localStorage.getItem("app.access_token") || "";
-        } catch {
-          return "";
-        }
-      })();
-      if (token) {
-        await syncRatedPanel();
-      }
-    },
-    [fetchPoints, reloadAllowedJans, syncRatedPanel]
-  );
+//  //---------------------------------------------------------------------------------
+//  // 検索 / 評価ボタンを「更新ボタン代替」にする　2026.01.
+//  // - 未ログイン時：mainStoreId はローカル由来のまま（reloadAllowedJans が内部で吸収）
+//  // - ログイン時：rated-panel 同期も実行
+//  const refreshDataForPanels = useCallback(
+//    async () => {
+//      // 1) points（静的/デプロイ差し替えの反映）
+//      await fetchPoints({ bust: true });
+//      // 2) allowed-jans（店舗選択/EC可否/表示JANの反映）
+//      await reloadAllowedJans();
+//      // 3) wishlist/rating（ログイン時のみ。未ログインは syncRatedPanel 内で早期returnするが明示）
+//      const token = (() => {
+//        try {
+//          return localStorage.getItem("app.access_token") || "";
+//        } catch {
+//          return "";
+//        }
+//      })();
+//      if (token) {
+//        await syncRatedPanel();
+//      }
+//    },
+//    [fetchPoints, reloadAllowedJans, syncRatedPanel]
+//  );
+//
+//  // ボタン押下で「即open + 裏で更新」を安全に走らせる（参照を安定化）2026.01.
+//  const refreshDataInBackground = useCallback(() => {
+//    refreshDataForPanels().catch((e) => {
+//      console.warn("[MapPage] background refresh failed:", e);
+//    });
+//  }, [refreshDataForPanels]);
 
-  // ボタン押下で「即open + 裏で更新」を安全に走らせる（参照を安定化）2026.01.
-  const refreshDataInBackground = useCallback(() => {
-    refreshDataForPanels().catch((e) => {
-      console.warn("[MapPage] background refresh failed:", e);
-    });
-  }, [refreshDataForPanels]);
-
-  // 初回・ログイン/ログアウト・店舗変更などで同期
+  //---------------------------------------------------------------------------------
+  // 初回・ログイン/ログアウト・店舗変更などで同期    syncRatedPanel
   useEffect(() => {
     syncRatedPanel();
   }, [syncRatedPanel]);
 
-  useEffect(() => {
+  //---------------------------------------------------------------------------------
+  useEffect(() => {                           // syncRatedPanel
     const handler = (e) => {
       // storage のときだけ key で絞る
       if (e && e.type === "storage") {
@@ -859,7 +862,8 @@ function MapPage() {
     };
   }, [syncRatedPanel]);
 
-  // ====== ログイン状態や店舗選択の変更を拾って再取得 ======
+  //---------------------------------------------------------------------------------
+  // ====== ログイン状態や店舗選択の変更を拾って再取得 ======（handler の責務はkey更新=状態を変える）
   useEffect(() => {
     const handler = (e) => {
       // storage のときだけ key で絞る（関係ない localStorage 更新での過剰リロード防止）
@@ -876,7 +880,7 @@ function MapPage() {
           k === "app.sub_store_ids";
         if (!ok) return;
       }
-      reloadAllowedJans();
+      //reloadAllowedJans();  を削除  2026.01.28.
 
       // 店舗コンテキストが変わったら商品iframeを必ずリロード　2026.01.追加
       const nextKey = getStoreContextKeyFromStorage();
@@ -899,8 +903,10 @@ function MapPage() {
       window.removeEventListener("storage", handler);
       window.removeEventListener("tm_store_changed", handler);
     };
-  }, [reloadAllowedJans]);
+  //}, [reloadAllowedJans]);  を削除  2026.0128.
+  }, []);  //上を削除して置き換え
 
+  //---------------------------------------------------------------------------------
   // RatedPanel を開いたタイミングでも、DB正スナップショットを再同期
   // （wishlist星の即時反映＆別端末変更の取り込み）
   useEffect(() => {
@@ -908,13 +914,26 @@ function MapPage() {
     syncRatedPanel();
   }, [isRatedOpen, syncRatedPanel]);
 
-  // Storeパネル（お気に入り店舗登録）を開いたタイミングで、
-  // 店舗情報のDB更新（営業時間など）を即反映させるために裏で更新する　2026.01.
-  useEffect(() => {
-    if (!isStoreOpen) return;
-    refreshDataInBackground();
-  }, [isStoreOpen, refreshDataInBackground]);
+//  //---------------------------------------------------------------------------------
+//  // Storeパネル（お気に入り店舗登録）を開いたタイミングで、
+//  // 店舗情報のDB更新（営業時間など）を即反映させるために裏で更新する　2026.01.
+//  useEffect(() => {
+//    if (!isStoreOpen) return;
+//    refreshDataInBackground();
+//  }, [isStoreOpen, refreshDataInBackground]);
+//
+//  // Storeパネル側は「サブ店舗ON/OFF（storeContextKey変化）」で reloadAllowedJans が走る設計に寄せる
+//  // ※ここで points / rated をまとめて更新しない（競合・二重スナップショットの温床になる）
 
+  //---------------------------------------------------------------------------------
+  // ストアパネル（サブ店舗の登録/解除で打点を即反映）    20206.01.28.
+  // storeContextKey が変わったら allowed-jans を再取得して即反映
+  useEffect(() => {
+    if (!storeContextKey) return;
+    reloadAllowedJans();
+  }, [storeContextKey, reloadAllowedJans]);  
+
+  //---------------------------------------------------------------------------------
   // クラスタ配色
   const [clusterColorMode, setClusterColorMode] = useState(false);
   const [clusterCollapseKey, setClusterCollapseKey] = useState(null);
@@ -974,6 +993,8 @@ function MapPage() {
     return Array.from(s).sort((a, b) => a - b);
   }, [data]);
 
+  //---------------------------------------------------------------------------------
+  //---------------------------------------------------------------------------------
   // ===== パネル開閉ユーティリティー
   const PANEL_ANIM_MS = 260;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1106,6 +1127,7 @@ function MapPage() {
     }, [closeUIsThen, cartEnabled]
   );
 
+  //----------------------------
   // クエリで各パネルを開く（/ ?open=mypage|search|rated|mapguide|guide|position|store）
   useEffect(() => {
     try {
@@ -1123,6 +1145,7 @@ function MapPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, openPanel, navigate, location.pathname, location.state]);
 
+  //---------------------------------------------------------------------------------
   // ====== パン境界
   const panBounds = useMemo(() => {
     if (!data.length) return { xmin: -10, xmax: 10, ymin: -10, ymax: 10 };
@@ -1141,16 +1164,21 @@ function MapPage() {
     };
   }, [data]);
 
+  //---------------------------------------------------------------------------------
+  // 打点JSON, バックグラウンド読み込みのため
   // ====== 打点データ読み込み（初回）===== 2026.01.
   useEffect(() => {
-    fetchPoints({ bust: true });
+    //fetchPoints({ bust: true });
+    fetchPoints({ bust: false });   //上を削除して置き換え 1行
   }, [fetchPoints]);
 
+  //---------------------------------------------------------------------------------
   // スキャナ：未登録JANの警告リセット
   useEffect(() => {
     if (isScannerOpen) unknownWarnedRef.current.clear();
   }, [isScannerOpen]);
 
+  //---------------------------------------------------------------------------------
   // ====== ローカルストレージ同期
   useEffect(() => {
     const syncUserRatings = () => {
@@ -1178,6 +1206,7 @@ function MapPage() {
     } catch {}
   }, [userRatings]);
 
+  //---------------------------------------------------------------------------------
   // ====== UMAP 重心
   const umapCentroid = useMemo(() => {
     if (!data?.length) return [0, 0];
@@ -1459,6 +1488,7 @@ function MapPage() {
     }
   }, [location.key, userPin, data, findNearestWineWorld, focusOnWine]);
 
+  //---------------------------------------------------------------------------------
   // ====== 子iframeへ（wishlist反映など）状態スナップショットを送る
   const CHILD_ORIGIN =
     typeof window !== "undefined" ? window.location.origin : "*";
@@ -1627,6 +1657,7 @@ function MapPage() {
     storeContextKey,
   ]);
 
+  //=================================================================================
   // ====== レンダリング
   return (
     <div id="map-root" className="map-root" tabIndex={-1}>
@@ -1635,15 +1666,13 @@ function MapPage() {
         // 店舗集合（意味の集合）：信頼できる時だけ意味を持つ
         storeJansSet={storeJansSet}
 
-        // 描画用の主集合（参照安定：毎回 new Set しない）
-        // 旧挙動：visible 未確定でも 0点にしない（allJansSet でフォールバック）
+        // 描画用の主集合    - 参照安定：毎回 new Set しない
         visibleJansSet={visibleJansSetForCanvas}
 
         // EC専用JAN（星・色替え用）
         ecOnlyJansSet={ecOnlyJansSet instanceof Set ? ecOnlyJansSet : new Set()}
 
-        // 表示許可集合（フェード/非表示制御）
-        // 空Setは未確定扱いで null（制限なし）へ寄せる
+        // 表示許可集合（フェード/非表示制御）    - 空Setは未確定扱いで null（制限なし）へ寄せる
         allowedJansSet={allowedJansSetForCanvas}
 
         userRatings={userRatings}
@@ -1671,11 +1700,9 @@ function MapPage() {
           });
 
           setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
-
           setSelectedJAN(janStr);
           setIframeNonce(Date.now());
           setProductDrawerOpen(true);
-
           focusOnWine(item, { recenter: false });
         }}
         clusterColorMode={clusterColorMode}
@@ -1683,7 +1710,7 @@ function MapPage() {
         edgeMarginYPx={400}
         basePoint={basePoint}
       />
-
+    
       {/* 左上: 指標セレクタ + クラスタ配色ボタン */}
       <div
         style={{
@@ -1822,8 +1849,6 @@ function MapPage() {
         onClick={async () => {
           // 先に開く（体感速度優先）
           openPanel("search");
-          // 裏で更新（points/allowed/rated-panel）
-          //refreshDataInBackground();  を削除
         }}
         style={{
           pointerEvents: "auto",
@@ -1863,8 +1888,6 @@ function MapPage() {
         onClick={async () => {
           // 先に開く（体感速度優先）
           openPanel("rated");
-          // 裏で更新（points/allowed/rated-panel）
-          refreshDataInBackground();
         }}
         style={{
           /* 110px */
@@ -1898,6 +1921,43 @@ function MapPage() {
           }}
           draggable={false}
         />
+      </button>
+
+      {/* 右上: データ更新（pointsのみ）2026.01.28.仮 */}
+      <button
+        onClick={() => {
+          // points(JSON) の強制更新のみ（デプロイ差し替え反映の最終兵器）
+          fetchPoints({ bust: true });
+        }}
+        style={{
+          pointerEvents: "auto",
+          position: "absolute",
+          top: "60px",
+          right: "60px",
+          zIndex: UI_Z_TOP,
+          width: "40px",
+          height: "40px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+        }}
+        aria-label="データ更新"
+        title="データ更新"
+      >
+        {/* 既存アセットが無ければテキスト表示でOK */}
+        <span
+          style={{
+            fontSize: "12px",
+            lineHeight: "1",
+            userSelect: "none",
+          }}
+        >
+          更新
+        </span>
       </button>
 
       {/* 右サイド: カート */}
@@ -1966,7 +2026,6 @@ function MapPage() {
         open={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         data={searchPanelData}
-        //data={data}   を削除
         onPick={async (item) => {
           if (!item) return;
 
