@@ -1314,13 +1314,29 @@ function MapPage() {
 
     if (!(byState || byFlag)) return;
 
-    // 保存済みピン座標を取得（既存の reader を利用）
+//    // 保存済みピン座標を取得（既存の reader を利用）
+//    const pin = readUserPinFromStorage() || userPin;
+//    const [x, y] = Array.isArray(pin) ? pin : [];
+//
+//    if (Number.isFinite(x) && Number.isFinite(y)) {
+//      centerToUMAP(x, y, { zoom: INITIAL_ZOOM });
+//    }
+//ここから 2026.01.28.ユーザーピン中心修正
+// この遷移は「スライダー復帰フロー」として扱う（後段の auto-open と衝突させない）
+    try { sessionStorage.setItem("tm_slider_return_flow", "1"); } catch {}
+
     const pin = readUserPinFromStorage() || userPin;
     const [x, y] = Array.isArray(pin) ? pin : [];
 
     if (Number.isFinite(x) && Number.isFinite(y)) {
-      centerToUMAP(x, y, { zoom: INITIAL_ZOOM });
+      // visualViewport が安定してからセンタリング（iPhone/PWAのブレ対策）
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          centerToUMAP(x, y, { zoom: INITIAL_ZOOM });
+        });
+      });
     }
+//ここまで 2026.01.28.追加
 
     // 使い終わったフラグ類を掃除
     try {
@@ -1457,7 +1473,9 @@ function MapPage() {
         setSelectedJAN(janStr);
         setIframeNonce(Date.now());
         setProductDrawerOpen(true);
-        focusOnWine(nearest, { zoom: INITIAL_ZOOM });
+        //focusOnWine(nearest, { zoom: INITIAL_ZOOM });   を削除 2026.01.28.ユーザーピン中心修正
+        // centerToUMAP が正：ここで再センタリングして上書きしない
+        focusOnWine(nearest, { zoom: INITIAL_ZOOM, recenter: false });  //上を削除して置き換え1行
       }
     } catch (e) {
       console.error("auto-open-nearest failed:", e);
