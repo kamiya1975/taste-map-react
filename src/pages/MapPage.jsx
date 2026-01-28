@@ -863,9 +863,19 @@ function MapPage() {
   }, [syncRatedPanel]);
 
   //---------------------------------------------------------------------------------
-  // ====== ログイン状態や店舗選択の変更を拾って再取得 ======（handler の責務はkey更新=状態を変える）
+  // ====== ログイン状態や店舗選択の変更を拾って再取得 ======
   useEffect(() => {
     const handler = (e) => {
+    // サブ店舗ON/OFFなど「allowed-jans を即更新したい」イベントだけ reload する
+    const isSubStoreKey = (k) =>
+      k === "sub_store_ids" ||
+      k === "selectedSubStoreIds" ||
+      k === "selectedSubStores" ||
+      k === "app.sub_store_ids";
+
+    const isStoreKey = (k) =>
+      k === "selectedStore" || k === "main_store" || isSubStoreKey(k);
+
       // storage のときだけ key で絞る（関係ない localStorage 更新での過剰リロード防止）
       if (e && e.type === "storage") {
         const k = e.key || "";
@@ -879,8 +889,18 @@ function MapPage() {
           k === "selectedSubStores" ||
           k === "app.sub_store_ids";
         if (!ok) return;
+
+        // 即反映が必要なのは「サブ店舗」変更
+        if (isStoreKey(k)) {
+          reloadAllowedJans();
+        }
       }
-      //reloadAllowedJans();  を削除  2026.01.28.
+      //reloadAllowedJans();  //を削除  2026.01.28.
+
+      // StorePanelContent などが投げるカスタムイベント（サブ店舗ON/OFFを含む想定）
+      if (e && e.type === "tm_store_changed") {
+        reloadAllowedJans();
+      }
 
       // 店舗コンテキストが変わったら商品iframeを必ずリロード　2026.01.追加
       const nextKey = getStoreContextKeyFromStorage();
@@ -903,8 +923,7 @@ function MapPage() {
       window.removeEventListener("storage", handler);
       window.removeEventListener("tm_store_changed", handler);
     };
-  //}, [reloadAllowedJans]);  を削除  2026.0128.
-  }, []);  //上を削除して置き換え
+  }, [reloadAllowedJans]);
 
   //---------------------------------------------------------------------------------
   // RatedPanel を開いたタイミングでも、DB正スナップショットを再同期
@@ -931,7 +950,7 @@ function MapPage() {
   useEffect(() => {
     if (!storeContextKey) return;
     reloadAllowedJans();
-  }, [storeContextKey, reloadAllowedJans]);  
+  }, [storeContextKey, reloadAllowedJans]); 
 
   //---------------------------------------------------------------------------------
   // クラスタ配色
