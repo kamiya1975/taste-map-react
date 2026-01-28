@@ -1273,32 +1273,6 @@ function MapPage() {
     let targetX = null;
     let targetY = null;
 
-//    // ① ロット別の基準ポイントを最優先
-//    if (
-//      basePoint &&
-//      Number.isFinite(basePoint.x) &&
-//      Number.isFinite(basePoint.y)
-//    ) {
-//      targetX = Number(basePoint.x);
-//      targetY = Number(basePoint.y);
-//    } else {
-//      // ② なければ従来どおり ANCHOR_JAN
-//      const b = data.find(
-//        (d) =>
-//          String(d.jan_code) === ANCHOR_JAN ||
-//          String(d.JAN) === ANCHOR_JAN
-//      );
-//      if (b && Number.isFinite(b.umap_x) && Number.isFinite(b.umap_y)) {
-//        targetX = b.umap_x;
-//        targetY = b.umap_y;
-//      } else {
-//        // ③ それも無ければ全体重心
-//        const [cx, cy] = umapCentroid;
-//        targetX = cx;
-//        targetY = cy;
-//      }
-//    }
-//ここから追加  2026.01.28.
    // ① userPin を最優先 （スライダー遷移後の user嗜好の中心）
    const pin = readUserPinFromStorage() || userPin;
    const [px, py] = Array.isArray(pin) ? pin : [];
@@ -1330,11 +1304,9 @@ function MapPage() {
        targetY = cy;
      }
    }
-//ここまで 2026.01.28.
 
     centerToUMAP(targetX, targetY, { zoom: INITIAL_ZOOM });
     didInitialCenterRef.current = true;
-  //}, [data, centerToUMAP, umapCentroid, basePoint]);  を削除して下1行を置き換え  2026.01.28.
   }, [data, centerToUMAP, umapCentroid, basePoint, readUserPinFromStorage, userPin]);
 
   // SliderPageから戻った直後にユーザーピンへセンタリング
@@ -1348,15 +1320,6 @@ function MapPage() {
 
     if (!(byState || byFlag)) return;
 
-//    // 保存済みピン座標を取得（既存の reader を利用）
-//    const pin = readUserPinFromStorage() || userPin;
-//    const [x, y] = Array.isArray(pin) ? pin : [];
-//
-//    if (Number.isFinite(x) && Number.isFinite(y)) {
-//      centerToUMAP(x, y, { zoom: INITIAL_ZOOM });
-//    }
-//ここから 2026.01.28.ユーザーピン中心修正
-// この遷移は「スライダー復帰フロー」として扱う（後段の auto-open と衝突させない）
     try { sessionStorage.setItem("tm_slider_return_flow", "1"); } catch {}
 
     const pin = readUserPinFromStorage() || userPin;
@@ -1372,7 +1335,6 @@ function MapPage() {
         });
       });
     }
-//ここまで 2026.01.28.追加
 
     // 使い終わったフラグ類を掃除
     try {
@@ -1391,9 +1353,7 @@ function MapPage() {
     return;
   }, [userPin, location.state, centerToUMAP]);
 
-//  // SliderPage閉じる → 基準ワイン（参照座標）へ戻る
   useEffect(() => {
-//ここから追加  2026.01.28.
     // Slider復帰フロー中は「基準へ戻す」を無効化（最後に上書きされるのを防ぐ）
     const isSliderReturn =
       location.state?.centerOnUserPin === true ||
@@ -1404,7 +1364,6 @@ function MapPage() {
       try { sessionStorage.removeItem("tm_slider_return_flow"); } catch {}
       return;
     }
-//ここまで追加 2026.01.28.
     const fromState = !!location.state?.centerOnBlendF;
     const raw = sessionStorage.getItem("tm_center_umap");
     if (!fromState && !raw) return;
@@ -1521,9 +1480,7 @@ function MapPage() {
         setSelectedJAN(janStr);
         setIframeNonce(Date.now());
         setProductDrawerOpen(true);
-        //focusOnWine(nearest, { zoom: INITIAL_ZOOM });   を削除 2026.01.28.ユーザーピン中心修正
-        // centerToUMAP が正：ここで再センタリングして上書きしない
-        focusOnWine(nearest, { zoom: INITIAL_ZOOM, recenter: false });  //上を削除して置き換え1行
+        focusOnWine(nearest, { zoom: INITIAL_ZOOM, recenter: false });
       }
     } catch (e) {
       console.error("auto-open-nearest failed:", e);
