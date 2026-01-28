@@ -1273,35 +1273,69 @@ function MapPage() {
     let targetX = null;
     let targetY = null;
 
-    // ① ロット別の基準ポイントを最優先
-    if (
-      basePoint &&
-      Number.isFinite(basePoint.x) &&
-      Number.isFinite(basePoint.y)
-    ) {
-      targetX = Number(basePoint.x);
-      targetY = Number(basePoint.y);
-    } else {
-      // ② なければ従来どおり ANCHOR_JAN
-      const b = data.find(
-        (d) =>
-          String(d.jan_code) === ANCHOR_JAN ||
-          String(d.JAN) === ANCHOR_JAN
-      );
-      if (b && Number.isFinite(b.umap_x) && Number.isFinite(b.umap_y)) {
-        targetX = b.umap_x;
-        targetY = b.umap_y;
-      } else {
-        // ③ それも無ければ全体重心
-        const [cx, cy] = umapCentroid;
-        targetX = cx;
-        targetY = cy;
-      }
-    }
+//    // ① ロット別の基準ポイントを最優先
+//    if (
+//      basePoint &&
+//      Number.isFinite(basePoint.x) &&
+//      Number.isFinite(basePoint.y)
+//    ) {
+//      targetX = Number(basePoint.x);
+//      targetY = Number(basePoint.y);
+//    } else {
+//      // ② なければ従来どおり ANCHOR_JAN
+//      const b = data.find(
+//        (d) =>
+//          String(d.jan_code) === ANCHOR_JAN ||
+//          String(d.JAN) === ANCHOR_JAN
+//      );
+//      if (b && Number.isFinite(b.umap_x) && Number.isFinite(b.umap_y)) {
+//        targetX = b.umap_x;
+//        targetY = b.umap_y;
+//      } else {
+//        // ③ それも無ければ全体重心
+//        const [cx, cy] = umapCentroid;
+//        targetX = cx;
+//        targetY = cy;
+//      }
+//    }
+//ここから追加  2026.01.28.
+   // ① userPin を最優先 （スライダー遷移後の user嗜好の中心）
+   const pin = readUserPinFromStorage() || userPin;
+   const [px, py] = Array.isArray(pin) ? pin : [];
+   if (Number.isFinite(px) && Number.isFinite(py)) {
+     targetX = px;
+     targetY = py;
+   } else if (
+     // ② userPin が無いときだけ basePoint（基準のワイン）
+     basePoint &&
+     Number.isFinite(basePoint.x) &&
+     Number.isFinite(basePoint.y)
+   ) {
+     targetX = Number(basePoint.x);
+     targetY = Number(basePoint.y);
+   } else {
+     // ③ なければ ANCHOR_JAN（基準のワイン）
+     const b = data.find(
+       (d) =>
+         String(d.jan_code) === ANCHOR_JAN ||
+         String(d.JAN) === ANCHOR_JAN
+     );
+     if (b && Number.isFinite(b.umap_x) && Number.isFinite(b.umap_y)) {
+       targetX = b.umap_x;
+       targetY = b.umap_y;
+     } else {
+       // ④ それも無ければ全体重心
+       const [cx, cy] = umapCentroid;
+       targetX = cx;
+       targetY = cy;
+     }
+   }
+//ここまで 2026.01.28.
 
     centerToUMAP(targetX, targetY, { zoom: INITIAL_ZOOM });
     didInitialCenterRef.current = true;
-  }, [data, centerToUMAP, umapCentroid, basePoint]);
+  //}, [data, centerToUMAP, umapCentroid, basePoint]);  を削除して下1行を置き換え  2026.01.28.
+  }, [data, centerToUMAP, umapCentroid, basePoint, readUserPinFromStorage, userPin]);
 
   // SliderPageから戻った直後にユーザーピンへセンタリング
   useEffect(() => {
@@ -1329,6 +1363,8 @@ function MapPage() {
     const [x, y] = Array.isArray(pin) ? pin : [];
 
     if (Number.isFinite(x) && Number.isFinite(y)) {
+      // 初期センタリング（basePoint/anchor）に上書きされないように止める
+      didInitialCenterRef.current = true;
       // visualViewport が安定してからセンタリング（iPhone/PWAのブレ対策）
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -1355,8 +1391,20 @@ function MapPage() {
     return;
   }, [userPin, location.state, centerToUMAP]);
 
-  // SliderPage閉じる → 基準ワイン（参照座標）へ戻る
+//  // SliderPage閉じる → 基準ワイン（参照座標）へ戻る
   useEffect(() => {
+//ここから追加  2026.01.28.
+    // Slider復帰フロー中は「基準へ戻す」を無効化（最後に上書きされるのを防ぐ）
+    const isSliderReturn =
+      location.state?.centerOnUserPin === true ||
+      sessionStorage.getItem("tm_center_on_userpin") === "1" ||
+      sessionStorage.getItem("tm_slider_return_flow") === "1";
+    if (isSliderReturn) {
+      try { sessionStorage.removeItem("tm_center_umap"); } catch {}
+      try { sessionStorage.removeItem("tm_slider_return_flow"); } catch {}
+      return;
+    }
+//ここまで追加 2026.01.28.
     const fromState = !!location.state?.centerOnBlendF;
     const raw = sessionStorage.getItem("tm_center_umap");
     if (!fromState && !raw) return;
