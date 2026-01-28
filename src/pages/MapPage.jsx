@@ -799,38 +799,6 @@ function MapPage() {
     }
   }, []);
 
-//  //---------------------------------------------------------------------------------
-//  // 検索 / 評価ボタンを「更新ボタン代替」にする　2026.01.
-//  // - 未ログイン時：mainStoreId はローカル由来のまま（reloadAllowedJans が内部で吸収）
-//  // - ログイン時：rated-panel 同期も実行
-//  const refreshDataForPanels = useCallback(
-//    async () => {
-//      // 1) points（静的/デプロイ差し替えの反映）
-//      await fetchPoints({ bust: true });
-//      // 2) allowed-jans（店舗選択/EC可否/表示JANの反映）
-//      await reloadAllowedJans();
-//      // 3) wishlist/rating（ログイン時のみ。未ログインは syncRatedPanel 内で早期returnするが明示）
-//      const token = (() => {
-//        try {
-//          return localStorage.getItem("app.access_token") || "";
-//        } catch {
-//          return "";
-//        }
-//      })();
-//      if (token) {
-//        await syncRatedPanel();
-//      }
-//    },
-//    [fetchPoints, reloadAllowedJans, syncRatedPanel]
-//  );
-//
-//  // ボタン押下で「即open + 裏で更新」を安全に走らせる（参照を安定化）2026.01.
-//  const refreshDataInBackground = useCallback(() => {
-//    refreshDataForPanels().catch((e) => {
-//      console.warn("[MapPage] background refresh failed:", e);
-//    });
-//  }, [refreshDataForPanels]);
-
   //---------------------------------------------------------------------------------
   // 初回・ログイン/ログアウト・店舗変更などで同期    syncRatedPanel
   useEffect(() => {
@@ -926,26 +894,15 @@ function MapPage() {
   }, [reloadAllowedJans]);
 
   //---------------------------------------------------------------------------------
-  // RatedPanel を開いたタイミングでも、DB正スナップショットを再同期
+  // 評価パネル を開いたタイミングでも、DB正スナップショットを再同期
   // （wishlist星の即時反映＆別端末変更の取り込み）
   useEffect(() => {
     if (!isRatedOpen) return;
     syncRatedPanel();
   }, [isRatedOpen, syncRatedPanel]);
 
-//  //---------------------------------------------------------------------------------
-//  // Storeパネル（お気に入り店舗登録）を開いたタイミングで、
-//  // 店舗情報のDB更新（営業時間など）を即反映させるために裏で更新する　2026.01.
-//  useEffect(() => {
-//    if (!isStoreOpen) return;
-//    refreshDataInBackground();
-//  }, [isStoreOpen, refreshDataInBackground]);
-//
-//  // Storeパネル側は「サブ店舗ON/OFF（storeContextKey変化）」で reloadAllowedJans が走る設計に寄せる
-//  // ※ここで points / rated をまとめて更新しない（競合・二重スナップショットの温床になる）
-
   //---------------------------------------------------------------------------------
-  // ストアパネル（サブ店舗の登録/解除で打点を即反映）    20206.01.28.
+  // ストアパネル（サブ店舗の登録/解除で打点を即反映）
   // storeContextKey が変わったら allowed-jans を再取得して即反映
   useEffect(() => {
     if (!storeContextKey) return;
@@ -1967,7 +1924,6 @@ function MapPage() {
         aria-label="データ更新"
         title="データ更新"
       >
-        {/* 既存アセットが無ければテキスト表示でOK */}
         <span
           style={{
             fontSize: "12px",
@@ -1975,7 +1931,7 @@ function MapPage() {
             userSelect: "none",
           }}
         >
-          更新
+          .
         </span>
       </button>
 
