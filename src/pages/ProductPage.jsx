@@ -183,14 +183,16 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx
     try {
       window.parent?.postMessage(
 //        { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx },
-        { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctx || "") },
+//        { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctx || "") },
+        { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctxProp || "") },
         "*"
       );
     } catch {}
     try {
       const bc = new BroadcastChannel("product_bridge");
 //      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx, at: Date.now() });
-      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctx || ""), at: Date.now() });
+//      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctx || ""), at: Date.now() });
+      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctxProp || ""), at: Date.now() });
       bc.close();
     } catch {}
   };
