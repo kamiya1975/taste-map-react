@@ -91,7 +91,8 @@ const getStoreContextKeyFromStorage = () => {
 };
 
 //---------------------------------------------------------------------------------
-// スナップショット　2026.01.
+// スナップショット2
+// ALLOWED_SNAPSHOT =どれを描くか　（どの点を表示していいか ＋ EC可否 の保存版）対象：MapPage
 const ALLOWED_SNAPSHOT_KEY = "tm_allowed_snapshot_v1";
 
 function readAllowedSnapshot() {
@@ -799,39 +800,62 @@ function MapPage() {
     }
   }, []);
 
+//  //---------------------------------------------------------------------------------
+//  // 初回・ログイン/ログアウト・店舗変更などで同期    syncRatedPanel
+//  useEffect(() => {
+//    syncRatedPanel();
+//  }, [syncRatedPanel]);
+//
+//  //---------------------------------------------------------------------------------
+//  useEffect(() => {                           // syncRatedPanel
+//    const handler = (e) => {
+//      // storage のときだけ key で絞る
+//      if (e && e.type === "storage") {
+//        const k = e.key || "";
+//        const ok =
+//          k === "app.access_token" ||
+//          k === "app.user" ||
+//          k === "selectedStore" ||
+//          k === "main_store";
+//        if (!ok) return;
+//      }
+//      syncRatedPanel();
+//    };
+//    window.addEventListener("tm_auth_changed", handler);
+//    window.addEventListener("storage", handler);
+//    window.addEventListener("tm_store_changed", handler);
+//    return () => {
+//      window.removeEventListener("tm_auth_changed", handler);
+//      window.removeEventListener("storage", handler);
+//      window.removeEventListener("tm_store_changed", handler);
+//    };
+//  }, [syncRatedPanel]);
   //---------------------------------------------------------------------------------
-  // 初回・ログイン/ログアウト・店舗変更などで同期    syncRatedPanel
+  // syncRatedPanel（評価パネル開閉）は「復元用」に限定：　　上記削除してここから01.29.追加
+  // - rated-panel は店舗コンテキストに依存しないので tm_store_changed では呼ばない
+  // - storage も auth 系 key のみ反応（過剰発火を削る）
   useEffect(() => {
-    syncRatedPanel();
-  }, [syncRatedPanel]);
-
-  //---------------------------------------------------------------------------------
-  useEffect(() => {                           // syncRatedPanel
     const handler = (e) => {
-      // storage のときだけ key で絞る
       if (e && e.type === "storage") {
         const k = e.key || "";
-        const ok =
-          k === "app.access_token" ||
-          k === "app.user" ||
-          k === "selectedStore" ||
-          k === "main_store";
+        const ok = k === "app.access_token" || k === "app.user";
         if (!ok) return;
       }
       syncRatedPanel();
     };
+    // 初回復元（マウント時に1回）
+    syncRatedPanel();
+
     window.addEventListener("tm_auth_changed", handler);
     window.addEventListener("storage", handler);
-    window.addEventListener("tm_store_changed", handler);
     return () => {
       window.removeEventListener("tm_auth_changed", handler);
       window.removeEventListener("storage", handler);
-      window.removeEventListener("tm_store_changed", handler);
     };
   }, [syncRatedPanel]);
 
   //---------------------------------------------------------------------------------
-  // ====== ログイン状態や店舗選択の変更を拾って再取得 ======
+  // ====== ログイン状態や店舗選択の変更を拾って再取得 （handler）======
   useEffect(() => {
     const handler = (e) => {
     // サブ店舗ON/OFFなど「allowed-jans を即更新したい」イベントだけ reload する
@@ -858,12 +882,11 @@ function MapPage() {
           k === "app.sub_store_ids";
         if (!ok) return;
 
-        // 即反映が必要なのは「サブ店舗」変更
+        // 即反映が必要なのは サブ店舗変更
         if (isStoreKey(k)) {
           reloadAllowedJans();
         }
       }
-      //reloadAllowedJans();  //を削除  2026.01.28.
 
       // StorePanelContent などが投げるカスタムイベント（サブ店舗ON/OFFを含む想定）
       if (e && e.type === "tm_store_changed") {
@@ -893,13 +916,13 @@ function MapPage() {
     };
   }, [reloadAllowedJans]);
 
-  //---------------------------------------------------------------------------------
-  // 評価パネル を開いたタイミングでも、DB正スナップショットを再同期
-  // （wishlist星の即時反映＆別端末変更の取り込み）
-  useEffect(() => {
-    if (!isRatedOpen) return;
-    syncRatedPanel();
-  }, [isRatedOpen, syncRatedPanel]);
+//  //---------------------------------------------------------------------------------
+//  // 評価パネル を開いたタイミングでも、DB正スナップショットを再同期
+//  // （wishlist星の即時反映＆別端末変更の取り込み）
+//  useEffect(() => {
+//    if (!isRatedOpen) return;
+//    syncRatedPanel();
+//  }, [isRatedOpen, syncRatedPanel]);
 
   //---------------------------------------------------------------------------------
   // ストアパネル（サブ店舗の登録/解除で打点を即反映）
@@ -1141,11 +1164,11 @@ function MapPage() {
   }, [data]);
 
   //---------------------------------------------------------------------------------
+  //---------------------------------------------------------------------------------
   // 打点JSON, バックグラウンド読み込みのため
   // ====== 打点データ読み込み（初回）===== 2026.01.
   useEffect(() => {
-    //fetchPoints({ bust: true });
-    fetchPoints({ bust: false });   //上を削除して置き換え 1行
+    fetchPoints({ bust: false });
   }, [fetchPoints]);
 
   //---------------------------------------------------------------------------------
@@ -1488,6 +1511,8 @@ function MapPage() {
   }, [location.key, userPin, data, findNearestWineWorld, focusOnWine]);
 
   //---------------------------------------------------------------------------------
+  // スナップショット1
+  // STATE_SNAPSHOT =どう見せるか　（iframe側のUIを親と一致させる = iframe分離構造では必須）対象：iframe
   // ====== 子iframeへ（wishlist反映など）状態スナップショットを送る
   const CHILD_ORIGIN =
     typeof window !== "undefined" ? window.location.origin : "*";

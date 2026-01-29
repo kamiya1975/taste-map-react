@@ -328,8 +328,8 @@ const MapCanvas = forwardRef(function MapCanvas(
   // --- EC専用 / 店舗商品 の振り分け ---
   //  憲法：表示判定の一次条件は “集合（allowed / ec_only）”
   //       activeStoreId は「店舗JANの解釈条件」としてのみ後段適用
-  //  表示：店舗=● / EC専用=★
-  //  EC★ = ecOnly　　
+  //  表示：店舗=●グレイ / EC専用=●オレンジ
+  //  EC = ecOnly　　
   const { storePoints, ecPoints } = useMemo(() => {
     // 集合が無い = フィルタ無し → 全件を店舗●として表示
     const allowMode = allowedJansSet instanceof Set && allowedJansSet.size > 0;
