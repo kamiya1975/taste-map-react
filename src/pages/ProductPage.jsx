@@ -115,16 +115,18 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx
       const { type, jan: targetJan, value, ctx } = e.data || {};
       if (String(targetJan) !== String(jan_code)) return;
       // ctx が来ている場合のみ、現在の ctx と一致するものだけ採用（遅延混入対策）
-      try {
-        const sp = new URLSearchParams(window.location.search);
-        const myCtx = sp.get("ctx") || "";
-        if (ctx != null && String(ctx) !== String(myCtx)) return;
-      } catch {}
+//      try {
+//        const sp = new URLSearchParams(window.location.search);
+//        const myCtx = sp.get("ctx") || "";
+//        if (ctx != null && String(ctx) !== String(myCtx)) return;
+//      } catch {}
+      if (msgCtx != null && String(msgCtx) !== String(ctx || "")) return;
       if (type === "SET_WISHLIST") onChange?.(!!value);
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-  }, [jan_code, onChange]);
+//  }, [jan_code, onChange]);
+  }, [jan_code, onChange, ctx]);
 //ここまで追加---------------------------------------
 
   const toggle = async () => {
@@ -179,13 +181,15 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx
     // 4) 親へ通知（一覧/Map側の即時同期）
     try {
       window.parent?.postMessage(
-        { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx },
+//        { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx },
+        { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctx || "") },
         "*"
       );
     } catch {}
     try {
       const bc = new BroadcastChannel("product_bridge");
-      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx, at: Date.now() });
+//      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx, at: Date.now() });
+      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctx || ""), at: Date.now() });
       bc.close();
     } catch {}
   };
@@ -455,15 +459,34 @@ export default function ProductPage() {
   const [wish, setWish] = useState(false);
   const [clusterId, setClusterId] = useState(null);
 
+//  // MapPage が iframe src に付与している ctx を受け取る（店舗コンテキスト混入対策）
+//  const ctxFromQuery = React.useMemo(() => {
+//    try {
+//      const sp = new URLSearchParams(window.location.search);
+//      return sp.get("ctx") || "";
+//    } catch {
+//      return "";
+//    }
+//  }, []);
+//ここから置き換え----------------------------- 01.29.
+  const { search, hash } = useLocation();
   // MapPage が iframe src に付与している ctx を受け取る（店舗コンテキスト混入対策）
   const ctxFromQuery = React.useMemo(() => {
+    // HashRouter: search は hash 側の ? を含む（環境によっては hash から取る必要がある）
     try {
-      const sp = new URLSearchParams(window.location.search);
-      return sp.get("ctx") || "";
-    } catch {
-      return "";
-    }
-  }, []);
+      const sp = new URLSearchParams(search || "");
+      const v = sp.get("ctx");
+      if (v) return String(v);
+    } catch {}
+    // 念のため hash からも拾う（#/products/:jan?embed=1&ctx=...）
+    try {
+      const q = (hash || "").split("?")[1] || "";
+      const sp2 = new URLSearchParams(q);
+      return sp2.get("ctx") ? String(sp2.get("ctx")) : "";
+    } catch {}
+    return "";
+  }, [search, hash]);  
+//ここまで-------------------------------------
 
   // 店舗コンテキスト（メイン店舗）: これが変わったら必ず再fetch
   const [mainStoreIdForFetch, setMainStoreIdForFetch] = useState(null);
