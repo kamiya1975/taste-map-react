@@ -94,7 +94,7 @@ const notifyParentClosed = (jan_code) => {
 /** =========================
  *  飲みたい（☆/★）
  * ========================= */
-function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
+function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx = "" }) {
   const fav = !!value;
   const [busy, setBusy] = React.useState(false);
 
@@ -108,7 +108,7 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
 //    window.addEventListener("message", onMsg);
 //    return () => window.removeEventListener("message", onMsg);
 //  }, [jan_code, onChange]);
-//ここから追加----------------------------------  01.29.
+//ここから追加----------------------------------  01.29
   React.useEffect(() => {
     // 親からの反映（一覧⇄詳細の即時同期用）
     const onMsg = (e) => {
@@ -179,13 +179,13 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false }) {
     // 4) 親へ通知（一覧/Map側の即時同期）
     try {
       window.parent?.postMessage(
-        { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: ctxFromQuery },
+        { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx },
         "*"
       );
     } catch {}
     try {
       const bc = new BroadcastChannel("product_bridge");
-      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: ctxFromQuery, at: Date.now() });
+      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx, at: Date.now() });
       bc.close();
     } catch {}
   };
@@ -1125,7 +1125,7 @@ export default function ProductPage() {
             >
               {"飲みたい"}
             </div>
-            <HeartButton jan_code={jan_code} value={wish} onChange={setWish} size={28} />
+            <HeartButton jan_code={jan_code} value={wish} onChange={setWish} size={28} ctx={ctxFromQuery} />
           </div>
           <div
             style={{
