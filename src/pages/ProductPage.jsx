@@ -94,7 +94,8 @@ const notifyParentClosed = (jan_code) => {
 /** =========================
  *  飲みたい（☆/★）
  * ========================= */
-function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx = "" }) {
+//function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx = "" }) {
+function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx: ctxProp = "" }) {
   const fav = !!value;
   const [busy, setBusy] = React.useState(false);
 
@@ -112,7 +113,7 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx
   React.useEffect(() => {
     // 親からの反映（一覧⇄詳細の即時同期用）
     const onMsg = (e) => {
-      const { type, jan: targetJan, value, ctx } = e.data || {};
+      const { type, jan: targetJan, value, ctx: incomingCtx } = e.data || {};
       if (String(targetJan) !== String(jan_code)) return;
       // ctx が来ている場合のみ、現在の ctx と一致するものだけ採用（遅延混入対策）
 //      try {
@@ -120,13 +121,13 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx
 //        const myCtx = sp.get("ctx") || "";
 //        if (ctx != null && String(ctx) !== String(myCtx)) return;
 //      } catch {}
-      if (msgCtx != null && String(msgCtx) !== String(ctx || "")) return;
+      if (incomingCtx != null && String(incomingCtx) !== String(ctxProp || "")) return;
       if (type === "SET_WISHLIST") onChange?.(!!value);
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
 //  }, [jan_code, onChange]);
-  }, [jan_code, onChange, ctx]);
+  }, [jan_code, onChange, ctxProp]);
 //ここまで追加---------------------------------------
 
   const toggle = async () => {
