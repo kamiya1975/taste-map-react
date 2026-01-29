@@ -604,6 +604,10 @@ function MapPage() {
   const [cartEnabled, setCartEnabled] = useState(false);
   const [wishJansSet, setWishJansSet] = useState(() => new Set());
 
+  // wish の「即時反映（SET_WISHLIST）」が API 結果で戻されないようにする保険               //を追加以下  01.29.
+  const wishOverrideRef = useRef(new Map()); // jan -> { value:boolean, at:number }
+  const lastWishLocalAtRef = useRef(0);
+
   //---------------------------------------------------------------------------------
   // 重要：未ログインで mainStoreId が無い状態を許容しない（0点/全点の暴れ源）
   // - 「MapPage前に必ずStore選択」の旧仕様に戻す
@@ -721,6 +725,7 @@ function MapPage() {
     const hasToken = !!(localStorage.getItem("app.access_token") || "");
 
     try {
+      const startedAt = Date.now();                   //を追加 1行  01.29.
       const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans } =
         await fetchAllowedJansAuto();
 
@@ -735,8 +740,29 @@ function MapPage() {
       // 常に Set（null禁止）
       if (Array.isArray(allowedJans)) setAllowedJansSet(new Set(allowedJans.map(String)));
       if (Array.isArray(ecOnlyJans)) setEcOnlyJansSet(new Set(ecOnlyJans.map(String)));
-      if (Array.isArray(wishJans)) setWishJansSet(new Set(wishJans.map(String))); // wishJans追加
-      else setWishJansSet((prev) => (prev instanceof Set ? prev : new Set()));    // wishJans追加
+      //if (Array.isArray(wishJans)) setWishJansSet(new Set(wishJans.map(String))); // wishJans追加     を削除  01.29.
+      //else setWishJansSet((prev) => (prev instanceof Set ? prev : new Set()));    // wishJans追加     を削除  01.29.
+      //ここから追加----------------------------------------  01.29.
+      // wish: API結果 + ローカル即時反映（SET_WISHLIST）を merge（上書き事故防止）
+      if (Array.isArray(wishJans)) {
+        const apiSet = new Set(wishJans.map(String));
+        const next = new Set(apiSet);
+
+        // 直近でローカル変更があった場合、overrideを優先して反映
+        // （古いAPI結果で ON を戻されるのを防ぐ）
+        const lastLocalAt = lastWishLocalAtRef.current || 0;
+        if (lastLocalAt && lastLocalAt >= startedAt - 5000) {
+          for (const [jan, meta] of wishOverrideRef.current.entries()) {
+            const key = String(jan);
+            if (meta?.value) next.add(key);
+            else next.delete(key);
+          }
+        }
+        setWishJansSet(next);
+      } else {
+        setWishJansSet((prev) => (prev instanceof Set ? prev : new Set()));
+      }
+      //ここまで追加----------------------------------------  01.29.
       setStoreJansSet(new Set(storeJans || []));
 
       // ✅ 成功したらスナップショット保存（ログアウト後も維持）
@@ -752,7 +778,18 @@ function MapPage() {
         setAllowedJansSet(new Set(snap.allowedJans));
         setEcOnlyJansSet(new Set((snap.ecOnlyJans || []).map(String)));
         setStoreJansSet(new Set(snap.storeJans || []));
-        setWishJansSet(new Set((snap.wishJans || []).map(String)));
+        //setWishJansSet(new Set((snap.wishJans || []).map(String)));     を削除  01.29.
+        //ここから追加----------------------------------------  01.29.
+        // snapshot復元 + override を merge（復元も戻されないように）
+        const snapSet = new Set((snap.wishJans || []).map(String));
+        const next = new Set(snapSet);
+        for (const [jan, meta] of wishOverrideRef.current.entries()) {
+          const key = String(jan);
+          if (meta?.value) next.add(key);
+          else next.delete(key);
+        }
+        setWishJansSet(next);
+        //ここまで追加----------------------------------------  01.29.
 
         // ✅ 失敗時は snapshot があるときだけ cartEnabled を更新
         setCartEnabled(!!snap.ecEnabledInContext);
@@ -1604,6 +1641,11 @@ function MapPage() {
       // ProductPage は API を叩いた後にこれを投げる（単一ソース維持）
       if (type === "SET_WISHLIST") {
         const isWished = !!msg.value;
+        //ここから追加------------------------------------- 01.29.
+        const at = Number(msg.at) || Date.now();
+        lastWishLocalAtRef.current = at;
+        wishOverrideRef.current.set(String(janStr), { value: isWished, at });
+        //ここまで追加--------------------------------------
         // 飲みたいの正：wishJansSet を即時更新（MapCanvas即反映）
         setWishJansSet((prev) => {
           const base = prev instanceof Set ? prev : new Set();
