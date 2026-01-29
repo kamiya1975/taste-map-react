@@ -549,6 +549,8 @@ function MapPage() {
   const autoOpenOnceRef = useRef(false);
   const lastCommittedRef = useRef({ code: "", at: 0 });
   const unknownWarnedRef = useRef(new Map());
+  // latest-only（reloadAllowedJans の多重実行で古い結果を捨てる）  //01.29.下を追加 1行
+  const reloadAllowedSeqRef = useRef(0);
 
   // ---- Drawer 状態（すべて明示）----
   const [isMyPageOpen, setIsMyPageOpen] = useState(false); // アプリガイド（メニュー）
@@ -721,6 +723,7 @@ function MapPage() {
   //---------------------------------------------------------------------------------
   // ====== allowed-jans を読み直す共通関数 ======
   const reloadAllowedJans = useCallback(async () => {
+    const seq = ++reloadAllowedSeqRef.current; // この呼び出しの世代   //を追加 1行 01.29.
     const mainStoreId = getCurrentMainStoreIdSafe();
     const hasToken = !!(localStorage.getItem("app.access_token") || "");
 
@@ -728,6 +731,9 @@ function MapPage() {
       const startedAt = Date.now();                   //を追加 1行  01.29.
       const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans } =
         await fetchAllowedJansAuto();
+
+      // 古い呼び出しの結果は捨てる（上書き事故防止）   //を追加 1行  01.29.
+      if (seq !== reloadAllowedSeqRef.current) return;
 
       const fromLS = getCurrentMainStoreEcActiveFromStorage();
       const apiEc = typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null;
@@ -769,6 +775,9 @@ function MapPage() {
       writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans });
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
+
+      // 失敗側も latest-only（古い失敗で復元上書きしない）     //を追加 1行  01.29.
+      if (seq !== reloadAllowedSeqRef.current) return;
 
       // ✅ 失敗したら最後の成功値へフォールバック
       const snap = readAllowedSnapshot();
