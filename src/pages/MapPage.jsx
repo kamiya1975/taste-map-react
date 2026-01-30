@@ -605,6 +605,7 @@ function MapPage() {
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
   const [cartEnabled, setCartEnabled] = useState(false);
   const [wishJansSet, setWishJansSet] = useState(() => new Set());
+  const [wishVersion, setWishVersion] = useState(0);               //1行追加 01.30.
 
   // wish の「即時反映（SET_WISHLIST）」が API 結果で戻されないようにする保険               //を追加以下  01.29.
   const wishOverrideRef = useRef(new Map()); // jan -> { value:boolean, at:number }
@@ -765,8 +766,10 @@ function MapPage() {
           }
         }
         setWishJansSet(next);
+        setWishVersion((v) => v + 1);   //1行追加 01.30.
       } else {
         setWishJansSet((prev) => (prev instanceof Set ? prev : new Set()));
+        setWishVersion((v) => v + 1);   //1行追加 01.30. 後から
       }
       //ここまで追加----------------------------------------  01.29.
       setStoreJansSet(new Set(storeJans || []));
@@ -798,6 +801,7 @@ function MapPage() {
           else next.delete(key);
         }
         setWishJansSet(next);
+        setWishVersion((v) => v + 1);   //1行追加 01.30.
         //ここまで追加----------------------------------------  01.29.
 
         // ✅ 失敗時は snapshot があるときだけ cartEnabled を更新
@@ -1664,6 +1668,7 @@ function MapPage() {
           else next.delete(key);
           return next;
         });
+        setWishVersion((v) => v + 1);     // 1行追加 01.30.
         return;
       }
 
@@ -1753,6 +1758,7 @@ function MapPage() {
         userRatings={userRatings}
         selectedJAN={selectedJAN}
         wishJansSet={wishJansSet}
+        wishVersion={wishVersion}  //1行追加 01.30.
         highlight2D={highlight2D}
         userPin={userPin}
         panBounds={panBounds}

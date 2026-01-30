@@ -229,6 +229,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     userRatings,
     selectedJAN,
     wishJansSet,
+    wishVersion,    //1行追加01.30.
     highlight2D,
     userPin,
     compassPoint,
@@ -683,10 +684,14 @@ const MapCanvas = forwardRef(function MapCanvas(
       parameters: { depthTest: false },
       updateTriggers: {
         // wishJansSet の変化で再描画（sizeを入れて安定化）
-        getIcon: [wishSet.size, wishColorCss],
+        //getIcon: [wishSet.size, wishColorCss],    //を削除して下3行を追加  01.30.
+        getIcon: [wishSet.size, wishColorCss, wishVersion],
+        getSize: wishVersion,
+        getPosition: wishVersion,
       },
     });
-  }, [filteredData, wishJansSet, userRatings, onPickWine]);
+  //}, [filteredData, wishJansSet, userRatings, onPickWine]);   //を削除して下1行を追加 01.30.
+  }, [filteredData, wishJansSet, userRatings, onPickWine, wishVersion]);
 
   // --- レイヤ：評価リング ---
   const ratingCircleLayers = useMemo(() => {
