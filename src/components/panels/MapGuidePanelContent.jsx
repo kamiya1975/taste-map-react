@@ -58,7 +58,7 @@ const Row = ({ icon, children }) => (
   </div>
 );
 // 飲みたい（星）
-const IconWishStar = ({ size = 18, color = "#B23567" }) => (
+const IconWishStar = ({ size = 12, color = "#B23567" }) => (
   <svg
     width={size}
     height={size}
