@@ -549,7 +549,7 @@ function MapPage() {
   const autoOpenOnceRef = useRef(false);
   const lastCommittedRef = useRef({ code: "", at: 0 });
   const unknownWarnedRef = useRef(new Map());
-  // latest-only（reloadAllowedJans の多重実行で古い結果を捨てる）  //01.29.下を追加 1行
+  // latest-only（reloadAllowedJans の多重実行で古い結果を捨てる）
   const reloadAllowedSeqRef = useRef(0);
 
   // ---- Drawer 状態（すべて明示）----
@@ -605,9 +605,9 @@ function MapPage() {
   const [storeJansSet, setStoreJansSet] = useState(() => new Set());
   const [cartEnabled, setCartEnabled] = useState(false);
   const [wishJansSet, setWishJansSet] = useState(() => new Set());
-  const [wishVersion, setWishVersion] = useState(0);               //1行追加 01.30.
+  const [wishVersion, setWishVersion] = useState(0);
 
-  // wish の「即時反映（SET_WISHLIST）」が API 結果で戻されないようにする保険               //を追加以下  01.29.
+  // wish の「即時反映（SET_WISHLIST）」が API 結果で戻されないようにする保険
   const wishOverrideRef = useRef(new Map()); // jan -> { value:boolean, at:number }
   const lastWishLocalAtRef = useRef(0);
 
@@ -679,7 +679,7 @@ function MapPage() {
   const fetchPoints = useCallback(
     async (opts = {}) => {
       //const { bust = true } = opts;
-      const { bust = false } = opts;  // 上を削除して置き換え 1行
+      const { bust = false } = opts;
       try {
         const baseUrl = String(TASTEMAP_POINTS_URL || "");
         if (!baseUrl) return;
@@ -707,7 +707,7 @@ function MapPage() {
         console.error("[MapPage] points fetch error", e);
       }
     },
-    [] // debug removed
+    []
   );
 
   //---------------------------------------------------------------------------------
@@ -724,16 +724,16 @@ function MapPage() {
   //---------------------------------------------------------------------------------
   // ====== allowed-jans を読み直す共通関数 ======
   const reloadAllowedJans = useCallback(async () => {
-    const seq = ++reloadAllowedSeqRef.current; // この呼び出しの世代   //を追加 1行 01.29.
+    const seq = ++reloadAllowedSeqRef.current; // この呼び出しの世代 
     const mainStoreId = getCurrentMainStoreIdSafe();
     const hasToken = !!(localStorage.getItem("app.access_token") || "");
 
     try {
-      const startedAt = Date.now();                   //を追加 1行  01.29.
+      const startedAt = Date.now();
       const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans } =
         await fetchAllowedJansAuto();
 
-      // 古い呼び出しの結果は捨てる（上書き事故防止）   //を追加 1行  01.29.
+      // 古い呼び出しの結果は捨てる（上書き事故防止）
       if (seq !== reloadAllowedSeqRef.current) return;
 
       const fromLS = getCurrentMainStoreEcActiveFromStorage();
@@ -747,9 +747,6 @@ function MapPage() {
       // 常に Set（null禁止）
       if (Array.isArray(allowedJans)) setAllowedJansSet(new Set(allowedJans.map(String)));
       if (Array.isArray(ecOnlyJans)) setEcOnlyJansSet(new Set(ecOnlyJans.map(String)));
-      //if (Array.isArray(wishJans)) setWishJansSet(new Set(wishJans.map(String))); // wishJans追加     を削除  01.29.
-      //else setWishJansSet((prev) => (prev instanceof Set ? prev : new Set()));    // wishJans追加     を削除  01.29.
-      //ここから追加----------------------------------------  01.29.
       // wish: API結果 + ローカル即時反映（SET_WISHLIST）を merge（上書き事故防止）
       if (Array.isArray(wishJans)) {
         const apiSet = new Set(wishJans.map(String));
@@ -766,12 +763,11 @@ function MapPage() {
           }
         }
         setWishJansSet(next);
-        setWishVersion((v) => v + 1);   //1行追加 01.30.
+        setWishVersion((v) => v + 1);
       } else {
         setWishJansSet((prev) => (prev instanceof Set ? prev : new Set()));
-        setWishVersion((v) => v + 1);   //1行追加 01.30. 後から
+        setWishVersion((v) => v + 1);
       }
-      //ここまで追加----------------------------------------  01.29.
       setStoreJansSet(new Set(storeJans || []));
 
       // ✅ 成功したらスナップショット保存（ログアウト後も維持）
@@ -779,7 +775,7 @@ function MapPage() {
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
 
-      // 失敗側も latest-only（古い失敗で復元上書きしない）     //を追加 1行  01.29.
+      // 失敗側も latest-only（古い失敗で復元上書きしない）
       if (seq !== reloadAllowedSeqRef.current) return;
 
       // ✅ 失敗したら最後の成功値へフォールバック
@@ -790,8 +786,6 @@ function MapPage() {
         setAllowedJansSet(new Set(snap.allowedJans));
         setEcOnlyJansSet(new Set((snap.ecOnlyJans || []).map(String)));
         setStoreJansSet(new Set(snap.storeJans || []));
-        //setWishJansSet(new Set((snap.wishJans || []).map(String)));     を削除  01.29.
-        //ここから追加----------------------------------------  01.29.
         // snapshot復元 + override を merge（復元も戻されないように）
         const snapSet = new Set((snap.wishJans || []).map(String));
         const next = new Set(snapSet);
@@ -801,8 +795,7 @@ function MapPage() {
           else next.delete(key);
         }
         setWishJansSet(next);
-        setWishVersion((v) => v + 1);   //1行追加 01.30.
-        //ここまで追加----------------------------------------  01.29.
+        setWishVersion((v) => v + 1);
 
         // ✅ 失敗時は snapshot があるときだけ cartEnabled を更新
         setCartEnabled(!!snap.ecEnabledInContext);
@@ -815,7 +808,7 @@ function MapPage() {
       setStoreJansSet(new Set());
       setCartEnabled((prev) => prev); // ここで false に落とさない
     }
-  }, []); // debug removed
+  }, []);
 
   // ====== 初回マウント時に allowed-jans を取得 ======
   useEffect(() => {
@@ -823,7 +816,7 @@ function MapPage() {
   }, [reloadAllowedJans]);
 
   //---------------------------------------------------------------------------------
-  // ====== rated-panel（DB正）から wishlist を同期 ======
+  // ====== rated-panel（DB正）から wishlist を同期 ====== 評価一覧API（rated-panel）
   const syncRatedPanel = useCallback(async () => {
     let token = "";
     try {
@@ -846,42 +839,11 @@ function MapPage() {
       }
     } catch (e) {
       console.warn("rated-panel sync failed:", e);
-      // rated-panel が無い/失敗しても動作は継続（wishlist星が出ないだけ）
     }
   }, []);
 
-//  //---------------------------------------------------------------------------------
-//  // 初回・ログイン/ログアウト・店舗変更などで同期    syncRatedPanel
-//  useEffect(() => {
-//    syncRatedPanel();
-//  }, [syncRatedPanel]);
-//
-//  //---------------------------------------------------------------------------------
-//  useEffect(() => {                           // syncRatedPanel
-//    const handler = (e) => {
-//      // storage のときだけ key で絞る
-//      if (e && e.type === "storage") {
-//        const k = e.key || "";
-//        const ok =
-//          k === "app.access_token" ||
-//          k === "app.user" ||
-//          k === "selectedStore" ||
-//          k === "main_store";
-//        if (!ok) return;
-//      }
-//      syncRatedPanel();
-//    };
-//    window.addEventListener("tm_auth_changed", handler);
-//    window.addEventListener("storage", handler);
-//    window.addEventListener("tm_store_changed", handler);
-//    return () => {
-//      window.removeEventListener("tm_auth_changed", handler);
-//      window.removeEventListener("storage", handler);
-//      window.removeEventListener("tm_store_changed", handler);
-//    };
-//  }, [syncRatedPanel]);
   //---------------------------------------------------------------------------------
-  // syncRatedPanel（評価パネル開閉）は「復元用」に限定：　　上記削除してここから01.29.追加
+  // syncRatedPanel（評価パネル開閉）は「復元用」に限定
   // - rated-panel は店舗コンテキストに依存しないので tm_store_changed では呼ばない
   // - storage も auth 系 key のみ反応（過剰発火を削る）
   useEffect(() => {
@@ -965,14 +927,6 @@ function MapPage() {
       window.removeEventListener("tm_store_changed", handler);
     };
   }, [reloadAllowedJans]);
-
-//  //---------------------------------------------------------------------------------
-//  // 評価パネル を開いたタイミングでも、DB正スナップショットを再同期
-//  // （wishlist星の即時反映＆別端末変更の取り込み）
-//  useEffect(() => {
-//    if (!isRatedOpen) return;
-//    syncRatedPanel();
-//  }, [isRatedOpen, syncRatedPanel]);
 
   //---------------------------------------------------------------------------------
   // ストアパネル（サブ店舗の登録/解除で打点を即反映）
@@ -1654,11 +1608,9 @@ function MapPage() {
       // ProductPage は API を叩いた後にこれを投げる（単一ソース維持）
       if (type === "SET_WISHLIST") {
         const isWished = !!msg.value;
-        //ここから追加------------------------------------- 01.29.
         const at = Number(msg.at) || Date.now();
         lastWishLocalAtRef.current = at;
         wishOverrideRef.current.set(String(janStr), { value: isWished, at });
-        //ここまで追加--------------------------------------
         // 飲みたいの正：wishJansSet を即時更新（MapCanvas即反映）
         setWishJansSet((prev) => {
           const base = prev instanceof Set ? prev : new Set();
@@ -1668,7 +1620,7 @@ function MapPage() {
           else next.delete(key);
           return next;
         });
-        setWishVersion((v) => v + 1);     // 1行追加 01.30.
+        setWishVersion((v) => v + 1);
         return;
       }
 
@@ -1758,7 +1710,7 @@ function MapPage() {
         userRatings={userRatings}
         selectedJAN={selectedJAN}
         wishJansSet={wishJansSet}
-        wishVersion={wishVersion}  //1行追加 01.30.
+        wishVersion={wishVersion}
         highlight2D={highlight2D}
         userPin={userPin}
         panBounds={panBounds}
@@ -2004,7 +1956,8 @@ function MapPage() {
         />
       </button>
 
-      {/* 右上: データ更新（pointsのみ）2026.01.28.仮 */}
+    {/* 右上: データ更新（pointsのみ）2026.01.28.仮 */}
+    {/*
       <button
         onClick={() => {
           // points(JSON) の強制更新のみ（デプロイ差し替え反映の最終兵器）
@@ -2039,6 +1992,7 @@ function MapPage() {
           .
         </span>
       </button>
+      */}
 
       {/* 右サイド: カート */}
       {cartEnabled && (

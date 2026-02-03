@@ -136,7 +136,7 @@ export const getClusterMeta = (id) =>
 export const REFERENCE_LOTS = {
   rw1_2025_11: {
     lotId: "rw1_2025_11",
-    label: "初回ロット（2025-11）",
+    label: "LnbRW-202511",   // "初回ロット（2025-11）"
     umap_x: 8.610993,
     umap_y: 6.742073,
     pc1: -3.2243,
@@ -145,7 +145,7 @@ export const REFERENCE_LOTS = {
   },
   rw1_2026_08: {
     lotId: "rw1_2026_08",
-    label: "2ロット目（2026-08）",
+    label: "LnbRW-202608",  // "2ロット目（2026-08）"
     umap_x: 5.444825,
     umap_y: 6.457314,
     pc1: 1.5571,

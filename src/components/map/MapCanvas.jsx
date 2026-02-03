@@ -229,7 +229,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     userRatings,
     selectedJAN,
     wishJansSet,
-    wishVersion,    //1行追加01.30.
+    wishVersion,
     highlight2D,
     userPin,
     compassPoint,
@@ -640,7 +640,7 @@ const MapCanvas = forwardRef(function MapCanvas(
     });
   }, [ecPoints, userRatings, clusterColorMode]);
 
-  // --- レイヤ：飲みたい（★）---
+  // --- レイヤ：飲みたい★---
   // 優先順位：rating > wished(★) > store/ec
   // 「wished(★)」は allowed-jans/auto（ログイン後） で返る wishJansSet を唯一ソースにする
   const wishStarLayer = useMemo(() => {
@@ -683,14 +683,11 @@ const MapCanvas = forwardRef(function MapCanvas(
       },
       parameters: { depthTest: false },
       updateTriggers: {
-        // wishJansSet の変化で再描画（sizeを入れて安定化）
-        //getIcon: [wishSet.size, wishColorCss],    //を削除して下3行を追加  01.30.
-        getIcon: [wishSet.size, wishColorCss, wishVersion],
+       getIcon: [wishSet.size, wishColorCss, wishVersion],
         getSize: wishVersion,
         getPosition: wishVersion,
       },
     });
-  //}, [filteredData, wishJansSet, userRatings, onPickWine]);   //を削除して下1行を追加 01.30.
   }, [filteredData, wishJansSet, userRatings, onPickWine, wishVersion]);
 
   // --- レイヤ：評価リング ---

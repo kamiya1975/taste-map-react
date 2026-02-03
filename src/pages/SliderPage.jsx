@@ -362,6 +362,7 @@ export default function SliderPage() {
         </p>
 
         {/* 現在のロット表示 */}
+        {/*
         {referenceLot && (
           <p
             style={{
@@ -375,6 +376,7 @@ export default function SliderPage() {
             現在のロット：{referenceLot.label}
           </p>
         )}
+         */}
 
         {/* スライダーCSS */}
         <style>{`
@@ -484,6 +486,22 @@ export default function SliderPage() {
         >
           あなたの好みからMAPを生成
         </button>
+
+        {/* 現在のロット表示 */}
+        {referenceLot && (
+          <p
+            style={{
+              fontSize: 12,
+              color: "#555",
+              margin: "20px 0 0",
+              textAlign: "",
+              width: cardW,
+            }}
+          >
+            current lot：{referenceLot.label}
+          </p>
+        )}
+
       </div>
     </div>
   );
