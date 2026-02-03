@@ -116,7 +116,7 @@ export default function MapGuidePanelContent() {
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconGuide />}>
-          「基準のワイン」の風味位置<br></br>タップすると嗜好位置が調整できます
+          「基準のワイン」の風味位置<br></br>タップでスライダー調整できます
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
@@ -146,7 +146,7 @@ export default function MapGuidePanelContent() {
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconColour />}>
-          味わいグループの色分け<br></br>もう一度タップすると元の打点に戻ります
+          味わいグループの色分け<br></br>タップで切替できます
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
