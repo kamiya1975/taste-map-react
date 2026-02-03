@@ -26,68 +26,81 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
 
   return (
     <div style={{ padding: 18 }}>
-      {/* ① 固定文言 */}
-      <div style={{ fontSize: 14, color: "#444", marginTop: 6 }}>
-        ただいまの、あなたの好みは
-      </div>
-
-      {/* ② クラスタ名 + 背景丸色 */}
       <div
         style={{
-          marginTop: 12,
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
-          gap: 10,
+          textAlign: "center",
+          width: "100%",
         }}
       >
+        {/* ① 固定文言（中央寄せ） */}
+        <div style={{ fontSize: 14, color: "#444", marginTop: 6 }}>
+          ただいまの、あなたの好みは
+        </div>
+
+        {/* ② 大きい丸（中央）＋クラスタ名（中に表示） */}
         <div
           aria-hidden="true"
           style={{
-            width: 34,
-            height: 34,
+            marginTop: 16,
+            width: 140,
+            height: 140,
             borderRadius: "50%",
             background: rgbaToCss(color),
-            boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
             opacity: 0.85,
-            flex: "0 0 auto",
-          }}
-        />
-        <div
-          style={{
-            fontSize: 20,
-            fontWeight: 800,
-            color: "#111",
-            lineHeight: 1.2,
+            boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 14,
           }}
         >
-          「{name}」
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 800,
+              color: "#111",
+              lineHeight: 1.2,
+              wordBreak: "keep-all",
+            }}
+          >
+            「{name}」
+          </div>
         </div>
-      </div>
 
-      {/* ③ ヒント解説 */}
-      {hint ? (
+        {/* ③ ヒント解説（中央寄せ） */}
+        {hint ? (
+          <div
+            style={{
+              marginTop: 14,
+              fontSize: 13,
+              color: "#333",
+              lineHeight: 1.6,
+              maxWidth: 520,
+            }}
+          >
+            {hint}
+          </div>
+        ) : (
+          <div style={{ marginTop: 14, fontSize: 13, color: "#666" }}>—</div>
+        )}
+
+        {/* ④ 固定文言（中央寄せ） */}
         <div
           style={{
-            marginTop: 10,
-            fontSize: 13,
-            color: "#333",
-            lineHeight: 1.6,
+            marginTop: 18,
+            fontSize: 12,
+            color: "#666",
+            lineHeight: 1.5,
           }}
         >
-          {hint}
+          ※マップの打点にタッチすると商品詳細が表示されます。
         </div>
-      ) : (
-        <div style={{ marginTop: 10, fontSize: 13, color: "#666" }}>
-          —
-        </div>
-      )}
 
-      {/* ④ 固定文言 */}
-      <div style={{ marginTop: 14, fontSize: 12, color: "#666", lineHeight: 1.5 }}>
-        ※マップの打点にタッチすると商品詳細が表示されます。
+        <div style={{ height: 8 }} />
       </div>
-
-      <div style={{ height: 8 }} />
     </div>
   );
 }
