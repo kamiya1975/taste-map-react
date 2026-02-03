@@ -927,6 +927,7 @@ export default function MyAccountPanelContent() {
               disabled={!agreed || saving}
               style={{
                 marginTop: 16,
+                marginBottom: 30,
                 width: "100%",
                 padding: "8px 20px",
                 lineHeight: 1.2,
