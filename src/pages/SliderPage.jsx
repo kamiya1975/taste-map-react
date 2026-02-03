@@ -494,7 +494,7 @@ export default function SliderPage() {
               fontSize: 12,
               color: "#555",
               margin: "20px 0 0",
-              textAlign: "",
+              textAlign: "center",
               width: cardW,
             }}
           >
