@@ -634,7 +634,6 @@ export default function MyAccountPanelContent() {
         }}
       >
         {/* パスワードを忘れた方 */}
-        {/*
         <div
           style={{
             padding: "12px 0 0",
@@ -724,7 +723,6 @@ export default function MyAccountPanelContent() {
             </div>
           )}
         </div>
-        */}
 
         {/* 新規の方 */}
         <div
