@@ -91,10 +91,9 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
             style={{
               marginTop: 6,
               fontSize: 15,
-              fontWeight: 100,
               color: "#333",
               lineHeight: 1.6,
-              maxWidth: 200,
+              maxWidth: 240,
               marginLeft: "auto",
               marginRight: "auto",
             }}
