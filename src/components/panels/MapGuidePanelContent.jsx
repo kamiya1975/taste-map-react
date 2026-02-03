@@ -116,7 +116,7 @@ export default function MapGuidePanelContent() {
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconGuide />}>
-          「基準のワイン」の風味位置<br></br>タップでスライダー調整できます
+          基準のワインの風味位置<br></br>タップでスライダー調整できます
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
