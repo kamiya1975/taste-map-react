@@ -36,7 +36,7 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
         }}
       >
         {/* ① 固定文言（中央寄せ） */}
-        <div style={{ fontSize: 14, color: "#444", marginTop: 6 }}>
+        <div style={{ fontSize: 14, color: "#444", marginTop: 12 }}>
           ただいまの、あなたの好みは
         </div>
 
@@ -59,8 +59,8 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
               left: "50%",
               top: "50%",
               transform: "translate(-50%, -50%)",
-              width: 92,
-              height: 92,
+              width: 80,
+              height: 80,
               borderRadius: "50%",
               background: rgbaToCss(color),
               opacity: 0.85,
@@ -106,7 +106,7 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
         {/* ④ 固定文言（中央寄せ） */}
         <div
           style={{
-            marginTop: 18,
+            marginTop: 30,
             fontSize: 12,
             color: "#666",
             lineHeight: 1.5,
