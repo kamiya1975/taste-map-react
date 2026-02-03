@@ -353,7 +353,7 @@ export default function SliderPage() {
           style={{
             fontWeight: 700,
             fontSize: 16,
-            margin: "8px 0 4px",
+            margin: "8px 0 16px",
             textAlign: "center",
             width: cardW,
           }}
@@ -362,7 +362,7 @@ export default function SliderPage() {
         </p>
 
         {/* 現在のロット表示 */}
-        {/*
+        {/*   margin: "8px 0 4px",
         {referenceLot && (
           <p
             style={{
