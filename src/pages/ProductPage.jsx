@@ -99,36 +99,18 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx
   const fav = !!value;
   const [busy, setBusy] = React.useState(false);
 
-//  React.useEffect(() => {
-//    // 親からの反映（一覧⇄詳細の即時同期用）
-//    const onMsg = (e) => {
-//      const { type, jan: targetJan, value } = e.data || {};
-//      if (String(targetJan) !== String(jan_code)) return;
-//      if (type === "SET_WISHLIST") onChange?.(!!value);
-//    };
-//    window.addEventListener("message", onMsg);
-//    return () => window.removeEventListener("message", onMsg);
-//  }, [jan_code, onChange]);
-//ここから追加----------------------------------  01.29
   React.useEffect(() => {
     // 親からの反映（一覧⇄詳細の即時同期用）
     const onMsg = (e) => {
       const { type, jan: targetJan, value, ctx: incomingCtx } = e.data || {};
       if (String(targetJan) !== String(jan_code)) return;
       // ctx が来ている場合のみ、現在の ctx と一致するものだけ採用（遅延混入対策）
-//      try {
-//        const sp = new URLSearchParams(window.location.search);
-//        const myCtx = sp.get("ctx") || "";
-//        if (ctx != null && String(ctx) !== String(myCtx)) return;
-//      } catch {}
       if (incomingCtx != null && String(incomingCtx) !== String(ctxProp || "")) return;
       if (type === "SET_WISHLIST") onChange?.(!!value);
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
-//  }, [jan_code, onChange]);
   }, [jan_code, onChange, ctxProp]);
-//ここまで追加---------------------------------------
 
   const toggle = async () => {
     if (busy) return;
@@ -151,16 +133,8 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx
     try {
       if (willAdd) await addWishlist(jan_code);
       else await removeWishlist(jan_code);
-//     // DB確定値で最終状態を同期（ズレ防止）                を削除  01.29.
-//      try {
-//        const st = await fetchWishlistStatus(jan_code);
-//        finalWish = !!st?.is_wished;
-//        onChange?.(finalWish);
-//      } catch {}
-//ここから追加----------------------------  01.29.
       // 追加フェッチはしない（遅延・競合を増やすため）
       finalWish = willAdd;
-//ここまで追加-----------------------------
     } catch (e) {
       console.error(e);
       onChange?.(!willAdd);
@@ -170,33 +144,19 @@ function HeartButton({ jan_code, value, onChange, size = 28, hidden = false, ctx
       setBusy(false);
     }
 
-//    // 4) 親へ通知（一覧/Map側の即時同期）
-//    try { window.parent?.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish }, "*"); } catch {}
-//    try {
-//      const bc = new BroadcastChannel("product_bridge");
-//      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, at: Date.now() });
-//      bc.close();
-//    } catch {}
-//  };
-//ここから追加--------------------------------  01.29.
     // 4) 親へ通知（一覧/Map側の即時同期）
     try {
       window.parent?.postMessage(
-//        { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx },
-//        { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctx || "") },
         { type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctxProp || "") },
         "*"
       );
     } catch {}
     try {
       const bc = new BroadcastChannel("product_bridge");
-//      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx, at: Date.now() });
-//      bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctx || ""), at: Date.now() });
       bc.postMessage({ type: "SET_WISHLIST", jan: jan_code, value: finalWish, ctx: String(ctxProp || ""), at: Date.now() });
       bc.close();
     } catch {}
   };
-//ここまで追加--------------------------------
 
   return (
     <button
@@ -425,7 +385,7 @@ function ProductInfoSection({ product, jan_code }) {
       {/* 基本情報 */}
       <div
         style={{
-          marginTop: hasComments ? 24 : 12, // ★コメントが無ければ詰める
+          marginTop: hasComments ? 24 : 12, // コメントが無ければ詰める
           paddingTop: 8,
           paddingBottom: 8,
           borderTop: "1px solid #ccc",
@@ -462,16 +422,6 @@ export default function ProductPage() {
   const [wish, setWish] = useState(false);
   const [clusterId, setClusterId] = useState(null);
 
-//  // MapPage が iframe src に付与している ctx を受け取る（店舗コンテキスト混入対策）
-//  const ctxFromQuery = React.useMemo(() => {
-//    try {
-//      const sp = new URLSearchParams(window.location.search);
-//      return sp.get("ctx") || "";
-//    } catch {
-//      return "";
-//    }
-//  }, []);
-//ここから置き換え----------------------------- 01.29.
   const { search, hash } = useLocation();
   // MapPage が iframe src に付与している ctx を受け取る（店舗コンテキスト混入対策）
   const ctxFromQuery = React.useMemo(() => {
@@ -489,7 +439,6 @@ export default function ProductPage() {
     } catch {}
     return "";
   }, [search, hash]);  
-//ここまで-------------------------------------
 
   // 店舗コンテキスト（メイン店舗）: これが変わったら必ず再fetch
   const [mainStoreIdForFetch, setMainStoreIdForFetch] = useState(null);
@@ -1021,13 +970,14 @@ export default function ProductPage() {
       >
         <span
           style={{
-            width: 16,
-            height: 16,
+            width: 18,
+            height: 18,
             backgroundColor: typeColor,
-            borderRadius: 4,
+            borderRadius: "50%",
             marginRight: 8,
             display: "inline-block",
             marginTop: 4,
+            boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
           }}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
