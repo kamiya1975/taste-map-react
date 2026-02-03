@@ -91,6 +91,7 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
             style={{
               marginTop: 6,
               fontSize: 15,
+              fontWeight: 300,
               color: "#333",
               lineHeight: 1.6,
               maxWidth: 240,
@@ -107,7 +108,7 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
         {/* ④ 固定文言（中央寄せ） */}
         <div
           style={{
-            marginTop: 50,
+            marginTop: 60,
             fontSize: 12,
             color: "#666",
             lineHeight: 1.5,
