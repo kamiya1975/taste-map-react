@@ -57,6 +57,31 @@ const Row = ({ icon, children }) => (
     <div style={{ fontSize: 14.5, lineHeight: 1.85, color: "#222" }}>{children}</div>
   </div>
 );
+// 飲みたい（星）
+const IconWishStar = ({ size = 18, color = "#9aa0a6" }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 64 64"
+    style={{ display: "block" }}
+    aria-hidden="true"
+  >
+    <path
+      d="M32 6
+         L39.6 22.4
+         L57.6 24.8
+         L44.2 37.6
+         L47.6 55.6
+         L32 47
+         L16.4 55.6
+         L19.8 37.6
+         L6.4 24.8
+         L24.4 22.4
+         Z"
+      fill={color}
+    />
+  </svg>
+);
 // 味わいグループ（カラーパレット）
 const IconColour = ({ size = 18 }) => (
   <img
@@ -86,42 +111,47 @@ export default function MapGuidePanelContent() {
       {/* ライトカード */}
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e6ded2", overflow: "hidden" }}>
         <Row icon={<IconPin />}>
-          あなたの現在の嗜好位置を示し、飲んだワインの評価によって変化していきます。
+          あなたの今の嗜好位置
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconGuide />}>
-          基準のワインの風味位置を示します。タップで印象評価スライダーが現れ、現在の嗜好位置の再生成ができます。
+          「基準のワイン」の風味位置<br></br>ここをタップするとスライダーで嗜好位置が調整できます
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconDot color="#9aa0a6" />}>
-          周辺で購入できる（選んだ店舗の）ワインを示します。風味が近いワインは点が集まって見えます。タップで詳細を表示できます。
+          店舗で買えるワイン
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconDotOrange size={12} />}>
-          ECで購入できるワインを示します。タップで詳細を表示できます。
+          ECで買えるワイン
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconArea />}>
-          ワインが配置されているおおよその範囲（目安）を示します。
+          打点範囲の目安
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconSwirl />}>
-          飲んで評価（◎）すると表示され、評価に応じて記号のサイズが変わります。評価によってあなたの現在の嗜好位置が変化していきます。
+          評価したワイン<br></br>評価によって大きさが変わります
+        </Row>
+        <div style={{ height: 1, background: "#e6ded2" }} />
+
+        <Row icon={<IconWishStar />}>
+          飲みたいワイン
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconColour />}>
-          味わいグループを色分けで示します。もう一度タップすると色分けが元に戻ります。
+          味わいグループの色分け<br></br>もう一度タップすると元の打点に戻ります
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconBubbleTriangle />}>
-          各項目をタップすると、その要素が強い位置をバブルで示します。バブルが大きいほどその要素の特徴が出ています。
+          要素の強さをバブルで表現<br></br>バブルが大きいほどその特徴が強いです
         </Row>
       </div>
     </div>
