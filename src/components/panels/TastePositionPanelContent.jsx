@@ -59,8 +59,8 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
               left: "50%",
               top: "50%",
               transform: "translate(-50%, -50%)",
-              width: 80,
-              height: 80,
+              width: 76,
+              height: 76,
               borderRadius: "50%",
               background: rgbaToCss(color),
               opacity: 0.85,
@@ -75,6 +75,7 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
               fontSize: 20,
               fontWeight: 800,
               color: "#111",
+              textShadow: "0 0 3px white, 0 0 2px white",
               lineHeight: 1.2,
               padding: "6px 10px",
               width: "100%",
@@ -92,7 +93,7 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
               fontSize: 13,
               color: "#333",
               lineHeight: 1.6,
-              maxWidth: 420,
+              maxWidth: 300,
               marginLeft: "auto",
               marginRight: "auto",
             }}
@@ -106,7 +107,7 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
         {/* ④ 固定文言（中央寄せ） */}
         <div
           style={{
-            marginTop: 30,
+            marginTop: 50,
             fontSize: 12,
             color: "#666",
             lineHeight: 1.5,
