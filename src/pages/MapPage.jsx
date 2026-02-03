@@ -1483,6 +1483,19 @@ function MapPage() {
     [data, storeJansSet]
   );
 
+  // 「あなたの味覚位置パネル」表示用：userPin 近傍のクラスターIDを算出（UMAP近傍）
+  const tastePositionClusterId = useMemo(() => {
+    if (!userPin || !Array.isArray(data) || data.length === 0) return null;
+    const x = Number(userPin?.[0]);
+    const y = Number(userPin?.[1]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+
+    // findNearestWineWorld は「ワールド座標（y反転）」を受け取る
+    const nearest = findNearestWineWorld(x, -y);
+    const cid = Number(nearest?.cluster);
+    return Number.isFinite(cid) ? cid : null;
+  }, [userPin, data, findNearestWineWorld]);
+
   // スライダー直後：最寄り自動オープン
   useEffect(() => {
     const wantAutoOpen =
@@ -2423,7 +2436,10 @@ function MapPage() {
           onClose={() => setIsTastePositionOpen(false)}
         />
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
-          <TastePositionPanelContent userPin={userPin} />
+          <TastePositionPanelContent
+            userPin={userPin}
+            clusterId={tastePositionClusterId}
+          />
         </div>
       </Drawer>
 
