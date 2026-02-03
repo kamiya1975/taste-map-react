@@ -25,7 +25,7 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
   const color = hasCid ? CLUSTER_COLORS_FIXED?.[cid] : null;
 
   return (
-    <div style={{ padding: 18 }}>
+    <div style={{ padding: 18, textAlign: "center" }}>
       <div
         style={{
           display: "flex",
@@ -40,30 +40,44 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
           ただいまの、あなたの好みは
         </div>
 
-        {/* ② 大きい丸（中央）＋クラスタ名（中に表示） */}
+        {/* ② 小さめの丸（背面中央）＋クラスタ名（前面・横幅は他文言と同じ） */}
         <div
-          aria-hidden="true"
           style={{
-            marginTop: 16,
-            width: 140,
-            height: 140,
-            borderRadius: "50%",
-            background: rgbaToCss(color),
-            opacity: 0.85,
-            boxShadow: "0 0 0 1px rgba(0,0,0,0.06)",
+            marginTop: 22,
+           marginBottom: 18,
+            position: "relative",
             display: "flex",
-            alignItems: "center",
             justifyContent: "center",
-            padding: 14,
+            alignItems: "center",
+            minHeight: 110,
           }}
         >
           <div
+            aria-hidden="true"
             style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 92,
+              height: 92,
+              borderRadius: "50%",
+              background: rgbaToCss(color),
+              opacity: 0.85,
+              boxShadow: "0 0 0 2px rgba(0,0,0,0.04)",
+              zIndex: 0,
+            }}
+          />
+          <div
+            style={{
+              position: "relative",
+              zIndex: 1,
               fontSize: 20,
               fontWeight: 800,
               color: "#111",
               lineHeight: 1.2,
-              wordBreak: "keep-all",
+              padding: "6px 10px",
+              width: "100%",
             }}
           >
             「{name}」
@@ -74,11 +88,13 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
         {hint ? (
           <div
             style={{
-              marginTop: 14,
+              marginTop: 6,
               fontSize: 13,
               color: "#333",
               lineHeight: 1.6,
-              maxWidth: 520,
+              maxWidth: 420,
+              marginLeft: "auto",
+              marginRight: "auto",
             }}
           >
             {hint}
