@@ -44,7 +44,7 @@ export default function TastePositionPanelContent({ userPin, clusterId }) {
         <div
           style={{
             marginTop: 22,
-           marginBottom: 18,
+            marginBottom: 18,
             position: "relative",
             display: "flex",
             justifyContent: "center",

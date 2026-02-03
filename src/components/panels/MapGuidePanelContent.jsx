@@ -103,7 +103,7 @@ export default function MapGuidePanelContent() {
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", padding: 16 }}>
       {/* 冒頭説明 */}
-      <p style={{ margin: "6px 4px 12px", lineHeight: 1.9, fontSize: 14.5, color: "#222" }}>
+      <p style={{ margin: "6px 4px 12px", lineHeight: 1.9, fontSize: 14.5, fontWeight: 600, color: "#222" }}>
         基準のワインを出発点に、様々なワインを評価しながら自分の好みの位置を育てていく——
         そんな“風味の地図”を歩くイメージで使えます。
       </p>
