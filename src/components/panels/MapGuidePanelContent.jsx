@@ -58,7 +58,7 @@ const Row = ({ icon, children }) => (
   </div>
 );
 // 飲みたい（星）
-const IconWishStar = ({ size = 18, color = "#9aa0a6" }) => (
+const IconWishStar = ({ size = 18, color = "#B23567" }) => (
   <svg
     width={size}
     height={size}
@@ -116,7 +116,7 @@ export default function MapGuidePanelContent() {
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconGuide />}>
-          「基準のワイン」の風味位置<br></br>ここをタップするとスライダーで嗜好位置が調整できます
+          「基準のワイン」の風味位置<br></br>タップすると嗜好位置が調整できます
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
@@ -136,7 +136,7 @@ export default function MapGuidePanelContent() {
         <div style={{ height: 1, background: "#e6ded2" }} />
 
         <Row icon={<IconSwirl />}>
-          評価したワイン<br></br>評価によって大きさが変わります
+          評価したワイン
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
