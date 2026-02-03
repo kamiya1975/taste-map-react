@@ -634,6 +634,7 @@ export default function MyAccountPanelContent() {
         }}
       >
         {/* パスワードを忘れた方 */}
+        {/*
         <div
           style={{
             padding: "12px 0 0",
@@ -723,6 +724,7 @@ export default function MyAccountPanelContent() {
             </div>
           )}
         </div>
+        */}
 
         {/* 新規の方 */}
         <div
@@ -917,7 +919,7 @@ export default function MyAccountPanelContent() {
               color: "#666",
             }}
           >
-            ID（メール）はEC購入決済時の連絡先メールアドレスとなります。
+            ID（メール）は、EC購入時の連絡先メールアドレスとなります。連絡用にできるメールアドレスでID登録してください。
           </div>
 
           {/* 新規登録 保存ボタン */}
