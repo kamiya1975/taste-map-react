@@ -2347,6 +2347,7 @@ function MapPage() {
         <PanelHeader
           title="ECカート"
           icon="icon-cart2.png"
+          iconSize={30}
           onClose={() => setCartOpen(false)}
         />
         <div
@@ -2680,7 +2681,7 @@ function MapPage() {
         <PanelHeader
           title="更新ボタン"
           icon="refresh.svg"
-          iconSize={30}
+          iconSize={38}
           onClose={() => setIsRefreshOpen(false)}
         />
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
