@@ -25,7 +25,6 @@ export default function RefreshPanelContent({ onRefresh }) {
             borderRadius: 10,
             fontSize: 18,
             fontWeight: 700,
-            cursor: loginLoading ? "default" : "pointer",
             boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
             WebkitBackdropFilter: "blur(2px)",
             backdropFilter: "blur(2px)",
