@@ -24,6 +24,7 @@ import MilesPanelContent from "../components/panels/MilesPanelContent";
 import ClusterPalettePanel from "../components/panels/ClusterPalettePanel";
 import SimpleCartPanel from "../components/panels/SimpleCartPanel";
 import TastePositionPanelContent from "../components/panels/TastePositionPanelContent";
+import RefreshPanelContent from "../components/panels/RefreshPanelContent";
 import { useSimpleCart } from "../cart/simpleCart";
 import {
   drawerModalProps,
@@ -565,6 +566,7 @@ function MapPage() {
   const [isClusterOpen, setIsClusterOpen] = useState(false); // クラスタ配色パネル
   const [cartOpen, setCartOpen] = useState(false); // カート
   const [isScannerOpen, setIsScannerOpen] = useState(false); // バーコードスキャナ
+  const [isRefreshOpen, setIsRefreshOpen] = useState(false); // 更新ボタンパネル
 
   //---------------------------------------------------------------------------------
   // SimpleCart（ローカル） カートパネル
@@ -1050,6 +1052,10 @@ function MapPage() {
         setIsFaqOpen(false);
         willClose = true;
       }
+      if (isRefreshOpen) {
+        setIsRefreshOpen(false);
+        willClose = true;
+      }
 
       // クラスタパネルは preserveCluster=true のときは閉じない
       if (isClusterOpen && !preserveCluster) {
@@ -1080,6 +1086,7 @@ function MapPage() {
       isAccountOpen,
       isMilesOpen,
       isFaqOpen,
+      isRefreshOpen,
       isClusterOpen,
       cartOpen,
     ]
@@ -1122,6 +1129,7 @@ function MapPage() {
       else if (kind === "account") setIsAccountOpen(true);
       else if (kind === "miles") setIsMilesOpen(true);
       else if (kind === "faq") setIsFaqOpen(true);
+      else if (kind === "refresh") setIsRefreshOpen(true);
       else if (kind === "cart") {
         if (!cartEnabled) return;
         setCartOpen(true);
@@ -2396,6 +2404,7 @@ function MapPage() {
           onOpenAccount={() => openOverlayAboveMenu("account")}
           onOpenMiles={() => openOverlayAboveMenu("miles")}
           onOpenFaq={() => openOverlayAboveMenu("faq")}
+          onOpenRefresh={() => openOverlayAboveMenu("refresh")}
           onOpenSlider={() => {
             setIsMyPageOpen(false);
             navigate("/slider", { replace: false, state: { from: "menu" } });
@@ -2637,6 +2646,43 @@ function MapPage() {
           style={{ flex: 1, overflowY: "auto" }}
         >
           <FaqPanelContent />
+        </div>
+      </Drawer>
+
+      {/* 更新ボタン */}
+      <Drawer
+        anchor="bottom"
+        open={isRefreshOpen}
+        onClose={() => setIsRefreshOpen(false)}
+        sx={{ zIndex: 1500, ...passThroughDrawerSx }}
+        hideBackdrop
+        BackdropProps={passThroughBackdropProps}
+        ModalProps={{
+          ...drawerModalProps,
+          keepMounted: true,
+          disableEnforceFocus: true,
+          disableAutoFocus: true,
+          disableRestoreFocus: true,
+          disableScrollLock: true,
+        }}
+        PaperProps={{
+          style: {
+            ...paperBaseStyle,
+            borderTop: "1px solid #c9c9b0",
+            height: DRAWER_HEIGHT,
+            display: "flex",
+            flexDirection: "column",
+          },
+          sx: passThroughPaperSx,
+        }}
+      >
+        <PanelHeader
+          title="更新ボタン"
+          icon="bar.svg" // いったん既存アイコンでOK（後で refresh.svg に差替え）
+          onClose={() => setIsRefreshOpen(false)}
+        />
+        <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
+          <RefreshPanelContent />
         </div>
       </Drawer>
 

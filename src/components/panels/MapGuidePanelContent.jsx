@@ -111,7 +111,7 @@ export default function MapGuidePanelContent() {
       {/* ライトカード */}
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e6ded2", overflow: "hidden" }}>
         <Row icon={<IconPin />}>
-          あなたの今の嗜好位置
+          あなたの今の嗜好位置の目安
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 

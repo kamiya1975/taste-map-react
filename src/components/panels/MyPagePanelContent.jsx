@@ -9,6 +9,7 @@ const ICONS = {
   store:   "/img/store.svg",
   miles:   "/img/account.svg", // いったん既存アイコンでOK（後で mile.svg に差替え）
   faq:     "/img/faq.svg",
+  refresh: "/img/bar.svg"  // いったん既存アイコンでOK（後で refresh.svg に差替え）
 };
 
 function Row({ icon, label, onClick, last = false }) {
@@ -46,6 +47,7 @@ export default function MyPagePanelContent({
   onOpenAccount,
   onOpenMiles,
   onOpenFaq,
+  onOpenRefresh,
 }) {
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
@@ -74,6 +76,12 @@ export default function MyPagePanelContent({
         label="よくある質問"
         onClick={() => onOpenFaq?.()} 
       />
+      <Row
+        icon={ICONS.refresh}
+        label="更新ボタン"
+        onClick={() => onOpenRefresh?.()}
+        last
+      />    
     </div>
   );
 }
