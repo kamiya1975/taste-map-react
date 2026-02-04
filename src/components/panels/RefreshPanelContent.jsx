@@ -4,7 +4,7 @@ import React from "react";
 
 export default function RefreshPanelContent({ onRefresh }) {
   return (
-    <div style={{ padding: 16, maxWidth: 560, margin: "0 auto" }}>
+    <div style={{ padding: 16, maxWidth: 560, margin: "16px auto" }}>
       <div style={{ fontSize: 14.5, lineHeight: 1.9, color: "#222" }}>
         検査により随時打点や店舗を増やしていきます。反映させるため定期的に更新ボタンを押してください。<br></br><br></br>
         また、通信状況により即時反映されない場合があります。その時は更新ボタンを押すか、アプリのバックグラウンド削除をお試しください。

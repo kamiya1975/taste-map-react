@@ -7,9 +7,9 @@ const ICONS = {
   mapGuide: "/img/tizu.svg",
   account: "/img/account.svg",
   store:   "/img/store.svg",
-  miles:   "/img/account.svg", // いったん既存アイコンでOK（後で mile.svg に差替え）
+  miles:   "/img/icon-cart2.png",
   faq:     "/img/faq.svg",
-  refresh: "/img/bar.svg"  // いったん既存アイコンでOK（後で refresh.svg に差替え）
+  refresh: "/img/refresh.svg"
 };
 
 function Row({ icon, label, onClick, last = false }) {

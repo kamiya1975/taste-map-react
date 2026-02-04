@@ -2601,7 +2601,7 @@ function MapPage() {
       >
         <PanelHeader
           title="獲得マイル"
-          icon="account.svg" // 後で mile.svg に差替え可
+          icon="icon-cart2.png" // account.svg
           onClose={() => setIsMilesOpen(false)}
         />
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
@@ -2678,7 +2678,7 @@ function MapPage() {
       >
         <PanelHeader
           title="更新ボタン"
-          icon="bar.svg" // いったん既存アイコンでOK（後で refresh.svg に差替え）
+          icon="refresh.svg"
           onClose={() => setIsRefreshOpen(false)}
         />
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
