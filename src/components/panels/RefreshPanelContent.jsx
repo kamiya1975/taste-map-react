@@ -33,7 +33,6 @@ export default function RefreshPanelContent({ onRefresh }) {
             alignItems: "center",
             justifyContent: "center",
             gap: 6,
-            opacity: loginLoading ? 0.6 : 1,
         }}
       >
         更新
