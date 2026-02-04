@@ -12,7 +12,6 @@ const ICONS = {
   refresh: "/img/refresh.svg"
 };
 
-//function Row({ icon, label, onClick, last = false }) {
 function Row({ icon, label, onClick, last = false, iconSize = 25 }) {
   return (
     <div style={{ width: "100%" }}>
@@ -31,17 +30,21 @@ function Row({ icon, label, onClick, last = false, iconSize = 25 }) {
           gap: 14,
         }}
       >
-        {/*<img src={icon} alt="" style={{ width: 25, height: 25 }} />*/}
-        <img
-          src={icon}
-          alt=""
+        <div
           style={{
-            width: iconSize,
-            height: iconSize,
-            objectFit: "contain", // 元画像サイズ差の吸収　アイコンサイズ揃えのため
-            display: "block",
+            width: 28,              // ← アイコン枠を固定（ここを調整）
+            height: 28,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flex: "0 0 auto",
           }}
-        />
+        >
+          <img
+            src={icon}
+            alt=""
+            style={{ width: iconSize, height: iconSize, objectFit: "contain", display: "block" }}
+          />        </div>
         <span style={{ fontSize: 15, color: "#111" }}>{label}</span>
       </button>
       {!last && <div style={{ height: 1, background: "rgba(0,0,0,0.12)" }} />}
@@ -81,7 +84,7 @@ export default function MyPagePanelContent({
         icon={ICONS.miles}
         label="獲得マイル"
         onClick={() => onOpenMiles?.()}
-        iconSize={36}
+        iconSize={40}
       />
       <Row
         icon={ICONS.faq}
@@ -92,7 +95,7 @@ export default function MyPagePanelContent({
         icon={ICONS.refresh}
         label="更新ボタン"
         onClick={() => onOpenRefresh?.()}
-        iconSize={36}
+        iconSize={40}
         last
       />    
     </div>
