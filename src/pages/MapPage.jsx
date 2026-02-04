@@ -2194,7 +2194,7 @@ function MapPage() {
         }}
       />
 
-      {/* 評価（◎） */}
+      {/* 評価・飲みたいパネル（◎） */}
       <RatedPanel
         isOpen={isRatedOpen}
         onClose={async () => {
@@ -2241,7 +2241,7 @@ function MapPage() {
         collapseKey={clusterCollapseKey}
       />
 
-      {/* 商品ページドロワー */}
+      {/* 商品詳細ページドロワー */}
       <Drawer
         anchor="bottom"
         open={productDrawerOpen}
@@ -2311,7 +2311,7 @@ function MapPage() {
         </div>
       </Drawer>
 
-      {/* カート（SimpleCartPanel） */}
+      {/* カートパネル（SimpleCartPanel） */}
       <Drawer
         id="cart-drawer"
         anchor="bottom"
@@ -2601,7 +2601,8 @@ function MapPage() {
       >
         <PanelHeader
           title="獲得マイル"
-          icon="icon-cart2.png" // account.svg
+          icon="icon-cart2.png"
+          iconSize={30}
           onClose={() => setIsMilesOpen(false)}
         />
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
@@ -2679,6 +2680,7 @@ function MapPage() {
         <PanelHeader
           title="更新ボタン"
           icon="refresh.svg"
+          iconSize={30}
           onClose={() => setIsRefreshOpen(false)}
         />
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>

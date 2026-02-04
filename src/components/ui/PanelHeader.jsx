@@ -14,6 +14,7 @@ export default function PanelHeader({
   right,                // 右側を完全にカスタムしたい時に使う（×も含めて自前）
   leftExtra,            // タイトルの右隣に置く要素（任意）
   rightExtra,           // ← 追加：右側（×の左）に置く要素
+  iconSize = 25,        // ← 追加：ヘッダー左アイコンのサイズ
 }) {
   const base = (process.env.PUBLIC_URL || "") + "/img/";
 
@@ -62,7 +63,12 @@ export default function PanelHeader({
               if (iconFallback) e.currentTarget.src = `${base}${iconFallback}`;
             }}
             alt=""
-            style={{ width: 25, height: 25, display: "block" }}
+            style={{
+              width: iconSize,
+              height: iconSize,
+              display: "block",
+              objectFit: "contain",
+            }}
             draggable={false}
           />
         )}

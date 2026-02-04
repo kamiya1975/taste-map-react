@@ -15,15 +15,25 @@ export default function RefreshPanelContent({ onRefresh }) {
       <button
         onClick={() => onRefresh?.()}
         style={{
-          width: "100%",
-          padding: "14px 12px",
-          borderRadius: 12,
-          border: "1px solid rgba(0,0,0,0.18)",
-          background: "#fff",
-          fontSize: 15,
-          fontWeight: 700,
-          cursor: "pointer",
-          WebkitTapHighlightColor: "transparent",
+            marginTop: 16,
+            width: "100%",
+            padding: "8px 20px",
+            lineHeight: 1.2,
+            background: "rgb(230,227,219)",
+            color: "#000",
+            border: "none",
+            borderRadius: 10,
+            fontSize: 18,
+            fontWeight: 700,
+            cursor: loginLoading ? "default" : "pointer",
+            boxShadow: "0 4px 10px rgba(0,0,0,0.15)",
+            WebkitBackdropFilter: "blur(2px)",
+            backdropFilter: "blur(2px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            opacity: loginLoading ? 0.6 : 1,
         }}
       >
         更新
