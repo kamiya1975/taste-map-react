@@ -81,7 +81,7 @@ export default function MyPagePanelContent({
         icon={ICONS.miles}
         label="獲得マイル"
         onClick={() => onOpenMiles?.()}
-        iconSize={32}
+        iconSize={50}
       />
       <Row
         icon={ICONS.faq}
@@ -92,7 +92,7 @@ export default function MyPagePanelContent({
         icon={ICONS.refresh}
         label="更新ボタン"
         onClick={() => onOpenRefresh?.()}
-        iconSize={32}
+        iconSize={50}
         last
       />    
     </div>
