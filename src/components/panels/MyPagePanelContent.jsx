@@ -95,7 +95,7 @@ export default function MyPagePanelContent({
         icon={ICONS.refresh}
         label="更新ボタン"
         onClick={() => onOpenRefresh?.()}
-        iconSize={40}
+        iconSize={46}
         last
       />    
     </div>
