@@ -827,7 +827,7 @@ export default function ProductPage() {
   const displayPrice =
     priceNum !== null && Number.isFinite(priceNum)
       ? `¥${priceNum.toLocaleString()}`
-      : "価格未定";
+      : null;
 
   // 選択中店舗にアクティブ取扱があるか（※EC判定には使わない。availabilityLineの「評価履歴」表示用）
   const availableInSelected = product?.available_in_selected_stores;
@@ -988,7 +988,7 @@ export default function ProductPage() {
               lineHeight: 1.4,
             }}
           >
-            {displayPrice}
+            {displayPrice || null}
           </div>
 
           {availabilityLine && (
