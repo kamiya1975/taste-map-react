@@ -262,7 +262,7 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
           exit={{ y: "100%" }}
           transition={{ type: "spring", stiffness: 200, damping: 25 }}
           style={{
-            position: "absolute",
+            position: "fixed",
             bottom: 0,
             left: 0,
             right: 0,
