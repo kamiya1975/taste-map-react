@@ -681,42 +681,8 @@ function MapPage() {
   }, [selectedJAN, storeContextKey, iframeNonce]);  
 
   //---------------------------------------------------------------------------------
-  // 打点JSON, バックグラウンド の更新反映のため    - points 再取得
+  // 更新ボタン用 （打点JSON, バックグラウンド の更新反映のため）
   // - cache を強制的に無効化 - ?v= でURLをバスト（静的配信の強キャッシュ対策）
-//  const fetchPoints = useCallback(
-//    async (opts = {}) => {
-//      //const { bust = true } = opts;
-//      const { bust = false } = opts;
-//      try {
-//        const baseUrl = String(TASTEMAP_POINTS_URL || "");
-//        if (!baseUrl) return;
-//
-//        const url = new URL(baseUrl, window.location.origin);
-//        if (bust) url.searchParams.set("v", String(Date.now()));
-//
-//        console.log("[MapPage] fetch points (refresh) from", url.toString());
-//        const res = await fetch(url.toString(), { cache: "no-store" });
-//        if (!res.ok) {
-//          console.error("[MapPage] points fetch !ok", res.status, res.statusText);
-//          return;
-//        }
-//
-//        const json = await res.json();
-//        const list = Array.isArray(json) ? json : json.points || [];
-//        const normalized = normalizePoints(list);
-//        console.log(
-//          "[MapPage] points length raw/normalized =",
-//          list.length,
-//          normalized.length
-//        );
-//        setData(normalized);
-//      } catch (e) {
-//        console.error("[MapPage] points fetch error", e);
-//      }
-//    },
-//    []
-//  );
-//ここまでを削除してここから下を追加
   const fetchPoints = useCallback(async (opts = {}) => {
     const { bust = false } = opts;
     const seq = ++pointsFetchSeqRef.current;
@@ -1223,7 +1189,7 @@ function MapPage() {
 
   //---------------------------------------------------------------------------------
   //---------------------------------------------------------------------------------
-  // 打点JSON, バックグラウンド読み込みのため
+  // 更新ボタン用 （打点JSON, バックグラウンド読み込みのため）
   // ====== 打点データ読み込み（初回）===== 2026.01.
   useEffect(() => {
     fetchPoints({ bust: false });
@@ -1757,7 +1723,7 @@ function MapPage() {
   ]);
 
   //---------------------------------------------------------------------------------
-  // 更新ボタン（SW更新があれば適用する関数）　    //2026.02.追加
+  // 更新ボタン（SW更新があれば適用する関数）
   const applyServiceWorkerUpdateIfAny = useCallback(async () => {
     if (!("serviceWorker" in navigator)) return false;
     try {
@@ -1779,7 +1745,7 @@ function MapPage() {
   }, []);
 
   //---------------------------------------------------------------------------------
-  // 更新ボタン（ボタンで呼ぶ手動更新）     //2026.02.追加
+  // 更新ボタン（ボタンで呼ぶ手動更新）
   const runManualRefresh = useCallback(async () => {
     const seq = ++manualRefreshSeqRef.current;
     const startedAt = Date.now();
@@ -2078,44 +2044,6 @@ function MapPage() {
           draggable={false}
         />
       </button>
-
-    {/* 右上: データ更新（pointsのみ）2026.01.28.仮 */}
-    {/*
-      <button
-        onClick={() => {
-          // points(JSON) の強制更新のみ（デプロイ差し替え反映の最終兵器）
-          fetchPoints({ bust: true });
-        }}
-        style={{
-          pointerEvents: "auto",
-          position: "absolute",
-          top: "60px",
-          right: "60px",
-          zIndex: UI_Z_TOP,
-          width: "40px",
-          height: "40px",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
-        }}
-        aria-label="データ更新"
-        title="データ更新"
-      >
-        <span
-          style={{
-            fontSize: "12px",
-            lineHeight: "1",
-            userSelect: "none",
-          }}
-        >
-          .
-        </span>
-      </button>
-      */}
 
       {/* 右サイド: カート */}
       {cartEnabled && (

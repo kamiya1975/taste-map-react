@@ -7,7 +7,7 @@ export default function RefreshPanelContent({ onRefresh }) {
     <div style={{ padding: 16, maxWidth: 560, margin: "12px auto" }}>
       <div style={{ fontSize: 14.5, lineHeight: 1.9, color: "#222" }}>
         今後も検査により打点や店舗を随時増やしていきます。<br></br><br></br>
-        反映させるため定期的に、下の更新ボタンを押すか、アプリのバックグラウンドを削除してください。
+        環境により即時反映されない場合がありますので、定期的に下の更新ボタンを押すか、バックグラウンドを削除してください。
       </div>
 
       <div style={{ height: 14 }} />
@@ -37,9 +37,9 @@ export default function RefreshPanelContent({ onRefresh }) {
         更 新
       </button>
 
-      <div style={{ height: 20 }} />
+      <div style={{ height: 30 }} />
       <div style={{ marginTop: 14, fontSize: 12, color: "#666", lineHeight: 1.7, textAlign: "center" }}>
-        ※通信状況によっては時間がかかる場合があります
+        ※ボタンを押しても反応がない場合はそのままにし、アプリを閉じてしばらく経ってから再度アプリを開くと反映されます
       </div>
     </div>
   );
