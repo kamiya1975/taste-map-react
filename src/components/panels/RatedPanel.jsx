@@ -269,7 +269,7 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
             height: DRAWER_HEIGHT,
             backgroundColor: "#fff",
             boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
-            zIndex: 20,
+            zIndex: 1900,
             borderTopLeftRadius: 12,
             borderTopRightRadius: 12,
             display: "flex",
