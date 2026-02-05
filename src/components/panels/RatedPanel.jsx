@@ -1,6 +1,7 @@
 // src/components/panels/RatedPanel.jsx
 // 評価一覧パネル（評価 + 飲みたい を統合表示）
 import React from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { DRAWER_HEIGHT, PANEL_HEADER_H, PANEL_HEADER_BORDER } from "../../ui/constants";
 import PanelHeader from "../ui/PanelHeader";
@@ -254,9 +255,10 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
   );
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
+    createPortal(
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -269,7 +271,7 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
             height: DRAWER_HEIGHT,
             backgroundColor: "#fff",
             boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
-            zIndex: 1900,
+            zIndex: 3000,
             borderTopLeftRadius: 12,
             borderTopRightRadius: 12,
             display: "flex",
@@ -330,8 +332,10 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
               )}
             </ul>
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>,
+      document.body
+    )
   );
 }

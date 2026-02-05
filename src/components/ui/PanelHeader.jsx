@@ -1,3 +1,4 @@
+// src/components/ui/PanelHeader.jsx
 import React from "react";
 import {
   PANEL_HEADER_H,
