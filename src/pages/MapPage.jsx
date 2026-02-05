@@ -771,13 +771,10 @@ function MapPage() {
   const reloadAllowedJans = useCallback(async () => {
     const seq = ++reloadAllowedSeqRef.current; // この呼び出しの世代 
     const mainStoreId = getCurrentMainStoreIdSafe();
-//    const hasToken = !!(localStorage.getItem("app.access_token") || "");
-//上記1行削除して下4行を追加　　実行時に絵以外で落ちる可能性の安全策（Safari/PWA対策）
     let hasToken = false;
       try {
         hasToken = !!(localStorage.getItem("app.access_token") || "");
       } catch {}
-//ここまで   2026.02.
 
     try {
       const startedAt = Date.now();
