@@ -37,7 +37,7 @@ export default function RefreshPanelContent({ onRefresh }) {
         更 新
       </button>
 
-      <div style={{ height: 10 }} />
+      <div style={{ height: 20 }} />
       <div style={{ marginTop: 14, fontSize: 12, color: "#666", lineHeight: 1.7, textAlign: "center" }}>
         ※通信状況によっては時間がかかる場合があります
       </div>

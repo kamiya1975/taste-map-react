@@ -552,6 +552,11 @@ function MapPage() {
   const unknownWarnedRef = useRef(new Map());
   // latest-only（reloadAllowedJans の多重実行で古い結果を捨てる）
   const reloadAllowedSeqRef = useRef(0);
+  // 更新ボタン（手動更新）の latest-only
+  const manualRefreshSeqRef = useRef(0);
+  // 更新ボタン（points再取得）の latest-only + abort
+  const pointsFetchSeqRef = useRef(0);
+  const pointsAbortRef = useRef(null);  
 
   // ---- Drawer 状態（すべて明示）----
   const [isMyPageOpen, setIsMyPageOpen] = useState(false); // アプリガイド（メニュー）
@@ -678,39 +683,77 @@ function MapPage() {
   //---------------------------------------------------------------------------------
   // 打点JSON, バックグラウンド の更新反映のため    - points 再取得
   // - cache を強制的に無効化 - ?v= でURLをバスト（静的配信の強キャッシュ対策）
-  const fetchPoints = useCallback(
-    async (opts = {}) => {
-      //const { bust = true } = opts;
-      const { bust = false } = opts;
-      try {
-        const baseUrl = String(TASTEMAP_POINTS_URL || "");
-        if (!baseUrl) return;
+//  const fetchPoints = useCallback(
+//    async (opts = {}) => {
+//      //const { bust = true } = opts;
+//      const { bust = false } = opts;
+//      try {
+//        const baseUrl = String(TASTEMAP_POINTS_URL || "");
+//        if (!baseUrl) return;
+//
+//        const url = new URL(baseUrl, window.location.origin);
+//        if (bust) url.searchParams.set("v", String(Date.now()));
+//
+//        console.log("[MapPage] fetch points (refresh) from", url.toString());
+//        const res = await fetch(url.toString(), { cache: "no-store" });
+//        if (!res.ok) {
+//          console.error("[MapPage] points fetch !ok", res.status, res.statusText);
+//          return;
+//        }
+//
+//        const json = await res.json();
+//        const list = Array.isArray(json) ? json : json.points || [];
+//        const normalized = normalizePoints(list);
+//        console.log(
+//          "[MapPage] points length raw/normalized =",
+//          list.length,
+//          normalized.length
+//        );
+//        setData(normalized);
+//      } catch (e) {
+//        console.error("[MapPage] points fetch error", e);
+//      }
+//    },
+//    []
+//  );
+//ここまでを削除してここから下を追加
+  const fetchPoints = useCallback(async (opts = {}) => {
+    const { bust = false } = opts;
+    const seq = ++pointsFetchSeqRef.current;
 
-        const url = new URL(baseUrl, window.location.origin);
-        if (bust) url.searchParams.set("v", String(Date.now()));
+    // 直前の points fetch を中断（古いレスポンス勝ちを防ぐ）
+    try { pointsAbortRef.current?.abort?.(); } catch {}
+    const ac = new AbortController();
+    pointsAbortRef.current = ac;
 
-        console.log("[MapPage] fetch points (refresh) from", url.toString());
-        const res = await fetch(url.toString(), { cache: "no-store" });
-        if (!res.ok) {
-          console.error("[MapPage] points fetch !ok", res.status, res.statusText);
-          return;
-        }
+    try {
+      const baseUrl = String(TASTEMAP_POINTS_URL || "");
+      if (!baseUrl) return;
 
-        const json = await res.json();
-        const list = Array.isArray(json) ? json : json.points || [];
-        const normalized = normalizePoints(list);
-        console.log(
-          "[MapPage] points length raw/normalized =",
-          list.length,
-          normalized.length
-        );
-        setData(normalized);
-      } catch (e) {
-        console.error("[MapPage] points fetch error", e);
-      }
-    },
-    []
-  );
+      const url = new URL(baseUrl, window.location.origin);
+      if (bust) url.searchParams.set("v", String(Date.now()));
+
+      console.log("[MapPage] fetch points", { bust, url: url.toString(), seq });
+      const res = await fetch(url.toString(), {
+        cache: "no-store",
+        signal: ac.signal,
+      });
+      if (!res.ok) throw new Error(`points HTTP ${res.status}`);
+
+      const json = await res.json();
+      const list = Array.isArray(json) ? json : (json?.points || []);
+      const normalized = normalizePoints(list);
+
+      // latest-only
+      if (seq !== pointsFetchSeqRef.current) return;
+
+      setData(normalized);
+    } catch (e) {
+      // abortは黙る
+      if (e?.name === "AbortError") return;
+      console.error("[MapPage] points fetch error", e);
+    }
+  }, []);
 
   //---------------------------------------------------------------------------------
   // 検索パネルに渡すデータ（初期一覧表示 = 打点）
@@ -728,7 +771,13 @@ function MapPage() {
   const reloadAllowedJans = useCallback(async () => {
     const seq = ++reloadAllowedSeqRef.current; // この呼び出しの世代 
     const mainStoreId = getCurrentMainStoreIdSafe();
-    const hasToken = !!(localStorage.getItem("app.access_token") || "");
+//    const hasToken = !!(localStorage.getItem("app.access_token") || "");
+//上記1行削除して下4行を追加　　実行時に絵以外で落ちる可能性の安全策（Safari/PWA対策）
+    let hasToken = false;
+      try {
+        hasToken = !!(localStorage.getItem("app.access_token") || "");
+      } catch {}
+//ここまで   2026.02.
 
     try {
       const startedAt = Date.now();
@@ -1710,6 +1759,62 @@ function MapPage() {
     storeContextKey,
   ]);
 
+  //---------------------------------------------------------------------------------
+  // 更新ボタン（SW更新があれば適用する関数）　    //2026.02.追加
+  const applyServiceWorkerUpdateIfAny = useCallback(async () => {
+    if (!("serviceWorker" in navigator)) return false;
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) return false;
+
+      // サーバ側に更新があるか確認
+      try { await reg.update(); } catch {}
+
+      // waiting が居れば即適用（controllerchange → index.js 側で1回reload）
+      if (reg.waiting) {
+        try { reg.waiting.postMessage({ type: "SKIP_WAITING" }); } catch {}
+        return true;
+      }
+    } catch (e) {
+      console.warn("[SW] update check failed:", e);
+    }
+    return false;
+  }, []);
+
+  //---------------------------------------------------------------------------------
+  // 更新ボタン（ボタンで呼ぶ手動更新）     //2026.02.追加
+  const runManualRefresh = useCallback(async () => {
+    const seq = ++manualRefreshSeqRef.current;
+    const startedAt = Date.now();
+
+    // 体感：先に「できる範囲で同期」を走らせる（全部 await しない）
+    // 1) pointsは “更新反映” の主目的なので bust=true
+    const p1 = fetchPoints({ bust: true });
+    // 2) allowed-jans は店舗/EC/wish の再同期
+    const p2 = reloadAllowedJans();
+    // 3) rated-panel は rating復元の保険（tokenありのときだけ内部で動く）
+    const p3 = syncRatedPanel();
+    // 5) SW更新があれば適用（controllerchange→index.jsでreloadされる）
+    //    ※ここで強制 reload() しない。SW切替が起きた時だけ reload される。
+    const p4 = applyServiceWorkerUpdateIfAny();
+
+    try {
+      await Promise.allSettled([p1, p2, p3, p4]);
+    } finally {
+      // latest-only（途中で連打されたら古い方は何もしない）
+      if (seq !== manualRefreshSeqRef.current) return;
+      setIframeNonce((n) => n + 1);
+      console.log("[ManualRefresh] done", { ms: Date.now() - startedAt });
+    }
+  }, [fetchPoints, reloadAllowedJans, syncRatedPanel, applyServiceWorkerUpdateIfAny]);
+ 
+  // unmount時は進行中の points fetch を止める
+  useEffect(() => {
+    return () => {
+      try { pointsAbortRef.current?.abort?.(); } catch {}
+    };
+  }, []);
+
   //=================================================================================
   // ====== レンダリング
   return (
@@ -2685,7 +2790,7 @@ function MapPage() {
           onClose={() => setIsRefreshOpen(false)}
         />
         <div className="drawer-scroll" style={{ flex: 1, overflowY: "auto" }}>
-          <RefreshPanelContent />
+          <RefreshPanelContent onRefresh={runManualRefresh} />
         </div>
       </Drawer>
 

@@ -1,11 +1,21 @@
 // public/service-worker.js
-const STATIC_CACHE = "tm-static-v5"; // 必ず version を上げる（SW更新を確実に）
+const STATIC_CACHE = "tm-static-v6"; // 必ず version を上げる（SW更新を確実に）
 const STATIC_ASSETS = [
   "/index.html",
   "/manifest.json",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
 ];
+
+// 更新ボタン用（環境やタイミングの差異を確実に切替るため）
+self.addEventListener("message", (event) => {
+  try {
+    const msg = event?.data || {};
+    if (msg?.type === "SKIP_WAITING") {
+      self.skipWaiting();
+    }
+  } catch {}
+});
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
