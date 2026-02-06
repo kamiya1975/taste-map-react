@@ -1,9 +1,14 @@
 // src/components/panels/RatedPanel.jsx
 // 評価一覧パネル（評価 + 飲みたい を統合表示）
 import React from "react";
-import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { DRAWER_HEIGHT, PANEL_HEADER_H, PANEL_HEADER_BORDER } from "../../ui/constants";
+import Drawer from "@mui/material/Drawer";
+import {
+  DRAWER_HEIGHT,
+  PANEL_HEADER_H,
+  PANEL_HEADER_BORDER,
+  drawerModalProps,
+  paperBaseStyle,
+} from "../../ui/constants";
 import PanelHeader from "../ui/PanelHeader";
 import CircleRatingDisplay from "../../components/CircleRatingDisplay";
 import ListRow from "../ui/ListRow";
@@ -255,87 +260,81 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
   );
 
   return (
-    createPortal(
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", stiffness: 200, damping: 25 }}
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: DRAWER_HEIGHT,
-            backgroundColor: "#fff",
-            boxShadow: "0 -2px 10px rgba(0,0,0,0.2)",
-            zIndex: 3000,
-            borderTopLeftRadius: 12,
-            borderTopRightRadius: 12,
-            display: "flex",
-            flexDirection: "column",
-            pointerEvents: "auto",
-          }}
-        >
-          <PanelHeader
-            icon="rate.svg"
-            title="評価・飲みたい一覧"
-            onClose={onClose}
-            rightExtra={SortCapsule}
-          />
+    <Drawer
+      anchor="bottom"
+      open={isOpen}
+      onClose={onClose}
+      hideBackdrop
+      // SearchPanel と同じ “レイヤー/クリック” ルールに寄せる
+      sx={{ zIndex: 1450, pointerEvents: "none" }}
+      BackdropProps={{
+        style: { background: "transparent", pointerEvents: "none" },
+      }}
+      ModalProps={{
+        ...drawerModalProps,
+        keepMounted: true,
+        disableEnforceFocus: true,
+        disableAutoFocus: true,
+        disableRestoreFocus: true,
+        disableScrollLock: true,
+      }}
+      PaperProps={{
+        style: {
+          ...paperBaseStyle,
+          height: DRAWER_HEIGHT,
+          display: "flex",
+          flexDirection: "column",
+        },
+        sx: { pointerEvents: "auto" },
+      }}
+    >
+      <PanelHeader
+        icon="rate.svg"
+        title="評価・飲みたい一覧"
+        onClose={onClose}
+        rightExtra={SortCapsule}
+      />
 
-          <div
-            ref={scrollRef}
-            style={{
-              height: `calc(${DRAWER_HEIGHT} - ${PANEL_HEADER_H}px)`,
-              overflowY: "auto",
-              padding: "12px 16px",
-              background: "#fff",
-              borderTop: PANEL_HEADER_BORDER,
-            }}
-          >
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {!token && (
-                <li style={{ color: "#666" }}>
-                  評価や飲みたいはログイン後に表示されます。
-                </li>
-              )}
-              {loading && <li style={{ color: "#666" }}>読み込み中…</li>}
-              {!loading && error && <li style={{ color: "#c00" }}>{error}</li>}
+      <div
+        ref={scrollRef}
+        style={{
+          height: `calc(${DRAWER_HEIGHT} - ${PANEL_HEADER_H}px)`,
+          overflowY: "auto",
+          padding: "12px 16px",
+          background: "#fff",
+          borderTop: PANEL_HEADER_BORDER,
+        }}
+      >
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {!token && (
+            <li style={{ color: "#666" }}>
+              評価や飲みたいはログイン後に表示されます。
+            </li>
+          )}
+          {loading && <li style={{ color: "#666" }}>読み込み中…</li>}
+          {!loading && error && <li style={{ color: "#c00" }}>{error}</li>}
 
-              {!!token &&
-                !loading &&
-                !error &&
-                items.map((it) => (
-                  <ListRow
-                    // key は「kind + (id) + jan + created」で安定させる
-                    // wish は id が無い場合もあるので jan+created で十分
-                    key={`${it.kind}-${it.id ?? ""}-${it.jan_code}-${pickDate(it) || ""}`}
-                    index={it.display_rank ?? 0}
-                    item={it}
-                    onPick={() =>
-                      onSelectJAN?.(it.jan_code, { fromRated: true })
-                    }
-                    showDate
-                    dateValue={pickDate(it) || it.created_at}
-                    accentColor={"#b4b4b4"}
-                    extraRight={<RightMark it={it} />}
-                  />
-                ))}
+          {!!token &&
+            !loading &&
+            !error &&
+            items.map((it) => (
+              <ListRow
+                key={`${it.kind}-${it.id ?? ""}-${it.jan_code}-${pickDate(it) || ""}`}
+                index={it.display_rank ?? 0}
+                item={it}
+                onPick={() => onSelectJAN?.(it.jan_code, { fromRated: true })}
+                showDate
+                dateValue={pickDate(it) || it.created_at}
+                accentColor={"#b4b4b4"}
+                extraRight={<RightMark it={it} />}
+              />
+            ))}
 
-              {!!token && !loading && !error && items.length === 0 && (
-                <li style={{ color: "#666" }}>
-                  まだ評価や飲みたいがありません。
-                </li>
-              )}
-            </ul>
-          </div>
-          </motion.div>
-        )}
-      </AnimatePresence>,
-      document.body
-    )
+          {!!token && !loading && !error && items.length === 0 && (
+            <li style={{ color: "#666" }}>まだ評価や飲みたいがありません。</li>
+          )}
+        </ul>
+      </div>
+    </Drawer>
   );
 }
