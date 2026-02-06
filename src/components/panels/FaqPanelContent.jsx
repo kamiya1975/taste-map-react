@@ -6,7 +6,7 @@ export default function FaqPanelContent() {
   const Q = ({ children }) => (
     <div style={{ fontWeight: 700, marginTop: 12, color: "#111" }}>Q. {children}</div>
   );
-  const A = ({ children }) => <div style={{ marginTop: 4, color: "#222" }}>A. {children}</div>;
+  const A = ({ children }) => <div style={{ marginTop: 6, color: "#222" }}>A. {children}</div>;
 
   return (
     <div style={{ flex: 1, overflowY: "auto", background: "#fff" }}>
@@ -23,8 +23,8 @@ export default function FaqPanelContent() {
         <A>許可しなくても使えます。許可しない場合は東京駅を基準に進めます。</A>
         <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "18px 0 8px" }} />
 
-        <Q>検索パネルに出ている商品は何の一覧？</Q>
-        <A>マップに表示されている商品の一覧です。初めに選択した店舗と、お気に入り店舗登録で選択した店舗の取扱商品が表示されます。</A>
+        <Q>検索パネルの商品は何の一覧？</Q>
+        <A>マップに打点されている商品の一覧です。初めに選択した店舗と、お気に入り店舗登録で選択した店舗の取扱商品が表示されます。</A>
         <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "18px 0 8px" }} />
 
         <Q>マップの打点が少ないけど増やせるの？</Q>
@@ -49,6 +49,10 @@ export default function FaqPanelContent() {
 
         <Q>検索するとこにバーコードボタンがあるけど何ができるの？</Q>
         <A>カメラスキャンによるバーコード検索ができます。マップに表示されていなくても商品登録があるものは詳細が表示されます。</A>
+        <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "18px 0 8px" }} />
+
+        <Q>IDやパスワードを忘れたらどうすればいい？</Q>
+        <A>新たにアカウントを作成してください。その際に獲得したマイルを引継ぐことはできませんので十分にご注意ください。</A>
 
       </div>
     </div>
