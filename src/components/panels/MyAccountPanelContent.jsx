@@ -118,11 +118,11 @@ export default function MyAccountPanelContent() {
     }
   };
 
-  // ▼ パスワードリセット用
-  const [showReset, setShowReset] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetLoading, setResetLoading] = useState(false);
-  const [resetStatus, setResetStatus] = useState(null);
+//  // ▼ パスワードリセット用
+//  const [showReset, setShowReset] = useState(false);
+//  const [resetEmail, setResetEmail] = useState("");
+//  const [resetLoading, setResetLoading] = useState(false);
+//  const [resetStatus, setResetStatus] = useState(null);
 
   // ▼ 新規登録
   const [nickname, setNickname] = useState("");
@@ -180,7 +180,7 @@ export default function MyAccountPanelContent() {
 
     setUserId(loginIdForStorage || user.user_login_id || "");
 
-    // ★ ここで「ログイン状態が変わったよ」と通知
+    // ここで「ログイン状態が変わったよ」と通知
     fireAuthChanged();
 
     return true;
@@ -256,7 +256,7 @@ export default function MyAccountPanelContent() {
         }),
       });
 
-      // ★ 最初に一度だけ読む
+      // 最初に一度だけ読む
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
@@ -289,77 +289,77 @@ export default function MyAccountPanelContent() {
     }
   };
 
-  // ★ パスワードリセットメール送信
-  const handleSendResetMail = async () => {
-    const email = (resetEmail || "").trim();
-
-    if (!email) {
-      setResetStatus({
-        type: "error",
-        message: "メールアドレスを入力してください。",
-      });
-      return;
-    }
-    if (!isEmail(email)) {
-      setResetStatus({
-        type: "error",
-        message: "メールアドレスの形式が正しくありません。",
-      });
-      return;
-    }
-
-    try {
-      setResetLoading(true);
-      setResetStatus({ type: "info", message: "送信中です…" });
-
-      // ★ バックエンドと一致するルートを使用
-      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      // ★ 必ず最初に1回だけ読む
-      const data = await res.json().catch(() => ({}));
-      const detail = data?.detail;
-
-      if (res.ok) {
-        setResetStatus({
-          type: "ok",
-          message:
-            "パスワード再設定用のメールを送信しました。メールの案内にしたがって操作してください。",
-        });
-      } else if (res.status === 404) {
-        if (detail === "user_not_found" || detail === "app_user_not_found") {
-          setResetStatus({
-            type: "error",
-            message: "このメールアドレスは登録されていません。",
-          });
-        } else {
-          setResetStatus({
-            type: "error",
-            message:
-              "パスワード再設定機能がまだ有効になっていません。（システム管理者に確認してください）",
-          });
-        }
-      } else {
-        setResetStatus({
-          type: "error",
-          message: "送信に失敗しました。時間をおいて再度お試しください。",
-        });
-      }
-
-    } catch (e) {
-      console.error(e);
-      setResetStatus({
-        type: "error",
-        message:
-          "通信に失敗しました。電波状況をご確認の上、再度お試しください。",
-      });
-    } finally {
-      setResetLoading(false);
-    }
-  };
+//  // ★ パスワードリセットメール送信
+//  const handleSendResetMail = async () => {
+//    const email = (resetEmail || "").trim();
+//
+//    if (!email) {
+//      setResetStatus({
+//        type: "error",
+//        message: "メールアドレスを入力してください。",
+//      });
+//      return;
+//    }
+//    if (!isEmail(email)) {
+//      setResetStatus({
+//        type: "error",
+//        message: "メールアドレスの形式が正しくありません。",
+//      });
+//      return;
+//    }
+//
+//    try {
+//      setResetLoading(true);
+//      setResetStatus({ type: "info", message: "送信中です…" });
+//
+//      // ★ バックエンドと一致するルートを使用
+//      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+//        method: "POST",
+//        headers: { "Content-Type": "application/json" },
+//        body: JSON.stringify({ email }),
+//      });
+//
+//      // ★ 必ず最初に1回だけ読む
+//      const data = await res.json().catch(() => ({}));
+//      const detail = data?.detail;
+//
+//      if (res.ok) {
+//        setResetStatus({
+//          type: "ok",
+//          message:
+//            "パスワード再設定用のメールを送信しました。メールの案内にしたがって操作してください。",
+//        });
+//      } else if (res.status === 404) {
+//        if (detail === "user_not_found" || detail === "app_user_not_found") {
+//          setResetStatus({
+//            type: "error",
+//            message: "このメールアドレスは登録されていません。",
+//          });
+//        } else {
+//          setResetStatus({
+//            type: "error",
+//            message:
+//              "パスワード再設定機能がまだ有効になっていません。（システム管理者に確認してください）",
+//          });
+//        }
+//      } else {
+//        setResetStatus({
+//          type: "error",
+//          message: "送信に失敗しました。時間をおいて再度お試しください。",
+//        });
+//      }
+//
+//    } catch (e) {
+//      console.error(e);
+//      setResetStatus({
+//        type: "error",
+//        message:
+//          "通信に失敗しました。電波状況をご確認の上、再度お試しください。",
+//      });
+//    } finally {
+//      setResetLoading(false);
+//    }
+//  };
 
   // ▼ 新規登録（現状 handleSave 相当）
   const handleRegister = async () => {
@@ -438,8 +438,8 @@ export default function MyAccountPanelContent() {
 
       setPassword("");
       alert("保存しました。");
-      // ★ 登録内容（main_store_id, トークンなど）を反映させるために
-      //    アプリ全体をリロード → MapPage が最新状態で再マウントされる
+      // 登録内容（main_store_id, トークンなど）を反映させるために
+      // アプリ全体をリロード → MapPage が最新状態で再マウントされる
       reloadApp();
     } catch (e) {
       console.error(e);
@@ -633,7 +633,9 @@ export default function MyAccountPanelContent() {
           textAlign: "center",
         }}
       >
+
         {/* パスワードを忘れた方 */}
+        {/*
         <div
           style={{
             padding: "12px 0 0",
@@ -723,6 +725,7 @@ export default function MyAccountPanelContent() {
             </div>
           )}
         </div>
+        */}
 
         {/* 新規の方 */}
         <div
