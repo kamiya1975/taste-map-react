@@ -41,9 +41,12 @@ function toTimeMs(v) {
 
 // 右側の表示（評価=◎ / 飲みたい=★）
 function RightMark({ it }) {
-  // kind はバックを基本信頼（事故防止のため、rating があれば「評価、rating が無ければ「飲みたい（wishlist）」でUI判定）
+//  // kind はバックを基本信頼（事故防止のため、rating があれば「評価、rating が無ければ「飲みたい（wishlist）」でUI判定）
   const rating = it?.rating;
-  const isWishlist = rating == null || Number(rating) <= 0;
+  //  const isWishlist = rating == null || Number(rating) <= 0;
+  const isWishlist = it?.kind === "wishlist";
+  // 防波堤：rating(0) は解除なので一覧に出さない
+  if (it?.kind === "rating" && Number(rating) <= 0) return null;
 
   const MARK_BOX = 35;   // ◎と同じ“右側セルの箱”
   const STAR_SIZE = 18;  // ★の実サイズ

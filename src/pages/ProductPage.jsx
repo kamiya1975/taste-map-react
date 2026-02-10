@@ -810,11 +810,13 @@ export default function ProductPage() {
 
     // 3) バックエンドへも送信
     try {
-      if (newRating > 0) {
-        await postRating({ jan_code, rating: newRating });
-      } else {
-        // 0 は送らない（削除APIが無い前提）
-      }
+//      if (newRating > 0) {
+//        await postRating({ jan_code, rating: newRating });
+//      } else {
+//        // 0 は送らない（削除APIが無い前提）
+//      }
+      // 解除(0)も含めて常にDBへ反映する（バックは 0 を受けるよう修正済み）
+      await postRating({ jan_code, rating: newRating });
     } catch (e) {
       console.error(e);
     }
