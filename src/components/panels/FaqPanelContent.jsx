@@ -42,7 +42,7 @@ export default function FaqPanelContent() {
         <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "18px 0 8px" }} />
 
         <Q>評価の取り消しってできる？</Q>
-        <A>はい、できます。商品ページで濃くなっていいる評価をタップすると評価が消えます。</A>
+        <A>はい、できます。商品ページで濃くなっている評価部分をタップすると評価が消えます。</A>
         <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "18px 0 8px" }} />
 
         <Q>商品ページにある「飲みたい」の星形を押すとどうなるの？</Q>
