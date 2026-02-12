@@ -24,7 +24,7 @@ export default function RefreshPanelContent({ onRefresh }) {
       <style>{`
         @keyframes tmSpin {
           from { transform: rotate(0deg); }
-          to   { transform: rotate(720deg); } /* 2回転 */
+          to   { transform: rotate(540deg); } /* 2回転 */
         }
       `}</style>      
       <div style={{ fontSize: 14.5, lineHeight: 1.9, color: "#222" }}>
