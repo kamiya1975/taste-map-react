@@ -22,6 +22,42 @@ const PUBLIC_BASE = process.env.PUBLIC_URL || "";
 const STORE_CTX_BC = "store_ctx_bus";
 
 /** =========================
+ *  位置情報（tm_last_location）TTL制御
+ *  - OS/ブラウザの位置許可ダイアログ頻度を下げる
+ *  - 評価APIは tm_last_location があれば送る／無ければ null のまま送る（既存通り）
+ * ========================= */
+const TM_LAST_LOCATION_KEY = "tm_last_location";
+// TTL: 72h（3日）
+const TM_LAST_LOCATION_TTL_MS = 72 * 60 * 60 * 1000;
+
+function shouldRefreshTmLastLocation(ttlMs = TM_LAST_LOCATION_TTL_MS) {
+  try {
+    const raw = localStorage.getItem(TM_LAST_LOCATION_KEY);
+    if (!raw) return true; // 無いなら取得する
+    const obj = JSON.parse(raw);
+    const at = obj?.located_at;
+    if (!at || typeof at !== "string") return true; // located_at 不正
+    const t = Date.parse(at);
+    if (!Number.isFinite(t)) return true; // パース不能
+    return Date.now() - t > ttlMs; // TTL超えなら更新
+  } catch {
+    return true;
+  }
+}
+
+function saveTmLastLocation(latitude, longitude) {
+  const located_at = new Date().toISOString();
+  try {
+    localStorage.setItem(
+      TM_LAST_LOCATION_KEY,
+      JSON.stringify({ latitude, longitude, located_at })
+    );
+  } catch (e) {
+    console.warn("tm_last_location の保存に失敗:", e);
+  }
+}
+
+/** =========================
  *  ユーティリティ
  * ========================= */
 const useJanParam = () => {
@@ -494,22 +530,33 @@ export default function ProductPage() {
       return;
     }
 
+    // TTL以内なら取得しない（＝OS/ブラウザの位置許可ダイアログ頻度を抑える）
+    if (!shouldRefreshTmLastLocation()) {
+      return;
+    }
+
     let cancelled = false;
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         if (cancelled) return;
         const { latitude, longitude } = pos.coords || {};
-        const located_at = new Date().toISOString();
-
-        try {
-          localStorage.setItem(
-            "tm_last_location",
-            JSON.stringify({ latitude, longitude, located_at })
-          );
-        } catch (e) {
-          console.warn("tm_last_location の保存に失敗:", e);
+//        const located_at = new Date().toISOString();
+//
+//        try {
+//          localStorage.setItem(
+//            "tm_last_location",
+//            JSON.stringify({ latitude, longitude, located_at })
+//          );
+//        } catch (e) {
+//          console.warn("tm_last_location の保存に失敗:", e);
+//        }
+        // 念のため数値チェック（不正値なら保存しない）
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          return;
         }
+        saveTmLastLocation(latitude, longitude);
+//ここまで追加
       },
       (err) => {
         if (err?.code === 1) return; // deny は黙る
@@ -525,7 +572,10 @@ export default function ProductPage() {
     return () => {
       cancelled = true;
     };
-  }, [jan_code]);
+//  }, [jan_code]);
+    // jan_code 変更ごとに呼ばない（TTLガードが本体だが、依存も外して無駄呼びをさらに抑える）
+  }, []);
+
 
   // 画面オープン/クローズ通知
   useEffect(() => {
