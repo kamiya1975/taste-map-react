@@ -20,7 +20,7 @@ export default function FaqPanelContent() {
         }}
       >
         <Q>位置情報を許可しないと使えない？</Q>
-        <A>許可しなくても使えます。許可しない場合は東京駅を基準に進めます。</A>
+        <A>許可しなくても利用できます。位置情報は店舗一覧の距離順表示と評価日の天候気温把握だけに利用しています。</A>
         <div style={{ height: 1, background: "rgba(0,0,0,.08)", margin: "18px 0 8px" }} />
 
         <Q>検索パネルの商品は何の一覧？</Q>

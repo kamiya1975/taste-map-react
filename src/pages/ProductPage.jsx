@@ -23,7 +23,8 @@ const STORE_CTX_BC = "store_ctx_bus";
 
 /** =========================
  *  位置情報（tm_last_location）TTL制御
- *  - OS/ブラウザの位置許可ダイアログ頻度を下げる
+ *  - 位置情報許可ダイアログはOSが環境により出してしまう = 位置測位とtm_last_locationへの保存は必要
+ *  - OS/ブラウザの位置許可ダイアログ頻度を下げる = TTL制御で3日（ダイアログが出る人は3日ごとの初回だけ出る）
  *  - 評価APIは tm_last_location があれば送る／無ければ null のまま送る（既存通り）
  * ========================= */
 const TM_LAST_LOCATION_KEY = "tm_last_location";
@@ -541,22 +542,11 @@ export default function ProductPage() {
       (pos) => {
         if (cancelled) return;
         const { latitude, longitude } = pos.coords || {};
-//        const located_at = new Date().toISOString();
-//
-//        try {
-//          localStorage.setItem(
-//            "tm_last_location",
-//            JSON.stringify({ latitude, longitude, located_at })
-//          );
-//        } catch (e) {
-//          console.warn("tm_last_location の保存に失敗:", e);
-//        }
         // 念のため数値チェック（不正値なら保存しない）
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
           return;
         }
         saveTmLastLocation(latitude, longitude);
-//ここまで追加
       },
       (err) => {
         if (err?.code === 1) return; // deny は黙る
@@ -572,7 +562,6 @@ export default function ProductPage() {
     return () => {
       cancelled = true;
     };
-//  }, [jan_code]);
     // jan_code 変更ごとに呼ばない（TTLガードが本体だが、依存も外して無駄呼びをさらに抑える）
   }, []);
 
@@ -860,11 +849,6 @@ export default function ProductPage() {
 
     // 3) バックエンドへも送信
     try {
-//      if (newRating > 0) {
-//        await postRating({ jan_code, rating: newRating });
-//      } else {
-//        // 0 は送らない（削除APIが無い前提）
-//      }
       // 解除(0)も含めて常にDBへ反映する（バックは 0 を受けるよう修正済み）
       await postRating({ jan_code, rating: newRating });
     } catch (e) {
