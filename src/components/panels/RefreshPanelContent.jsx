@@ -29,7 +29,7 @@ export default function RefreshPanelContent({ onRefresh }) {
       `}</style>      
       <div style={{ fontSize: 14.5, lineHeight: 1.9, color: "#222" }}>
         今後も検査により打点や店舗を随時増やしていきます。<br></br><br></br>
-        環境により自動で反映されない場合がありますので、下の更新ボタンを押すかバックグラウンド削除を習慣づけてみてください。
+        環境によっては自動で反映されない場合があるため下の「更新ボタンを押す」か「アプリのバックグラウンド削除」を習慣的づけてみてください。
       </div>
 
       <div style={{ height: 14 }} />
