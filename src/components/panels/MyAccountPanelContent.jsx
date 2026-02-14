@@ -101,14 +101,15 @@ const fireAuthChanged = () => {
   } catch {}
 };
 
-export default function MyAccountPanelContent() {
+//export default function MyAccountPanelContent() {   //下1行と置き換え（利用規約）
+export default function MyAccountPanelContent({ onOpenTerms }) {
   // ▼ ログイン用
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginShowPassword, setLoginShowPassword] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
 
-  // ★ ページ全体をリロードする共通処理
+  // ページ全体をリロードする共通処理
   const reloadApp = () => {
     try {
       // 同じURLにリダイレクト（履歴を汚しにくい）
@@ -899,11 +900,25 @@ export default function MyAccountPanelContent() {
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
               />
+              {/*
               <span>
                 <a href="/terms" target="_blank" rel="noreferrer">
                   利用規約
                 </a>
                 に同意します
+              </span>
+              */}
+              <span
+                onClick={() => onOpenTerms?.()}
+                style={{
+                  fontSize: 12,
+                  color: "#3131bdff",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                  WebkitTapHighlightColor: "transparent",
+                }}
+              >
+                利用規約
               </span>
             </label>
           </div>

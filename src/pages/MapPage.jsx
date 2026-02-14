@@ -40,7 +40,9 @@ import {
 } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 import { getCurrentMainStoreIdSafe } from "../utils/store";
+import TermsPage from "./TermsPage";
 
+//---------------------------------------------------------------------------------
 // EC許可コンテキストのため（カートパネルボタンの表示/非表示）
 const getCurrentSubStoreIdsFromStorage = () => {
   const tryParseIds = (raw) => {
@@ -73,7 +75,7 @@ const isEcEnabledInContext = (mainStoreId, subStoreIds) => {
 };
 
 //---------------------------------------------------------------------------------
-// 店舗コンテキストKey（iframe再読み込み判定用） 2026.01.追加
+// 店舗コンテキストKey（iframe再読み込み判定用） 
 const getStoreContextKeyFromStorage = () => {
   let mainStoreId = null;
   try {
@@ -138,7 +140,7 @@ function writeAllowedSnapshot(payload) {
 }
 
 //---------------------------------------------------------------------------------
-// points 正規化（入口で吸収） 2025.12.20.追加
+// points 正規化（入口で吸収）
 function normalizePointRow(row) {
   const toNumOrNull = (v) => {
     if (v === null || v === undefined) return null;
@@ -572,6 +574,7 @@ function MapPage() {
   const [cartOpen, setCartOpen] = useState(false); // カート
   const [isScannerOpen, setIsScannerOpen] = useState(false); // バーコードスキャナ
   const [isRefreshOpen, setIsRefreshOpen] = useState(false); // 更新ボタンパネル
+  const [isTermsOpen, setIsTermsOpen] = useState(false);  // 利用規約
 
   //---------------------------------------------------------------------------------
   // SimpleCart（ローカル） カートパネル
@@ -668,7 +671,7 @@ function MapPage() {
   }, [allowedJansSet]);
   
   //---------------------------------------------------------------------------------
-  // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み） 2026.01.追加
+  // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み）
   // - ctx: 店舗コンテキスト（main/sub/token） - _  : iframeNonce（強制再読み込み用）
   const productIframeSrc = useMemo(() => {
     if (!selectedJAN) return "";
@@ -1189,7 +1192,7 @@ function MapPage() {
 
   //---------------------------------------------------------------------------------
   //---------------------------------------------------------------------------------
-  // 更新ボタン用 （打点JSON, バックグラウンド読み込みのため）
+  // 更新ボタン用 （打点JSONやバックグラウンド読み込みのため）
   // ====== 打点データ読み込み（初回）===== 2026.01.
   useEffect(() => {
     fetchPoints({ bust: false });
@@ -2559,7 +2562,9 @@ function MapPage() {
           className="drawer-scroll"
           style={{ flex: 1, overflowY: "auto" }}
         >
-          <MyAccountPanelContent />
+          <MyAccountPanelContent
+            onOpenTerms={() => setIsTermsOpen(true)}
+          />
         </div>
       </Drawer>
 
@@ -2761,6 +2766,11 @@ function MapPage() {
           return null;
         }
       })()}
+
+      {/* ===== 利用規約（全画面オーバーレイ） ===== */}
+      {isTermsOpen && (
+        <TermsPage onClose={() => setIsTermsOpen(false)} />
+      )}
     </div>
   );
 }
