@@ -1,6 +1,7 @@
 // src/pages/TermsPage.jsx
 // 利用規約ページ(パネル)
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import PanelHeader from "../components/ui/PanelHeader";
 
 export default function TermsPage({ onClose }) {
@@ -19,21 +20,44 @@ export default function TermsPage({ onClose }) {
     };
   }, []);
 
-  return (
+//  return (
+//    <div
+//      style={{
+//        position: "fixed",
+//        inset: 0,
+//        background: "#fff",
+//        zIndex: 3000, // 既存Drawer群より上
+//        display: "flex",
+//        flexDirection: "column",
+//      }}
+//      role="dialog"
+//      aria-modal="true"
+//    >
+//      <PanelHeader title="利用規約" icon="doc.svg" onClose={onClose} />
+//
+//      <div
+//        style={{
+//          flex: 1,
+//          overflowY: "auto",
+//          padding: 16,
+//          lineHeight: 1.65,
+//          WebkitOverflowScrolling: "touch",
+//        }}
+//      >
+  const node = (
     <div
       style={{
         position: "fixed",
         inset: 0,
         background: "#fff",
-        zIndex: 3000, // 既存Drawer群より上
+        zIndex: 5000, // Drawerより確実に上
         display: "flex",
         flexDirection: "column",
       }}
       role="dialog"
       aria-modal="true"
     >
-      <PanelHeader title="利用規約" icon="doc.svg" onClose={onClose} />
-
+      <PanelHeader title="利用規約" icon="app-guide.svg" onClose={onClose} />
       <div
         style={{
           flex: 1,
@@ -185,4 +209,7 @@ export default function TermsPage({ onClose }) {
       </div>
     </div>
   );
+
+  // body直下に出す（Drawer/iframe/transformの影響を受けない）
+  return createPortal(node, document.body);
 }

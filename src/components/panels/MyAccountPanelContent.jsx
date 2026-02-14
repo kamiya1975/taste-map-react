@@ -912,13 +912,13 @@ export default function MyAccountPanelContent({ onOpenTerms }) {
                 onClick={() => onOpenTerms?.()}
                 style={{
                   fontSize: 12,
-                  color: "#3131bdff",
+                  color: "#0066cc",
                   textDecoration: "underline",
                   cursor: "pointer",
                   WebkitTapHighlightColor: "transparent",
                 }}
               >
-                利用規約
+                利用規約 に同意します
               </span>
             </label>
           </div>
