@@ -20,30 +20,6 @@ export default function TermsPage({ onClose }) {
     };
   }, []);
 
-//  return (
-//    <div
-//      style={{
-//        position: "fixed",
-//        inset: 0,
-//        background: "#fff",
-//        zIndex: 3000, // 既存Drawer群より上
-//        display: "flex",
-//        flexDirection: "column",
-//      }}
-//      role="dialog"
-//      aria-modal="true"
-//    >
-//      <PanelHeader title="利用規約" icon="doc.svg" onClose={onClose} />
-//
-//      <div
-//        style={{
-//          flex: 1,
-//          overflowY: "auto",
-//          padding: 16,
-//          lineHeight: 1.65,
-//          WebkitOverflowScrolling: "touch",
-//        }}
-//      >
   const node = (
     <div
       style={{

@@ -101,7 +101,6 @@ const fireAuthChanged = () => {
   } catch {}
 };
 
-//export default function MyAccountPanelContent() {   //下1行と置き換え（利用規約）
 export default function MyAccountPanelContent({ onOpenTerms }) {
   // ▼ ログイン用
   const [loginEmail, setLoginEmail] = useState("");
@@ -900,26 +899,23 @@ export default function MyAccountPanelContent({ onOpenTerms }) {
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
               />
-              {/*
-              <span>
-                <a href="/terms" target="_blank" rel="noreferrer">
-                  利用規約
-                </a>
-                に同意します
-              </span>
-              */}
-              <span
-                onClick={() => onOpenTerms?.()}
-                style={{
-                  fontSize: 12,
-                  color: "#0066cc",
-                  textDecoration: "underline",
-                  cursor: "pointer",
-                  WebkitTapHighlightColor: "transparent",
-                }}
-              >
-                利用規約 に同意します
-              </span>
+              <span style={{ fontSize: 12 }}>
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation(); // 念のため
+                      onOpenTerms?.();
+                    }}
+                    style={{
+                      color: "#0066cc",
+                      textDecoration: "underline",
+                      cursor: "pointer",
+                      WebkitTapHighlightColor: "transparent",
+                    }}
+                  >
+                    利用規約
+                  </span>
+                  {" に同意します"}
+                </span>
             </label>
           </div>
 
