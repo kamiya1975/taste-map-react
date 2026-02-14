@@ -40,6 +40,7 @@ export default function TermsPage({ onClose }) {
           overflowY: "auto",
           padding: 16,
           lineHeight: 1.65,
+          fontSize: 14,
           WebkitOverflowScrolling: "touch",
         }}
       >
