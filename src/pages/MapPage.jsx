@@ -391,7 +391,11 @@ async function fetchAllowedJansAuto() {
       try {
         const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
           await fetchAllowedJansForStore(mainStoreId);
-        const ecEnabledInContext = Number(mainStoreId) === OFFICIAL_STORE_ID;
+        //////2026.06.以下を以下3行と置き換え（カートパネルボタン表示/非表示の正規化）  
+        //const ecEnabledInContext = Number(mainStoreId) === OFFICIAL_STORE_ID;
+        const ecEnabledInContext =
+          mainStoreEcActive === true ||
+          Number(mainStoreId) === OFFICIAL_STORE_ID;
 
         return { 
           allowedJans,
@@ -430,7 +434,11 @@ async function fetchAllowedJansAuto() {
       const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, wishJans } =
         parseAllowedJansResponse(json);
       const subStoreIds = getCurrentSubStoreIdsFromStorage();
-      const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);
+      //////2026.06.以下を以下3行と置き換え（カートパネルボタン表示：公式ECがメイン/サブ店舗にある場合+メイン店舗がec_active=trueの場合）
+      //const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);
+      const ecEnabledInContext =
+        mainStoreEcActive === true ||
+        isEcEnabledInContext(mainStoreId, subStoreIds);
 
       return {
         allowedJans,
