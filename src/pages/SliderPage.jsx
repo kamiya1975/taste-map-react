@@ -120,10 +120,27 @@ export default function SliderPage() {
     };
   }, []);
 
+  //////2026.06.以下を以下1セクションと置き換え（QRから来た場合、店舗選択へ遷移させない）
+  // 直接来た人は店舗選択へ
+  //useEffect(() => {
+  //  const saved = localStorage.getItem("selectedStore");
+  //  const cameFromMap = location.state?.from === "map";
+  //  if (!selectedStore && !saved && !cameFromMap) {
+  //    navigate("/store", { replace: true });
+  //  }
+  //}, [selectedStore, navigate, location.state]);
   // 直接来た人は店舗選択へ
   useEffect(() => {
-    const saved = localStorage.getItem("selectedStore");
-    const cameFromMap = location.state?.from === "map";
+    const saved =
+      localStorage.getItem("selectedStore") ||
+      localStorage.getItem("main_store") ||
+      localStorage.getItem("main_store_id") ||
+      localStorage.getItem("app.main_store_id");
+
+    const cameFromMap =
+      location.state?.from === "map" ||
+      location.state?.from === "menu";
+
     if (!selectedStore && !saved && !cameFromMap) {
       navigate("/store", { replace: true });
     }
