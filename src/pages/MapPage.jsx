@@ -7,7 +7,9 @@
 //  - 商品詳細は Drawer + iframe(ProductPage) で開き、飲みたい/評価/カート の反映をしている
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+//////2026.06.1行を以下1行と置き換え
+//import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
 
 import MapGuidePanelContent from "../components/panels/MapGuidePanelContent";
@@ -465,6 +467,82 @@ async function fetchAllowedJansAuto() {
 }
 
 //---------------------------------------------------------------------------------
+//////2026.06.以下1セクションを追加
+// 位置情報キャッシュ
+const TM_LAST_LOCATION_KEY = "tm_last_location";
+const TM_LOCATION_ATTEMPT_KEY = "tm_last_location_attempt";
+const LOCATION_TTL_MS = 30 * 60 * 1000; // 30分
+const LOCATION_ATTEMPT_TTL_MS = 24 * 60 * 60 * 1000; // 拒否/失敗時は24時間再試行しない
+
+function getCachedLocation() {
+  try {
+    const raw = localStorage.getItem(TM_LAST_LOCATION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveLocation(loc) {
+  try {
+    localStorage.setItem(TM_LAST_LOCATION_KEY, JSON.stringify(loc));
+  } catch {}
+}
+
+function shouldRefreshLocation(loc) {
+  if (!loc?.located_at) return true;
+  const last = new Date(loc.located_at).getTime();
+  return Date.now() - last > LOCATION_TTL_MS;
+}
+
+function shouldAttemptLocation() {
+  try {
+    const last = Number(localStorage.getItem(TM_LOCATION_ATTEMPT_KEY) || 0);
+    if (!last) return true;
+    return Date.now() - last > LOCATION_ATTEMPT_TTL_MS;
+  } catch {
+    return true;
+  }
+}
+
+function markLocationAttempt() {
+  try {
+    localStorage.setItem(TM_LOCATION_ATTEMPT_KEY, String(Date.now()));
+  } catch {}
+}
+
+function fetchLocationSilently() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+
+    markLocationAttempt();
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          located_at: new Date().toISOString(),
+        };
+        saveLocation(loc);
+        resolve(loc);
+      },
+      () => resolve(null),
+      {
+        enableHighAccuracy: false,
+        maximumAge: LOCATION_TTL_MS,
+        timeout: 3000,
+      }
+    );
+  });
+}
+
+//---------------------------------------------------------------------------------
 const REREAD_LS_KEY = "tm_reread_until";
 const CENTER_Y_FRAC = 0.85; // 0.0 = 画面最上端, 0.5 = 画面の真ん中
 const ANCHOR_JAN = "4964044046324";
@@ -494,6 +572,8 @@ function MapPage() {
   const passThroughPaperSx = useMemo(() => ({ pointerEvents: "auto" }), []);
   const location = useLocation();
   const navigate = useNavigate();
+  //////2026.06.以下1行を追加
+  const { jan: routeJan } = useParams();
 
   // ログインユーザー名（ニックネーム）表示用
   const [userDisplayName, setUserDisplayName] = useState("");
@@ -559,6 +639,10 @@ function MapPage() {
   // 更新ボタン（points再取得）の latest-only + abort
   const pointsFetchSeqRef = useRef(0);
   const pointsAbortRef = useRef(null);  
+  //////2026.06.以下3行を追加
+  const routeJanHandledRef = useRef("");
+  const routeJanCenteredRef = useRef("");
+  //////const qrLandingLoggedRef = useRef(new Set());
 
   // ---- Drawer 状態（すべて明示）----
   const [isMyPageOpen, setIsMyPageOpen] = useState(false); // アプリガイド（メニュー）
@@ -595,6 +679,34 @@ function MapPage() {
   }, []);
 
   //---------------------------------------------------------------------------------
+  //////2026.06.以下1セクションを追加
+  // 位置情報の初期取得＆更新
+  // - 取得できた場合だけ tm_last_location に保存
+  // - 拒否/失敗しても画面表示は止めない
+  // - 拒否/失敗時は24時間再試行しない
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const cached = getCachedLocation();
+
+      // 30分以内の位置情報があれば再取得しない
+      if (cached && !shouldRefreshLocation(cached)) return;
+
+      // 拒否/失敗直後は再試行しない
+      if (!shouldAttemptLocation()) return;
+
+      await fetchLocationSilently();
+
+      if (!mounted) return;
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  //---------------------------------------------------------------------------------
   // ---- Map / DeckGL の初期 viewState ----
   const [viewState, setViewState] = useState({
     target: [0, 0, 0],
@@ -620,6 +732,43 @@ function MapPage() {
   // wish の「即時反映（SET_WISHLIST）」が API 結果で戻されないようにする保険
   const wishOverrideRef = useRef(new Map()); // jan -> { value:boolean, at:number }
   const lastWishLocalAtRef = useRef(0);
+
+  //---------------------------------------------------------------------------------
+  //////2026.06.以下1セクションを追加
+  // QR URLの store_id を既存アプリのメイン店舗IDとして保持
+  // 例: /products/:jan?src=qr&store_id=4
+  useEffect(() => {
+    try {
+      const searchText =
+        location.search ||
+        (window.location.hash.includes("?")
+          ? `?${window.location.hash.split("?")[1]}`
+          : "");
+
+      const params = new URLSearchParams(searchText);
+      const rawStoreId = params.get("store_id");
+      const storeIdNum = Number(rawStoreId);
+
+      if (!Number.isFinite(storeIdNum) || storeIdNum <= 0) return;
+
+      const storeId = String(storeIdNum);
+      const current = localStorage.getItem("app.main_store_id");
+
+      if (current !== storeId) {
+        localStorage.setItem("app.main_store_id", storeId);
+        localStorage.setItem("main_store_id", storeId);
+
+        try {
+          window.dispatchEvent(new Event("tm_store_changed"));
+        } catch {}
+      }
+
+      setStoreContextKey(getStoreContextKeyFromStorage());
+      setIframeNonce((n) => n + 1);
+    } catch (e) {
+      console.warn("[QR store_id] failed:", e);
+    }
+  }, [location.search]);
 
   //---------------------------------------------------------------------------------
   // 重要：未ログインで mainStoreId が無い状態を許容しない（0点/全点の暴れ源）
@@ -671,17 +820,53 @@ function MapPage() {
   }, [allowedJansSet]);
   
   //---------------------------------------------------------------------------------
+  //////2026.06.以下を以下1セクションと置き換え
   // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み）
   // - ctx: 店舗コンテキスト（main/sub/token） - _  : iframeNonce（強制再読み込み用）
+  //const productIframeSrc = useMemo(() => {
+  //  if (!selectedJAN) return "";
+  //  const base = process.env.PUBLIC_URL || "";
+  //  const jan = encodeURIComponent(String(selectedJAN));
+  //  const ctx = encodeURIComponent(String(storeContextKey || ""));
+  //  const nonce = encodeURIComponent(String(iframeNonce || 0));
+  //  // HashRouter 前提： /#/products/:jan
+  //  return `${base}/#/products/${jan}?embed=1&ctx=${ctx}&_=${nonce}`;
+  //}, [selectedJAN, storeContextKey, iframeNonce]);  
+  //---------------------------------------------------------------------------------
+  // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み）
   const productIframeSrc = useMemo(() => {
     if (!selectedJAN) return "";
+
     const base = process.env.PUBLIC_URL || "";
     const jan = encodeURIComponent(String(selectedJAN));
-    const ctx = encodeURIComponent(String(storeContextKey || ""));
-    const nonce = encodeURIComponent(String(iframeNonce || 0));
-    // HashRouter 前提： /#/products/:jan
-    return `${base}/#/products/${jan}?embed=1&ctx=${ctx}&_=${nonce}`;
-  }, [selectedJAN, storeContextKey, iframeNonce]);  
+
+    const params = new URLSearchParams();
+    params.set("embed", "1");
+    params.set("ctx", String(storeContextKey || ""));
+    params.set("_", String(iframeNonce || 0));
+
+    try {
+      const mainStoreId = getCurrentMainStoreIdSafe();
+      if (mainStoreId) {
+        params.set("store_id", String(mainStoreId));
+      }
+    } catch {}
+
+    return `${base}/#/product-frame/${jan}?${params.toString()}`;
+  }, [selectedJAN, storeContextKey, iframeNonce]);
+
+  //---------------------------------------------------------------------------------
+  //////2026.06.以下1セクションを追加
+  // 商品Drawerを閉じる
+  // /products/:jan 直リンク時は /map に戻す
+  const closeProductDrawer = useCallback(() => {
+    setProductDrawerOpen(false);
+    setSelectedJAN(null);
+
+    if (/^\/products\/[^/]+$/.test(location.pathname)) {
+      navigate("/map", { replace: false });
+    }
+  }, [location.pathname, navigate]);
 
   //---------------------------------------------------------------------------------
   // 更新ボタン用 （打点JSON, バックグラウンド の更新反映のため）
@@ -1551,6 +1736,40 @@ function MapPage() {
   }, [location.key, userPin, data, findNearestWineWorld, focusOnWine]);
 
   //---------------------------------------------------------------------------------
+  //////2026.06.以下1セクションを追加
+  // /products/:jan で来た時は MapPage 上で商品Drawerを開く
+  useEffect(() => {
+    if (!routeJan) return;
+
+    const janStr = String(routeJan).trim();
+    if (!janStr) return;
+
+    if (routeJanHandledRef.current !== janStr) {
+      routeJanHandledRef.current = janStr;
+      setIframeNonce(Date.now());
+    }
+
+    setSelectedJAN((prev) => (prev === janStr ? prev : janStr));
+    setProductDrawerOpen(true);
+
+    const hit =
+      Array.isArray(data)
+        ? data.find((d) => String(getJanFromItem(d)) === janStr)
+        : null;
+
+    if (!hit) return;
+
+    if (routeJanCenteredRef.current !== janStr) {
+      routeJanCenteredRef.current = janStr;
+      didInitialCenterRef.current = true;
+
+      requestAnimationFrame(() => {
+        focusOnWine(hit, { zoom: INITIAL_ZOOM });
+      });
+    }
+  }, [routeJan, data, focusOnWine]);
+
+  //---------------------------------------------------------------------------------
   // スナップショット1
   // STATE_SNAPSHOT =どう見せるか　（iframe側のUIを親と一致させる = iframe分離構造では必須）対象：iframe
   // ====== 子iframeへ（wishlist反映など）状態スナップショットを送る
@@ -2274,14 +2493,11 @@ function MapPage() {
         collapseKey={clusterCollapseKey}
       />
 
-      {/* 商品詳細ページドロワー */}
+      {/* 商品詳細ページドロワー */}{/*2026.06.以下の onClose={() => {...}}を1行に置き換え*/}
       <Drawer
         anchor="bottom"
         open={productDrawerOpen}
-        onClose={() => {
-          setProductDrawerOpen(false);
-          setSelectedJAN(null);
-        }}
+        onClose={closeProductDrawer}
         sx={{ zIndex: 1700, pointerEvents: "none" }}
         hideBackdrop
         BackdropProps={{
@@ -2302,13 +2518,11 @@ function MapPage() {
           sx: { pointerEvents: "auto" },
         }}
       >
+        {/*2026.06.以下の onClose={() => {...}}を1行に置き換え*/}
         <PanelHeader
           title="商品ページ"
           icon="dot.svg"
-          onClose={() => {
-            setProductDrawerOpen(false);
-            setSelectedJAN(null);
-          }}
+          onClose={closeProductDrawer}
         />
         <div
           className="drawer-scroll"

@@ -36,7 +36,18 @@ export default function App() {
 
     // ※ PWA起動時だけ /map へ寄せる。reset-password は例外扱いでも良いが、
     //   基本はブラウザから開く想定なのでこのままでも大きな問題はない。
-    if (isStandalone && isColdStart && location.pathname !== "/map") {
+    // PWA起動時の /map矯正遷移も少し修正
+    const isProductRoute = location.pathname.startsWith("/products/");
+    const isProductFrameRoute = location.pathname.startsWith("/product-frame/");
+
+    if (
+      isStandalone &&
+      isColdStart &&
+      location.pathname !== "/map" &&
+      location.pathname !== "/reset-password" &&
+      !isProductRoute &&
+      !isProductFrameRoute
+    ) {
       navigate("/map", { replace: true });
     }
     sessionStorage.setItem("tm_started_once", "1");
@@ -48,7 +59,10 @@ export default function App() {
       <Route path="/store" element={<StorePage />} />
       <Route path="/slider" element={<SliderPage />} />
       <Route path="/map" element={<MapPage />} />
-      <Route path="/products/:jan" element={<ProductPage />} />
+      {/* QR/直リンク: 背景Mapつき商品表示 */}
+      <Route path="/products/:jan" element={<MapPage />} />
+      {/* iframe専用の商品ページ */}
+      <Route path="/product-frame/:jan" element={<ProductPage />} />      
       <Route path="/ec/return" element={<EcReturnPage />} />
       <Route path="/taste-log" element={<UserTastePage />} />
       <Route path="/scan-flow" element={<ScanAndProductFlow />} />
@@ -56,7 +70,6 @@ export default function App() {
 
       {/* ★ 404より前に置く */}
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-
       {/* それ以外は /map に飛ばす */}
       <Route path="*" element={<Navigate to="/map" replace />} />
     </Routes>
