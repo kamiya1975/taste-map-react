@@ -12,6 +12,8 @@ import {
 import PanelHeader from "../ui/PanelHeader";
 import CircleRatingDisplay from "../../components/CircleRatingDisplay";
 import ListRow from "../ui/ListRow";
+//////2026.06.allwedjans改善のため　以下1行を追加
+import { clearAppAuth } from "../../utils/auth";
 
 const API_BASE =
   process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE || "";
@@ -143,13 +145,30 @@ export default function RatedPanel({ isOpen, onClose, onSelectJAN }) {
           headers: { Authorization: `Bearer ${token}` },
           signal: ac.signal,
         });
+        //////2026.06.allwedjans改善のため　以下を以下1セクションと置換え
+        //const ct = res.headers.get("content-type") || "";
+        //if (!res.ok) {
+        //  const body = await res.text().catch(() => "");
+        //  throw new Error(
+        //    `rated-panel fetch failed: ${res.status} ct=${ct} body=${body.slice(0, 120)}`
+        //  );
+        //}
         const ct = res.headers.get("content-type") || "";
+        // トークン不正/期限切れ時はログイン情報をクリアし、未ログイン表示へ戻す
+        if (res.status === 401) {
+          clearAppAuth();
+          setToken("");
+          setItems([]);
+          setError(null);
+          return;
+        }
         if (!res.ok) {
           const body = await res.text().catch(() => "");
           throw new Error(
             `rated-panel fetch failed: ${res.status} ct=${ct} body=${body.slice(0, 120)}`
           );
-        }
+        }        
+        //////↑ここまで
         if (!ct.includes("application/json")) {
           const body = await res.text().catch(() => "");
           throw new Error(`rated-panel not json: ct=${ct} body=${body.slice(0, 120)}`);
