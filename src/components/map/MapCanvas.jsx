@@ -585,7 +585,9 @@ const MapCanvas = forwardRef(function MapCanvas(
           if (clusterColorMode && Number.isFinite(c)) {
             return getClusterRGBA(c);
           }
-          return MAP_POINT_COLOR;
+          //////2026.06.以下を以下1行と置換え（店舗打点をグレイ→オレンジへ）
+          //return MAP_POINT_COLOR;
+          return STAR_ORANGE;
         },
         updateTriggers: {
           getFillColor: [clusterColorMode, userRatings],
@@ -628,7 +630,9 @@ const MapCanvas = forwardRef(function MapCanvas(
         if (clusterColorMode && Number.isFinite(d.cluster)) {
           return getClusterRGBA(d.cluster);
         }
-        return STAR_ORANGE; // ← EC扱いはオレンジ●
+        //////2026.06.以下を以下1行と置換え（EC打点をオレンジ→グレイへ）
+        //return STAR_ORANGE; // ← EC扱いはオレンジ●
+        return MAP_POINT_COLOR;
       },
       updateTriggers: {
         getFillColor: [clusterColorMode, userRatings],
