@@ -120,3 +120,19 @@ export const requireRatingOrRedirect = (navigate) => {
    } catch {}
    return false;
  };
+
+//////2026.06.allwedjans改善のため　以下1セクションを追加
+/* ======================
+   アプリ用ログイン情報のクリア
+   ====================== */
+export const clearAppAuth = () => {
+  try {
+    localStorage.removeItem("app.access_token");
+    localStorage.removeItem("app.refresh_token");
+    localStorage.removeItem("app.user");
+  } catch {}
+
+  try {
+    window.dispatchEvent(new Event("tm_auth_changed"));
+  } catch {}
+};

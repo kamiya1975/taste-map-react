@@ -42,6 +42,8 @@ import {
 } from "../ui/constants";
 import { getLotId } from "../utils/lot";
 import { getCurrentMainStoreIdSafe } from "../utils/store";
+//////2026.06.allwedjans改善のため　以下1行を追加
+import { clearAppAuth } from "../utils/auth";
 import TermsPage from "./TermsPage";
 
 //---------------------------------------------------------------------------------
@@ -230,8 +232,20 @@ const getCurrentMainStoreEcActiveFromStorage = () => {
 };
 
 //---------------------------------------------------------------------------------
+//////2026.06.allwedjans改善のため　以下を以下1セクションと置換え
 // rated-panel（DB正）スナップショット取得
 // - rating も同時に取れれば userRatings も同期
+//async function fetchRatedPanelSnapshot({ apiBase, token }) {
+//  if (!token) return null;
+//  const url = `${apiBase}/api/app/rated-panel`;
+//  const res = await fetch(url, {
+//    cache: "no-store",
+//    headers: { Authorization: `Bearer ${token}` },
+//  });
+//  if (!res.ok) throw new Error(`rated-panel HTTP ${res.status}`);
+//  const json = await res.json();
+//  return json;
+//}
 async function fetchRatedPanelSnapshot({ apiBase, token }) {
   if (!token) return null;
   const url = `${apiBase}/api/app/rated-panel`;
@@ -239,6 +253,12 @@ async function fetchRatedPanelSnapshot({ apiBase, token }) {
     cache: "no-store",
     headers: { Authorization: `Bearer ${token}` },
   });
+
+  if (res.status === 401) {
+    clearAppAuth();
+    return null;
+  }
+
   if (!res.ok) throw new Error(`rated-panel HTTP ${res.status}`);
   const json = await res.json();
   return json;
@@ -428,6 +448,42 @@ async function fetchAllowedJansAuto() {
       cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
     });
+
+    //////2026.06.allwedjans改善のため　以下1セクションを追加
+    if (res.status === 401) {
+      console.warn("allowed-jans/auto 401 → app auth clear → 未ログイン取得へ切替");
+      clearAppAuth();
+
+      try {
+        const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
+          await fetchAllowedJansForStore(mainStoreId);
+
+        const ecEnabledInContext =
+          mainStoreEcActive === true ||
+          Number(mainStoreId) === OFFICIAL_STORE_ID;
+
+        return {
+          allowedJans,
+          ecOnlyJans: ecOnlyJans || [],
+          storeJans: storeJans || [],
+          mainStoreEcActive,
+          ecEnabledInContext,
+          wishJans: [],
+        };
+      } catch (e) {
+        console.warn("401後の未ログイン allowed-jans 取得にも失敗", e);
+        showAllowedJansErrorOnce();
+        return {
+          allowedJans: null,
+          ecOnlyJans: [],
+          storeJans: [],
+          mainStoreEcActive: null,
+          ecEnabledInContext: Number(mainStoreId) === OFFICIAL_STORE_ID,
+          wishJans: [],
+        };
+      }
+    }
+    //////
 
     if (res.ok) {
       const json = await res.json();
@@ -1224,6 +1280,10 @@ function MapPage() {
 
       // StorePanelContent などが投げるカスタムイベント（サブ店舗ON/OFFを含む想定）
       if (e && e.type === "tm_store_changed") {
+        reloadAllowedJans();
+      }
+      //////2026.06.allwedjans改善のため　以下3行を追加
+      if (e && e.type === "tm_auth_changed") {
         reloadAllowedJans();
       }
 
