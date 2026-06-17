@@ -386,7 +386,9 @@ function ProductInfoSection({ product, jan_code }) {
   } else {
     // 店舗：comment だけ（title/comment は今回は使わない方針）
     if (product?.comment) {
-      commentBlocks.push({ title: "ワインの特徴", body: product.comment });
+      //////2026.06.ついで修正 以下を以下1行と置換え
+      //commentBlocks.push({ title: "ワインの特徴", body: product.comment });
+      commentBlocks.push({ title: null, body: product.comment });
     }
   }
 
@@ -415,7 +417,12 @@ function ProductInfoSection({ product, jan_code }) {
                 {b.title}
               </div>
             )}
-            {b.body && <div>{b.body}</div>}
+            {/* 2026.06.以下1行を以下5行に置換え（コメントの改行あり） {b.body && <div>{b.body}</div>} */}
+            {b.body && (
+              <div style={{ whiteSpace: "pre-line" }}>
+                {b.body}
+              </div>
+            )}
           </div>
         ))}
 
@@ -895,8 +902,8 @@ export default function ProductPage() {
     const storeLabel = product?.price_store_name || "";
     availabilityLine = (
       <>
-        この商品は、近くの{storeLabel || "店舗"}でお買い求めいただけます。
-        在庫・価格は店舗でご確認ください。
+        この商品は「{storeLabel || "店舗"}」でお買い求めいただけます。
+        在庫・価格は店頭にてご確認ください。
       </>
     );
   } else if (availableInSelected === false) {
