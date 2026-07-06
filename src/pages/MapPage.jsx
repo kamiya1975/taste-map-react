@@ -8,7 +8,6 @@
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 //////2026.06.1行を以下1行と置き換え
-//import { useLocation, useNavigate } from "react-router-dom";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
 
@@ -235,17 +234,6 @@ const getCurrentMainStoreEcActiveFromStorage = () => {
 // rated-panel（DB正）スナップショット取得
 // - rating も同時に取れれば userRatings も同期
 //////2026.06.allwedjans改善のため　以下を以下1セクションと置換え
-//async function fetchRatedPanelSnapshot({ apiBase, token }) {
-//  if (!token) return null;
-//  const url = `${apiBase}/api/app/rated-panel`;
-//  const res = await fetch(url, {
-//    cache: "no-store",
-//    headers: { Authorization: `Bearer ${token}` },
-//  });
-//  if (!res.ok) throw new Error(`rated-panel HTTP ${res.status}`);
-//  const json = await res.json();
-//  return json;
-//}
 async function fetchRatedPanelSnapshot({ apiBase, token }) {
   if (!token) return null;
   const url = `${apiBase}/api/app/rated-panel`;
@@ -321,7 +309,7 @@ const showAllowedJansErrorOnce = () => {
   if (allowedJansErrorShown) return;
   allowedJansErrorShown = true;
   try {
-    alert("allowed-jans の取得に失敗しました。表示点が一時的に減ることがあります。再読み込みしてください。");
+    alert("allowed-jans の取得に失敗しました。表示打点が一時的に変わることがあります。再読み込みしてください。");
   } catch (e) {
     console.warn("allowed-jans error (alert failed)", e);
   }
@@ -412,7 +400,6 @@ async function fetchAllowedJansAuto() {
         const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive } =
           await fetchAllowedJansForStore(mainStoreId);
         //////2026.06.以下を以下3行と置き換え（カートパネルボタン表示/非表示の正規化）  
-        //const ecEnabledInContext = Number(mainStoreId) === OFFICIAL_STORE_ID;
         const ecEnabledInContext =
           mainStoreEcActive === true ||
           Number(mainStoreId) === OFFICIAL_STORE_ID;
@@ -491,7 +478,6 @@ async function fetchAllowedJansAuto() {
         parseAllowedJansResponse(json);
       const subStoreIds = getCurrentSubStoreIdsFromStorage();
       //////2026.06.以下を以下3行と置き換え（カートパネルボタン表示：公式ECがメイン/サブ店舗にある場合+メイン店舗がec_active=trueの場合）
-      //const ecEnabledInContext = isEcEnabledInContext(mainStoreId, subStoreIds);
       const ecEnabledInContext =
         mainStoreEcActive === true ||
         isEcEnabledInContext(mainStoreId, subStoreIds);
@@ -994,19 +980,6 @@ function MapPage() {
     return allowedJansSet.size > 0 ? allowedJansSet : null;
   }, [allowedJansSet]);
   
-  //---------------------------------------------------------------------------------
-  //////2026.06.以下を1以下1セクションと置き換え
-  // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み）
-  // - ctx: 店舗コンテキスト（main/sub/token） - _  : iframeNonce（強制再読み込み用）
-  //const productIframeSrc = useMemo(() => {
-  //  if (!selectedJAN) return "";
-  //  const base = process.env.PUBLIC_URL || "";
-  //  const jan = encodeURIComponent(String(selectedJAN));
-  //  const ctx = encodeURIComponent(String(storeContextKey || ""));
-  //  const nonce = encodeURIComponent(String(iframeNonce || 0));
-  //  // HashRouter 前提： /#/products/:jan
-  //  return `${base}/#/products/${jan}?embed=1&ctx=${ctx}&_=${nonce}`;
-  //}, [selectedJAN, storeContextKey, iframeNonce]);  
   //---------------------------------------------------------------------------------
   //////2026.06.以下1セクションに置き換え
   // 商品iframe URL（店舗コンテキスト＆キャッシュバスト込み）
@@ -2326,27 +2299,6 @@ function MapPage() {
         setViewState={setViewState}
         onOpenSlider={() => navigate("/slider")}
         //////2026.06.以下を以下7行と置き換え
-        //onPickWine={async (item) => {
-        //  if (!item) return;
-        //
-        //  const janStr = getJanFromItem(item);
-        //  if (!janStr) {
-        //    console.warn("onPickWine: JAN が取得できませんでした", item);
-        //    return;
-        //  }
-        //
-        //  await closeUIsThen({
-        //    preserveMyPage: true,
-        //    preserveSearch: true,
-        //    preserveCluster: true,
-        //  });
-        //
-        //  setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
-        //  setSelectedJAN(janStr);
-        //  setIframeNonce(Date.now());
-        //  setProductDrawerOpen(true);
-        //  focusOnWine(item, { recenter: false });
-        //}}
         onPickWine={async (item) => {
           if (!item) return;
           await openWine(item, {
@@ -2639,38 +2591,6 @@ function MapPage() {
         onClose={() => setIsSearchOpen(false)}
         data={searchPanelData}
         //////2026.06.以下を以下8行と置き換え
-        //onPick={async (item) => {
-        //  if (!item) return;
-        //
-        //  const janStr = getJanFromItem(item);
-        //  if (!janStr) {
-        //    console.warn(
-        //      "SearchPanel onPick: JAN が取得できませんでした",
-        //      item
-        //    );
-        //    return;
-        //  }
-        //
-        //  await closeUIsThen({
-        //    preserveMyPage: true,
-        //    preserveSearch: true,
-        //    preserveCluster: true,
-        //  });
-        //
-        //  // クラスターパネルを畳む
-        //  setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
-        //
-        //  setSelectedJAN(janStr);
-        //
-        //  setIframeNonce(Date.now());
-        //
-        //  const tx = Number(item.umap_x),
-        //    ty = Number(item.umap_y);
-        //  if (Number.isFinite(tx) && Number.isFinite(ty)) {
-        //    centerToUMAP(tx, ty, { zoom: viewState.zoom });
-        //  }
-        //  setProductDrawerOpen(true);
-        //}}
         onPick={async (item) => {
           if (!item) return;
           await openWine(item, {
@@ -2730,27 +2650,6 @@ function MapPage() {
             (d) => String(getJanFromItem(d)) === jan
           );
           //////2026.06.以下を以下13行と置き換え
-          //if (hit) {
-          //  const janStr = getJanFromItem(hit);
-          //  if (!janStr) return false;
-          //
-          //  await closeUIsThen({
-          //    preserveMyPage: true,
-          //    preserveCluster: true,
-          //  });
-          //
-          //  setSelectedJAN(janStr);
-          //
-          //  setIframeNonce(Date.now());
-          //  lastCommittedRef.current = { code: jan, at: now };
-          //
-          //  const tx = Number(hit.umap_x),
-          //    ty = Number(hit.umap_y);
-          //  if (Number.isFinite(tx) && Number.isFinite(ty)) {
-          //    centerToUMAP(tx, ty, { zoom: INITIAL_ZOOM });
-          //  }
-          //  return true;
-          //}
           if (hit) {
             const janStr = getJanFromItem(hit);
             if (!janStr) return false;
@@ -2781,33 +2680,6 @@ function MapPage() {
           await closeUIsThen({ preserveCluster: true });
         }}
         //////2026.06.以下を以下11行と置き換え
-        //onSelectJAN={async (jan) => {
-        //  await closeUIsThen({
-        //    preserveMyPage: true,
-        //    preserveRated: true,
-        //    preserveCluster: true,
-        //  });
-        //
-        //  // クラスターパネルを畳む
-        //  setClusterCollapseKey((k) => (k == null ? 1 : k + 1));
-        //
-        //  try {
-        //    sessionStorage.setItem("tm_from_rated_jan", String(jan));
-        //  } catch {}
-        //  setSelectedJAN(jan);
-        //  setIframeNonce(Date.now());
-        //  const item = data.find(
-        //    (d) => String(getJanFromItem(d)) === String(jan)
-        //  );
-        //  if (item) {
-        //    const tx = Number(item.umap_x),
-        //      ty = Number(item.umap_y);
-        //    if (Number.isFinite(tx) && Number.isFinite(ty)) {
-        //      centerToUMAP(tx, ty, { zoom: INITIAL_ZOOM });
-        //    }
-        //  }
-        //  setProductDrawerOpen(true);
-        //}}
         onSelectJAN={async (jan) => {
          try {
             sessionStorage.setItem("tm_from_rated_jan", String(jan));
