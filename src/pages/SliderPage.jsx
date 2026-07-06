@@ -251,8 +251,11 @@ export default function SliderPage() {
     setInitializedFromPC(true);
   }, [referenceLot, pcMinMax, initializedFromPC]);
 
+////2026.07.イベント後修正（スライダー後アクセスログ追加）  以下6行と置き換え
   const handleGenerate = () => {
     if (!referenceLot || !pcMinMax || !rows.length) return;
+
+    const sliderResultCreatedAt = new Date().toISOString();
 
     const { minPC1, maxPC1, minPC2, maxPC2, minPC3, maxPC3 } = pcMinMax;
     const basePC1 = num(referenceLot.pc1);
@@ -278,7 +281,10 @@ export default function SliderPage() {
         "userPinCoords",
         JSON.stringify({
           coordsUMAP: [umapX, umapY],
-          version: 3,
+          ////2026.07.イベント後修正（スライダー後アクセスログ追加）  以下3行と置き換え
+          version: 4,
+          source: "standard_slider",
+          createdAt: sliderResultCreatedAt,
           referenceLotId: referenceLot.lotId,
           pcValues: {
             pc1: basePC1,
@@ -304,7 +310,10 @@ export default function SliderPage() {
         "userPinCoords",
         JSON.stringify({
           coordsUMAP: [umapX, umapY],
-          version: 3,
+          ////2026.07.イベント後修正（スライダー後アクセスログ追加）  以下3行と置き換え
+          version: 4,
+          source: "standard_slider",
+          createdAt: sliderResultCreatedAt,
           referenceLotId: referenceLot.lotId,
           pcValues: {
             pc1: pc1Value,
@@ -387,7 +396,7 @@ export default function SliderPage() {
         )}
          */}
 
-        {/* スライダーCSS */}
+        {/* スライダーCSS */}{/* 2026.07.イベント後修正 */}
         <style>{`
           .taste-slider{
             appearance:none;

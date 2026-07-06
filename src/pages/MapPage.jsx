@@ -309,7 +309,7 @@ const showAllowedJansErrorOnce = () => {
   if (allowedJansErrorShown) return;
   allowedJansErrorShown = true;
   try {
-    alert("allowed-jans の取得に失敗しました。表示打点が一時的に変わることがあります。再読み込みしてください。");
+    alert("allowed-jans の取得に失敗しました。表示点が一時的に減ることがあります。再読み込みしてください。");
   } catch (e) {
     console.warn("allowed-jans error (alert failed)", e);
   }
@@ -654,17 +654,21 @@ function readAccessLogContext(search = "") {
   }
 }
 
+////2026.07.イベント後修正（スライダー後アクセスログ追加）　以下7行と置き換えz4
 async function sendAccessLog({
   event_type,
   jan_code,
   source = null,
   search = "",
+  extra = null,
+  throwOnError = false,
 }) {
   try {
     if (!event_type || !jan_code) return;
 
     const ctx = readAccessLogContext(search);
 
+    ////2026.07.イベント後修正（スライダー後アクセスログ追加）　以下12行と置き換え
     const payload = {
       event_type,
       jan_code: String(jan_code),
@@ -673,6 +677,10 @@ async function sendAccessLog({
       importer_id: null,
       source: event_type === "product_open" ? source || null : null,
     };
+
+    if (extra && typeof extra === "object") {
+      Object.assign(payload, extra);
+    }
 
     // 位置情報キャッシュを付与
     try {
@@ -693,14 +701,23 @@ async function sendAccessLog({
       }
     } catch {}
 
-    await fetch(`${API_BASE}/api/app/access-logs`, {
+    ////2026.07.イベント後修正（スライダー後アクセスログ追加）　以下1セクション置き換え
+    const res = await fetch(`${API_BASE}/api/app/access-logs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       keepalive: true,
+      cache: "no-store",
     });
+
+    if (!res.ok) {
+      throw new Error(`access-log HTTP ${res.status}`);
+    }
   } catch (e) {
     console.warn("[access-log] send failed:", e);
+    if (throwOnError) {
+      throw e;
+    }
   }
 }
 
@@ -805,6 +822,8 @@ function MapPage() {
   const routeJanHandledRef = useRef("");
   const routeJanCenteredRef = useRef("");
   const qrLandingLoggedRef = useRef(new Set());
+  ////2026.07.イベント後修正（スライダー後アクセスログ追加）　以下1行追加
+  const standardSliderLogStateRef = useRef(new Map());
 
   // ---- Drawer 状態（すべて明示）----
   const [isMyPageOpen, setIsMyPageOpen] = useState(false); // アプリガイド（メニュー）
@@ -1587,6 +1606,25 @@ function MapPage() {
     return n ? [sx / n, sy / n] : [0, 0];
   }, [data]);
 
+  ////2026.07.イベント後修正（スライダー後アクセスログ追加）　以下1セクションを追加
+  // userPinCoords の保存payload全体を読む
+  const readUserPinPayloadFromStorage = () => {
+    try {
+      const raw = localStorage.getItem("userPinCoords");
+      if (!raw) return null;
+
+      const payload = JSON.parse(raw);
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+        return null;
+      }
+
+      return payload;
+    } catch (e) {
+      console.warn("userPinCoords payload の解析に失敗:", e);
+      return null;
+    }
+  };
+
   // userPin 読み出し
   const readUserPinFromStorage = useCallback(() => {
     try {
@@ -1923,6 +1961,113 @@ function MapPage() {
     const cid = Number(nearest?.cluster);
     return Number.isFinite(cid) ? cid : null;
   }, [userPin, data, findNearestWineWorld]);
+
+  ////2026.07.イベント後修正（スライダー後アクセスログ追加）　以下1セクション追加
+  // スライダー確定後ログ
+  // SliderPageでは送信せず、MapPageで実際に表示する clusterId が確定してから送信する。
+  useEffect(() => {
+    if (!isTastePositionOpen) return;
+    if (!userPin) return;
+    if (tastePositionClusterId == null) return;
+
+    const sliderPayload = readUserPinPayloadFromStorage();
+    if (!sliderPayload) return;
+
+    if (sliderPayload.source !== "standard_slider") return;
+    if (!sliderPayload.createdAt) return;
+
+    const createdAt = String(sliderPayload.createdAt);
+    const currentState = standardSliderLogStateRef.current.get(createdAt);
+
+    // React再描画・effect再実行による同一操作の重複送信を防ぐ
+    if (currentState === "sending" || currentState === "sent" || currentState === "failed") {
+      return;
+    }
+
+    const coords = Array.isArray(sliderPayload.coordsUMAP)
+      ? sliderPayload.coordsUMAP
+      : [];
+
+    const umapX = Number(coords[0]);
+    const umapY = Number(coords[1]);
+
+    const pcValues = sliderPayload.pcValues || {};
+    const pc1 = Number(pcValues.pc1);
+    const pc2 = Number(pcValues.pc2);
+    const pc3 = Number(pcValues.pc3);
+
+    if (
+      !Number.isFinite(umapX) ||
+      !Number.isFinite(umapY) ||
+      !Number.isFinite(pc1) ||
+      !Number.isFinite(pc2) ||
+      !Number.isFinite(pc3)
+    ) {
+      standardSliderLogStateRef.current.set(createdAt, "failed");
+      return;
+    }
+
+    const nearestJan = sliderPayload.nearestJan
+      ? String(sliderPayload.nearestJan)
+      : null;
+
+    const searchText = getSearchTextForHashRouter(location.search);
+
+    const sendOnce = async () => {
+      standardSliderLogStateRef.current.set(createdAt, "sending");
+
+      try {
+        await sendAccessLog({
+          event_type: "standard_slider",
+          jan_code: "slider",
+          search: searchText,
+          throwOnError: true,
+          extra: {
+            nearest_jan: nearestJan,
+            umap_x: umapX,
+            umap_y: umapY,
+            pc1,
+            pc2,
+            pc3,
+            cluster_at_event: Number(tastePositionClusterId),
+          },
+        });
+
+        standardSliderLogStateRef.current.set(createdAt, "sent");
+        return true;
+      } catch (e) {
+        console.warn("[standard-slider-log] send failed:", e);
+        return false;
+      }
+    };
+
+    let cancelled = false;
+
+    (async () => {
+      const ok = await sendOnce();
+      if (ok || cancelled) return;
+
+      // 通信揺らぎ対策
+      // 1回失敗した場合のみ1秒後に1回だけ再送
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (cancelled) return;
+
+      const retryOk = await sendOnce();
+      if (!retryOk) {
+        standardSliderLogStateRef.current.set(createdAt, "failed");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isTastePositionOpen,
+    userPin,
+    tastePositionClusterId,
+    location.search,
+  ]);
+  ////ここまで
 
   // スライダー直後：最寄り自動オープン
   useEffect(() => {
@@ -2298,7 +2443,7 @@ function MapPage() {
         viewState={viewState}
         setViewState={setViewState}
         onOpenSlider={() => navigate("/slider")}
-        //////2026.06.以下を以下7行と置き換え
+        //////2026.06.以下7行と置き換え
         onPickWine={async (item) => {
           if (!item) return;
           await openWine(item, {
@@ -2590,7 +2735,7 @@ function MapPage() {
         open={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
         data={searchPanelData}
-        //////2026.06.以下を以下8行と置き換え
+        //////2026.06.以下8行と置き換え
         onPick={async (item) => {
           if (!item) return;
           await openWine(item, {
@@ -2649,7 +2794,7 @@ function MapPage() {
           const hit = data.find(
             (d) => String(getJanFromItem(d)) === jan
           );
-          //////2026.06.以下を以下13行と置き換え
+          //////2026.06.以下13行と置き換え
           if (hit) {
             const janStr = getJanFromItem(hit);
             if (!janStr) return false;
@@ -2679,7 +2824,7 @@ function MapPage() {
         onClose={async () => {
           await closeUIsThen({ preserveCluster: true });
         }}
-        //////2026.06.以下を以下11行と置き換え
+        //////2026.06.以下11行と置き換え
         onSelectJAN={async (jan) => {
          try {
             sessionStorage.setItem("tm_from_rated_jan", String(jan));
