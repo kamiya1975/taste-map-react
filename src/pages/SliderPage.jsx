@@ -122,14 +122,6 @@ export default function SliderPage() {
 
   //////2026.06.以下を以下1セクションと置き換え（QRから来た場合、店舗選択へ遷移させない）
   // 直接来た人は店舗選択へ
-  //useEffect(() => {
-  //  const saved = localStorage.getItem("selectedStore");
-  //  const cameFromMap = location.state?.from === "map";
-  //  if (!selectedStore && !saved && !cameFromMap) {
-  //    navigate("/store", { replace: true });
-  //  }
-  //}, [selectedStore, navigate, location.state]);
-  // 直接来た人は店舗選択へ
   useEffect(() => {
     const saved =
       localStorage.getItem("selectedStore") ||
@@ -267,7 +259,7 @@ export default function SliderPage() {
     const basePC2 = num(referenceLot.pc2);
     const basePC3 = num(referenceLot.pc3);
 
-    // ★初期スライダー位置のままなら、必ず基準ロットのUMAPにピンを立てる
+    // 初期スライダー位置のままなら、必ず基準ロットのUMAPにピンを立てる
     const isAtInitial =
       initialSliders &&
       acidity === initialSliders.acidity &&
@@ -297,7 +289,7 @@ export default function SliderPage() {
         })
       );
     } else {
-      // ★好みを動かした場合は、PC → 最近傍ワイン → そのUMAP
+      // 好みを動かした場合は、PC → 最近傍ワイン → そのUMAP
       const pc1Value = sliderToPCCenter(body, minPC1, basePC1, maxPC1);
       const pc2Value = sliderToPCCenter(sweetness, minPC2, basePC2, maxPC2);
       const pc3Value = sliderToPCCenter(acidity, minPC3, basePC3, maxPC3);
@@ -397,11 +389,52 @@ export default function SliderPage() {
 
         {/* スライダーCSS */}
         <style>{`
-          .taste-slider{ appearance:none; -webkit-appearance:none; width:100%; height:6px; background:transparent; margin-top:6px; outline:none; }
-          .taste-slider::-webkit-slider-runnable-track{ height:6px; border-radius:9999px; background:var(--range,#e9e9e9); }
-          .taste-slider::-moz-range-track{ height:6px; border-radius:9999px; background:var(--range,#e9e9e9); }
-          .taste-slider::-webkit-slider-thumb{ -webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:#262626; border:0; box-shadow:0 1px 2px rgba(0,0,0,.25); margin-top:-8px; cursor:pointer; }
-          .taste-slider::-moz-range-thumb{ width:22px; height:22px; border-radius:50%; background:#262626; border:0; box-shadow:0 1px 2px rgba(0,0,0,.25); cursor:pointer; }
+          .taste-slider{
+            appearance:none;
+            -webkit-appearance:none;
+            width:100%;
+            height:80px;              /* 見えない可動域をさらに拡大 *//*64*/
+            background:transparent;
+            margin-top:-18px;         /* 見た目の位置を大きく変えない *//*-10 その下1行も同様*/
+            margin-bottom:-18px;
+            outline:none;
+            cursor:pointer;
+            touch-action:pan-y;
+          }
+
+          .taste-slider::-webkit-slider-runnable-track{
+            height:8px;
+            border-radius:9999px;
+            background:var(--range,#e9e9e9);
+          }
+
+          .taste-slider::-moz-range-track{
+            height:8px;
+            border-radius:9999px;
+            background:var(--range,#e9e9e9);
+          }
+
+          .taste-slider::-webkit-slider-thumb{
+            -webkit-appearance:none;
+            width:30px;
+            height:30px;
+            border-radius:50%;
+            background:#262626;
+            border:0;
+            box-shadow:0 1px 3px rgba(0,0,0,.28);
+            margin-top:-10px;
+            cursor:pointer;
+          }
+
+          .taste-slider::-moz-range-thumb{
+            width:30px;
+            height:30px;
+            border-radius:50%;
+            background:#262626;
+            border:0;
+            box-shadow:0 1px 3px rgba(0,0,0,.28);
+            cursor:pointer;
+          }
         `}</style>
 
         {/* 酸味（PC3） */}

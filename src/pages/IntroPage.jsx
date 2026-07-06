@@ -1,5 +1,6 @@
 // src/pages/IntroPage.jsx
 // イントロ（最初 横スライド アプリ解説）画面
+// 2026.07.イベント後 すべて入替（横スワイプ3枚を2枚に変更、そのまま横スワイプで /store へ遷移）
 import React, { useState, useLayoutEffect, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { setGuest } from "../utils/auth";
@@ -11,23 +12,6 @@ const TAP_ZONE_VW = 22; // ← タップゾーン幅（%）。狭くしたい場
 const PALETTE = {
   bg: "rgb(250,250,250)",
   ink: "rgb(81,81,81)",
-};
-
-const buttonStyle = {
-  padding: "12px 24px",   // 横paddingを増やすと幅感が出る
-  fontSize: "16px",
-  backgroundColor: "#e5e3db",
-  color: "#000",
-  border: "none",
-  borderRadius: "10px",
-  cursor: "pointer",
-  marginTop: "300px",
-  width: "80%",
-  minWidth: "140px",      // ← 最低幅（狭すぎ防止）
-  //maxWidth: "240px",      // ← 大きな画面では最大幅240pxまで
-  display: "block",       // ← 中央寄せ用
-  marginLeft: "auto",     // ← 中央寄せのため追加
-  marginRight: "auto",    // ← 中央寄せのため追加
 };
 
 // ==============================
@@ -69,9 +53,9 @@ function HeroImage({
 }
 
 // ==============================
-// スライド生成（説明1 / 説明2 / 説明3[店舗選択]）
+// スライド生成（説明1 / 説明2）
 // ==============================
-function slides(handleGoStore) {
+function slides() {
   return [
     {
       id: 1,
@@ -170,30 +154,7 @@ function slides(handleGoStore) {
     {
       id: 3,
       color: PALETTE.bg,
-      content: (
-        <>
-          <div style={{ width: "100%", maxWidth: 420, margin: "40px auto 0" }}>
-            <p style={{ lineHeight: "1.9em", color: PALETTE.ink, fontSize: "11pt", textAlign: "center" }}>
-              あなたの地図を作り始めるには、まずは<br />
-              <b>基準のワインを購入した「店舗」を選択</b>します。<br />
-              店舗を固定して地図作成をスタートしましょう。
-            </p>
-
-            {/* ▶ ボタン：店舗選択（ゲストで進む） */}
-            <div style={{ marginTop: 20 }}>
-              <button
-                type="button"
-                onClick={handleGoStore}
-                style={buttonStyle}
-                aria-label="店舗選択へ進む"
-                title="店舗選択へ進む"
-              >
-                購入店舗を探す
-              </button>
-            </div>
-          </div>
-        </>
-      ),
+      content: null,
     },
   ];
 }
@@ -205,45 +166,66 @@ export default function IntroPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
   const scrollerRef = useRef(null);
+  const hasNavigatedRef = useRef(false);
 
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, []);
 
-  // 「店舗選択」：ゲストで入って StorePage へ（ボタンのみ有効）
-  function handleGoStore() {
+  // 店舗選択へ進む
+  const handleGoStore = useCallback(() => {
+    if (hasNavigatedRef.current) return;
+    hasNavigatedRef.current = true;
+
     setGuest();
     navigate("/store");
-  }
+  }, [navigate]);
 
-  const allSlides = slides(handleGoStore);
+  const allSlides = slides();
 
   // スクロール位置から現在のインデックスを推定
   const handleScroll = (e) => {
     const w = window.innerWidth || document.documentElement.clientWidth;
     const index = Math.round(e.target.scrollLeft / Math.max(1, w));
-    setCurrentIndex(Math.min(Math.max(index, 0), allSlides.length - 1));
+    const clamped = Math.min(Math.max(index, 0), allSlides.length - 1);
+
+    if (clamped >= allSlides.length - 1) {
+      handleGoStore();
+      return;
+    }
+
+    setCurrentIndex(clamped);
   };
 
   // スライド移動（プログラム制御）
-  const scrollToIndex = useCallback((index) => {
-    const clamped = Math.min(Math.max(index, 0), allSlides.length - 1);
-    const node = scrollerRef.current;
-    if (!node) return;
+  const scrollToIndex = useCallback(
+    (index) => {
+      const clamped = Math.min(Math.max(index, 0), allSlides.length - 1);
+      const node = scrollerRef.current;
+      if (!node) return;
 
-    // ビューポート幅より scroller の実幅の方が安全
-    const w = node.getBoundingClientRect().width || window.innerWidth || document.documentElement.clientWidth;
+      const w =
+        node.getBoundingClientRect().width ||
+        window.innerWidth ||
+        document.documentElement.clientWidth;
 
-   node.scrollTo({ left: clamped * w, behavior: "smooth" });
-    setCurrentIndex(clamped);
-  }, [allSlides.length]);
+      node.scrollTo({ left: clamped * w, behavior: "smooth" });
+      setCurrentIndex(clamped);
+    },
+    [allSlides.length]
+  );
 
-  // 右タップ：最後(= index=allSlides.length-1)まで進む
+  // 右タップ：
+  // 1枚目では2枚目へ
+  // 2枚目では店舗選択ページへ進む
   const nextSlide = useCallback(() => {
     if (currentIndex < allSlides.length - 1) {
       scrollToIndex(currentIndex + 1);
+      return;
     }
-  }, [currentIndex, scrollToIndex, allSlides.length]);
+
+    handleGoStore();
+  }, [currentIndex, scrollToIndex, allSlides.length, handleGoStore]);
 
   // 左タップ：最初(= index=0)まで戻る
   const prevSlide = useCallback(() => {
@@ -252,21 +234,26 @@ export default function IntroPage() {
     }
   }, [currentIndex, scrollToIndex]);
 
-  // タップゾーンは全ページで有効（ダブり宣言はNG）
-  const showTapZones = true;
-
-  // キーボード操作（←/→）も同じく全ページで有効
+  // キーボード操作（←/→）
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "ArrowRight") nextSlide();
-      if (e.key === "ArrowLeft")  prevSlide();
+      if (e.key === "ArrowLeft") prevSlide();
     };
     window.addEventListener("keydown", onKey, { passive: true });
     return () => window.removeEventListener("keydown", onKey);
   }, [nextSlide, prevSlide]);
 
   return (
-    <div className="intro-wrapper" style={{ position: "relative", height: "100vh", width: "100vw", overflow: "hidden" }}>
+    <div
+      className="intro-wrapper"
+      style={{
+        position: "relative",
+        height: "100vh",
+        width: "100vw",
+        overflow: "hidden",
+      }}
+    >
       <div
         ref={scrollerRef}
         className="slides-container"
@@ -291,58 +278,75 @@ export default function IntroPage() {
           `}
         </style>
 
-        {allSlides.map((slide) => {
-          const isTight = slide.id === 3;
-          return (
-            <div
-              key={slide.id}
-              className="slide"
-              style={{
-                backgroundColor: slide.color,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "flex-start",
-                alignItems: "center",
-                width: "100vw",
-                height: "100vh",
-                padding: isTight ? "8px 16px 16px" : "20px",
-                boxSizing: "border-box",
-                scrollSnapAlign: "start",
-                flexShrink: 0,
-                overflowY: "auto",
-              }}
-            >
-              {slide.content}
-            </div>
-          );
-        })}
+        {allSlides.map((slide) => (
+          <div
+            key={slide.id}
+            className="slide"
+            style={{
+              backgroundColor: slide.color,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-start",
+              alignItems: "center",
+              width: "100vw",
+              height: "100vh",
+              padding: "20px",
+              boxSizing: "border-box",
+              scrollSnapAlign: "start",
+              flexShrink: 0,
+              overflowY: "auto",
+            }}
+          >
+            {slide.content}
+          </div>
+        ))}
       </div>
 
-      {/* 右/左タップゾーン（1〜2枚目のみ表示） */}
-      {showTapZones && (
-        <>
-          <button
-            aria-label="前のページへ"
-            onClick={prevSlide}
-            onPointerDown={(e) => e.preventDefault()} // iOSのスクロール優先を抑止
-            onTouchEnd={(e) => { e.preventDefault(); prevSlide(); }}
-            onMouseUp={(e) => { e.preventDefault(); prevSlide(); }}
-            style={{ ...tapZoneStyle("left"), zIndex: 200, pointerEvents: "auto", touchAction: "manipulation" }}
-            className="tap-zone"
-          />
-          <button
-            aria-label="次のページへ"
-            onClick={nextSlide}
-            onPointerDown={(e) => e.preventDefault()}
-            onTouchEnd={(e) => { e.preventDefault(); nextSlide(); }}
-            onMouseUp={(e) => { e.preventDefault(); nextSlide(); }}
-            style={{ ...tapZoneStyle("right"), zIndex: 200, pointerEvents: "auto", touchAction: "manipulation" }}
-            className="tap-zone"
-          />
-        </>
-      )}
+      {/* 右/左タップゾーン */}
+      <>
+        <button
+          aria-label="前のページへ"
+          onClick={prevSlide}
+          onPointerDown={(e) => e.preventDefault()}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            prevSlide();
+          }}
+          onMouseUp={(e) => {
+            e.preventDefault();
+            prevSlide();
+          }}
+          style={{
+            ...tapZoneStyle("left"),
+            zIndex: 200,
+            pointerEvents: "auto",
+            touchAction: "manipulation",
+          }}
+          className="tap-zone"
+        />
+        <button
+          aria-label="次のページへ"
+          onClick={nextSlide}
+          onPointerDown={(e) => e.preventDefault()}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            nextSlide();
+          }}
+          onMouseUp={(e) => {
+            e.preventDefault();
+            nextSlide();
+          }}
+          style={{
+            ...tapZoneStyle("right"),
+            zIndex: 200,
+            pointerEvents: "auto",
+            touchAction: "manipulation",
+          }}
+          className="tap-zone"
+        />
+      </>
 
-      {/* インジケータ（常に最前面） */}
+      {/* インジケータ */}
       <div
         className="indicator"
         style={{
@@ -354,7 +358,7 @@ export default function IntroPage() {
           justifyContent: "center",
           gap: 8,
           pointerEvents: "none",
-          zIndex: 9999,     // ← inlineでも強制
+          zIndex: 9999,
         }}
       >
         {allSlides.map((_, index) => (
@@ -365,7 +369,7 @@ export default function IntroPage() {
               width: index === currentIndex ? 10 : 6,
               height: index === currentIndex ? 10 : 6,
               borderRadius: 999,
-              background: index === currentIndex ? "#111" : "#c8c8c8", // ← 認識性UP
+              background: index === currentIndex ? "#111" : "#c8c8c8",
               transition: "all .18s ease",
             }}
           />
@@ -385,11 +389,12 @@ function tapZoneStyle(side = "left") {
     background: "transparent",
     border: "none",
     cursor: "pointer",
-    zIndex: 200,               // ← ここを 200 に
+    zIndex: 200,
     padding: 0,
     margin: 0,
     color: "transparent",
   };
+
   if (side === "left") return { ...base, left: 0 };
   if (side === "right") return { ...base, right: 0 };
   return base;
