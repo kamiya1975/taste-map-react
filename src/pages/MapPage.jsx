@@ -1922,28 +1922,36 @@ function MapPage() {
   //---------------------------------------------------------------------------------
 
   // 最近傍（ワールド座標：DeckGLの座標系 = [UMAP1, -UMAP2]）
+  ////2026.07.嗜好位置パネル用だけ店舗絞り込みを外す
   const findNearestWineWorld = useCallback(
-    (wx, wy) => {
+    (wx, wy, opts = {}) => {
       if (!Array.isArray(data) || data.length === 0) return null;
-      let best = null,
-        bestD2 = Infinity;
-      const storeSetValid = storeJansSet && storeJansSet.size > 0;        
+
+      const { restrictToStore = true } = opts;
+
+      let best = null;
+      let bestD2 = Infinity;
+
+      const storeSetValid =
+        restrictToStore && storeJansSet && storeJansSet.size > 0;
+
       for (const d of data) {
         const jan = String(getJanFromItem(d));
-        // 店舗集合が信頼できるときだけ「店舗のみ」に絞る
-        // 不明なときは絞らない（= 店舗集合を捏造しない）
+
         if (storeSetValid && !storeJansSet.has(jan)) continue;
 
-        const x = d.umap_x,
-          y = -d.umap_y;
-        const dx = x - wx,
-          dy = y - wy;
+        const x = d.umap_x;
+        const y = -d.umap_y;
+        const dx = x - wx;
+        const dy = y - wy;
         const d2 = dx * dx + dy * dy;
+
         if (d2 < bestD2) {
           bestD2 = d2;
           best = d;
         }
       }
+
       return best;
     },
     [data, storeJansSet]
@@ -1957,7 +1965,8 @@ function MapPage() {
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
 
     // findNearestWineWorld は「ワールド座標（y反転）」を受け取る
-    const nearest = findNearestWineWorld(x, -y);
+    ////2026.07.嗜好位置パネル用だけ店舗絞り込みを外す
+    const nearest = findNearestWineWorld(x, -y, { restrictToStore: false });
     const cid = Number(nearest?.cluster);
     return Number.isFinite(cid) ? cid : null;
   }, [userPin, data, findNearestWineWorld]);
