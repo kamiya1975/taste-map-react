@@ -63,7 +63,7 @@ const yOf = (d) => {
 const clusterOf = (d) => toNumOrNull(d?.cluster ?? d?.CLUSTER ?? null);
 // ここまで 正規化ユーティリティ 2025.12.20.追加
 
-const ANCHOR_JAN = "4964044046324";
+//const ANCHOR_JAN = "4964044046324";
 
 // （嗜好重心ピン）
 const makePinSVG = ({
@@ -237,11 +237,11 @@ const MapCanvas = forwardRef(function MapCanvas(
     viewState,
     setViewState,
     onPickWine,
-    onOpenSlider,
+    //onOpenSlider,
     edgeMarginXPx = 8,
     edgeMarginYPx = 20,
     clusterColorMode = false,
-    basePoint,
+    //basePoint,
   },
   deckRef   // ref を受け取る
 ) {
@@ -771,46 +771,46 @@ const MapCanvas = forwardRef(function MapCanvas(
     });
   }, [userPin]);
 
-  // --- レイヤ：基準のワイン（常時表示コンパス） ---
-  const anchorCompassLayer = useMemo(() => {
-    let x = null;
-    let yUMAP = null;
-
-    // ① MapPage から渡されたロット別の基準点を優先
-    if (basePoint && Number.isFinite(basePoint.x) && Number.isFinite(basePoint.y)) {
-      x = Number(basePoint.x);
-      yUMAP = Number(basePoint.y);
-    } else {
-      // ② なければ従来通り ANCHOR_JAN の座標にフォールバック
-      const item = filteredData.find(d => janOf(d) === ANCHOR_JAN);
-      if (!item || !Number.isFinite(xOf(item)) || !Number.isFinite(yOf(item))) {
-        return null;
-      }
-      x = xOf(item);
-      yUMAP = yOf(item);
-    }
-
-    return new IconLayer({
-      id: "anchor-compass",
-      data: [{ position: [x, -yUMAP, 0] }],  // y は DeckGL 用に反転
-      getPosition: d => d.position,
-      getIcon: () => ({
-        url: `${process.env.PUBLIC_URL || ""}/img/compass.png`,
-        width: 310,
-        height: 310,
-        anchorX: 155,
-        anchorY: 155,
-      }),
-      sizeUnits: "meters",
-      getSize: 0.5,
-      billboard: true,
-      pickable: true,               // クリック可能にする
-      onClick: () => {              // コンパスをタップしたら SliderPage を開く
-        onOpenSlider?.();
-      },
-      parameters: { depthTest: false },
-    });
-  }, [filteredData, basePoint, onOpenSlider]);
+//  // --- レイヤ：基準のワイン（常時表示コンパス） ---
+//  const anchorCompassLayer = useMemo(() => {
+//    let x = null;
+//    let yUMAP = null;
+//
+//    // ① MapPage から渡されたロット別の基準点を優先
+//    if (basePoint && Number.isFinite(basePoint.x) && Number.isFinite(basePoint.y)) {
+//      x = Number(basePoint.x);
+//      yUMAP = Number(basePoint.y);
+//    } else {
+//      // ② なければ従来通り ANCHOR_JAN の座標にフォールバック
+//      const item = filteredData.find(d => janOf(d) === ANCHOR_JAN);
+//      if (!item || !Number.isFinite(xOf(item)) || !Number.isFinite(yOf(item))) {
+//        return null;
+//      }
+//      x = xOf(item);
+//      yUMAP = yOf(item);
+//    }
+//
+//    return new IconLayer({
+//      id: "anchor-compass",
+//      data: [{ position: [x, -yUMAP, 0] }],  // y は DeckGL 用に反転
+//      getPosition: d => d.position,
+//      getIcon: () => ({
+//        url: `${process.env.PUBLIC_URL || ""}/img/compass.png`,
+//        width: 310,
+//        height: 310,
+//        anchorX: 155,
+//        anchorY: 155,
+//      }),
+//      sizeUnits: "meters",
+//      getSize: 0.5,
+//      billboard: true,
+//      pickable: true,               // クリック可能にする
+//      onClick: () => {              // コンパスをタップしたら SliderPage を開く
+//        onOpenSlider?.();
+//      },
+//      parameters: { depthTest: false },
+//    });
+//  }, [filteredData, basePoint, onOpenSlider]);
 
   // --- 近傍探索（クリック時） ---
   const findNearestWine = useCallback(
@@ -900,12 +900,6 @@ const MapCanvas = forwardRef(function MapCanvas(
         scrollZoom: true,
       }}
       onClick={(info) => {
-        // コンパス画像タップは最優先で処理して終わる（二重処理防止）
-        if (info?.layer?.id === "anchor-compass") {
-          onOpenSlider?.();
-          return;
-        }
-
         const deckHost = localDeckRef.current;
         const picked = info?.object;
         const pickedJan =
@@ -942,12 +936,8 @@ const MapCanvas = forwardRef(function MapCanvas(
           return;
         }
 
-        // しきい値内なら開く
-        if (janOf(nearest) === ANCHOR_JAN) {
-          onOpenSlider?.();
-        } else {
-          onPickWine?.(nearest);
-        }
+        // しきい値内なら通常の商品として開く
+        onPickWine?.(nearest);
       }}
 
       pickingRadius={12}
@@ -1043,10 +1033,9 @@ const MapCanvas = forwardRef(function MapCanvas(
             })
           : null,
 
-        // ピン/コンパス
+        // ユーザーピン
         userPinCompassLayer,
         compassLayer,
-        anchorCompassLayer,
 
         // 打点（店舗商品の ●グレイ）
         mainLayer,

@@ -31,7 +31,7 @@ export const TASTEMAP_POINTS_URL =
   `${API_BASE}/api/app/points`;
 
 // ===== Map共通 =====
-export const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
+//export const COMPASS_URL = `${process.env.PUBLIC_URL || ""}/img/compass.png`;
 export const CENTER_Y_OFFSET = -3.5;
 export const ZOOM_LIMITS = { min: 5.25, max: 8.00 };
 export const INITIAL_ZOOM = 5.5;

@@ -3,13 +3,12 @@
 import React from "react";
 
 const ICONS = {
-  compass: "/img/bar.svg",
   mapGuide: "/img/tizu.svg",
   account: "/img/account.svg",
-  store:   "/img/store.svg",
-  miles:   "/img/icon-cart2.png",
-  faq:     "/img/faq.svg",
-  refresh: "/img/refresh.svg"
+  store: "/img/store.svg",
+  miles: "/img/icon-cart2.png",
+  faq: "/img/faq.svg",
+  refresh: "/img/refresh.svg",
 };
 
 function Row({ icon, label, onClick, last = false, iconSize = 25 }) {
@@ -53,9 +52,6 @@ function Row({ icon, label, onClick, last = false, iconSize = 25 }) {
 }
 
 export default function MyPagePanelContent({
-  onClose,
-  onOpenCart,
-  onOpenSlider,
   onOpenMapGuide,
   onOpenStore,
   onOpenAccount,

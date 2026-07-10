@@ -2451,8 +2451,6 @@ function MapPage() {
         panBounds={panBounds}
         viewState={viewState}
         setViewState={setViewState}
-        onOpenSlider={() => navigate("/slider")}
-        //////2026.06.以下7行と置き換え
         onPickWine={async (item) => {
           if (!item) return;
           await openWine(item, {
@@ -2463,7 +2461,6 @@ function MapPage() {
         clusterColorMode={clusterColorMode}
         edgeMarginXPx={50}
         edgeMarginYPx={400}
-        basePoint={basePoint}
       />
     
       {/* 左上: 指標セレクタ + クラスタ配色ボタン */}
@@ -2561,11 +2558,51 @@ function MapPage() {
           />
         </button>
       </div>
-      {/* 左下の旧カートFABは削除 */}
 
-      {/* 右上: アプリガイド */}
+      {/* 左下ギアアイコン: アプリガイド */}
       <button
         onClick={() => openPanel("mypage")}
+        style={{
+          position: "absolute",
+          left: "10px",
+          bottom: "calc(10px + env(safe-area-inset-bottom))",
+          zIndex: UI_Z_TOP,
+          width: "40px",
+          height: "40px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+          pointerEvents: "auto",
+        }}
+        aria-label="アプリガイド"
+        title="アプリガイド"
+      >
+        <img
+          src={`${process.env.PUBLIC_URL || ""}/img/gear.png`}
+          alt=""
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            display: "block",
+            pointerEvents: "none",
+          }}
+          draggable={false}
+        />
+      </button>
+
+      {/* 右上：コンパスボタン: アプリガイドからスライダーページへ変更 */}
+      <button
+        onClick={() =>
+          navigate("/slider", {
+            replace: false,
+            state: { from: "map" },
+          })
+        }
         style={{
           position: "absolute",
           top: "10px",
@@ -2582,8 +2619,8 @@ function MapPage() {
           padding: 0,
           pointerEvents: "auto",
         }}
-        aria-label="アプリガイド"
-        title="アプリガイド"
+        aria-label="基準のワイン"
+        title="基準のワイン"
       >
         <img
           src={`${process.env.PUBLIC_URL || ""}/img/app-guide.svg`}
@@ -3008,21 +3045,16 @@ function MapPage() {
       >
         <PanelHeader
           title="アプリガイド"
-          icon="app-guide.svg"
+          icon="gear.png"
           onClose={() => setIsMyPageOpen(false)}
         />
         <MyPagePanelContent
-          onOpenCart={() => openOverlayAboveMenu("cart")}
           onOpenMapGuide={() => openOverlayAboveMenu("mapguide")}
           onOpenStore={() => openOverlayAboveMenu("store")}
           onOpenAccount={() => openOverlayAboveMenu("account")}
           onOpenMiles={() => openOverlayAboveMenu("miles")}
           onOpenFaq={() => openOverlayAboveMenu("faq")}
           onOpenRefresh={() => openOverlayAboveMenu("refresh")}
-          onOpenSlider={() => {
-            setIsMyPageOpen(false);
-            navigate("/slider", { replace: false, state: { from: "menu" } });
-          }}
         />
       </Drawer>
 
