@@ -26,14 +26,14 @@ const IconGuide = ({ size = 18 }) => (
     style={{ display: "block" }}
   />
 );
-// 店舗商品（グレイドット）
-const IconDot = ({ color = "#9aa0a6", size = 12 }) => (
+// 店舗商品（グレイドット→オレンジ）
+const IconDot = ({ color = "#F7931E", size = 12 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="8" fill={color} />
   </svg>
 );
-// EC商品（オレンジドット）
-const IconDotOrange = ({ size = 12, color = "#F7931E" }) => (
+// EC商品（オレンジドット→グレイ）
+const IconDotOrange = ({ size = 12, color = "#9aa0a6" }) => (
   <IconDot size={size} color={color} />
 );
 // 配置範囲（四角斜線）
