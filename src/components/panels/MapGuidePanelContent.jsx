@@ -120,7 +120,7 @@ export default function MapGuidePanelContent() {
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
 
-        <Row icon={<IconDot color="#9aa0a6" />}>
+        <Row icon={<IconDot color="#F7931E" />}>
           店舗で買えるワイン
         </Row>
         <div style={{ height: 1, background: "#e6ded2" }} />
