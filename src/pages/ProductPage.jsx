@@ -484,6 +484,34 @@ export default function ProductPage() {
     return "";
   }, [search, hash]);  
 
+  // 2026.07.店舗QR用
+  // MapPage が iframe URL に付与した表示店舗IDを取得
+  // 優先：HashRouterの search → hash 内クエリ
+  const storeIdFromQuery = React.useMemo(() => {
+    try {
+      const sp = new URLSearchParams(search || "");
+      const raw = sp.get("store_id");
+      const n = Number(raw);
+
+      if (Number.isFinite(n) && n > 0) {
+        return n;
+      }
+    } catch {}
+
+    try {
+      const q = (hash || "").split("?")[1] || "";
+      const sp2 = new URLSearchParams(q);
+      const raw = sp2.get("store_id");
+      const n = Number(raw);
+
+      return Number.isFinite(n) && n > 0
+        ? n
+        : null;
+    } catch {}
+
+    return null;
+  }, [search, hash]);
+
   // 店舗コンテキスト（メイン店舗）: これが変わったら必ず再fetch
   const [mainStoreIdForFetch, setMainStoreIdForFetch] = useState(null);
   // latest-only（古いレスポンスで上書きしない）
@@ -597,24 +625,73 @@ export default function ProductPage() {
       setLoading(true);
       setProduct(null);
 
-      // main_store_id は state を優先（STORE_CONTEXT_CHANGED で最新化） 2026.01.追加
-      // state が無ければ localStorage（未ログイン時）をフォールバック
-      let mainId = mainStoreIdForFetch;
+      //2026.07.店舗QR用
+      // 商品APIへ渡す店舗IDの優先順位
+      // 1. iframe URLの store_id（現在表示中の店舗文脈）
+      // 2. app.qr_context_store_id
+      // 3. 親から通知された通常メイン店舗
+      // 4. app.main_store_id
+      let mainId = storeIdFromQuery;
+
+      if (mainId == null) {
+        try {
+          const rawQr = localStorage.getItem("app.qr_context_store_id");
+          const n = Number(rawQr);
+
+          mainId =
+            Number.isFinite(n) && n > 0
+              ? n
+              : null;
+        } catch {}
+      }
+
+      if (mainId == null) {
+        mainId = mainStoreIdForFetch;
+      }
+
       if (mainId == null) {
         try {
           const rawMain = localStorage.getItem("app.main_store_id");
           const n = Number(rawMain);
-          mainId = Number.isFinite(n) && n > 0 ? n : null;
+
+          mainId =
+            Number.isFinite(n) && n > 0
+              ? n
+              : null;
         } catch {}
       }
  
       // sub_store_ids は送らない（未ログイン時は main だけ、ログイン時はトークンで sub を見る）
       const qsStr = mainId ? `?main_store_id=${encodeURIComponent(String(mainId))}` : "";
 
-      // app API 用トークン（存在すれば付ける）2026.01.
+      // app API 用トークン
       let token = "";
-      try { token = localStorage.getItem("app.access_token") || ""; } catch {}
-      const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+      let qrContextStoreId = null;
+
+      try {
+        token = localStorage.getItem("app.access_token") || "";
+
+        const rawQr = localStorage.getItem("app.qr_context_store_id");
+        const qrId = Number(rawQr);
+
+        qrContextStoreId =
+          Number.isFinite(qrId) && qrId > 0
+            ? qrId
+           : null;
+      } catch {}
+
+      // QR店舗表示中の商品詳細は、ログインユーザーの
+      // DBメイン店舗・サブ店舗を混ぜず、URLの店舗だけで判定する。
+      // map-products は任意認証APIなので、QR文脈中だけBearerを付けない。
+      const isQrStoreContext =
+        qrContextStoreId != null &&
+        mainId != null &&
+        Number(qrContextStoreId) === Number(mainId);
+
+      const headers =
+        token && !isQrStoreContext
+          ? { Authorization: `Bearer ${token}` }
+          : undefined;
 
       try {
         const res = await fetch(
@@ -699,7 +776,11 @@ export default function ProductPage() {
       cancelled = true;
       controller.abort();
     };
-  }, [jan_code, mainStoreIdForFetch]);
+  }, [
+    jan_code,
+    mainStoreIdForFetch,
+    storeIdFromQuery,
+  ]);
 
   // 風味データ（umapData or JSON）から cluster を取得
   useEffect(() => {

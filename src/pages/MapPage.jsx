@@ -39,7 +39,14 @@ import {
   OFFICIAL_STORE_ID,
 } from "../ui/constants";
 import { getLotId } from "../utils/lot";
-import { getCurrentMainStoreIdSafe } from "../utils/store";
+import {
+  QR_CONTEXT_STORE_KEY,
+  getCurrentMainStoreIdSafe,
+  getQrContextStoreIdSafe,
+  getCurrentDisplayStoreIdSafe,
+  setQrContextStoreId,
+  clearQrContextStoreId,
+} from "../utils/store";
 //////2026.06.allwedjans改善のため　以下1行を追加
 import { clearAppAuth } from "../utils/auth";
 import TermsPage from "./TermsPage";
@@ -78,10 +85,17 @@ const isEcEnabledInContext = (mainStoreId, subStoreIds) => {
 
 //---------------------------------------------------------------------------------
 // 店舗コンテキストKey（iframe再読み込み判定用） 
+// 2026.07.店舗QR用 全置き換え
 const getStoreContextKeyFromStorage = () => {
   let mainStoreId = null;
+  let qrContextStoreId = null;
+
   try {
     mainStoreId = getCurrentMainStoreIdSafe();
+  } catch {}
+
+  try {
+    qrContextStoreId = getQrContextStoreIdSafe();
   } catch {}
 
   let hasToken = false;
@@ -90,6 +104,7 @@ const getStoreContextKeyFromStorage = () => {
   } catch {}
 
   return [
+    `q=${Number(qrContextStoreId) || 0}`,
     `m=${Number(mainStoreId) || 0}`,
     `t=${hasToken ? 1 : 0}`,
   ].join("|");
@@ -187,6 +202,9 @@ function normalizePoints(rows) {
     .filter((d) => d.jan_code && Number.isFinite(d.umap_x) && Number.isFinite(d.umap_y));
 }
 // ここまでが正規化ユーティリティ
+
+// 店舗QR商品の取得中に、旧店舗や全件の打点を表示しないための空集合
+const EMPTY_JAN_SET = new Set();
 
 //---------------------------------------------------------------------------------
 // 任意のオブジェクトから JAN を安全に取り出す共通ヘルパー
@@ -351,6 +369,40 @@ function parseAllowedJansResponse(json) {
   const storeJans = Array.isArray(storeArr) ? storeArr.map(String) : [];
 
   return { allowedJans: allowedArr, ecOnlyJans: ecOnlyArr.map(String), storeJans, mainStoreEcActive, wishJans: wishArr.map(String).filter(Boolean) };
+}
+
+// 2026.07.
+// QR URLの店舗IDが、現在有効な店舗一覧に存在するか確認
+async function validateQrStoreId(storeId) {
+  const id = Number(storeId);
+  if (!Number.isFinite(id) || id <= 0) return false;
+
+  let token = "";
+  try {
+    token = localStorage.getItem("app.access_token") || "";
+  } catch {}
+
+  const headers = {
+    Accept: "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  const res = await fetch(`${API_BASE}/api/app/stores`, {
+    method: "GET",
+    headers,
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`stores validation HTTP ${res.status}`);
+  }
+
+  const json = await res.json();
+  const stores = Array.isArray(json) ? json : [];
+
+  return stores.some(
+    (store) => Number(store?.store_id) === id
+  );
 }
 
 //---------------------------------------------------------------------------------
@@ -627,6 +679,27 @@ function getSearchTextForHashRouter(locationSearch = "") {
   }
 }
 
+// 店舗QR URLの店舗IDを読む関数を追加　2026.07.
+function getStoreIdFromHashSearch(locationSearch = "") {
+  try {
+    const searchText =
+      locationSearch ||
+      (window.location.hash.includes("?")
+        ? `?${window.location.hash.split("?")[1]}`
+        : window.location.search || "");
+
+    const params = new URLSearchParams(searchText);
+    const raw = params.get("store_id");
+    const id = Number(raw);
+
+    return Number.isFinite(id) && id > 0
+      ? id
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function readAccessLogContext(search = "") {
   try {
     const params = new URLSearchParams(search || "");
@@ -821,10 +894,11 @@ function MapPage() {
   const routeJanHandledRef = useRef("");
   const routeJanCenteredRef = useRef("");
   const qrLandingLoggedRef = useRef(new Set());
+  const qrUrlHandledRef = useRef("");
   ////2026.07.イベント後修正（スライダー後アクセスログ追加）　以下1行追加
   const standardSliderLogStateRef = useRef(new Map());
 
-  // ---- Drawer 状態（すべて明示）----
+  // ---- Drawer 状態（すべて明示）（Ref群）----
   const [isMyPageOpen, setIsMyPageOpen] = useState(false); // アプリガイド（メニュー）
   const [isSearchOpen, setIsSearchOpen] = useState(false); // 検索
   const [isRatedOpen, setIsRatedOpen] = useState(false); // 評価（◎）
@@ -892,7 +966,7 @@ function MapPage() {
     zoom: INITIAL_ZOOM,
   });
 
-  // データ & 状態
+  // データ & 状態（State群）
   const [data, setData] = useState([]);
   const [userRatings, setUserRatings] = useState({});
   const [userPin, setUserPin] = useState(null);
@@ -907,75 +981,211 @@ function MapPage() {
   const [cartEnabled, setCartEnabled] = useState(false);
   const [wishJansSet, setWishJansSet] = useState(() => new Set());
   const [wishVersion, setWishVersion] = useState(0);
-
+  // ↓↓↓ ここに追加 店舗QR用 ↓↓↓
+  const [qrContextStoreId, setQrContextStoreIdState] = useState(
+    () => getQrContextStoreIdSafe()
+  );
+  const [isQrContextResolving, setIsQrContextResolving] = useState(
+    () => !!getStoreIdFromHashSearch(location.search)
+  );
+  const [isQrAllowedLoading, setIsQrAllowedLoading] = useState(false);
+  const [isAppLoggedIn, setIsAppLoggedIn] = useState(() => {
+    try {
+      return !!localStorage.getItem("app.access_token");
+    } catch {
+      return false;
+    }
+  });
+  // ↑↑↑ ここまで追加 ↑↑↑
   // wish の「即時反映（SET_WISHLIST）」が API 結果で戻されないようにする保険
   const wishOverrideRef = useRef(new Map()); // jan -> { value:boolean, at:number }
   const lastWishLocalAtRef = useRef(0);
 
   //---------------------------------------------------------------------------------
-  //////2026.06.以下1セクションを追加
-  // QR URLの store_id を既存アプリのメイン店舗IDとして保持
-  // 例: /products/:jan?src=qr&store_id=4
+  // 店舗QR ログイン時の「元の地図に戻す」ボタン表示用
   useEffect(() => {
-    try {
-      const searchText =
-        location.search ||
-        (window.location.hash.includes("?")
-          ? `?${window.location.hash.split("?")[1]}`
-          : "");
+    const syncAuthState = () => {
+      try {
+        setIsAppLoggedIn(
+          !!localStorage.getItem("app.access_token")
+        );
+      } catch {
+        setIsAppLoggedIn(false);
+      }
+    };
 
-      const params = new URLSearchParams(searchText);
-      const rawStoreId = params.get("store_id");
-      const storeIdNum = Number(rawStoreId);
+    syncAuthState();
 
-      if (!Number.isFinite(storeIdNum) || storeIdNum <= 0) return;
+    window.addEventListener("tm_auth_changed", syncAuthState);
+    window.addEventListener("storage", syncAuthState);
+    window.addEventListener("focus", syncAuthState);
 
-      const storeId = String(storeIdNum);
-      const current = localStorage.getItem("app.main_store_id");
+    return () => {
+      window.removeEventListener("tm_auth_changed", syncAuthState);
+      window.removeEventListener("storage", syncAuthState);
+      window.removeEventListener("focus", syncAuthState);
+    };
+  }, []);
 
-      if (current !== storeId) {
-        localStorage.setItem("app.main_store_id", storeId);
-        localStorage.setItem("main_store_id", storeId);
+  //---------------------------------------------------------------------------------
+  // QR URLの store_id を、通常メイン店舗とは別のQR店舗文脈として保持
+  // 店舗QR:  /map?store_id=13
+  // 商品QR:  /products/:jan?store_id=13
+  useEffect(() => {
+    const qrStoreId = getStoreIdFromHashSearch(location.search);
+    if (!qrStoreId) {
+      setIsQrContextResolving(false);
+      return;
+    }
+
+    const handleKey = `${location.pathname}|${qrStoreId}`;
+    if (qrUrlHandledRef.current === handleKey) {
+      return;
+    }
+    qrUrlHandledRef.current = handleKey;
+
+    let cancelled = false;
+    setIsQrContextResolving(true);
+    setIsQrAllowedLoading(true);
+
+    (async () => {
+      try {
+        const exists = await validateQrStoreId(qrStoreId);
+        if (cancelled) return;
+
+        if (!exists) {
+          clearQrContextStoreId();
+          setQrContextStoreIdState(null);
+          setIsQrContextResolving(false);
+          setIsQrAllowedLoading(false);
+
+          let hasToken = false;
+          let normalMainStoreId = null;
+
+          try {
+            hasToken = !!localStorage.getItem("app.access_token");
+          } catch {}
+
+          try {
+            normalMainStoreId = getCurrentMainStoreIdSafe();
+          } catch {}
+
+          if (hasToken || normalMainStoreId) {
+            navigate("/map", { replace: true });
+          } else {
+            navigate("/store", { replace: true });
+          }
+          return;
+        }
+
+        setQrContextStoreId(qrStoreId);
+        setQrContextStoreIdState(qrStoreId);
+
+        setStoreContextKey(getStoreContextKeyFromStorage());
+        setIframeNonce((n) => n + 1);
 
         try {
           window.dispatchEvent(new Event("tm_store_changed"));
         } catch {}
-      }
+      } catch (e) {
+        console.warn("[QR store_id] validation failed:", e);
 
-      setStoreContextKey(getStoreContextKeyFromStorage());
-      setIframeNonce((n) => n + 1);
-    } catch (e) {
-      console.warn("[QR store_id] failed:", e);
-    }
-  }, [location.search]);
+        if (cancelled) return;
+
+        clearQrContextStoreId();
+        setQrContextStoreIdState(null);
+
+        let hasToken = false;
+        let normalMainStoreId = null;
+
+        try {
+          hasToken = !!localStorage.getItem("app.access_token");
+        } catch {}
+
+        try {
+          normalMainStoreId = getCurrentMainStoreIdSafe();
+        } catch {}
+
+        if (hasToken || normalMainStoreId) {
+          navigate("/map", { replace: true });
+        } else {
+          navigate("/store", { replace: true });
+        }
+      } finally {
+        if (!cancelled) {
+          setIsQrContextResolving(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname, location.search, navigate]);
 
   //---------------------------------------------------------------------------------
   // 重要：未ログインで mainStoreId が無い状態を許容しない（0点/全点の暴れ源）
   // - 「MapPage前に必ずStore選択」の旧仕様に戻す
+  // 2026.07.店舗QR用 全置き換え
   useEffect(() => {
-    let token = "";
-    try { token = localStorage.getItem("app.access_token") || ""; } catch {}
-    if (token) return; // ログイン済みは /allowed-jans/auto で復元できるので許容
+    // QR URLの検証中は、店舗選択画面へ飛ばさない
+    if (isQrContextResolving) return;
 
-    let main = null;
-    try { main = getCurrentMainStoreIdSafe(); } catch {}
-    if (!main) {
-      // mainStoreId が無い＝表示すべき打点が決められないので StorePage へ戻す
+    let token = "";
+    try {
+      token = localStorage.getItem("app.access_token") || "";
+    } catch {}
+
+    if (token) return;
+
+    let mainStoreId = null;
+    let qrStoreId = null;
+
+    try {
+      mainStoreId = getCurrentMainStoreIdSafe();
+    } catch {}
+
+    try {
+      qrStoreId = getQrContextStoreIdSafe();
+    } catch {}
+
+    if (!mainStoreId && !qrStoreId) {
       navigate("/store", { replace: true });
     }
-  }, [navigate]);
+  }, [navigate, isQrContextResolving, qrContextStoreId]);
 
   //---------------------------------------------------------------------------------
   // ---- JanSet（ visibleJanSet, allJanSet ）----
   // --- 描画用の主集合（visible）---
   // allowedJansSet があるならそれを優先 - 無いなら「全打点OK」（表示フォールバック）- storeJansSet（店舗集合）とは混ぜない
+  // 2026.07.店舗QR用の時に改善
   const visibleJansSet = useMemo(() => {
-    // allowed が「未確定（空）」の瞬間は 0点にしない（全点フォールバック）- allowed が確定（size>0）したらそれを採用
-    if (allowedJansSet instanceof Set && allowedJansSet.size > 0) {
+    // QR文脈中は、取得中や0件の場合でも全点へフォールバックしない
+    if (qrContextStoreId) {
+      if (isQrContextResolving || isQrAllowedLoading) {
+        return EMPTY_JAN_SET;
+      }
+
+      return allowedJansSet instanceof Set
+        ? allowedJansSet
+        : EMPTY_JAN_SET;
+    }
+
+    // 通常文脈は既存挙動を維持
+    if (
+      allowedJansSet instanceof Set &&
+      allowedJansSet.size > 0
+    ) {
       return allowedJansSet;
     }
-    return null;        // null = 全点フォールバック扱い
-  }, [allowedJansSet]);
+
+    return null;
+  }, [
+    allowedJansSet,
+    qrContextStoreId,
+    isQrContextResolving,
+    isQrAllowedLoading,
+  ]);
 
   // --- 全点フォールバック用 ---
   // 毎renderで new Set しない - data が変わった時だけ再計算
@@ -987,16 +1197,41 @@ function MapPage() {
   }, [data]);
 
   // --- MapCanvas に渡す “見える集合” を確定（参照安定）---
+  // 2026.07.店舗QR用の時に改善
   const visibleJansSetForCanvas = useMemo(() => {
-    return visibleJansSet instanceof Set ? visibleJansSet : allJansSet;
+    if (visibleJansSet instanceof Set) {
+      return visibleJansSet;
+    }
+
+    return allJansSet;
   }, [visibleJansSet, allJansSet]);
 
   // --- MapCanvas に渡す “許可集合” は「空Set＝未確定」を null に寄せる ---
   // MapCanvas側で null を“制限なし”として扱う
+  // 2026.07.店舗QR用の時に改善
   const allowedJansSetForCanvas = useMemo(() => {
+    // QR文脈では空Setも「0件」として意味を持たせる
+    if (qrContextStoreId) {
+      if (isQrContextResolving || isQrAllowedLoading) {
+        return EMPTY_JAN_SET;
+      }
+
+      return allowedJansSet instanceof Set
+        ? allowedJansSet
+        : EMPTY_JAN_SET;
+    }
+
     if (!(allowedJansSet instanceof Set)) return null;
-    return allowedJansSet.size > 0 ? allowedJansSet : null;
-  }, [allowedJansSet]);
+
+    return allowedJansSet.size > 0
+      ? allowedJansSet
+      : null;
+  }, [
+    allowedJansSet,
+    qrContextStoreId,
+    isQrContextResolving,
+    isQrAllowedLoading,
+  ]);
   
   //---------------------------------------------------------------------------------
   //////2026.06.以下1セクションに置き換え
@@ -1012,10 +1247,12 @@ function MapPage() {
     params.set("ctx", String(storeContextKey || ""));
     params.set("_", String(iframeNonce || 0));
 
+    // 2026.07.店舗QR用に置き換え
     try {
-      const mainStoreId = getCurrentMainStoreIdSafe();
-      if (mainStoreId) {
-        params.set("store_id", String(mainStoreId));
+      const displayStoreId = getCurrentDisplayStoreIdSafe();
+
+      if (displayStoreId) {
+        params.set("store_id", String(displayStoreId));
       }
     } catch {}
 
@@ -1089,93 +1326,218 @@ function MapPage() {
 
   //---------------------------------------------------------------------------------
   // ====== allowed-jans を読み直す共通関数 ======
-  const reloadAllowedJans = useCallback(async () => {
-    const seq = ++reloadAllowedSeqRef.current; // この呼び出しの世代 
+  // 2026.07.店舗QR時に改善
+    const reloadAllowedJans = useCallback(async () => {
+    const seq = ++reloadAllowedSeqRef.current;
+
+    const currentQrStoreId = getQrContextStoreIdSafe();
     const mainStoreId = getCurrentMainStoreIdSafe();
+
     let hasToken = false;
-      try {
-        hasToken = !!(localStorage.getItem("app.access_token") || "");
-      } catch {}
+    try {
+      hasToken = !!localStorage.getItem("app.access_token");
+    } catch {}
+
+    if (currentQrStoreId) {
+      setIsQrAllowedLoading(true);
+    }
 
     try {
       const startedAt = Date.now();
-      const { allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans } =
-        await fetchAllowedJansAuto();
 
-      // 古い呼び出しの結果は捨てる（上書き事故防止）
+      let result;
+
+      if (currentQrStoreId) {
+        const {
+          allowedJans,
+          ecOnlyJans,
+          storeJans,
+          mainStoreEcActive,
+        } = await fetchAllowedJansForStore(currentQrStoreId);
+
+        result = {
+          allowedJans: allowedJans || [],
+          ecOnlyJans: ecOnlyJans || [],
+          storeJans: storeJans || [],
+          mainStoreEcActive,
+          ecEnabledInContext:
+            mainStoreEcActive === true ||
+            Number(currentQrStoreId) === OFFICIAL_STORE_ID,
+
+          // QR店舗マップには、評価済み・飲みたい商品を追加しない
+          wishJans: [],
+        };
+      } else {
+        result = await fetchAllowedJansAuto();
+      }
+
       if (seq !== reloadAllowedSeqRef.current) return;
 
+      const {
+        allowedJans,
+        ecOnlyJans,
+        storeJans,
+        mainStoreEcActive,
+        ecEnabledInContext,
+        wishJans,
+      } = result;
+
       const fromLS = getCurrentMainStoreEcActiveFromStorage();
-      const apiEc = typeof mainStoreEcActive === "boolean" ? mainStoreEcActive : null;
+      const apiEc =
+        typeof mainStoreEcActive === "boolean"
+          ? mainStoreEcActive
+          : null;
 
-      // ✅ cartEnabled の正：ecEnabledInContext（= 店舗コンテキスト判定）だけ
-      //    成功時のみ確定更新。失敗時に false へ落とさない（揺れ防止）
       setCartEnabled(!!ecEnabledInContext);
-      console.log("[cartEnabled]", { mainStoreId, hasToken, apiEc, mainStoreEcActive, fromLS, ecEnabledInContext });
 
-      // 常に Set（null禁止）
-      if (Array.isArray(allowedJans)) setAllowedJansSet(new Set(allowedJans.map(String)));
-      if (Array.isArray(ecOnlyJans)) setEcOnlyJansSet(new Set(ecOnlyJans.map(String)));
-      // wish: API結果 + ローカル即時反映（SET_WISHLIST）を merge（上書き事故防止）
-      if (Array.isArray(wishJans)) {
+      console.log("[cartEnabled]", {
+        mainStoreId,
+        qrContextStoreId: currentQrStoreId,
+        hasToken,
+        apiEc,
+        mainStoreEcActive,
+        fromLS,
+        ecEnabledInContext,
+      });
+
+      setAllowedJansSet(
+        new Set(
+          Array.isArray(allowedJans)
+            ? allowedJans.map(String)
+            : []
+        )
+      );
+
+      setEcOnlyJansSet(
+        new Set(
+          Array.isArray(ecOnlyJans)
+            ? ecOnlyJans.map(String)
+            : []
+        )
+      );
+
+      setStoreJansSet(
+        new Set(
+          Array.isArray(storeJans)
+            ? storeJans.map(String)
+            : []
+        )
+      );
+
+      // QR店舗文脈では、飲みたい商品をマップ表示対象に追加しない
+      if (currentQrStoreId) {
+        setWishJansSet(new Set());
+        setWishVersion((v) => v + 1);
+      } else if (Array.isArray(wishJans)) {
         const apiSet = new Set(wishJans.map(String));
         const next = new Set(apiSet);
 
-        // 直近でローカル変更があった場合、overrideを優先して反映
-        // （古いAPI結果で ON を戻されるのを防ぐ）
         const lastLocalAt = lastWishLocalAtRef.current || 0;
-        if (lastLocalAt && lastLocalAt >= startedAt - 5000) {
-          for (const [jan, meta] of wishOverrideRef.current.entries()) {
+
+        if (
+          lastLocalAt &&
+          lastLocalAt >= startedAt - 5000
+        ) {
+          for (
+            const [jan, meta]
+            of wishOverrideRef.current.entries()
+          ) {
             const key = String(jan);
+
             if (meta?.value) next.add(key);
             else next.delete(key);
           }
         }
+
         setWishJansSet(next);
         setWishVersion((v) => v + 1);
       } else {
-        setWishJansSet((prev) => (prev instanceof Set ? prev : new Set()));
+        setWishJansSet((prev) =>
+          prev instanceof Set ? prev : new Set()
+        );
         setWishVersion((v) => v + 1);
       }
-      setStoreJansSet(new Set(storeJans || []));
 
-      // ✅ 成功したらスナップショット保存（ログアウト後も維持）
-      writeAllowedSnapshot({ allowedJans, ecOnlyJans, storeJans, mainStoreEcActive, ecEnabledInContext, wishJans });
+      // 第1段階ではQR文脈を通常スナップショットへ保存しない
+      if (!currentQrStoreId) {
+        writeAllowedSnapshot({
+          allowedJans,
+          ecOnlyJans,
+          storeJans,
+          mainStoreEcActive,
+          ecEnabledInContext,
+          wishJans,
+        });
+      }
     } catch (e) {
       console.error("allowed-jans の取得に失敗:", e);
 
-      // 失敗側も latest-only（古い失敗で復元上書きしない）
       if (seq !== reloadAllowedSeqRef.current) return;
 
-      // ✅ 失敗したら最後の成功値へフォールバック
+      // QR文脈中は、通常店舗のスナップショットや全件を表示しない
+      if (currentQrStoreId) {
+        setAllowedJansSet(new Set());
+        setEcOnlyJansSet(new Set());
+        setStoreJansSet(new Set());
+        setWishJansSet(new Set());
+        setWishVersion((v) => v + 1);
+        setCartEnabled(false);
+
+        showAllowedJansErrorOnce();
+        return;
+      }
+
+      // 通常文脈では既存スナップショット復元を維持
       const snap = readAllowedSnapshot();
 
-      // ✅ snap.allowedJans は「配列 & 非空」のときだけ採用（空Setを作らない）
-      if (Array.isArray(snap?.allowedJans) && snap.allowedJans.length > 0) {
+      if (
+        Array.isArray(snap?.allowedJans) &&
+        snap.allowedJans.length > 0
+      ) {
         setAllowedJansSet(new Set(snap.allowedJans));
-        setEcOnlyJansSet(new Set((snap.ecOnlyJans || []).map(String)));
-        setStoreJansSet(new Set(snap.storeJans || []));
-        // snapshot復元 + override を merge（復元も戻されないように）
-        const snapSet = new Set((snap.wishJans || []).map(String));
+        setEcOnlyJansSet(
+          new Set((snap.ecOnlyJans || []).map(String))
+        );
+        setStoreJansSet(
+          new Set(snap.storeJans || [])
+        );
+
+        const snapSet = new Set(
+          (snap.wishJans || []).map(String)
+        );
         const next = new Set(snapSet);
-        for (const [jan, meta] of wishOverrideRef.current.entries()) {
+
+        for (
+          const [jan, meta]
+          of wishOverrideRef.current.entries()
+        ) {
           const key = String(jan);
+
           if (meta?.value) next.add(key);
           else next.delete(key);
         }
+
         setWishJansSet(next);
         setWishVersion((v) => v + 1);
-
-        // ✅ 失敗時は snapshot があるときだけ cartEnabled を更新
         setCartEnabled(!!snap.ecEnabledInContext);
         return;
       }
 
-      // ✅ 初回で何も無いなら Set は prev維持（=揺れ防止）
-      setAllowedJansSet((prev) => (prev instanceof Set ? prev : new Set()));
-      setEcOnlyJansSet((prev) => (prev instanceof Set ? prev : new Set()));
+      setAllowedJansSet((prev) =>
+        prev instanceof Set ? prev : new Set()
+      );
+      setEcOnlyJansSet((prev) =>
+        prev instanceof Set ? prev : new Set()
+      );
       setStoreJansSet(new Set());
-      setCartEnabled((prev) => prev); // ここで false に落とさない
+      setCartEnabled((prev) => prev);
+   } finally {
+      if (
+      seq === reloadAllowedSeqRef.current &&
+        currentQrStoreId
+      ) {
+        setIsQrAllowedLoading(false);
+      }
     }
   }, []);
 
@@ -1255,6 +1617,7 @@ function MapPage() {
         const ok =
           k === "app.access_token" ||
           k === "app.user" ||
+          k === QR_CONTEXT_STORE_KEY ||
           k === "selectedStore" ||
           k === "main_store" ||
           k === "sub_store_ids" ||
@@ -1264,7 +1627,13 @@ function MapPage() {
         if (!ok) return;
 
         // 即反映が必要なのは サブ店舗変更
-        if (isStoreKey(k)) {
+        if (
+          isStoreKey(k) ||
+          k === QR_CONTEXT_STORE_KEY
+        ) {
+          setQrContextStoreIdState(
+            getQrContextStoreIdSafe()
+          );
           reloadAllowedJans();
         }
       }
@@ -2368,6 +2737,43 @@ function MapPage() {
   ]);
 
   //---------------------------------------------------------------------------------
+  // 2026.07.店舗QR ログイン時「元の地図に戻す」関数
+  const handleReturnToOriginalMap = useCallback(async () => {
+    clearQrContextStoreId();
+    setQrContextStoreIdState(null);
+    setIsQrAllowedLoading(false);
+
+    // 商品QRから開いている場合は商品Drawerも閉じる
+    setProductDrawerOpen(false);
+    setSelectedJAN(null);
+
+    const nextKey = getStoreContextKeyFromStorage();
+    setStoreContextKey(nextKey);
+    setIframeNonce((n) => n + 1);
+
+    // URL上のstore_idを除去し、通常のマップURLへ戻す
+    const searchText = getSearchTextForHashRouter(location.search);
+    const params = new URLSearchParams(searchText);
+
+    params.delete("store_id");
+    params.delete("src");
+
+    const nextSearch = params.toString();
+
+    navigate(
+      {
+        pathname: "/map",
+        search: nextSearch ? `?${nextSearch}` : "",
+      },
+      { replace: true }
+    );
+
+    try {
+      window.dispatchEvent(new Event("tm_store_changed"));
+    } catch {}
+  }, [location.search, navigate]);
+
+  //---------------------------------------------------------------------------------
   // 更新ボタン（SW更新があれば適用する関数）
   const applyServiceWorkerUpdateIfAny = useCallback(async () => {
     if (!("serviceWorker" in navigator)) return false;
@@ -2558,6 +2964,37 @@ function MapPage() {
         </button>
       </div>
 
+      {/* 店舗QR文脈解除ボタン：ログイン中だけ表示 */}
+      {isAppLoggedIn && qrContextStoreId && (
+        <button
+          type="button"
+          onClick={handleReturnToOriginalMap}
+          style={{
+            position: "absolute",
+            right: "10px",
+            bottom: "calc(10px + env(safe-area-inset-bottom))",
+            zIndex: UI_Z_TOP,
+            padding: "7px 14px",
+            borderRadius: 999,
+            border: "0.5px solid #555",
+            background: "rgba(255,255,255,0.94)",
+            color: "#222",
+            fontSize: 12,
+            fontWeight: 700,
+            whiteSpace: "nowrap",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            pointerEvents: "auto",
+          }}
+          aria-label="元の地図に戻す"
+          title="元の地図に戻す"
+        >
+          元の地図に戻す
+        </button>
+      )}
+
       {/* 左下ギアアイコン: アプリガイド */}
       <button
         onClick={() => openPanel("mypage")}
@@ -2594,7 +3031,7 @@ function MapPage() {
         />
       </button>
 
-      {/* 右上：コンパスボタン: アプリガイドからスライダーページへ変更 */}
+      {/* 右上: コンパスボタン: アプリガイドからスライダーページへ変更 */}
       <button
         onClick={() =>
           navigate("/slider", {

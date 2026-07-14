@@ -2,7 +2,10 @@
 // マイアカウントパネル
 import React, { useEffect, useState, useRef } from "react";
 import { setUserId, clearUserId } from "../../utils/auth";
-import { getCurrentMainStoreIdSafe } from "../../utils/store"; // 2025.12.22.修正
+import {
+  getCurrentMainStoreIdSafe,
+  getQrContextStoreIdSafe,
+} from "../../utils/store";
 
 // APIベースURL（.env の REACT_APP_API_BASE_URL があればそれを使う）
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
@@ -378,10 +381,20 @@ export default function MyAccountPanelContent({ onOpenTerms }) {
       return;
     }
 
-    const mainStoreId = Number(getCurrentMainStoreIdSafe());
+    // 新規登録時のメイン店舗優先順位
+    // 1. 通常導線で明示選択した app.main_store_id
+    // 2. QRだけで利用開始した場合の app.qr_context_store_id
+    const normalMainStoreId = getCurrentMainStoreIdSafe();
+    const qrContextStoreId = getQrContextStoreIdSafe();
 
-    if (!mainStoreId || Number.isNaN(mainStoreId)) {
-      alert("メイン店舗情報が取得できませんでした。店舗選択後にお試しください。");
+    const mainStoreId =
+      normalMainStoreId ??
+      qrContextStoreId;
+
+    if (!mainStoreId) {
+      alert(
+        "メイン店舗情報が取得できませんでした。店舗選択後にお試しください。"
+      );
       return;
     }
 
@@ -970,3 +983,4 @@ export default function MyAccountPanelContent({ onOpenTerms }) {
     </div>
   );
 }
+
