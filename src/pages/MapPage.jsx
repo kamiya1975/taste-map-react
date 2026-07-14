@@ -7,7 +7,6 @@
 //  - 商品詳細は Drawer + iframe(ProductPage) で開き、飲みたい/評価/カート の反映をしている
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
-//////2026.06.1行を以下1行と置き換え
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
 
