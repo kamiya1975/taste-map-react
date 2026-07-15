@@ -3,7 +3,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { OFFICIAL_STORE_ID } from "../ui/constants";
-import { setCurrentMainStoreId } from "../utils/store";
+import {
+  setCurrentMainStoreId,
+  clearQrContextStoreId,
+} from "../utils/store";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "";
 
@@ -201,7 +204,11 @@ export default function StorePage() {
 
   const handleStoreSelect = (store) => {
     try {
-      // まず正キーへ保存（欠損を作らないのが最優先）
+      // 通常の店舗選択を明示的に行ったため、
+      // 過去のQR店舗表示文脈を解除する
+      clearQrContextStoreId();
+
+      // 選択した店舗を通常メイン店舗として保存
       setCurrentMainStoreId(store?.id);
 
       // 以前の安定挙動に戻す：selectedStore も保存（JSONで）

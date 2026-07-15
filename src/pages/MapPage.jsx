@@ -7,6 +7,7 @@
 //  - 商品詳細は Drawer + iframe(ProductPage) で開き、飲みたい/評価/カート の反映をしている
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+//////2026.06.1行を以下1行と置き換え
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
 
@@ -705,16 +706,19 @@ function readAccessLogContext(search = "") {
     const params = new URLSearchParams(search || "");
 
     const rawStoreId = params.get("store_id");
-    const storeIdNum = rawStoreId != null ? Number(rawStoreId) : null;
+    const storeIdNum = rawStoreId != null
+      ? Number(rawStoreId)
+      : null;
 
     let store_id =
-      Number.isFinite(storeIdNum) && storeIdNum > 0 ? storeIdNum : null;
+      Number.isFinite(storeIdNum) && storeIdNum > 0
+        ? storeIdNum
+        : null;
 
-    // URLになければ、既存アプリのメイン店舗IDを見る
+    // URLに store_id がない場合は、
+    // QR店舗文脈を優先し、なければ通常メイン店舗を使う
     if (!store_id) {
-      const rawMain = localStorage.getItem("app.main_store_id");
-      const mainNum = Number(rawMain);
-      store_id = Number.isFinite(mainNum) && mainNum > 0 ? mainNum : null;
+      store_id = getCurrentDisplayStoreIdSafe();
     }
 
     return {
@@ -722,11 +726,14 @@ function readAccessLogContext(search = "") {
       store_id,
     };
   } catch {
-    return { src: null, store_id: null };
+    return {
+      src: null,
+      store_id: null,
+    };
   }
 }
 
-////2026.07.イベント後修正（スライダー後アクセスログ追加）　以下7行と置き換えz4
+////2026.07.イベント後修正（スライダー後アクセスログ追加）　以下7行と置き換え
 async function sendAccessLog({
   event_type,
   jan_code,
@@ -740,7 +747,7 @@ async function sendAccessLog({
 
     const ctx = readAccessLogContext(search);
 
-    ////2026.07.イベント後修正（スライダー後アクセスログ追加）　以下12行と置き換え
+    ////2026.07.イベント後修正（スライダー後アクセスログ追加）　
     const payload = {
       event_type,
       jan_code: String(jan_code),
@@ -773,10 +780,23 @@ async function sendAccessLog({
       }
     } catch {}
 
-    ////2026.07.イベント後修正（スライダー後アクセスログ追加）　以下1セクション置き換え
+    ////2026.07.イベント後修正（スライダー後アクセスログ追加）　
+    let token = "";
+
+    try {
+      token = localStorage.getItem("app.access_token") || "";
+    } catch {}
+
+    const headers = {
+      "Content-Type": "application/json",
+      ...(token
+        ? { Authorization: `Bearer ${token}` }
+        : {}),
+    };
+
     const res = await fetch(`${API_BASE}/api/app/access-logs`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(payload),
       keepalive: true,
       cache: "no-store",
