@@ -7,7 +7,6 @@
 //  - 商品詳細は Drawer + iframe(ProductPage) で開き、飲みたい/評価/カート の反映をしている
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
-//////2026.06.1行を以下1行と置き換え
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Drawer from "@mui/material/Drawer";
 
@@ -2388,10 +2387,33 @@ function MapPage() {
     const umapX = Number(coords[0]);
     const umapY = Number(coords[1]);
 
+    // スライダー生値（0-100）追加
     const pcValues = sliderPayload.pcValues || {};
     const pc1 = Number(pcValues.pc1);
     const pc2 = Number(pcValues.pc2);
     const pc3 = Number(pcValues.pc3);
+
+    const sliderValues = sliderPayload.sliderValues || {};
+
+    const normalizeSliderValue = (value) => {
+      const n = Number(value);
+
+      if (!Number.isFinite(n) || n < 0 || n > 100) {
+        return null;
+      }
+
+      return Math.round(n);
+    };
+
+    const slider1Value = normalizeSliderValue(
+      sliderValues.slider_1_value
+    );
+    const slider2Value = normalizeSliderValue(
+      sliderValues.slider_2_value
+    );
+    const slider3Value = normalizeSliderValue(
+      sliderValues.slider_3_value
+    );
 
     if (
       !Number.isFinite(umapX) ||
@@ -2426,6 +2448,9 @@ function MapPage() {
             pc1,
             pc2,
             pc3,
+            slider_1_value: slider1Value,
+            slider_2_value: slider2Value,
+            slider_3_value: slider3Value,
             cluster_at_event: Number(tastePositionClusterId),
           },
         });
