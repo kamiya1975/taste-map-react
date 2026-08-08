@@ -1,4 +1,4 @@
-/ src/pages/ProductPage.jsx
+// src/pages/ProductPage.jsx
 // 商品詳細画面
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
