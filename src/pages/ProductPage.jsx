@@ -1,4 +1,4 @@
-// src/pages/ProductPage.jsx
+/ src/pages/ProductPage.jsx
 // 商品詳細画面
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
@@ -363,7 +363,7 @@ function ProductInfoSection({ product, jan_code }) {
     ["品種", product.grape_variety || "—"],
     ["JAN", janValue],
     [
-      "成分検査年",
+      "検体生産年",
       product.production_year_taste
         ? `${product.production_year_taste}：酒類総合情報センター調べ`
         : "—",
@@ -947,10 +947,13 @@ export default function ProductPage() {
   // 価格・タイプ色などの表示用
   const price = product?.price_inc_tax;
   const priceNum =
-    price === null || price === undefined || price === "" ? null : Number(price);
+    price === null || price === undefined || price === ""
+      ? null
+      : Number(price);
+
   const displayPrice =
     priceNum !== null && Number.isFinite(priceNum)
-      ? `¥${priceNum.toLocaleString()}`
+      ? `${priceNum.toLocaleString()}円`
       : null;
 
   // 選択中店舗にアクティブ取扱があるか（※EC判定には使わない。availabilityLineの「評価履歴」表示用）
@@ -970,6 +973,12 @@ export default function ProductPage() {
 
   // EC商品かどうか　 is_ec_product で 1本化（これだけを真実にする）
   const isEcContext = !!product?.is_ec_product;
+
+  // 店舗の価格参照設定
+  // false：店舗販売価格（税込）
+  // true ：希望小売価格（税抜・輸入元登録値）
+  const importerRetailPrice = !!product?.importer_retail_price;
+
   const canShowCartButton = isEcContext;
 
   // 価格下の文言（EC / 店舗 / それ以外）
@@ -1105,15 +1114,52 @@ export default function ProductPage() {
           }}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 16,
-              fontWeight: 600,
-              lineHeight: 1.4,
-            }}
-          >
-            {displayPrice || null}
-          </div>
+          {displayPrice && (
+            <div
+              style={{
+                lineHeight: 1.4,
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#666",
+                }}
+              >
+                {isEcContext
+                  ? "EC販売価格："
+                  : importerRetailPrice
+                  ? "希望小売価格 "
+                  : "店舗販売価格："}
+              </span>
+
+              <span
+                style={{
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: "#333",
+                }}
+              >
+                {displayPrice}
+              </span>
+
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#666",
+                }}
+              >
+                {isEcContext
+                  ? "（税込）"
+                  : importerRetailPrice
+                  ? "（税抜）"
+                  : "（税込）"}
+              </span>
+            </div>
+          )}
 
           {availabilityLine && (
             <div
