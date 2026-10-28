@@ -15,6 +15,7 @@ import {
   ZOOM_LIMITS,
   GRID_CELL_SIZE,
   HEAT_GAMMA,
+  HEAT_CLIP_PCT,
   MAP_POINT_COLOR,
   getClusterRGBA,
   // wishlist（飲みたい）★は constants を正とする（色/サイズの調整点を一本化）
@@ -356,22 +357,31 @@ const MapCanvas = forwardRef(function MapCanvas(
     return { storePoints: store, ecPoints: ec };
   }, [filteredData, allowedJansSet, ecOnlyJansSet]);
 
-  // --- 商品打点に付くバブル用データ（bubble_1〜bubble_4：0〜100の絶対値） ---
+  // --- 商品打点に付くバブル用データ（bubble_1〜bubble_4 の相対値） ---
   const pointBubbles = useMemo(() => {
     if (!highlight2D) return [];
 
+    // 値分布（外れ値カットは従来の HEAT_CLIP_PCT を踏襲）
+    const vals = filteredData
+      .map(d => Number(d[highlight2D]))
+      .filter(v => Number.isFinite(v));
+    if (!vals.length) return [];
+
+    vals.sort((a, b) => a - b);
+    const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
+    const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
+    const lo = vals[loIdx];
+    const hi = vals[hiIdx];
+    const vHi = hi - lo < 1e-9 ? lo + 1e-9 : hi;
+
+    // 各商品点へ相対値 t と座標を付与
     return filteredData
       .map(d => {
-        const raw = d[highlight2D];
-
-        // 値がない商品はバブルを表示しない
-        if (raw === null || raw === undefined || raw === "") return null;
-
-        const v = Number(raw);
+        const v = Number(d[highlight2D]);
         if (!Number.isFinite(v)) return null;
 
-        // 0〜100の絶対値を0〜1に変換
-        const t = Math.max(0, Math.min(1, v / 100));
+        let t = (v - lo) / ((vHi - lo) || 1e-9);
+        t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA)));
 
         const x = xOf(d);
         const y = yOf(d);
@@ -999,8 +1009,8 @@ const MapCanvas = forwardRef(function MapCanvas(
                 const R_MED   = 0.10;  // 中間サイズ
                 const R_LARGE = 0.22;  // 上位サイズ
                 const t = Math.max(0, Math.min(1, d.t));
-                if (t < 0.34) return R_SMALL;
-                if (t < 0.67) return R_MED;
+                if (t < 0.50) return R_SMALL;
+                if (t < 0.90) return R_MED;
                 return R_LARGE;
               },
               getFillColor: (d) => {
