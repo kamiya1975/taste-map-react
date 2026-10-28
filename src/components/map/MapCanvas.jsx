@@ -15,7 +15,6 @@ import {
   ZOOM_LIMITS,
   GRID_CELL_SIZE,
   HEAT_GAMMA,
-  HEAT_CLIP_PCT,
   MAP_POINT_COLOR,
   getClusterRGBA,
   // wishlist（飲みたい）★は constants を正とする（色/サイズの調整点を一本化）
@@ -357,30 +356,22 @@ const MapCanvas = forwardRef(function MapCanvas(
     return { storePoints: store, ecPoints: ec };
   }, [filteredData, allowedJansSet, ecOnlyJansSet]);
 
-  // --- 商品打点に付くバブル用データ（highlight2D=PC1/PC2/PC3 などの値→t[0..1]へ正規化） ---
+  // --- 商品打点に付くバブル用データ（bubble_1〜bubble_4：0〜100の絶対値） ---
   const pointBubbles = useMemo(() => {
     if (!highlight2D) return [];
 
-    // 値分布（外れ値カットは従来ヒートと同じ HEAT_CLIP_PCT を踏襲）
-    const vals = filteredData
-      .map(d => Number(d[highlight2D]))
-      .filter(v => Number.isFinite(v));
-    if (!vals.length) return [];
-
-    vals.sort((a, b) => a - b);
-    const loIdx = Math.floor(HEAT_CLIP_PCT[0] * (vals.length - 1));
-    const hiIdx = Math.floor(HEAT_CLIP_PCT[1] * (vals.length - 1));
-    const lo = vals[loIdx];
-    const hi = vals[hiIdx];
-    const vHi = hi - lo < 1e-9 ? lo + 1e-9 : hi;
-
-    // 各商品点へ t と座標を付与
     return filteredData
       .map(d => {
-        const v = Number(d[highlight2D]);
+        const raw = d[highlight2D];
+
+        // 値がない商品はバブルを表示しない
+        if (raw === null || raw === undefined || raw === "") return null;
+
+        const v = Number(raw);
         if (!Number.isFinite(v)) return null;
-        let t = (v - lo) / ((vHi - lo) || 1e-9);
-        t = Math.max(0, Math.min(1, Math.pow(t, HEAT_GAMMA))); // ガンマ補正
+
+        // 0〜100の絶対値を0〜1に変換
+        const t = Math.max(0, Math.min(1, v / 100));
 
         const x = xOf(d);
         const y = yOf(d);
@@ -393,7 +384,7 @@ const MapCanvas = forwardRef(function MapCanvas(
           cluster: clusterOf(d),
         };
       })
-    .filter(Boolean);
+      .filter(Boolean);
   }, [filteredData, highlight2D]);
 
   // 初期クランプ
@@ -1007,9 +998,9 @@ const MapCanvas = forwardRef(function MapCanvas(
                 const R_SMALL = 0.06;  // 下位サイズ
                 const R_MED   = 0.10;  // 中間サイズ
                 const R_LARGE = 0.22;  // 上位サイズ
-                const t = Math.max(0, Math.min(1, d.t));  // 0..1（分位点クリップ＆ガンマ後）
-                if (t < 0.50) return R_SMALL;      // 下位50%
-                if (t < 0.90) return R_MED;        // 上位10%
+                const t = Math.max(0, Math.min(1, d.t));
+                if (t < 0.34) return R_SMALL;
+                if (t < 0.67) return R_MED;
                 return R_LARGE;
               },
               getFillColor: (d) => {

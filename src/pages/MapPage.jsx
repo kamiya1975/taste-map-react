@@ -2945,9 +2945,10 @@ function MapPage() {
             }}
           >
             <option value="">基本マップ</option>
-            <option value="pc3">酸味</option>
-            <option value="pc2">甘味</option>
-            <option value="pc1">ボディ</option>
+            <option value="bubble_3">酸味</option>
+            <option value="bubble_2">甘味</option>
+            <option value="bubble_4">苦味•渋味</option>
+            <option value="bubble_1">ボディ</option>
           </select>
           <span
             aria-hidden="true"
