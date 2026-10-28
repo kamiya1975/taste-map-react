@@ -26,7 +26,7 @@ export default function ClusterPalettePanel({
   onPickCluster = null,   // タップ時にクラスターIDを親へ通知
   clusterMeta = null,     // 未指定なら constants の CLUSTER_META を使う
   availableIds = null,    // 追加：表示対象を制限する（順序は維持）
-  maxNameLen = 10,
+  maxNameLen = 11,
   maxHintLen = 30,
   collapseKey,          // ★追加：外から「畳め」の合図
 }) {
